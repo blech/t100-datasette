@@ -1,0 +1,202 @@
+{% extends "query.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+    #map {
+        width: 100%;
+        height: 500px;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="map"></div>
+
+<div id="slider-container" style="margin-bottom: 20px;">
+  <label for="time-slider"><strong>Flight Date: </strong><span id="selected-date">Loading...</span></label>
+  <input type="range" id="time-slider" min="0" max="0" value="0" style="width: 100%; display: block; margin-top: 5px;">
+</div>
+
+{{ super() }}
+
+<script type="module">
+import { GreatCircle } from 'https://cdn.skypack.dev/arc@1.0.0';
+
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Initialize the map
+    var map = L.map('map').setView([20, 0], 2);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    }).addTo(map);
+
+    var geojsonUrl = "/t100/routes_map.geojson" + window.location.search;
+    var allRouteLayers = [];
+
+    fetch(geojsonUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.features || data.features.length === 0) {
+                document.getElementById('selected-date').textContent = "No data available";
+                return;
+            }
+
+            // 1. Extract all unique dates present in the payload and sort them
+            var uniqueDates = [...new Set(data.features.map(f => f.properties.date))].sort();
+
+            var slider = document.getElementById('time-slider');
+            var dateLabel = document.getElementById('selected-date');
+
+            slider.max = uniqueDates.length - 1;
+            slider.value = 0;
+            dateLabel.textContent = uniqueDates[0];
+
+            // 2. Set view to origin airport and drop a persistent marker
+            var firstFeature = data.features[0].properties;
+            if (firstFeature.origin_lat && firstFeature.origin_lon) {
+                map.setView([parseFloat(firstFeature.origin_lat), parseFloat(firstFeature.origin_lon)], 3);
+
+                L.circleMarker([parseFloat(firstFeature.origin_lat), parseFloat(firstFeature.origin_lon)], {
+                    radius: 6,
+                    color: '#ff4444',
+                    fillColor: '#ff4444',
+                    fillOpacity: 1
+                }).addTo(map).bindPopup(`Origin: ${firstFeature.origin_code || 'Home'}`);
+            }
+
+            // 3. Build and cache all destination arcs silently into a FeatureGroup
+            data.features.forEach(function(feature) {
+                var props = feature.properties;
+
+                if (props.origin_lat && props.origin_lon && props.destination_lat && props.destination_lon) {
+
+                    try {
+                        var start = { x: parseFloat(props.origin_lon), y: parseFloat(props.origin_lat) };
+                        var end = { x: parseFloat(props.destination_lon), y: parseFloat(props.destination_lat) };
+
+                        // debugger;
+                        if (Number.isNaN(Number(start.x)) || Number.isNaN(Number(start.y)) ||
+                                Number.isNaN(Number(end.x))   || Number.isNaN(Number(end.y))) {
+                            console.warn(`Skipping malformed route mapping for destination: ${props.dest || 'Unknown'}`);
+                            return; // Immediately exits this iteration of the loop and skips to the next feature
+                        }
+                        var generator = new GreatCircle(start, end);
+                        var line = generator.Arc(100, { offset: 10 });
+                        var lineJson = line.json();
+
+                        // Create a FeatureGroup to wrap either singular or split multi-line segments for this single route
+                        var routeLayerGroup = L.featureGroup();
+
+                        if (lineJson.geometry.type === "MultiLineString") {
+                            lineJson.geometry.coordinates.forEach(function(coords) {
+                                try {
+                                    var leafletCoords = coords.map(function(coord) {
+                                        var lon = coord[0];
+                                        var lat = coord[1];
+
+                                        if (start.x > 0 && lon < 0) { lon += 360; }
+                                        else if (start.x < 0 && lon > 0) { lon -= 360; }
+
+                                        return L.latLng(lat, lon);
+                                    });
+                                } catch (error) {
+                                    console.error(`Skipping broken co-ords ${coord} for ${props.dest}`);
+                                    return;
+                                }
+
+                                var segment = L.polyline(leafletCoords, {
+                                    color: '#ff5a00',
+                                    weight: 2,
+                                    opacity: 0.6
+                                });
+                                segment.addTo(routeLayerGroup);
+                            });
+                        } else {
+                            var leafletCoords = lineJson.geometry.coordinates.map(function(coord) {
+                                return L.latLng(coord[1], coord[0]);
+                            });
+
+                            var segment = L.polyline(leafletCoords, {
+                                color: '#ff5a00',
+                                weight: 2,
+                                opacity: 0.6
+                            });
+                            segment.addTo(routeLayerGroup);
+                        }
+
+                        // Attach popup text to the collective group layer
+                        if (props.dest) {
+                            routeLayerGroup.bindPopup(`Route: ${props.origin_code || 'Origin'} &rarr; ${props.dest}<br>Passengers: ${props.total_pax || 'N/A'}`);
+                        }
+
+                        // Cache tracking metadata onto the group so the slider filter can query it
+                        routeLayerGroup.flightDate = props.date;
+                        allRouteLayers.push(routeLayerGroup);
+                    }
+                    catch (error) {
+                        console.error(`Skipping broken route geometry for destination ${props.dest || 'Unknown'} due to rendering error:`, error);
+                    }
+                }
+            });
+
+            // 4. Function to refresh visible lines based on active date
+            function updateMapDisplay(targetDate) {
+                allRouteLayers.forEach(function(layer) {
+                    if (layer.flightDate === targetDate) {
+                        if (!map.hasLayer(layer)) layer.addTo(map);
+                    } else {
+                        if (map.hasLayer(layer)) map.removeLayer(layer);
+                    }
+                });
+            }
+
+            // Function to sync the native Datasette HTML table with the slider date
+            function updateTableDisplay(targetDate) {
+                // Datasette default templates output the query rows inside a table with class "rows-and-columns"
+                var table = document.querySelector("table.rows-and-columns");
+                if (!table) return; // Guard clause in case the table isn't found
+
+                var rows = table.querySelectorAll("tbody tr");
+
+                rows.forEach(function(row) {
+                    /* Assumes 'date' is your very first column (index 0).
+                       If it's a different column, change cells[0] to match your column layout index */
+                    var dateCell = row.cells[0];
+
+                    if (dateCell) {
+                        var rowDate = dateCell.textContent.trim();
+
+                        if (rowDate === targetDate) {
+                            row.style.display = ""; // Show row (uses default table-row styling)
+                        } else {
+                            row.style.display = "none"; // Hide row
+                        }
+                    }
+                });
+            }
+
+            // 5. Hook up slider listener
+            slider.addEventListener('input', function(e) {
+                var currentDate = uniqueDates[e.target.value];
+                dateLabel.textContent = currentDate;
+                updateMapDisplay(currentDate);
+                updateTableDisplay(currentDate); // Filters the HTML table below the map
+            });
+
+            // Initialize display
+            if (uniqueDates.length > 0) {
+                updateMapDisplay(uniqueDates[0]);
+                updateTableDisplay(uniqueDates[0]); // Initialize the table filter
+            }
+        })
+        .catch(err => console.error("Error loading mapping payload:", err));
+});
+</script>
+{% endblock %}

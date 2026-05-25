@@ -1,0 +1,90 @@
+databases:
+  t100:
+    queries:
+      routes:
+        sql: |
+          SELECT
+            year || '-' || printf('%02d', month) AS date,
+            dest,
+            dest_city_name,
+            sum(departures_performed) as deps,
+            sum(seats) as seats,
+            sum(passengers) as total_pax,
+            ROUND ((1.0 * passengers) / seats * 100, 1) as load_factor,
+            sum(freight) as freight,
+            'http://localhost:8808/t100/pairs_drilldown?origin=' || origin || '&dest=' || dest || '&year=' || year || '&month=' || month || '&_hide_sql=1' as drilldown_url
+          FROM t100 AS t
+          WHERE origin = :origin
+          GROUP by dest, date
+          ORDER BY
+            date DESC,
+            CASE :sort_column
+              WHEN 'departures' THEN deps
+              WHEN 'seats' THEN seats
+              WHEN 'passengers' THEN total_pax
+              WHEN 'freight' THEN freight
+              ELSE dest_city_name
+            END
+            DESC
+      routes_map:
+        sql: |
+          SELECT
+            year || '-' || printf('%02d', month) AS date,
+            dest,
+            dest_city_name,
+            sum(departures_performed) as deps,
+            sum(seats) as seats,
+            sum(passengers) as total_pax,
+            ROUND ((1.0 * passengers) / seats * 100, 1) as load_factor,
+            sum(freight) as freight,
+
+            '{"type": "LineString", "coordinates": [[' ||
+              orig_airport.longitude || ',' || orig_airport.latitude || '],[' ||
+              dest_airport.longitude || ',' || dest_airport.latitude || ']]}' AS geometry,
+
+            orig_airport.longitude AS origin_lon,
+            orig_airport.latitude AS origin_lat,
+            dest_airport.longitude AS destination_lon,
+            dest_airport.latitude AS destination_lat,
+            'http://localhost:8808/t100/pairs_drilldown?origin=' || origin || '&dest=' || dest || '&year=' || year || '&month=' || month || '&_hide_sql=1' as drilldown_url
+          FROM t100 AS t
+            LEFT JOIN openflights_airports AS dest_airport ON t.dest = dest_airport.iata_code
+            LEFT JOIN openflights_airports AS orig_airport ON t.origin = orig_airport.iata_code
+          WHERE origin = :origin
+          GROUP by dest, date
+          ORDER BY
+            date DESC,
+            CASE :sort_column
+              WHEN 'departures' THEN deps
+              WHEN 'seats' THEN seats
+              WHEN 'passengers' THEN total_pax
+              WHEN 'freight' THEN freight
+              ELSE dest_city_name
+            END
+            DESC
+
+      pairs_drilldown:
+        sql: >
+          select
+            origin_city_name,
+            dest_city_name,
+            c.name,
+            a.name,
+            departures_performed,
+            departures_scheduled,
+            payload,
+            seats,
+            passengers,
+            ROUND ((1.0 * passengers) / seats * 100, 1) as load_factor,
+            freight,
+            ramp_to_ramp,
+            air_time
+          from t100 as t
+          join
+            aircraft_types a on t.aircraft_type = a.AC_TYPEID,
+            carriers c on t.carrier_entity = c.CARRIER_ENTITY
+          where
+            origin = :origin
+            and dest = :dest
+            and year = :year
+            and month = :month
