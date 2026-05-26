@@ -12,7 +12,7 @@ databases:
             sum(passengers) as total_pax,
             ROUND ((1.0 * passengers) / seats * 100, 1) as load_factor,
             sum(freight) as freight,
-            'http://localhost:8808/t100/pairs_drilldown?origin=' || origin || '&dest=' || dest || '&year=' || year || '&month=' || month || '&_hide_sql=1' as drilldown_url
+            'http://localhost:8808/t100/route?origin=' || origin || '&dest=' || dest || '&_hide_sql=1' as more_detail
           FROM t100 AS t
           WHERE origin = :origin
           GROUP by dest, date
@@ -45,8 +45,7 @@ databases:
             orig_airport.longitude AS origin_lon,
             orig_airport.latitude AS origin_lat,
             dest_airport.longitude AS destination_lon,
-            dest_airport.latitude AS destination_lat,
-            'http://localhost:8808/t100/pairs_drilldown?origin=' || origin || '&dest=' || dest || '&year=' || year || '&month=' || month || '&_hide_sql=1' as drilldown_url
+            dest_airport.latitude AS destination_lat
           FROM t100 AS t
             LEFT JOIN openflights_airports AS dest_airport ON t.dest = dest_airport.iata_code
             LEFT JOIN openflights_airports AS orig_airport ON t.origin = orig_airport.iata_code
@@ -54,14 +53,40 @@ databases:
           GROUP by dest, date
           ORDER BY
             date DESC,
-            CASE :sort_column
-              WHEN 'departures' THEN deps
-              WHEN 'seats' THEN seats
-              WHEN 'passengers' THEN total_pax
-              WHEN 'freight' THEN freight
-              ELSE dest_city_name
-            END
-            DESC
+            deps DESC,
+            dest_city_name ASC
+
+      route:
+        sql: >
+          SELECT
+            year,
+            origin_city_name,
+            dest_city_name,
+            c.name AS carrier,
+            a.name AS aircraft,
+            SUM(departures_performed) AS deps,
+            SUM(departures_scheduled) AS scheduled,
+            SUM(payload) AS total_payload,
+            SUM(seats) AS total_seats,
+            SUM(passengers) AS total_passengers,
+            -- Calculate the true load factor for the whole year based on the new aggregated sums
+            ROUND((1.0 * SUM(passengers)) / SUM(seats) * 100, 1) AS load_factor,
+            SUM(freight) AS total_freight,
+            SUM(ramp_to_ramp) AS total_ramp_time,
+            SUM(air_time) AS total_air_time
+          FROM t100 AS t
+            JOIN aircraft_types a ON t.aircraft_type = a.AC_TYPEID
+            JOIN carriers c ON t.carrier_entity = c.CARRIER_ENTITY
+          WHERE
+            origin = :origin
+            AND dest = :dest
+          GROUP BY
+            year,
+            c.name,
+            a.name
+          ORDER BY
+            year DESC,
+            total_passengers DESC
 
       pairs_drilldown:
         sql: >
