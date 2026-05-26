@@ -54,9 +54,10 @@ document.addEventListener("DOMContentLoaded", function() {
             var slider = document.getElementById('time-slider');
             var dateLabel = document.getElementById('selected-date');
 
-            slider.max = uniqueDates.length - 1;
-            slider.value = 0;
-            dateLabel.textContent = uniqueDates[0];
+            var latestIndex = uniqueDates.length - 1;
+            slider.max = latestIndex;
+            slider.value = latestIndex;
+            dateLabel.textContent = uniqueDates[latestIndex];
 
             // 2. Set view to origin airport and drop a persistent marker
             var firstFeature = data.features[0].properties;
@@ -133,7 +134,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                         // Attach popup text to the collective group layer
                         if (props.dest) {
-                            routeLayerGroup.bindPopup(`Route: ${props.origin_code || 'Origin'} &rarr; ${props.dest}<br>Passengers: ${props.total_pax || 'N/A'}`);
+                            routeLayerGroup.bindPopup(`Route: ${props.origin || 'Origin'} &rarr; ${props.dest}<br>Passengers: ${props.total_pax || 'N/A'}`);
                         }
 
                         // Cache tracking metadata onto the group so the slider filter can query it
@@ -192,8 +193,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
             // Initialize display
             if (uniqueDates.length > 0) {
-                updateMapDisplay(uniqueDates[0]);
-                updateTableDisplay(uniqueDates[0]); // Initialize the table filter
+                var latestIndex = uniqueDates.length - 1;
+                updateMapDisplay(uniqueDates[latestIndex]);
+                updateTableDisplay(uniqueDates[latestIndex]); // Initialize the table filter
             }
         })
         .catch(err => console.error("Error loading mapping payload:", err));
