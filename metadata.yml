@@ -1,6 +1,38 @@
 databases:
   t100:
     queries:
+      top_us_airports:
+        sql: |
+          SELECT
+            origin,
+            origin_city_name,
+            CAST(SUM(departures_performed) AS integer) AS total_deps,
+            CAST(SUM(passengers) AS integer) AS total_passengers,
+            CAST(SUM(seats) AS integer) AS total_seats,
+            CAST(SUM(freight) AS integer) AS total_freight,
+            'http://localhost:8808/t100/destinations?origin=' || origin || '&_hide_sql=1' as more_detail
+          FROM t100
+          WHERE CAST(origin_wac AS INTEGER) BETWEEN 1 AND 93
+            AND year = 2022
+          GROUP BY origin, origin_wac, origin_city_name
+          ORDER BY
+            CASE :sort_column
+              WHEN 'Departures' THEN total_deps
+              WHEN 'Seats' THEN total_seats
+              WHEN 'Freight' THEN total_freight
+              ELSE total_passengers
+            END
+            DESC
+          LIMIT 100;
+        params:
+          sort_column:
+            label: "Sort Display By"
+            type: "select"
+            options:
+              - "Total Passengers"
+              - "Departures"
+              - "Seats"
+              - "Freight"
       destinations:
         sql: |
           SELECT
