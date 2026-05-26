@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function() {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     }).addTo(map);
 
-    var geojsonUrl = "/t100/routes_map.geojson" + window.location.search;
+    var geojsonUrl = "/t100/destinations_map.geojson" + window.location.search;
     var allRouteLayers = [];
 
     fetch(geojsonUrl)
