@@ -9,14 +9,13 @@ databases:
       top_us_airports:
         sql: |
           SELECT
-            year,
             origin,
             origin_city_name,
             CAST(SUM(departures_performed) AS integer) AS total_deps,
             CAST(SUM(passengers) AS integer) AS total_passengers,
             CAST(SUM(seats) AS integer) AS total_seats,
             CAST(SUM(freight) AS integer) AS total_freight,
-            'http://localhost:8808/t100/destinations?origin=' || origin || '&_hide_sql=1' as more_detail
+            '/t100/destinations?origin=' || origin || '&_hide_sql=1' AS more_detail
           FROM t100
           WHERE origin_wac BETWEEN 1 AND 93
             AND year = COALESCE(NULLIF(:year, ''), 2025)
@@ -40,9 +39,8 @@ databases:
             sum(departures_performed) as deps,
             sum(seats) as seats,
             sum(passengers) as total_pax,
-            ROUND ((1.0 * passengers) / seats * 100, 1) as load_factor,
             sum(freight) as freight,
-            'http://localhost:8808/t100/route?origin=' || origin || '&dest=' || dest || '&_hide_sql=1' as more_detail
+            '/t100/route?origin=' || origin || '&dest=' || dest || '&_hide_sql=1&_plot-mark=%7B"mark"%3A"bar-y"%2C"options"%3A%7B"x"%3A"year"%2C"y"%3A"deps"%2C"fill"%3A"aircraft"%2C"tip"%3Atrue%7D%7D' as more_detail
           FROM t100 AS t
           WHERE origin = :origin
           GROUP by dest, date
@@ -65,7 +63,7 @@ databases:
             sum(departures_performed) as deps,
             sum(seats) as seats,
             sum(passengers) as total_pax,
-            ROUND ((1.0 * passengers) / seats * 100, 1) as load_factor,
+            ROUND ((1.0 * passengers) / (seats * 100.0), 1) as load_factor,
             sum(freight) as freight,
 
             '{"type": "LineString", "coordinates": [[' ||
@@ -102,7 +100,7 @@ databases:
             -- Calculate the true load factor for the whole year based on the new aggregated sums
             ROUND((1.0 * SUM(passengers)) / SUM(seats) * 100, 1) AS load_factor,
             SUM(freight) AS total_freight,
-            'http://localhost:8808/t100/route_year?origin=' || origin || '&dest=' || dest || '&year=' || year || '&_hide_sql=1' as more_detail
+            '/t100/route_year?origin=' || origin || '&dest=' || dest || '&year=' || year || '&_hide_sql=1&_plot-mark=%7B"mark"%3A"bar-y"%2C"options"%3A%7B"x"%3A"month"%2C"y"%3A"deps"%2C"fill"%3A"aircraft"%2C"tip"%3Atrue%7D%7D' as more_detail
           FROM t100 AS t
             JOIN aircraft_types a ON t.aircraft_type = a.AC_TYPEID
             JOIN carriers c ON t.carrier_entity = c.CARRIER_ENTITY
@@ -115,6 +113,8 @@ databases:
             a.name
           ORDER BY
             year DESC,
+            a.name ASC,
+            c.name ASC,
             total_passengers DESC
 
       route_year:
@@ -144,5 +144,7 @@ databases:
             AND year = :year
           ORDER BY
             month ASC,
+            a.name ASC,
+            c.name ASC,
             total_passengers DESC
 
