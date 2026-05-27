@@ -1,0 +1,1 @@
+year|month|origin|origin_city_market_id|origin_wac|origin_city_name|dest|dest_city_market_id|dest_wac|dest_city_name|carrier|carrier_entity|carrier_group|distance|class|aircraft_group|aircraft_type|aircraft_config|departures_performed|departures_scheduled|payload|seats|passengers|freight|mail|ramp_to_ramp|air_time|wac|none
