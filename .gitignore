@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# macOS metadata
+.DS_Store
+
+# Don't commit databases or source CSVs
+*.db
+*.csv
