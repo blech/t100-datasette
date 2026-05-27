@@ -5,6 +5,10 @@ settings:
 
 databases:
   t100:
+    title: T-100 International Segment Data, 1990-2025
+    source: Data Bank 28IS - T-100 and T-100(f) International Segment Data, U.S. and Foreign Air Carriers Traffic and Capacity Data
+    source_url: https://www.bts.gov/browse-statistical-products-and-data/bts-publications/%E2%80%A2-data-bank-28is-t-100-and-t-100f
+
     queries:
       top_us_airports:
         sql: |
