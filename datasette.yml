@@ -1,9 +1,15 @@
+settings:
+  default_page_size: 100
+  max_returned_rows: 50000
+  sql_time_limit_ms: 5000
+
 databases:
   t100:
     queries:
       top_us_airports:
         sql: |
           SELECT
+            year,
             origin,
             origin_city_name,
             CAST(SUM(departures_performed) AS integer) AS total_deps,
@@ -12,8 +18,8 @@ databases:
             CAST(SUM(freight) AS integer) AS total_freight,
             'http://localhost:8808/t100/destinations?origin=' || origin || '&_hide_sql=1' as more_detail
           FROM t100
-          WHERE CAST(origin_wac AS INTEGER) BETWEEN 1 AND 93
-            AND year = 2022
+          WHERE origin_wac BETWEEN 1 AND 93
+            AND year = COALESCE(NULLIF(:year, ''), 2025)
           GROUP BY origin, origin_wac, origin_city_name
           ORDER BY
             CASE :sort_column
@@ -24,15 +30,6 @@ databases:
             END
             DESC
           LIMIT 100;
-        params:
-          sort_column:
-            label: "Sort Display By"
-            type: "select"
-            options:
-              - "Total Passengers"
-              - "Departures"
-              - "Seats"
-              - "Freight"
 
       destinations:
         sql: |
