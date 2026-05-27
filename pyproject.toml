@@ -10,3 +10,6 @@ dependencies = [
     "datasette-vega>=0.6.2",
     "sqlite-utils>=3.39",
 ]
+
+[tool.uv.sources]
+datasette = { path = "../datasette", editable = true }
