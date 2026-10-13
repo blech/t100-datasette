@@ -15,3 +15,5 @@ wheels/
 # Don't commit databases or source CSVs
 *.db
 *.csv
+# SDD workspace scratch
+.superpowers/

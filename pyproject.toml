@@ -10,3 +10,13 @@ dependencies = [
     "datasette-plot>=0.1.0",
     "sqlite-utils>=3.39",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pyyaml>=6",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
