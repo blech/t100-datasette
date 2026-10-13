@@ -25,6 +25,7 @@ export function placeRoutes(rows, origin, airports) {
 export const yearsIn = (rows) => [...new Set(rows.map((r) => r.year))].sort((a, b) => a - b);
 export const forYear = (routes, year) => routes.filter((r) => r.year === year);
 export const forMonth = (routes, month) => routes.filter((r) => r.month === month);
+export const forService = (routes, service) => (service === 'all' ? routes : routes.filter((r) => r.service === service));
 
 // destinations in `rows` (already limited to the period on screen) that have no coordinates
 export function skippedFor(rows, airports) {

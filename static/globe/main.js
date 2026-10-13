@@ -3,7 +3,7 @@ import { defaultView, clamp } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
-import { indexAirports, placeRoutes, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
+import { indexAirports, placeRoutes, yearsIn, forYear, forMonth, forService, skippedFor, originProblem } from './src/adapter.js';
 import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
@@ -54,8 +54,8 @@ function applyTheme(id) {
 
 function currentRoutes() {
   if (state.year === null) return [];
-  if (state.month !== null) return forMonth(monthRoutes, state.month);
-  return forYear(yearRoutes, state.year);
+  const routes = state.month !== null ? forMonth(monthRoutes, state.month) : forYear(yearRoutes, state.year);
+  return forService(routes, state.service);
 }
 
 function pushState() {
@@ -71,7 +71,7 @@ function updateStats() {
   $('stats').textContent = `${label} · ${routes.length} destinations · ${fmt(deps)} departures · ${fmt(pax)} passengers`;
   $('year-label').textContent = label;
   const periodRows = state.month !== null ? monthRaw.filter((r) => r.month === state.month) : yearRaw.filter((r) => r.year === state.year);
-  const skipped = skippedFor(periodRows, airports);
+  const skipped = skippedFor(forService(periodRows, state.service), airports);
   const notes = [];
   if (skipped.length) notes.push(`${skipped.length} destination${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}`);
   $('footnote').textContent = notes.join(' · ');
@@ -201,6 +201,9 @@ function bindControls() {
   }
   tsel.value = themeId;
   tsel.addEventListener('change', () => { applyTheme(tsel.value); pushState(); });
+  const service = $('service');
+  service.value = state.service;
+  service.addEventListener('change', () => { state.service = service.value; hover = -1; selected = -1; $('panel').hidden = true; updateStats(); pushState(); dirty = true; });
   const width = $('width');
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });

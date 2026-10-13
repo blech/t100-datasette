@@ -34,3 +34,9 @@ def test_static_assets_are_served(ds):
 
 def test_width_menu_offers_freight(ds):
     assert '<option value="freight">' in get(ds, "/globe/ATL").text
+
+
+def test_service_menu_offers_all_domestic_international(ds):
+    html = get(ds, "/globe/ATL").text
+    for v in ("all", "domestic", "international"):
+        assert f'<option value="{v}">' in html

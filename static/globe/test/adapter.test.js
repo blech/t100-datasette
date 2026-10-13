@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { indexAirports, placeRoutes, yearsIn, forYear, forMonth } from '../src/adapter.js';
+import { indexAirports, placeRoutes, yearsIn, forYear, forMonth, forService } from '../src/adapter.js';
 
 const airports = indexAirports([
   { code: 'ATL', name: 'Atlanta', city: 'Atlanta', country: 'United States', latitude: 33.6, longitude: -84.4, is_us: 1 },
@@ -52,4 +52,11 @@ test('originProblem: no rows beats no coordinates', () => {
   assert.equal(originProblem([], airports, 'ATL'), 'no-data');
   assert.equal(originProblem([{ dest: 'LHR' }], airports, 'QQQ'), 'no-coordinates');
   assert.equal(originProblem([{ dest: 'LHR' }], airports, 'ATL'), null);
+});
+
+test('forService keeps only the chosen service, or everything for all', () => {
+  const rows = [{ dest: 'A', service: 'domestic' }, { dest: 'B', service: 'international' }];
+  assert.deepEqual(forService(rows, 'domestic').map((r) => r.dest), ['A']);
+  assert.deepEqual(forService(rows, 'international').map((r) => r.dest), ['B']);
+  assert.equal(forService(rows, 'all'), rows);
 });
