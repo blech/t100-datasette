@@ -1,0 +1,8 @@
+{
+  "name": "t100-globe",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test static/globe/test/*.test.js"
+  }
+}
