@@ -30,3 +30,7 @@ def test_static_assets_are_served(ds):
     r = get(ds, "/static/globe/src/state.js")
     assert r.status_code == 200 and "parseState" in r.text
     assert "javascript" in r.headers["content-type"]
+
+
+def test_width_menu_offers_freight(ds):
+    assert '<option value="freight">' in get(ds, "/globe/ATL").text
