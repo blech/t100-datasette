@@ -10,6 +10,25 @@ databases:
     source_url: https://www.bts.gov/browse-statistical-products-and-data/bts-publications/%E2%80%A2-data-bank-28is-t-100-and-t-100f
 
     queries:
+      airports:
+        sql: |
+          SELECT
+            code, name, city, country, latitude, longitude,
+            CASE WHEN country IN ('United States', 'Puerto Rico', 'Guam', 'Virgin Islands',
+                                  'American Samoa', 'Northern Mariana Islands')
+                 THEN 1 ELSE 0 END AS is_us
+          FROM (
+            SELECT iata_code AS code, name, city, country, latitude, longitude
+            FROM openflights_airports
+            WHERE iata_code IS NOT NULL
+              AND iata_code NOT IN ('', '\N')
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
+              AND iata_code NOT IN (SELECT code FROM airport_overrides)
+            UNION ALL
+            SELECT code, name, city, country, latitude, longitude FROM airport_overrides
+          )
+          ORDER BY code
+
       top_us_airports:
         sql: |
           SELECT

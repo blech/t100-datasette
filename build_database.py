@@ -100,3 +100,15 @@ def create_indexes(conn: sqlite3.Connection) -> None:
     for name, table, col in _LOOKUP_INDEXES:
         conn.execute(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({col})")
     conn.commit()
+
+
+def load_airport_overrides(conn: sqlite3.Connection, csv_path) -> int:
+    with open(csv_path, newline="") as f:
+        rows = list(csv.DictReader(f))
+    conn.executemany(
+        "INSERT OR REPLACE INTO airport_overrides (code, name, city, country, latitude, longitude) "
+        "VALUES (:code, :name, :city, :country, :latitude, :longitude)",
+        rows,
+    )
+    conn.commit()
+    return len(rows)

@@ -17,3 +17,4 @@ wheels/
 *.csv
 # SDD workspace scratch
 .superpowers/
+!data/airport_overrides.csv
