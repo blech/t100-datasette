@@ -89,3 +89,13 @@ def test_min_deps_parameter_overrides_default(ds, db_path):
     assert set(rows(ds, min_deps=5)) == {("FIV", 2025), ("TWL", 2025)}
     assert set(rows(ds, min_deps=13)) == set()
     assert set(rows(ds, min_deps="")) == {("TWL", 2025)}
+
+
+def test_destinations_year_parameter_limits_years_and_blank_means_all(ds, db_path):
+    add_segments(db_path, "t100_domestic", [seg("ATL", "LAX", 2018, 12, 100), seg("ATL", "LAX", 2019, 12, 100)])
+    def dates(extra):
+        body = get_json(ds, f"/t100/destinations.json?origin=ATL{extra}&_shape=objects")
+        return {r["date"][:4] for r in body["rows"]}
+    assert dates("") == {"2018", "2019"}
+    assert dates("&year=") == {"2018", "2019"}
+    assert dates("&year=2019") == {"2019"}

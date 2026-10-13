@@ -3,6 +3,11 @@ settings:
   max_returned_rows: 50000
   sql_time_limit_ms: 5000
 
+plugins:
+  t100_globe:
+    min_year: 1990
+    max_year: 2025
+
 databases:
   t100:
     title: T-100 Segment Data (International and Domestic), 1990-2025
@@ -53,6 +58,33 @@ databases:
             DESC
           LIMIT 100;
 
+      top_airports:
+        sql: |
+          WITH totals AS (
+            SELECT
+              origin,
+              MAX(origin_city_name) AS origin_city_name,
+              CAST(SUM(departures_performed) AS integer) AS deps,
+              CAST(SUM(seats) AS integer) AS seats,
+              CAST(SUM(passengers) AS integer) AS passengers,
+              CAST(SUM(freight) AS integer) AS freight
+            FROM t100
+            WHERE origin_wac BETWEEN 1 AND 93
+              AND year = CAST(:year AS integer)
+            GROUP BY origin
+          ), ranked AS (
+            SELECT *,
+              RANK() OVER (ORDER BY passengers DESC) AS by_passengers,
+              RANK() OVER (ORDER BY deps DESC) AS by_deps,
+              RANK() OVER (ORDER BY seats DESC) AS by_seats,
+              RANK() OVER (ORDER BY freight DESC) AS by_freight
+            FROM totals
+          )
+          SELECT origin, origin_city_name, deps, seats, passengers, freight
+          FROM ranked
+          WHERE by_passengers <= 20 OR by_deps <= 20 OR by_seats <= 20 OR by_freight <= 20
+          ORDER BY passengers DESC, origin
+
       destinations:
         sql: |
           SELECT
@@ -66,6 +98,7 @@ databases:
             '/t100/route?origin=' || origin || '&dest=' || dest || '&_hide_sql=1&_plot-mark=%7B"mark"%3A"bar-y"%2C"options"%3A%7B"x"%3A"year"%2C"y"%3A"deps"%2C"fill"%3A"aircraft"%2C"tip"%3Atrue%7D%7D' as more_detail
           FROM t100 AS t
           WHERE origin = :origin
+            AND (NULLIF(:year, '') IS NULL OR year = CAST(:year AS integer))
           GROUP by dest, date
           ORDER BY
             date DESC,

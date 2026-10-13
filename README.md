@@ -3,6 +3,7 @@
 This is a [Datasette](https://datasette.io/) project for exploring the BTS T-100 segment data: aggregate monthly flights, seats, passengers and freight between airports, for international and domestic services, 1990-2025.
 
 It has two layers:
+- a **landing page** at `/` (Datasette's own index is at `/-/`): a sortable table of the busiest US airports for any year, linking to each airport's map and destinations. The year range comes from `plugins: t100_globe: min_year / max_year` in `datasette.yml`; update `max_year` when a new year of data is loaded.
 - an **airport network map** at `/globe/<AIRPORT>` (for example `/globe/ATL`): pick a US airport, see its routes by year on a globe or flat map (international in orange, domestic in blue), play through the years, and drill down to months. Clicking a route links to the detailed canned queries.
 - the standard **Datasette interface** for tables and canned queries, for exploring everything else.
 
@@ -69,4 +70,5 @@ npm test        # the map's pure JavaScript modules
 - **`destinations` & `destinations_map`**: aggregate statistics (passengers, seats, freight) for flights from an airport, by month. `destinations_map` includes GeoJSON lines for the Leaflet map.
 - **`route`**: a specific route (origin to destination) by year, carrier and aircraft type.
 - **`route_year`**: month-by-month data for a route in one year.
+- **`top_airports`**: for one year (`year=2025`), the airports in the top 20 by passengers, departures, seats or freight, so the landing page can show a top 20 for whichever column is sorted. **`destinations`** also takes an optional `year`.
 - **`airports`, `routes_by_year`, `routes_by_month`**: JSON for the `/globe` page. `routes_by_year` and `routes_by_month` label each destination `domestic` or `international` by whether most of that period's departures were domestic. Routes with fewer than 12 departures in the year (one-off charters, diversion legs, positioning flights) are left out of both; pass `min_deps=N` to change the cut-off (`min_deps=0` shows everything). In the month query the cut-off applies to the year's total, so a route shows all its months or none.
