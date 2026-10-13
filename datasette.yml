@@ -127,6 +127,23 @@ databases:
           GROUP BY dest, year
           ORDER BY year, dest
 
+      routes_by_month:
+        sql: |
+          SELECT
+            dest,
+            month,
+            SUM(departures_performed) AS deps,
+            SUM(seats) AS seats,
+            SUM(passengers) AS passengers,
+            SUM(freight) AS freight,
+            CASE WHEN SUM(CASE WHEN domestic = 1 THEN departures_performed ELSE 0 END) * 2
+                      > SUM(departures_performed)
+                 THEN 'domestic' ELSE 'international' END AS service
+          FROM t100
+          WHERE origin = :origin AND year = :year
+          GROUP BY dest, month
+          ORDER BY month, dest
+
       route:
         sql: >
           SELECT
