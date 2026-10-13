@@ -20,3 +20,8 @@ def test_bad_codes_are_404(ds):
 def test_globe_page_links_to_routes_over_time(ds):
     assert 'href="/routes/ATL"' in get(ds, "/globe/ATL").text
     assert "/routes/" not in get(ds, "/globe").text
+
+
+def test_page_offers_the_city_grouping(ds):
+    html = get(ds, "/routes/ATL").text
+    assert '<option value="city">' in html and 'id="heat-group"' in html

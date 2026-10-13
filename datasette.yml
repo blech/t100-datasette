@@ -137,6 +137,8 @@ databases:
         sql: |
           SELECT
             dest,
+            MAX(dest_city_market_id) AS market_id,
+            MAX(dest_city_name) AS city,
             year,
             SUM(departures_performed) AS deps,
             SUM(seats) AS seats,

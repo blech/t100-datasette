@@ -99,3 +99,16 @@ def test_destinations_year_parameter_limits_years_and_blank_means_all(ds, db_pat
     assert dates("") == {"2018", "2019"}
     assert dates("&year=") == {"2018", "2019"}
     assert dates("&year=2019") == {"2019"}
+
+
+def test_rows_carry_the_bts_market_id_and_city_name(ds, db_path):
+    row = seg("ATL", "ICN", 2025, 12, 100)
+    row.update(dest_city_market_id="31945", dest_city_name="Seoul, South Korea")
+    add_segments(db_path, "t100_international", [row])
+    r = rows(ds)[("ICN", 2025)]
+    assert r["market_id"] == "31945" and r["city"] == "Seoul, South Korea"
+
+
+def test_missing_market_id_comes_back_null(ds, db_path):
+    add_segments(db_path, "t100_international", [seg("ATL", "DOH", 2025, 12, 100)])
+    assert rows(ds)[("DOH", 2025)]["market_id"] is None

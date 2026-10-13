@@ -15,10 +15,11 @@
     <div class="chart-controls">
       <label>Show <select id="heat-measure" aria-label="Measure"></select></label>
       <label>Flights <select id="heat-service" aria-label="Service"><option value="all">All</option><option value="domestic">Domestic</option><option value="international">International</option></select></label>
+      <label>Rows <select id="heat-group" aria-label="Group rows"><option value="airport">Airports</option><option value="city">Cities (BTS markets)</option></select></label>
       <label>Top <select id="heat-n" aria-label="Number of destinations"><option>10</option><option selected>25</option><option>50</option></select> destinations</label>
     </div>
     <div id="heatmap" aria-live="polite">Loading chart…</div>
-    <p class="note">Destinations are ranked by the measure summed over all years. Each cell is one destination in one year; click a cell to see that route's carriers and aircraft. Routes with fewer than 12 departures a year are hidden.</p>
+    <p class="note">Destinations are ranked by the measure summed over all years. Each cell is one destination in one year; click a cell to see that route's carriers and aircraft. In city view, click a row to open it into its airports. Routes with fewer than 12 departures a year are hidden.</p>
   </main>
   <script type="module" src="/static/charts/routes.js"></script>
 </body>
