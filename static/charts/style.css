@@ -5,3 +5,6 @@
 #route-chart-plot figure { margin: 0; }
 #route-chart-plot [class*="-swatches"] { font-size: 13px; gap: 4px 0; }
 #route-chart-plot [class*="-swatch"]:not([class*="-swatches"]) { margin-right: 1.5em; white-space: nowrap; }
+#heatmap { overflow-x: auto; }
+#heatmap figure { margin: 0; }
+#heatmap a { cursor: pointer; }

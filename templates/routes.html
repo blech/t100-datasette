@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ origin }} routes over time · T-100</title>
+  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+</head>
+<body data-origin="{{ origin }}">
+  <main>
+    <p><a href="/">← All airports</a> · <a href="/globe/{{ origin }}" id="map-link">Map of {{ origin }}</a></p>
+    <h1 id="title">{{ origin }}: routes over time</h1>
+    <p class="intro" id="subtitle"></p>
+    <div class="chart-controls">
+      <label>Show <select id="heat-measure" aria-label="Measure"></select></label>
+      <label>Flights <select id="heat-service" aria-label="Service"><option value="all">All</option><option value="domestic">Domestic</option><option value="international">International</option></select></label>
+      <label>Top <select id="heat-n" aria-label="Number of destinations"><option>10</option><option selected>25</option><option>50</option></select> destinations</label>
+    </div>
+    <div id="heatmap" aria-live="polite">Loading chart…</div>
+    <p class="note">Destinations are ranked by the measure summed over all years. Each cell is one destination in one year; click a cell to see that route's carriers and aircraft. Routes with fewer than 12 departures a year are hidden.</p>
+  </main>
+  <script type="module" src="/static/charts/routes.js"></script>
+</body>
+</html>

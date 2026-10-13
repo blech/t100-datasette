@@ -38,7 +38,11 @@ function render() {
     const code = cell('', 'code');
     code.append(link(`/globe/${encodeURIComponent(r.origin)}?year=${state.year}`, r.origin));
     const more = cell('', 'more');
-    more.append(link(`/t100/destinations?origin=${encodeURIComponent(r.origin)}&year=${state.year}&_hide_sql=1`, 'Destinations →'));
+    more.append(
+      link(`/routes/${encodeURIComponent(r.origin)}`, 'Routes over time →'),
+      ' · ',
+      link(`/t100/destinations?origin=${encodeURIComponent(r.origin)}&year=${state.year}&_hide_sql=1`, 'Destinations →'),
+    );
     tr.append(
       code,
       cell(r.origin_city_name || '', 'city'),

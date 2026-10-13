@@ -16,7 +16,6 @@ It has two layers:
 The project relies on the following key packages:
 - `datasette`: The core data exploration tool
 - `datasette-geojson`: For rendering map visualizations (e.g., flight routes)
-- `datasette-plot`: For rendering charts and graphs
 - `sqlite-utils`: For database manipulation
 
 ## Getting Started
