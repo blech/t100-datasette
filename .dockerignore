@@ -1,0 +1,10 @@
+.venv
+source_downloads
+fly.toml
+*.db
+*.csv
+tests
+node_modules
+docs
+.git
+.superpowers

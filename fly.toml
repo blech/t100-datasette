@@ -1,0 +1,27 @@
+# fly.toml app configuration file
+
+app = 'blech-datasette-t100'
+primary_region = 'ord'
+
+[build]
+
+[http_service]
+  internal_port = 8808
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  max_machines_running = 2
+  processes = ['app']
+
+[env]
+
+[mounts]
+  source="t100_db"
+  destination="/mnt/db"
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 1024
