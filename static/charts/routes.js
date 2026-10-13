@@ -121,10 +121,34 @@ function drawCities() {
   }));
 }
 
+// Row labels carry their hover text in an SVG <title>; move it into our own tooltip so it shows at once
+// and the same way in every browser.
+function useLabelTips() {
+  for (const text of $('heatmap').querySelectorAll('svg text')) {
+    const title = text.querySelector(':scope > title');
+    if (!title) continue;
+    text.dataset.tip = title.textContent;
+    title.remove();
+  }
+}
+
 function draw() {
   if (state.group === 'city') drawCities();
   else drawAirports();
+  useLabelTips();
 }
+
+const labelTip = $('label-tip');
+$('heatmap').addEventListener('mousemove', (e) => {
+  const text = e.target.closest && e.target.closest('text[data-tip]');
+  $('heatmap').classList.toggle('over-label', Boolean(text));
+  if (!text) { labelTip.hidden = true; return; }
+  labelTip.textContent = text.dataset.tip;
+  labelTip.style.left = `${Math.min(e.clientX + 14, window.innerWidth - 320)}px`;
+  labelTip.style.top = `${e.clientY + 14}px`;
+  labelTip.hidden = false;
+});
+$('heatmap').addEventListener('mouseleave', () => { labelTip.hidden = true; $('heatmap').classList.remove('over-label'); });
 
 $('heatmap').addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('a');

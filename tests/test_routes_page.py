@@ -25,3 +25,7 @@ def test_globe_page_links_to_routes_over_time(ds):
 def test_page_offers_the_city_grouping(ds):
     html = get(ds, "/routes/ATL").text
     assert '<option value="city">' in html and 'id="heat-group"' in html
+
+
+def test_page_has_the_label_tooltip_element(ds):
+    assert 'id="label-tip"' in get(ds, "/routes/ATL").text
