@@ -96,7 +96,10 @@ databases:
             orig_airport.longitude AS origin_lon,
             orig_airport.latitude AS origin_lat,
             dest_airport.longitude AS destination_lon,
-            dest_airport.latitude AS destination_lat
+            dest_airport.latitude AS destination_lat,
+            CASE WHEN SUM(CASE WHEN domestic = 1 THEN departures_performed ELSE 0 END) * 2
+                      > SUM(departures_performed)
+                 THEN 1 ELSE 0 END AS domestic
           FROM t100 AS t
             LEFT JOIN openflights_airports AS dest_airport ON t.dest = dest_airport.iata_code
             LEFT JOIN openflights_airports AS orig_airport ON t.origin = orig_airport.iata_code
@@ -106,6 +109,23 @@ databases:
             date DESC,
             deps DESC,
             dest_city_name ASC
+
+      routes_by_year:
+        sql: |
+          SELECT
+            dest,
+            year,
+            SUM(departures_performed) AS deps,
+            SUM(seats) AS seats,
+            SUM(passengers) AS passengers,
+            SUM(freight) AS freight,
+            CASE WHEN SUM(CASE WHEN domestic = 1 THEN departures_performed ELSE 0 END) * 2
+                      > SUM(departures_performed)
+                 THEN 'domestic' ELSE 'international' END AS service
+          FROM t100
+          WHERE origin = :origin
+          GROUP BY dest, year
+          ORDER BY year, dest
 
       route:
         sql: >

@@ -37,6 +37,20 @@ document.addEventListener("DOMContentLoaded", function() {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     }).addTo(map);
 
+    var INTERNATIONAL_COLOUR = '#ff5a00';
+    var DOMESTIC_COLOUR = '#2a9df4';
+
+    var legend = L.control({ position: 'bottomleft' });
+    legend.onAdd = function() {
+        var div = L.DomUtil.create('div');
+        div.style.cssText = 'background: rgba(255,255,255,0.85); padding: 6px 10px; border-radius: 4px; font: 12px sans-serif;';
+        div.innerHTML =
+            '<span style="color:' + INTERNATIONAL_COLOUR + '">&#9644;</span> International<br>' +
+            '<span style="color:' + DOMESTIC_COLOUR + '">&#9644;</span> Domestic';
+        return div;
+    };
+    legend.addTo(map);
+
     var geojsonUrl = "/t100/destinations_map.geojson" + window.location.search;
     var allRouteLayers = [];
 
@@ -88,6 +102,7 @@ document.addEventListener("DOMContentLoaded", function() {
                             console.warn(`Skipping malformed route mapping for destination: ${props.dest || 'Unknown'}`);
                             return; // Immediately exits this iteration of the loop and skips to the next feature
                         }
+                        var routeColor = Number(props.domestic) === 1 ? DOMESTIC_COLOUR : INTERNATIONAL_COLOUR;
                         var generator = new GreatCircle(start, end);
                         var line = generator.Arc(100, { offset: 10 });
                         var lineJson = line.json();
@@ -113,7 +128,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                 }
 
                                 var segment = L.polyline(leafletCoords, {
-                                    color: '#ff5a00',
+                                    color: routeColor,
                                     weight: 2,
                                     opacity: 0.6
                                 });
@@ -125,7 +140,7 @@ document.addEventListener("DOMContentLoaded", function() {
                             });
 
                             var segment = L.polyline(leafletCoords, {
-                                color: '#ff5a00',
+                                color: routeColor,
                                 weight: 2,
                                 opacity: 0.6
                             });

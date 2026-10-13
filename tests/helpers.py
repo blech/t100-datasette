@@ -41,13 +41,14 @@ def add_overrides(db_path, rows):
 
 def make_datasette(db_path, settings=None):
     config = yaml.safe_load((ROOT / "datasette.yml").read_text())
+    # datasette.yml already has a settings block; merge overrides into it rather than passing settings=
+    config["settings"] = {**config.get("settings", {}), **(settings or {})}
     return Datasette(
         [str(db_path)],
         config=config,
         plugins_dir=str(ROOT / "plugins"),
         template_dir=str(ROOT / "templates"),
         static_mounts=[("static", str(ROOT / "static"))],
-        settings=settings,
     )
 
 
