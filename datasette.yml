@@ -125,6 +125,7 @@ databases:
           FROM t100
           WHERE origin = :origin
           GROUP BY dest, year
+          HAVING SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0
           ORDER BY year, dest
 
       routes_by_month:
@@ -142,6 +143,7 @@ databases:
           FROM t100
           WHERE origin = :origin AND year = :year
           GROUP BY dest, month
+          HAVING SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0
           ORDER BY month, dest
 
       route:

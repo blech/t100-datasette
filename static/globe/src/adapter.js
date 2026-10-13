@@ -25,3 +25,17 @@ export function placeRoutes(rows, origin, airports) {
 export const yearsIn = (rows) => [...new Set(rows.map((r) => r.year))].sort((a, b) => a - b);
 export const forYear = (routes, year) => routes.filter((r) => r.year === year);
 export const forMonth = (routes, month) => routes.filter((r) => r.month === month);
+
+// destinations in `rows` (already limited to the period on screen) that have no coordinates
+export function skippedFor(rows, airports) {
+  const skipped = new Set();
+  for (const r of rows) if (!airports.has(r.dest)) skipped.add(r.dest);
+  return [...skipped].sort();
+}
+
+// why an origin can't be drawn: no flights at all beats no coordinates
+export function originProblem(rows, airports, origin) {
+  if (!rows.length) return 'no-data';
+  if (!airports.has(origin)) return 'no-coordinates';
+  return null;
+}

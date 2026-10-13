@@ -3,7 +3,8 @@ import { defaultView, clamp } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
-import { indexAirports, placeRoutes, yearsIn, forYear, forMonth } from './src/adapter.js';
+import { indexAirports, placeRoutes, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
+import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
 
@@ -16,8 +17,11 @@ let airports = new Map();
 let yearRoutes = [];     // placed routes, all years
 let monthRoutes = [];    // placed routes for the selected year, all months
 let years = [];
-let skipped = [];
+let yearRaw = [];        // raw routes_by_year rows
+let monthRaw = [];       // raw routes_by_month rows for the selected year
 let truncated = false;
+let loadError = '';
+const monthSeq = createLatest();
 let themeId = resolveTheme(location.search, localStorage.getItem('t100-theme'));
 let dirty = true;
 let hover = -1;
@@ -66,10 +70,13 @@ function updateStats() {
   const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : `${state.year}`;
   $('stats').textContent = `${label} · ${routes.length} destinations · ${fmt(deps)} departures · ${fmt(pax)} passengers`;
   $('year-label').textContent = label;
+  const periodRows = state.month !== null ? monthRaw.filter((r) => r.month === state.month) : yearRaw.filter((r) => r.year === state.year);
+  const skipped = skippedFor(periodRows, airports);
   const notes = [];
   if (skipped.length) notes.push(`${skipped.length} destination${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}`);
   $('footnote').textContent = notes.join(' · ');
-  if (truncated) setStatus('Too many rows: some routes are missing from this view.', true);
+  if (loadError) setStatus(loadError, true);
+  else if (truncated) setStatus('Too many rows: some routes are missing from this view.', true);
   else if (!routes.length) setStatus('No flights from this airport in this period.');
   else setStatus('');
 }
@@ -108,13 +115,28 @@ function showPanel(r) {
   p.hidden = false;
 }
 
+// true: fresh month data applied; false: a newer request superseded this one; 'failed': fetch error (reported in the status line)
 async function loadMonths() {
+  const id = monthSeq.next();
+  monthRoutes = [];
+  monthRaw = [];
   setStatus('Loading months…');
-  const res = await fetchRows(queryUrl('routes_by_month', { origin, year: state.year }));
-  truncated = res.truncated;
-  const placed = placeRoutes(res.rows, origin, airports);
-  monthRoutes = placed.routes;
-  for (const c of placed.skipped) if (!skipped.includes(c)) skipped.push(c);
+  try {
+    const res = await fetchRows(queryUrl('routes_by_month', { origin, year: state.year }));
+    if (!monthSeq.isCurrent(id)) return false;
+    truncated = res.truncated;
+    monthRaw = res.rows;
+    monthRoutes = placeRoutes(res.rows, origin, airports).routes;
+    loadError = '';
+    return true;
+  } catch (err) {
+    if (!monthSeq.isCurrent(id)) return false;
+    console.error(err);
+    state.month = null;
+    $('month-toggle').checked = false;
+    loadError = `Could not load months: ${err.message}`;
+    return 'failed';
+  }
 }
 
 function refresh() {
@@ -183,7 +205,7 @@ function bindControls() {
   slider.value = String(years.indexOf(state.year));
   slider.addEventListener('input', async () => {
     state.year = years[Number(slider.value)];
-    if (state.month !== null) { await loadMonths(); }
+    if (state.month !== null && (await loadMonths()) === false) return;
     refresh();
   });
 
@@ -207,7 +229,7 @@ function bindControls() {
     if (toggle.checked) {
       state.month = state.month ?? 1;
       $('month').value = String(state.month);
-      await loadMonths();
+      if ((await loadMonths()) === false) return;
     } else {
       state.month = null;
     }
@@ -291,12 +313,15 @@ async function main() {
   $('title').textContent = a ? `${origin} · ${a.city}` : origin;
   const res = await fetchRows(queryUrl('routes_by_year', { origin }));
   truncated = res.truncated;
-  const placed = placeRoutes(res.rows, origin, airports);
-  if (placed.originMissing) { setStatus(`No coordinates for ${origin}, so it can't be drawn.`); return; }
-  yearRoutes = placed.routes;
-  skipped = placed.skipped.slice();
+  const problem = originProblem(res.rows, airports, origin);
+  if (problem) {
+    $('controls').hidden = true;
+    setStatus(problem === 'no-data' ? `No flights from ${origin} in the data.` : `No coordinates for ${origin}, so it can't be drawn.`);
+    return;
+  }
+  yearRaw = res.rows;
+  yearRoutes = placeRoutes(res.rows, origin, airports).routes;
   years = yearsIn(res.rows);
-  if (!years.length) { setStatus(`No data for ${origin}.`); return; }
   if (state.year === null || !years.includes(state.year)) state.year = years[years.length - 1];
   if (state.month !== null) await loadMonths();
   if (a) view.rot = [-a.lon, clamp(-a.lat, -70, 70)];

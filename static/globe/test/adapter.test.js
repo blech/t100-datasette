@@ -37,3 +37,19 @@ test('yearsIn, forYear, forMonth', () => {
   assert.deepEqual(forYear([{ year: 1 }, { year: 2 }], 2), [{ year: 2 }]);
   assert.deepEqual(forMonth([{ month: 1 }, { month: 2 }], 1), [{ month: 1 }]);
 });
+
+import { skippedFor, originProblem } from '../src/adapter.js';
+
+test('skippedFor lists only unplaced destinations in the rows given, once, sorted', () => {
+  const rows = [{ dest: 'ZZZ' }, { dest: 'LHR' }, { dest: 'AAA' }, { dest: 'ZZZ' }];
+  assert.deepEqual(skippedFor(rows, airports), ['AAA', 'ZZZ']);
+  assert.deepEqual(skippedFor([{ dest: 'LHR' }], airports), []);
+  assert.deepEqual(skippedFor([], airports), []);
+});
+
+test('originProblem: no rows beats no coordinates', () => {
+  assert.equal(originProblem([], airports, 'QQQ'), 'no-data');
+  assert.equal(originProblem([], airports, 'ATL'), 'no-data');
+  assert.equal(originProblem([{ dest: 'LHR' }], airports, 'QQQ'), 'no-coordinates');
+  assert.equal(originProblem([{ dest: 'LHR' }], airports, 'ATL'), null);
+});

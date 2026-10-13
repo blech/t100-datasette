@@ -32,9 +32,16 @@ def test_freight_only_route_uses_departures_not_passengers(ds, db_path):
     assert r["service"] == "domestic" and r["passengers"] == 0 and r["freight"] == 9000
 
 
-def test_zero_departures_is_international_not_an_error(ds, db_path):
+def test_route_year_with_no_flights_and_no_traffic_is_not_returned(ds, db_path):
     add_segments(db_path, "t100_domestic", [seg("ATL", "ZER", 2020, 0, 0)])
-    assert rows(ds)[("ZER", 2020)]["service"] == "international"
+    add_segments(db_path, "t100_domestic", [seg("ATL", "REAL", 2020, 3, 10)])
+    assert set(rows(ds)) == {("REAL", 2020)}
+
+
+def test_zero_departures_with_traffic_is_kept_and_international(ds, db_path):
+    add_segments(db_path, "t100_domestic", [seg("ATL", "CHT", 2020, 0, 40)])
+    r = rows(ds)[("CHT", 2020)]
+    assert r["passengers"] == 40 and r["service"] == "international"
 
 
 def test_other_origins_and_unknown_or_lowercase_origin(ds, db_path):

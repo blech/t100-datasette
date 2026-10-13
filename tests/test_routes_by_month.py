@@ -27,3 +27,8 @@ def test_service_decided_per_month_and_ordered(ds, db_path):
 
 def test_unknown_year_is_empty(ds, db_path):
     assert fetch(ds, year=1850) == []
+
+
+def test_month_with_no_flights_and_no_traffic_is_not_returned(ds, db_path):
+    add_segments(db_path, "t100_domestic", [seg("ATL", "ZER", 2019, 0, 0, month=1), seg("ATL", "REAL", 2019, 2, 5, month=1)])
+    assert [r["dest"] for r in fetch(ds)] == ["REAL"]

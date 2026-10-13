@@ -1,5 +1,6 @@
 :root { --bg:#f4f2ee; --fg:#1a1a1a; --muted:#777; --panel:rgba(244,242,238,.9); --accent:#111; }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); overflow:hidden;
   font:14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
 #globe { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
