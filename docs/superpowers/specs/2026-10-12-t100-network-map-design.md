@@ -45,19 +45,20 @@ Of 4,360 distinct codes in the data, 1,634 have no coordinates in `openflights_a
 
 - Add a small hand-maintained mapping from city-wide codes to coordinates.
 - Add the BTS Aviation Support Tables airport table as a second coordinate source. Its coverage has not been checked.
+- `data/airport_overrides.csv` (loaded into the `airport_overrides` table, which wins over OpenFlights) holds the largest unplaced codes: SEL, OSA, BER, TQO, IFP, ILE, BLD, XWA. The BTS airport table is not used yet.
 - The page drops routes it cannot place and shows a footnote with the number skipped.
 - Matches have not been checked for correctness (codes get reused over 35 years); rare mismatches are possible.
 
 ## The page
 
 - A plugin in `plugins/` registers a route (for example `/globe/<origin>`) and ships its own static files: d3 modules, TopoJSON, land data, renderers. Nothing loads from a CDN.
-- **Reused from flightglobe** (copied, not symlinked): projection and camera maths (`geo.js`, `camera.js`, `flatcamera.js`), the globe and flat renderers, themes, vendored libraries.
+- **Reused from flightglobe** (copied, not symlinked, with their tests): `geo.js`, `camera.js`, `interaction.js`, `themes.js` and the vendored d3-geo and TopoJSON libraries. flightglobe's renderers and its timeline and playback code are built around individual flights, so they are not reused; `renderer.js` is new.
 - **New:** a data adapter for the three queries, the airport picker, the year slider (with play), the month drill-down, the legend, and the click panel.
 - Airport picker: type-ahead over `airports`, seeded by `top_us_airports`.
 - Year slider defaults to the latest year. Play steps through years.
 - One great-circle arc per destination. Width scales with passengers (or departures); colour comes from `service`.
 - Hover shows the destination and year totals. Click opens a panel with a link to the existing `route` and `route_year` pages for that origin and destination.
-- Globe and flat map toggle, as in flightglobe. Both read the same data.
+- Globe and flat map toggle. The flat map uses d3-geo's built-in Equal Earth projection; flightglobe's interrupted homolosine needs two more vendored libraries and a UMD shim, so it is left out for now. Both read the same data.
 - Rendering uses HTML canvas. ATL has roughly 400 destinations in a year.
 - The URL carries state (`origin`, `year`, projection) so pages are shareable and the back button works.
 - The existing Leaflet `destinations` template stays until the new page replaces it.
@@ -78,9 +79,8 @@ Of 4,360 distinct codes in the data, 1,634 have no coordinates in `openflights_a
 
 ## Open items and risks
 
-- **flightglobe reuse is unverified.** Its timeline and playback code is built around flights in date order; only the drawing and camera code is expected to carry over. `main.js` and `clock.js` have not been read closely.
-- **Datasette version.** The installed version is 1.0a29 and `t100-datasette/pyproject.toml` now asks for `>=1.0a29` (uncommitted, `uv.lock` stale, `[tool.uv.sources]` points at a `../datasette` path that doesn't exist on this machine). Stored-query access in Apps needs 1.0a31; the plan should pin the version it tests against.
-- **Local `start.sh`** still uses `-m metadata.yml` and omits `--plugins-dir` and `--template-dir`, so the local server doesn't load canned queries or the plugin. The plan should move it to `-c` with those directories.
-- **The `destinations_map` query** selects `domestic` as a bare column in a grouped query, so the colour of a route that exists in both tables is arbitrary. It should use the `service` rule if kept.
-- **Year-level row cap headroom** is about 4.5x for the largest origin, but a future data update could change that. The query tests should assert it.
-- **Hosting platform** is not chosen.
+- **Database build script.** Loading segment files, creating indexes and loading overrides is documented in `setup_database.md` as manual commands; a repeatable script is deferred. `build_database.py` currently holds the schema, indexes and the override loader only.
+- **Airport coordinates.** Matches were checked for existence, not correctness (codes get reused over 35 years). About 30 to 40 destinations per busy airport (mostly small FAA-coded airfields) still have no coordinates and are listed in the page footnote.
+- **Datasette version.** The tested version is the one in `uv.lock` (1.0a41). Datasette Apps and stored-query access are not used.
+- **Year-level row cap headroom** is about 4.5x for the largest origin (11,190 of 50,000). The queries return `truncated` and the page warns if it is ever hit.
+- **Hosting platform** is not chosen; the container image and platform config are not written.

@@ -1,8 +1,10 @@
 # T100 Flight Data Visualizer
 
-This is a [Datasette](https://datasette.io/) project designed to visualize the T100 database, which contains data on international flights departing from the United States since 1990.
+This is a [Datasette](https://datasette.io/) project for exploring the BTS T-100 segment data: aggregate monthly flights, seats, passengers and freight between airports, for international and domestic services, 1990-2025.
 
-It provides an interactive web interface to explore flight routes, carriers, aircraft types, load factors, and more, leveraging custom SQL queries and data visualizations.
+It has two layers:
+- an **airport network map** at `/globe/<AIRPORT>` (for example `/globe/ATL`): pick a US airport, see its routes by year on a globe or flat map (international in orange, domestic in blue), play through the years, and drill down to months. Clicking a route links to the detailed canned queries.
+- the standard **Datasette interface** for tables and canned queries, for exploring everything else.
 
 ## Prerequisites
 
@@ -25,28 +27,46 @@ The project relies on the following key packages:
    ```
 
 2. **Import data:**
-   There's outline commands in setup_database.md, but that should be better populated._
+   See `setup_database.md` (schema, segment files, lookup tables and airport coordinates).
 
 3. **Run the Datasette server:**
    Start the application by running the following command from the root of the project directory:
    ```bash
-   datasette --root --host localhost --port 8808 --reload .
+   ./start.sh
    ```
-   *Note: Using `.` as the target directory tells Datasette to load the databases, `datasette.yml`, and `settings.json` automatically.*
+   (that is `uv run datasette --port 8808 --reload .`)
+   *Note: you must pass the directory (`.`), not just `t100.db`. Directory mode is what loads `datasette.yml` (canned queries and settings), `plugins/`, `templates/` and `static/`; naming only the database file silently ignores all of them.*
 
 4. **Explore the data:**
    Open your browser and navigate to `http://localhost:8808` to view the interface. You can authenticate as the `root` user using the link in the terminal.
 
 ## Project Structure
 
-- **`t100.db`**: The core SQLite database containing the T100 flight data, along with supplementary tables for carriers, aircraft types, and airports.
-- **`datasette.yml`**: Contains Datasette configuration, including canned SQL queries (`top_us_airports`, `destinations`, `route`, `route-year`) which power the main drill-down views and map visualizations.
-- **`fetch_t100.py`**: Script for fetching or updating the raw T100 source data.
-- **`templates/`**: Custom HTML templates for overriding default Datasette views.
+- **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides. Not committed.
+- **`datasette.yml`**: Datasette configuration and canned queries: `top_us_airports`, `destinations`, `destinations_map`, `route`, `route_year`, and the queries behind the map (`airports`, `routes_by_year`, `routes_by_month`).
+- **`plugins/`**: `t100_globe.py` registers the `/globe` pages; `t100_render_links.py` renders `more_detail` columns as links.
+- **`templates/`**: `globe.html` (the map page) and templates for the canned query pages.
+- **`static/globe/`**: the map's browser code (plain ES modules, no build step) and vendored d3-geo; served at `/static/globe/`.
+- **`build_database.py`**: schema, indexes, the `t100` view and airport override loading (`schema.sql` is generated from it).
+- **`data/airport_overrides.csv`**: coordinates for airport codes missing from OpenFlights.
+- **`serve_public.sh`**: run command for a locked-down public instance.
+- **`tests/`** and **`static/globe/test/`**: pytest and `node --test` suites.
+- **`fetch_t100.py`**: script for fetching or updating the raw T100 source data.
 
-## Features & Canned Queries
+## Tests
 
-The `datasette.yml` file defines several powerful canned queries that you can access via the Datasette UI:
-- **`destinations` & `destinations_map`**: View aggregate statistics (passengers, seats, freight, load factors) for flights originating from a specific airport. The `destinations_map` query includes GeoJSON points for plotting lines on a map.
-- **`route`**: Detailed breakdown of a specific route (Origin to Destination) by year, carrier, and aircraft type.
-- **`route_year_`**: Per month data for airport pairs.
+```bash
+uv run pytest   # queries, page route, public mode
+npm test        # the map's pure JavaScript modules
+```
+
+## Public mode
+
+`./serve_public.sh` serves the database read-only (`--immutable`), with arbitrary SQL and database downloads turned off and responses cacheable for a day. `PORT` (default 8808) and `HOST` (default 127.0.0.1; use 0.0.0.0 in a container) are environment variables. Container and hosting configuration is not included yet.
+
+## Canned queries
+
+- **`destinations` & `destinations_map`**: aggregate statistics (passengers, seats, freight) for flights from an airport, by month. `destinations_map` includes GeoJSON lines for the Leaflet map.
+- **`route`**: a specific route (origin to destination) by year, carrier and aircraft type.
+- **`route_year`**: month-by-month data for a route in one year.
+- **`airports`, `routes_by_year`, `routes_by_month`**: JSON for the `/globe` page. `routes_by_year` and `routes_by_month` label each destination `domestic` or `international` by whether most of that period's departures were domestic.

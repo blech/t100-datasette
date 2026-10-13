@@ -1,40 +1,81 @@
-# Setting Up t100.db
+# Setting up t100.db
 
-## Database Initialisation
+The database has two segment tables, `t100_international` and `t100_domestic`, and a `t100` view that unions them with an extra `domestic` (0/1) column. The same origin/destination pair can appear in both tables, so the canned queries decide a route's `service` by whether most of its departures were domestic.
 
-Use the provided schema.sql to initialize an empty SQLite database
+## Schema
+
+`schema.sql` is generated from `build_database.py`. Create an empty database with it:
 
 ```sh
 sqlite3 t100.db < schema.sql
 ```
 
-Next, fetch the source data from the Bureau of Transportation Statistics pages. If you want lots of data quickly, the three bottom links are for decadal data - [https://www.bts.gov/sites/bts.dot.gov/files/docs/airline-data/international-segments/db28seg.fd.wac.1990.2000.zip](1990-2000), 2001-2010, and 2911-2020. Note that unzipping these will generate a nest of folders with the data right at the bottom.
-
-Alternatively, if you want recent data, download the January - December data for the years 2025, 2024, and 2023.
-
-Something that caught me out- the data is provided monthly, but contains the entire previous year. In other words, only one file per year is needed.
-
-In order to use the saved queries as defined here, the header rows will need to be modified (for the multi-year files) or added (for the monthly releases).
+or, from Python (this is idempotent and also adds any missing indexes and the `t100` view to an existing database):
 
 ```sh
-sqlite-utils insert t100.db t100 source_downloads/IQ/ardisdata/t100/products/db28/bulkdownload/db28seg.fd.wac.1990.2000.asc --delimiter "|"
-sqlite-utils insert t100.db t100 source_downloads/IQ/ardisdata/t100/products/db28/bulkdownload/db28seg.fd.wac.2001.2010.asc --delimiter "|"
-sqlite-utils insert t100.db t100 source_downloads/IQ/ardisdata/t100/products/db28/bulkdownload/db28seg.fd.wac.2011.2020.asc --delimiter "|"
-sqlite-utils insert --delimiter "|" t100.db t100 source_downloads/IQ/ardisdata/t100/products/db28/bulkdownload/db28seg.fd.wac.2021.2022.asc
-sqlite-utils insert --delimiter "|" t100.db t100 source_downloads/years/db28seg.fd.wac.202301.202312.asc
-sqlite-utils insert --delimiter "|" t100.db t100 source_downloads/years/db28seg.fd.wac.202401.202412.asc
-sqlite-utils insert --delimiter "|" t100.db t100 source_downloads/years/db28seg.fd.wac.202501.202512.asc
+uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); b.create_schema(c); b.create_indexes(c)"
 ```
 
-Two further tables are populated from the [https://www.transtats.bts.gov/Tables.asp?QO_VQ=IMI&QO_anzr=N8vn6v10%FDf722146%FDgnoyr5&QO_fu146_anzr=N8vn6v10%FDf722146%FDgnoyr5](Aviation Support Tables) - AircraftTypes and Carrier Decode. Again, the headers should be modified- to all lower case generally, and to rename `CARRIER_NAME` to `name` for T_CARRIER_DECODE.csv and `LONG_NAME` to `name` for T_AIRCRAFT_TYPES.csv (although maybe `SSD_NAME` would be better?)
+## Segment data
+
+Download the BTS segment files: international (`db28seg.fd.wac.*`) and domestic (`db28seg.dd.wac.*`). Multi-year files (1990-2000, 2001-2010, 2011-2020) and single-year releases both work. The data is provided monthly but each release contains the whole previous year, so one file per year is enough.
+
+Things to know about the files:
+- The multi-year files have a header row; the single-year files (2021 onwards in the domestic set) do not.
+- Header spelling differs between the sets (domestic uses `Svc_Class` where international uses `class`; `Carrier` vs `carrier`), but the columns are in the same order. Load by position and skip any header line.
+- Every row ends with `|`, which adds an empty trailing field.
+
+Loading with the sqlite3 shell (drop the trailing `|`, skip a header if the file has one; use `--skip 0` for headerless files):
+
+```sh
+sqlite3 t100.db <<'SQL'
+.mode csv
+.separator |
+.import --skip 1 '|sed "s/|$//" path/to/db28seg.dd.wac.1990.2000.asc' t100_domestic
+SQL
+```
+
+Repeat for each file, using `t100_international` for the `fd` files. Then create the indexes:
+
+```sh
+uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); b.create_indexes(c)"
+```
+
+(A repeatable build script that does all of this is not written yet.)
+
+## Lookup tables
+
+Two further tables are populated from the [Aviation Support Tables](https://www.transtats.bts.gov/Tables.asp?QO_VQ=IMI&QO_anzr=N8vn6v10%FDf722146%FDgnoyr5&QO_fu146_anzr=N8vn6v10%FDf722146%FDgnoyr5): Aircraft Types and Carrier Decode. The headers should be modified: all lower case, with `CARRIER_NAME` renamed to `name` for `T_CARRIER_DECODE.csv` and `LONG_NAME` renamed to `name` for `T_AIRCRAFT_TYPES.csv`.
 
 ```sh
 sqlite-utils insert t100.db carriers source_downloads/T_CARRIER_DECODE.csv --csv
 sqlite-utils insert t100.db aircraft_types source_downloads/T_AIRCRAFT_TYPES.csv --csv
 ```
 
-Finally, I used the [OpenFlights airport data](https://openflights.org/data.php) to get geographic data on airports. (I've just realised that there's also airport data in the Aviation Support Tables; I might change to using that later, but for now, this is working fine.) Once again, the headers will need to be added.
+## Airport coordinates
+
+Geographic data comes from the [OpenFlights airport data](https://openflights.org/data.php). The headers need to be added first.
 
 ```sh
 sqlite-utils insert t100.db openflights_airports airports.txt --csv
 ```
+
+Some airport codes in T-100 are missing from OpenFlights, including city-wide codes such as `SEL` and `OSA`. `data/airport_overrides.csv` holds hand-maintained coordinates for the largest of these, and wins over OpenFlights when a code appears in both. Load it with:
+
+```sh
+uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); b.create_schema(c); print(b.load_airport_overrides(c, 'data/airport_overrides.csv'))"
+```
+
+To list airport codes still without coordinates, busiest first:
+
+```sh
+sqlite3 t100.db "
+WITH codes AS (SELECT origin AS code, SUM(passengers) AS pax FROM t100 GROUP BY origin
+               UNION ALL SELECT dest, SUM(passengers) FROM t100 GROUP BY dest)
+SELECT code, SUM(pax) AS pax FROM codes
+WHERE code NOT IN (SELECT iata_code FROM openflights_airports WHERE latitude IS NOT NULL)
+  AND code NOT IN (SELECT code FROM airport_overrides)
+GROUP BY code ORDER BY pax DESC LIMIT 30"
+```
+
+Add any you want drawn to `data/airport_overrides.csv` and run the loading command again.
