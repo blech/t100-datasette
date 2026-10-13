@@ -60,25 +60,15 @@ databases:
 
       top_airports:
         sql: |
-          WITH totals AS (
-            SELECT
-              origin,
-              MAX(origin_city_name) AS origin_city_name,
-              CAST(SUM(departures_performed) AS integer) AS deps,
-              CAST(SUM(seats) AS integer) AS seats,
-              CAST(SUM(passengers) AS integer) AS passengers,
-              CAST(SUM(freight) AS integer) AS freight
-            FROM t100
-            WHERE origin_wac BETWEEN 1 AND 93
-              AND year = CAST(:year AS integer)
-            GROUP BY origin
-          ), ranked AS (
-            SELECT *,
+          WITH ranked AS (
+            SELECT origin, origin_city_name, deps, seats, passengers, freight,
               RANK() OVER (ORDER BY passengers DESC) AS by_passengers,
               RANK() OVER (ORDER BY deps DESC) AS by_deps,
               RANK() OVER (ORDER BY seats DESC) AS by_seats,
               RANK() OVER (ORDER BY freight DESC) AS by_freight
-            FROM totals
+            FROM airport_year_totals
+            WHERE year = CAST(:year AS integer)
+              AND origin_wac BETWEEN 1 AND 93
           )
           SELECT origin, origin_city_name, deps, seats, passengers, freight
           FROM ranked

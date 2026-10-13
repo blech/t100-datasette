@@ -10,6 +10,12 @@ CREATE TABLE "airport_overrides" (
    [latitude] REAL, [longitude] REAL
 );
 
+CREATE TABLE "airport_year_totals" (
+   [year] INTEGER, [origin] TEXT, [origin_city_name] TEXT, [origin_wac] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin])
+) WITHOUT ROWID;
+
 CREATE TABLE "carriers" (
    [airline_id] TEXT, [carrier] TEXT, [carrier_entity] TEXT, [name] TEXT,
    [unique_carrier] TEXT, [unique_carrier_entity] TEXT, [unique_carrier_name] TEXT,

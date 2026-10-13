@@ -43,7 +43,7 @@ The project relies on the following key packages:
 
 ## Project Structure
 
-- **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides. Not committed.
+- **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides, and `airport_year_totals` (per-airport yearly totals derived from the segment tables; rebuild with `build_database.rebuild_airport_year_totals` after loading data). Not committed.
 - **`datasette.yml`**: Datasette configuration and canned queries: `top_us_airports`, `destinations`, `destinations_map`, `route`, `route_year`, and the queries behind the map (`airports`, `routes_by_year`, `routes_by_month`).
 - **`plugins/`**: `t100_globe.py` registers the `/globe` pages; `t100_render_links.py` renders `more_detail` columns as links.
 - **`templates/`**: `globe.html` (the map page) and templates for the canned query pages.
@@ -70,5 +70,5 @@ npm test        # the map's pure JavaScript modules
 - **`destinations` & `destinations_map`**: aggregate statistics (passengers, seats, freight) for flights from an airport, by month. `destinations_map` includes GeoJSON lines for the Leaflet map.
 - **`route`**: a specific route (origin to destination) by year, carrier and aircraft type.
 - **`route_year`**: month-by-month data for a route in one year.
-- **`top_airports`**: for one year (`year=2025`), the airports in the top 20 by passengers, departures, seats or freight, so the landing page can show a top 20 for whichever column is sorted. **`destinations`** also takes an optional `year`.
+- **`top_airports`**: reads `airport_year_totals`. For one year (`year=2025`), the airports in the top 20 by passengers, departures, seats or freight, so the landing page can show a top 20 for whichever column is sorted. **`destinations`** also takes an optional `year`.
 - **`airports`, `routes_by_year`, `routes_by_month`**: JSON for the `/globe` page. `routes_by_year` and `routes_by_month` label each destination `domestic` or `international` by whether most of that period's departures were domestic. Routes with fewer than 12 departures in the year (one-off charters, diversion legs, positioning flights) are left out of both; pass `min_deps=N` to change the cut-off (`min_deps=0` shows everything). In the month query the cut-off applies to the year's total, so a route shows all its months or none.

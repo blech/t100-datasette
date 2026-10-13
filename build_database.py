@@ -68,6 +68,12 @@ CREATE TABLE IF NOT EXISTS "airport_overrides" (
    [code] TEXT PRIMARY KEY, [name] TEXT, [city] TEXT, [country] TEXT,
    [latitude] REAL, [longitude] REAL
 );
+-- Derived from the segment tables by rebuild_airport_year_totals(); read by the landing page
+CREATE TABLE IF NOT EXISTS "airport_year_totals" (
+   [year] INTEGER, [origin] TEXT, [origin_city_name] TEXT, [origin_wac] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin])
+) WITHOUT ROWID;
 """
 
 
@@ -100,6 +106,24 @@ def create_indexes(conn: sqlite3.Connection) -> None:
     for name, table, col in _LOOKUP_INDEXES:
         conn.execute(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({col})")
     conn.commit()
+
+
+def rebuild_airport_year_totals(conn: sqlite3.Connection) -> int:
+    """Recompute airport_year_totals from both segment tables. Run after loading or changing segment data."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM airport_year_totals")
+        conn.execute(
+            """
+            INSERT INTO airport_year_totals (year, origin, origin_city_name, origin_wac, deps, seats, passengers, freight)
+            SELECT year, origin, MAX(origin_city_name), MAX(origin_wac),
+                   SUM(departures_performed), SUM(seats), SUM(passengers), SUM(freight)
+            FROM t100
+            WHERE year IS NOT NULL AND origin IS NOT NULL
+            GROUP BY year, origin
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM airport_year_totals").fetchone()[0]
 
 
 def load_airport_overrides(conn: sqlite3.Connection, csv_path) -> int:

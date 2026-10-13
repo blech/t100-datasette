@@ -1,11 +1,25 @@
-from tests.helpers import add_segments, get_json
+import sqlite3
+
+from build_database import rebuild_airport_year_totals
+from tests.helpers import add_segments as _add, get_json
 from tests.test_routes_by_year import seg
+
+
+def add_segments(db_path, table, rows):
+    _add(db_path, table, rows)
+    rebuilt(db_path)
 
 
 def us(origin, year, deps, pax, seats=100, freight=0, city=None):
     row = seg(origin, "ZZZ", year, deps, pax, seats=seats, freight=freight)
     row.update(origin_wac=33, origin_city_name=city or f"{origin} City")
     return row
+
+
+def rebuilt(db_path):
+    conn = sqlite3.connect(db_path)
+    rebuild_airport_year_totals(conn)
+    conn.close()
 
 
 def top(ds, year=2025):
@@ -51,3 +65,26 @@ def test_only_the_requested_year_and_us_origins(ds, db_path):
     add_segments(db_path, "t100_international", [foreign])
     assert set(top(ds, 2025)) == {"ATL"}
     assert set(top(ds, 2019)) == {"OLD"}
+
+
+def test_rebuild_combines_both_tables_and_is_repeatable(db_path):
+    dom = us("ATL", 2025, 10, 100, seats=200, freight=3000, city="Atlanta, GA")
+    intl = us("ATL", 2025, 2, 20, seats=40, freight=500, city="Atlanta, GA")
+    _add(db_path, "t100_domestic", [dom])
+    _add(db_path, "t100_international", [intl])
+    conn = sqlite3.connect(db_path)
+    for _ in range(2):  # a second rebuild replaces rather than adds
+        rebuild_airport_year_totals(conn)
+        assert conn.execute(
+            "SELECT origin, origin_city_name, origin_wac, year, deps, seats, passengers, freight FROM airport_year_totals"
+        ).fetchall() == [("ATL", "Atlanta, GA", 33, 2025, 12, 240, 120, 3500)]
+
+
+def test_totals_match_the_view_for_every_airport_and_year(db_path):
+    _add(db_path, "t100_domestic", [us("ATL", 2024, 3, 30), us("ATL", 2025, 4, 40), us("BOS", 2025, 5, 50)])
+    _add(db_path, "t100_international", [us("BOS", 2025, 1, 10)])
+    conn = sqlite3.connect(db_path)
+    rebuild_airport_year_totals(conn)
+    expected = conn.execute("SELECT origin, year, SUM(departures_performed), SUM(passengers) FROM t100 GROUP BY origin, year ORDER BY 1, 2").fetchall()
+    got = conn.execute("SELECT origin, year, deps, passengers FROM airport_year_totals ORDER BY 1, 2").fetchall()
+    assert got == expected
