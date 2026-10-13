@@ -3,6 +3,8 @@ const intOrNull = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
+const WIDTHS = ['passengers', 'deps', 'freight'];
+
 export function parseState(search) {
   const q = new URLSearchParams(search || '');
   const year = intOrNull(q.get('year'));
@@ -11,6 +13,7 @@ export function parseState(search) {
     year: year !== null && year >= 1990 && year <= 2100 ? year : null,
     month: month !== null && month >= 1 && month <= 12 ? month : null,
     proj: q.get('proj') === 'flat' ? 'flat' : 'globe',
+    width: WIDTHS.includes(q.get('width')) ? q.get('width') : 'passengers',
   };
 }
 
@@ -19,6 +22,7 @@ export function toSearch(state, extra = {}) {
   if (state.year !== null) q.set('year', state.year);
   if (state.month !== null) q.set('month', state.month);
   if (state.proj === 'flat') q.set('proj', 'flat');
+  if (state.width !== 'passengers') q.set('width', state.width);
   for (const [k, v] of Object.entries(extra)) if (v) q.set(k, v);
   const s = q.toString();
   return s ? `?${s}` : '';

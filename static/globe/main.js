@@ -201,7 +201,9 @@ function bindControls() {
   }
   tsel.value = themeId;
   tsel.addEventListener('change', () => { applyTheme(tsel.value); pushState(); });
-  $('width').addEventListener('change', () => { dirty = true; });
+  const width = $('width');
+  width.value = state.width;
+  width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
 
   const slider = $('year');
   slider.min = '0';
