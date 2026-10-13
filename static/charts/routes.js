@@ -1,5 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { buildHeatmap, buildCityHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 
 const origin = document.body.dataset.origin;
@@ -15,6 +16,7 @@ const state = {
 };
 let rows = [];
 let cities = new Map();
+let airportInfo = new Map();
 
 const ROW_PX = 20;
 
@@ -53,9 +55,14 @@ function drawAirports() {
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
-    y: { type: 'band', domain: res.dests, label: null },
+    y: { type: 'band', domain: res.dests, axis: null },
     color: { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' },
-    marks: [Plot.cell(data, { x: 'year', y: 'dest', fill: 'value', title: 'label', href: 'href', tip: true })],
+    marks: [
+      Plot.cell(data, { x: 'year', y: 'dest', fill: 'value', title: 'label', href: 'href', tip: true }),
+      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: routeHref(d) })), {
+        y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
+      }),
+    ],
   }));
 }
 
@@ -92,6 +99,7 @@ function drawCities() {
     ...r,
     text: r.kind === 'airport' ? `${r.code}${r.name ? ` · ${r.name}` : ''}` : `${r.expandable ? (r.open ? '▾' : '▸') : '\u2003'} ${r.label}`,
     href: r.kind === 'airport' ? routeHref(r.code) : r.expandable ? `#toggle:${r.key}` : routeHref(r.codes[0]),
+    tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
   box.append(Plot.plot({
     width: Math.min(box.clientWidth || 900, 1200),
@@ -106,7 +114,7 @@ function drawCities() {
     marks: [
       Plot.cell(data, { x: 'year', y: 'row', fill: 'value', title: 'title', href: 'href', tip: true }),
       Plot.text(labels, {
-        y: 'key', text: 'text', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
+        y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: (d) => (d.kind === 'group' ? '#1a1a1a' : '#666'),
       }),
     ],
@@ -136,6 +144,7 @@ async function main() {
     ]);
     rows = byYear.rows;
     cities = new Map(airports.rows.map((a) => [a.code, a.city]));
+    airportInfo = new Map(airports.rows.map((a) => [a.code, a]));
     const here = airports.rows.find((a) => a.code === origin);
     if (here) $('title').textContent = `${origin} (${here.city}): routes over time`;
     if (byYear.truncated) $('subtitle').textContent = 'Too many rows: some routes are missing from this chart.';

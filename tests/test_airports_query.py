@@ -49,3 +49,16 @@ def test_load_airport_overrides_from_csv(db_path, tmp_path):
     assert load_airport_overrides(conn, csv_path) == 1
     assert load_airport_overrides(conn, csv_path) == 1  # idempotent
     assert conn.execute("select count(*) from airport_overrides").fetchone()[0] == 1
+
+
+def test_airports_return_the_icao_code_when_known(ds, db_path):
+    add_airports(db_path, [
+        dict(ATL, icao_code="KATL"),
+        dict(LHR, icao_code="\\N"),
+        dict(SJU, icao_code=""),
+    ])
+    add_overrides(db_path, [dict(code="SEL", name="Seoul (all airports)", city="Seoul", country="South Korea", latitude=37.5665, longitude=126.978)])
+    got = rows(ds)
+    assert got["ATL"]["icao"] == "KATL"
+    assert got["LHR"]["icao"] is None and got["SJU"]["icao"] is None
+    assert got["SEL"]["icao"] is None
