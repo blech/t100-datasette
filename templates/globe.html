@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% if origin %}{{ origin }} routes{% else %}Airport network{% endif %} · T-100</title>
+  <link rel="stylesheet" href="/static/globe/style.css">
+</head>
+<body data-origin="{{ origin }}">
+  <canvas id="globe" aria-label="Map of routes from the selected airport"></canvas>
+
+  <header id="header">
+    <div id="title"></div>
+    <div id="stats"></div>
+    <div class="picker-row">
+      <input id="picker" list="airport-list" placeholder="Airport code or name" autocomplete="off" aria-label="Choose an airport">
+      <datalist id="airport-list"></datalist>
+      <a href="/t100" class="plain">Data tables</a>
+    </div>
+  </header>
+
+  <div id="chooser" hidden></div>
+  <div id="tooltip" hidden></div>
+  <aside id="panel" hidden></aside>
+  <div id="status" role="status"></div>
+
+  <div id="controls">
+    <div id="legend">
+      <span class="swatch" style="background:#ff5a00"></span> International
+      <span class="swatch" style="background:#2a9df4"></span> Domestic
+    </div>
+    <div class="row">
+      <button id="play" type="button" aria-label="Play through the years">▶</button>
+      <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      <span id="year-label"></span>
+    </div>
+    <div class="row">
+      <label class="check"><input id="month-toggle" type="checkbox"> Months</label>
+      <input id="month" type="range" min="1" max="12" value="1" step="1" aria-label="Month" hidden>
+      <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
+      <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option></select>
+      <select id="theme" aria-label="Theme"></select>
+    </div>
+    <div id="footnote"></div>
+  </div>
+
+  <script src="/static/globe/vendor/d3-array.min.js"></script>
+  <script src="/static/globe/vendor/d3-geo.min.js"></script>
+  <script src="/static/globe/vendor/topojson-client.min.js"></script>
+  <script type="module" src="/static/globe/main.js"></script>
+</body>
+</html>
