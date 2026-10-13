@@ -125,7 +125,8 @@ databases:
           FROM t100
           WHERE origin = :origin
           GROUP BY dest, year
-          HAVING SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0
+          HAVING SUM(departures_performed) >= CAST(COALESCE(NULLIF(:min_deps, ''), 12) AS integer)
+            AND (SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0)
           ORDER BY year, dest
 
       routes_by_month:
@@ -142,6 +143,12 @@ databases:
                  THEN 'domestic' ELSE 'international' END AS service
           FROM t100
           WHERE origin = :origin AND year = :year
+            AND dest IN (
+              SELECT dest FROM t100
+              WHERE origin = :origin AND year = :year
+              GROUP BY dest
+              HAVING SUM(departures_performed) >= CAST(COALESCE(NULLIF(:min_deps, ''), 12) AS integer)
+            )
           GROUP BY dest, month
           HAVING SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0
           ORDER BY month, dest

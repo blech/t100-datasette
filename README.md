@@ -69,4 +69,4 @@ npm test        # the map's pure JavaScript modules
 - **`destinations` & `destinations_map`**: aggregate statistics (passengers, seats, freight) for flights from an airport, by month. `destinations_map` includes GeoJSON lines for the Leaflet map.
 - **`route`**: a specific route (origin to destination) by year, carrier and aircraft type.
 - **`route_year`**: month-by-month data for a route in one year.
-- **`airports`, `routes_by_year`, `routes_by_month`**: JSON for the `/globe` page. `routes_by_year` and `routes_by_month` label each destination `domestic` or `international` by whether most of that period's departures were domestic.
+- **`airports`, `routes_by_year`, `routes_by_month`**: JSON for the `/globe` page. `routes_by_year` and `routes_by_month` label each destination `domestic` or `international` by whether most of that period's departures were domestic. Routes with fewer than 12 departures in the year (one-off charters, diversion legs, positioning flights) are left out of both; pass `min_deps=N` to change the cut-off (`min_deps=0` shows everything). In the month query the cut-off applies to the year's total, so a route shows all its months or none.

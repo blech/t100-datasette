@@ -28,7 +28,7 @@ a.plain { color:var(--muted); }
 .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 #year { flex:1; min-width:140px; }
 #year-label { font-variant-numeric:tabular-nums; font-weight:600; min-width:3.5em; }
-#legend { color:var(--muted); font-size:12px; } .swatch { display:inline-block; width:18px; height:4px; border-radius:2px; vertical-align:middle; margin:0 4px 0 10px; }
+#legend { color:var(--muted); font-size:12px; } #legend .note { display:block; margin-top:2px; } .swatch { display:inline-block; width:18px; height:4px; border-radius:2px; vertical-align:middle; margin:0 4px 0 10px; }
 #footnote { color:var(--muted); font-size:12px; min-height:1em; }
 button, select { font:inherit; color:var(--fg); background:transparent; border:1px solid var(--muted); border-radius:8px; padding:4px 10px; cursor:pointer; }
 button:hover, select:hover { border-color:var(--accent); }
