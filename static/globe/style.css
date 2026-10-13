@@ -16,7 +16,7 @@ a.plain { color:var(--muted); }
 #chooser a { display:inline-block; margin:4px 10px 4px 0; color:var(--fg); }
 #tooltip { position:fixed; z-index:5; pointer-events:none; padding:6px 10px; border-radius:8px; background:var(--panel); box-shadow:0 2px 12px rgba(0,0,0,.25); white-space:pre; }
 #panel { position:fixed; right:16px; top:110px; width:min(300px, 80vw); background:var(--panel); border-radius:10px; padding:12px 14px; box-shadow:0 2px 12px rgba(0,0,0,.25); }
-#panel h2 { margin:0 0 4px; font-size:16px; }
+#panel h2 { margin:0 0 4px; font-size:16px; } #panel h2 a { display:inline; margin:0; }
 #panel dl { margin:8px 0; display:grid; grid-template-columns:auto 1fr; gap:2px 12px; }
 #panel dt { color:var(--muted); } #panel dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; }
 #panel a { color:var(--fg); display:block; margin-top:4px; }

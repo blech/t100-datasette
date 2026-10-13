@@ -96,7 +96,11 @@ function showPanel(r) {
   close.setAttribute('aria-label', 'Close');
   close.onclick = () => { selected = -1; p.hidden = true; dirty = true; };
   const h = document.createElement('h2');
-  h.textContent = `${origin} → ${r.dest}`;
+  const destLink = document.createElement('a');
+  destLink.href = `/globe/${encodeURIComponent(r.dest)}${toSearch(state)}`;
+  destLink.textContent = r.dest;
+  destLink.title = `Show routes from ${r.dest}`;
+  h.append(`${origin} → `, destLink);
   const sub = document.createElement('div');
   sub.textContent = `${r.destCity || ''} (${r.service})`;
   const dl = document.createElement('dl');
