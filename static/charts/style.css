@@ -1,0 +1,5 @@
+#route-chart { margin: 0 0 24px; }
+.chart-controls { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.chart-controls select { margin-left: 4px; }
+#route-chart-plot { overflow-x: auto; }
+#route-chart-plot figure { margin: 0; }
