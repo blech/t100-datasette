@@ -149,6 +149,8 @@ export class NetworkRenderer {
       if (p) ctx.fillText(r.dest, p[0] + 5, p[1] - 5);
     }
 
+    if (opts.points) this.drawPoints(opts.points, opts.highlightPoint);
+
     if (opts.origin && this.visible(opts.origin.lon, opts.origin.lat)) {
       const p = this.proj([opts.origin.lon, opts.origin.lat]);
       if (p) {
@@ -164,6 +166,41 @@ export class NetworkRenderer {
         ctx.fillText(opts.origin.code, p[0] + 8, p[1] - 8);
       }
     }
+  }
+
+  // airport dots for the chooser page; the highlighted one is larger and labelled
+  drawPoints(points, highlight = -1) {
+    const { ctx, theme: t } = this;
+    ctx.font = '600 12px -apple-system, system-ui, sans-serif';
+    points.forEach((pt, i) => {
+      if (!this.visible(pt.pos[0], pt.pos[1])) return;
+      const p = this.proj(pt.pos);
+      if (!p) return;
+      ctx.beginPath();
+      ctx.arc(p[0], p[1], i === highlight ? 6.5 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = i === highlight ? t.ui.fg : colourFor('international');
+      ctx.globalAlpha = i === highlight ? 1 : 0.85;
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = t.bg;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      if (i === highlight) { ctx.fillStyle = t.ui.fg; ctx.fillText(pt.code, p[0] + 9, p[1] - 8); }
+    });
+  }
+
+  // index of the nearest visible dot within maxPx, or -1
+  hitTestPoints(x, y, points, maxPx = 10) {
+    let best = -1;
+    let bestD = maxPx;
+    points.forEach((pt, i) => {
+      if (!this.visible(pt.pos[0], pt.pos[1])) return;
+      const p = this.proj(pt.pos);
+      if (!p) return;
+      const d = Math.hypot(p[0] - x, p[1] - y);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
   }
 
   hitTest(x, y, routes, maxPx = 6) {

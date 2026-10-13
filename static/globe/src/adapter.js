@@ -22,6 +22,17 @@ export function placeRoutes(rows, origin, airports) {
   return { routes, skipped: [...skipped].sort(), originMissing: false };
 }
 
+// airports listed by top_us_airports as map dots; those without coordinates are left out
+export function placePoints(rows, airports) {
+  const pts = [];
+  for (const r of rows) {
+    const a = airports.get(r.origin);
+    if (!a) continue;
+    pts.push({ code: r.origin, city: r.origin_city_name, pos: [a.lon, a.lat], passengers: r.total_passengers });
+  }
+  return pts;
+}
+
 export const yearsIn = (rows) => [...new Set(rows.map((r) => r.year))].sort((a, b) => a - b);
 export const forYear = (routes, year) => routes.filter((r) => r.year === year);
 export const forMonth = (routes, month) => routes.filter((r) => r.month === month);

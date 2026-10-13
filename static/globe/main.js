@@ -3,7 +3,7 @@ import { defaultView, clamp } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
-import { indexAirports, placeRoutes, yearsIn, forYear, forMonth, forService, skippedFor, originProblem } from './src/adapter.js';
+import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, forService, skippedFor, originProblem } from './src/adapter.js';
 import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
@@ -25,6 +25,7 @@ const monthSeq = createLatest();
 let themeId = resolveTheme(location.search, localStorage.getItem('t100-theme'));
 let dirty = true;
 let hover = -1;
+let chooserPoints = []; // airport dots on the chooser page (no origin selected)
 let selected = -1;
 let playTimer = null;
 const view = defaultView();
@@ -173,7 +174,7 @@ function fillPicker() {
 async function showChooser() {
   const res = await fetchRows(queryUrl('top_us_airports', { year: '', sort_column: '' }));
   const box = $('chooser');
-  box.append(Object.assign(document.createElement('div'), { textContent: 'Pick an airport:' }));
+  box.append(Object.assign(document.createElement('summary'), { textContent: 'Pick an airport on the map, or choose from a list' }));
   for (const r of res.rows.slice(0, 24)) {
     const a = document.createElement('a');
     a.href = `/globe/${r.origin}`;
@@ -182,6 +183,8 @@ async function showChooser() {
   }
   box.hidden = false;
   $('title').textContent = 'US airport network';
+  chooserPoints = placePoints(res.rows, airports);
+  dirty = true;
 }
 
 function bindControls() {
@@ -253,6 +256,18 @@ function bindCanvas() {
     onUserMove: () => { dirty = true; $('tooltip').hidden = true; },
     onReset: () => { Object.assign(view, defaultView()); dirty = true; },
     onHover: (x, y) => {
+      if (!origin) {
+        const i = renderer.hitTestPoints(x, y, chooserPoints);
+        if (i !== hover) { hover = i; dirty = true; }
+        canvas.style.cursor = i >= 0 ? 'pointer' : '';
+        const tip = $('tooltip');
+        if (i < 0) { tip.hidden = true; return; }
+        tip.textContent = `${chooserPoints[i].code} · ${chooserPoints[i].city}`;
+        tip.style.left = `${x + 14}px`;
+        tip.style.top = `${y + 14}px`;
+        tip.hidden = false;
+        return;
+      }
       const routes = currentRoutes();
       const i = renderer.hitTest(x, y, routes);
       if (i !== hover) { hover = i; dirty = true; }
@@ -264,6 +279,11 @@ function bindCanvas() {
       tip.hidden = false;
     },
     onTap: (x, y) => {
+      if (!origin) {
+        const i = renderer.hitTestPoints(x, y, chooserPoints);
+        if (i >= 0) location.href = `/globe/${encodeURIComponent(chooserPoints[i].code)}${toSearch(state)}`;
+        return;
+      }
       const routes = currentRoutes();
       const i = renderer.hitTest(x, y, routes, 10);
       selected = i;
@@ -285,6 +305,8 @@ function frame(last, now) {
     const key = $('width').value;
     const a = airports.get(origin);
     renderer.draw(view, routes, {
+      points: origin ? null : chooserPoints,
+      highlightPoint: origin ? -1 : hover,
       origin: a ? { lon: a.lon, lat: a.lat, code: origin } : null,
       widthKey: key,
       max: maxOf(routes, key),

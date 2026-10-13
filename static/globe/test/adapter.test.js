@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { indexAirports, placeRoutes, yearsIn, forYear, forMonth, forService } from '../src/adapter.js';
+import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, forService } from '../src/adapter.js';
 
 const airports = indexAirports([
   { code: 'ATL', name: 'Atlanta', city: 'Atlanta', country: 'United States', latitude: 33.6, longitude: -84.4, is_us: 1 },
@@ -59,4 +59,14 @@ test('forService keeps only the chosen service, or everything for all', () => {
   assert.deepEqual(forService(rows, 'domestic').map((r) => r.dest), ['A']);
   assert.deepEqual(forService(rows, 'international').map((r) => r.dest), ['B']);
   assert.equal(forService(rows, 'all'), rows);
+});
+
+test('placePoints turns listed airports into dots, skipping those with no coordinates', () => {
+  const rows = [
+    { origin: 'ATL', origin_city_name: 'Atlanta, GA', total_passengers: 51 },
+    { origin: 'SEL', origin_city_name: 'Seoul, Korea', total_passengers: 7 },
+  ];
+  const pts = placePoints(rows, airports);
+  assert.equal(pts.length, airports.has('SEL') ? 2 : 1);
+  assert.deepEqual(pts[0], { code: 'ATL', city: 'Atlanta, GA', pos: [airports.get('ATL').lon, airports.get('ATL').lat], passengers: 51 });
 });
