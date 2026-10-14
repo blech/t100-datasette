@@ -1,16 +1,16 @@
 airline_id,group_id,group_name,note
-19790,delta,Delta (incl. Northwest),Delta/Northwest merger 2008; Northwest operated separately until 2010
+19790,delta,Delta (incl. Northwest),Delta/Northwest merger 2008; BTS: combined traffic data from Jan 2010
 19386,delta,Delta (incl. Northwest),
-19977,united,United (incl. Continental),United/Continental merger 2010; single operating certificate 2012
+19977,united,United (incl. Continental),United/Continental merger 2010; BTS: reported jointly as United from Jan 2012
 19704,united,United (incl. Continental),
-20017,united,United (incl. Continental),Continental Micronesia
-19805,american,"American (incl. TWA, US Airways, America West)",American bought TWA 2001; American/US Airways merger 2013 (single certificate 2015); US Airways/America West 2005
+20017,united,United (incl. Continental),Continental Micronesia; BTS: merged into Continental Dec 2010, joint reporting Jan 2011
+19805,american,"American (incl. TWA, US Airways, America West)",American bought TWA 2001; American/US Airways merger 2013; BTS: reported as American from Jul 2015
 20211,american,"American (incl. TWA, US Airways, America West)",TWA
-20355,american,"American (incl. TWA, US Airways, America West)",US Airways (formerly USAir)
+20355,american,"American (incl. TWA, US Airways, America West)",US Airways (formerly USAir); BTS: combined with America West traffic data Oct 2007
 19982,american,"American (incl. TWA, US Airways, America West)",USAir Shuttle
 19991,american,"American (incl. TWA, US Airways, America West)",America West
 19994,american,"American (incl. TWA, US Airways, America West)",Reno Air (bought by American 1999)
-19393,southwest,Southwest (incl. AirTran),Southwest bought AirTran 2011; AirTran folded in by 2014
+19393,southwest,Southwest (incl. AirTran),Southwest bought AirTran 2011; BTS: reported jointly as Southwest from Jan 2015
 20437,southwest,Southwest (incl. AirTran),AirTran
-19930,alaska,Alaska (incl. Virgin America),Alaska bought Virgin America 2016; single certificate 2018
+19930,alaska,Alaska (incl. Virgin America),Alaska bought Virgin America 2016; BTS: reported as Alaska from Apr 2018 (Virgin America data ends Mar 2018)
 21171,alaska,Alaska (incl. Virgin America),Virgin America
