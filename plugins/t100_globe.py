@@ -1,5 +1,7 @@
+import re
+
 from datasette import hookimpl
-from datasette.utils.asgi import Response
+from datasette.utils.asgi import NotFound, Response
 
 
 CODE = r"[A-Za-z0-9]{3}"
@@ -24,6 +26,10 @@ def register_routes():
         (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
         (r"^/globe$", globe_page),
+        (r"^/aircraft$", rollup_page("aircraft")),
+        (r"^/carriers$", rollup_page("carriers")),
+        (r"^/aircraft/engines$", engines_page),
+        (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
         (r"^/routes$", airports_index),
         (rf"^/globe/(?P<origin>{CODE})$", moved("/airports/{origin}/globe")),
@@ -109,6 +115,60 @@ async def route_page(datasette, request):
     html = await datasette.render_template(
         "route.html",
         {"origin": origin, "dest": dest, "year": year, "crumbs": trail(datasette, *steps)},
+        request=request,
+    )
+    return Response.html(html)
+
+
+ROLLUP_PAGES = {
+    "aircraft": {"title": "Aircraft families", "crumb": "aircraft", "noun": "aircraft families", "query": "family_by_year", "key": "family"},
+    "carriers": {"title": "Airlines", "crumb": "airlines", "noun": "airlines", "query": "carrier_group_by_year", "key": "group_name"},
+}
+
+
+def rollup_page(kind):
+    """A heat map of one rollup (aircraft families or merged airline groups) by year, for all US air traffic."""
+
+    async def view(datasette, request):
+        page = ROLLUP_PAGES[kind]
+        html = await datasette.render_template(
+            "rollup.html",
+            {
+                "kind": kind,
+                "page": page,
+                "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+                "crumbs": trail(datasette, (page["crumb"], None)),
+            },
+            request=request,
+        )
+        return Response.html(html)
+
+    return view
+
+
+async def engines_page(datasette, request):
+    html = await datasette.render_template(
+        "engines.html",
+        {"crumbs": trail(datasette, ("aircraft", "/aircraft"), ("engines", None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+def slugify(name):
+    """"DC-9 / MD-80 / MD-90" -> "dc-9-md-80-md-90". The page's JavaScript uses the same rule."""
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+async def family_page(datasette, request):
+    slug = request.url_vars["slug"]
+    result = await datasette.get_database("t100").execute("SELECT DISTINCT family FROM family_year")
+    family = next((r[0] for r in result.rows if slugify(r[0]) == slug), None)
+    if family is None:
+        raise NotFound(f"No aircraft family {slug}")
+    html = await datasette.render_template(
+        "family.html",
+        {"family": family, "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
         request=request,
     )
     return Response.html(html)

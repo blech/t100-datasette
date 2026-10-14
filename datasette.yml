@@ -124,6 +124,51 @@ databases:
             AND (SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0)
           ORDER BY year, dest
 
+      family_by_year:
+        sql: |
+          SELECT
+            year, family,
+            CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+          FROM family_year
+          GROUP BY year, family, service, kind
+          ORDER BY year, family
+
+      carrier_group_by_year:
+        sql: |
+          SELECT
+            year, group_id, group_name,
+            CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+          FROM carrier_group_year
+          GROUP BY year, group_id, group_name, service, kind
+          ORDER BY year, group_name
+
+      family_detail:
+        sql: |
+          SELECT
+            year, subfamily, group_id, group_name,
+            CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+          FROM family_detail_year
+          WHERE family = :family
+          GROUP BY year, subfamily, group_id, group_name, service, kind
+          ORDER BY year
+
+      engines_by_year:
+        sql: |
+          SELECT
+            year, aircraft_group, distance_band,
+            CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+          FROM aircraft_group_band_year
+          GROUP BY year, aircraft_group, distance_band, service, kind
+          ORDER BY year, aircraft_group, distance_band
+
       routes_by_month:
         sql: |
           SELECT
