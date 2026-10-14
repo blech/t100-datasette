@@ -35,6 +35,7 @@ export function carryParams(search, target) {
   if (q.get('group') === 'city') out.group = 'city';
   if (['10', '50'].includes(q.get('n'))) out.n = q.get('n');
   if (q.get('rank') === 'latest') out.rank = 'latest';
+  if (['year', 'busiest'].includes(q.get('scale'))) out.scale = q.get('scale');
   return out;
 }
 

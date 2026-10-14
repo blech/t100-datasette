@@ -14,9 +14,11 @@ export function buildHeatmap(rows, { measure = 'passengers', service = 'all', n 
   const cellMap = new Map(); // `${dest}\u0000${year}` -> value
   const totals = new Map(); // what ranks a destination
   const yearSet = new Set();
+  const yearTotals = {}; // year -> the measure over every destination, for the share of each year
   for (const r of kept) {
     yearSet.add(r.year);
     const v = valueOf(r, measure);
+    yearTotals[r.year] = (yearTotals[r.year] || 0) + v;
     const key = `${r.dest}\u0000${r.year}`;
     cellMap.set(key, (cellMap.get(key) || 0) + v);
     if (rankYear === null || Number(r.year) === rankYear) totals.set(r.dest, (totals.get(r.dest) || 0) + v);
@@ -27,13 +29,18 @@ export function buildHeatmap(rows, { measure = 'passengers', service = 'all', n 
     .slice(0, n)
     .map(([d]) => d);
   const top = new Set(dests);
+  const yearMax = {}; // year -> the busiest destination's value, kept or not
+  for (const [key, value] of cellMap) {
+    const year = key.split('\u0000')[1];
+    yearMax[year] = Math.max(yearMax[year] || 0, value);
+  }
   const cells = [];
   for (const [key, value] of cellMap) {
     const [dest, year] = key.split('\u0000');
-    if (top.has(dest) && value > 0) cells.push({ dest, year: Number(year), value });
+    if (top.has(dest) && value > 0) cells.push({ dest, year: Number(year), value, share: value / yearTotals[year], peak: value / yearMax[year] });
   }
   cells.sort((a, b) => a.year - b.year || dests.indexOf(a.dest) - dests.indexOf(b.dest));
-  return { dests, years: [...yearSet].sort((a, b) => a - b), cells };
+  return { dests, years: [...yearSet].sort((a, b) => a - b), cells, yearTotals, yearMax };
 }
 
 const CODES_IN_LABEL = 3;
@@ -45,10 +52,12 @@ export function buildCityHeatmap(rows, { measure = 'passengers', service = 'all'
   const openSet = new Set(open.map(String));
   const groups = new Map(); // key -> { rank, airports: Map(dest -> {rank, name, nameYear, byYear}), byYear: Map(year -> {value, parts: Map}) }
   const yearSet = new Set();
+  const yearTotals = {};
   for (const r of kept) {
     yearSet.add(r.year);
     const key = r.market_id !== null && r.market_id !== undefined && r.market_id !== '' ? String(r.market_id) : `solo:${r.dest}`;
     const v = valueOf(r, measure);
+    yearTotals[r.year] = (yearTotals[r.year] || 0) + v;
     const g = groups.get(key) || { key, rank: 0, airports: new Map(), byYear: new Map() };
     groups.set(key, g);
     const ranked = rankYear === null || Number(r.year) === rankYear;
@@ -64,6 +73,8 @@ export function buildCityHeatmap(rows, { measure = 'passengers', service = 'all'
     cell.parts.set(r.dest, (cell.parts.get(r.dest) || 0) + v);
   }
 
+  const yearMax = {}; // year -> the busiest market's value, listed or not
+  for (const g of groups.values()) for (const [year, cell] of g.byYear) yearMax[year] = Math.max(yearMax[year] || 0, cell.value);
   const byVolume = (a, b) => b.rank - a.rank || a.dest.localeCompare(b.dest);
   const ranked = [...groups.values()]
     .filter((g) => g.rank > 0)
@@ -87,17 +98,17 @@ export function buildCityHeatmap(rows, { measure = 'passengers', service = 'all'
       if (cell.value <= 0) continue;
       const parts = [...cell.parts].map(([dest, value]) => ({ dest, value })).filter((p) => p.value > 0)
         .sort((a, b) => b.value - a.value || a.dest.localeCompare(b.dest));
-      cells.push({ row: g.key, year, value: cell.value, parts });
+      cells.push({ row: g.key, year, value: cell.value, share: cell.value / yearTotals[year], peak: cell.value / yearMax[year], parts });
     }
     if (isOpen) {
       for (const a of g.list) {
         const key = `${g.key}/${a.dest}`;
         outRows.push({ key, kind: 'airport', code: a.dest, groupKey: g.key, label: a.dest, name: a.name });
-        for (const [year, value] of a.byYear) if (value > 0) cells.push({ row: key, year, value });
+        for (const [year, value] of a.byYear) if (value > 0) cells.push({ row: key, year, value, share: value / yearTotals[year], peak: value / yearMax[year] });
       }
     }
   }
   const order = new Map(outRows.map((r, i) => [r.key, i]));
   cells.sort((x, y) => x.year - y.year || order.get(x.row) - order.get(y.row));
-  return { rows: outRows, years: [...yearSet].sort((a, b) => a - b), cells };
+  return { rows: outRows, years: [...yearSet].sort((a, b) => a - b), cells, yearTotals, yearMax };
 }

@@ -41,3 +41,10 @@ def test_page_offers_ranking_by_the_latest_full_year(ds):
     html = get(ds, "/routes/ATL").text
     assert 'id="heat-rank"' in html and '<option value="latest">' in html
     assert 'data-latest-year="2025"' in html
+
+
+def test_page_offers_colouring_by_share_of_each_year(ds):
+    html = get(ds, "/routes/ATL").text
+    assert 'id="heat-scale"' in html and '<option value="year">' in html
+    assert '<option value="busiest">Compared to top destination</option>' in html
+    assert 'id="scale-note"' in html

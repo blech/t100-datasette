@@ -20,9 +20,11 @@
       <label>Show <select id="heat-measure" aria-label="Measure"></select></label>
       <label>Flights <select id="heat-service" aria-label="Service"><option value="all">All</option><option value="domestic">Domestic</option><option value="international">International</option></select></label>
       <label>Ranked by <select id="heat-rank" aria-label="Year used to rank destinations"><option value="all">All years</option><option value="latest">{{ latest_year }} only</option></select></label>
+      <label>Colour by <select id="heat-scale" aria-label="What the colour shows"><option value="absolute">Amount</option><option value="year">Share of each year</option><option value="busiest">Compared to top destination</option></select></label>
       <label>Rows <select id="heat-group" aria-label="Group rows"><option value="airport">Airports</option><option value="city">Cities (BTS markets)</option></select></label>
       <label>Top <select id="heat-n" aria-label="Number of destinations"><option>10</option><option selected>25</option><option>50</option></select> destinations</label>
     </div>
+    <p class="note" id="scale-note" hidden></p>
     <div id="heatmap" aria-live="polite">Loading chart…</div>
     <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> Each cell is one destination in one year; click a cell to see that route in that year, or a row's code to see where it flies. In city view, click a row to open it into its airports. Routes with fewer than 12 departures a year are hidden.</p>
   </main>

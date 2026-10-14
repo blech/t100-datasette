@@ -14,6 +14,7 @@ const state = {
   n: Number(pick('n', ['10', '25', '50'], '25')),
   group: pick('group', ['airport', 'city'], 'airport'),
   rank: pick('rank', ['all', 'latest'], 'all'),
+  scale: pick('scale', ['absolute', 'year', 'busiest'], 'absolute'),
   open: (params.get('open') || '').split(',').filter(Boolean),
 };
 let rows = [];
@@ -39,9 +40,10 @@ function pushState() {
   if (state.n !== 25) q.set('n', state.n);
   if (state.group !== 'airport') q.set('group', state.group);
   if (state.rank !== 'all') q.set('rank', state.rank);
+  if (state.scale !== 'absolute') q.set('scale', state.scale);
   if (state.group === 'city' && state.open.length) q.set('open', state.open.join(','));
   const s = q.toString();
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'rank', 'open'], s ? `?${s}` : '')}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'rank', 'scale', 'open'], s ? `?${s}` : '')}`);
 }
 
 function drawAirports() {
@@ -57,7 +59,7 @@ function drawAirports() {
   const data = res.cells.map((c) => ({
     ...c,
     year: String(c.year),
-    label: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}\n${c.year}: ${Math.round(c.value).toLocaleString('en-US')} ${HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '')}`,
+    label: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}\n${withShare(c, `${c.year}: ${Math.round(c.value).toLocaleString('en-US')} ${unit()}`)}`,
     href: routeYearHref(c.dest, c.year),
   }));
   box.append(Plot.plot({
@@ -69,9 +71,9 @@ function drawAirports() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.dests, axis: null },
-    color: { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' },
+    color: colourScale(),
     marks: [
-      Plot.cell(data, { x: 'year', y: 'dest', fill: 'value', title: 'label', href: 'href', tip: true }),
+      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), title: 'label', href: 'href', tip: true }),
       Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: airportHref(d) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
@@ -81,6 +83,18 @@ function drawAirports() {
 
 const routeYearHref = (dest, year) => `/route/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}`;
 const airportHref = (code) => `/routes/${encodeURIComponent(code)}`;
+const relative = () => state.scale !== 'absolute';
+const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
+const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
+const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination` });
+const colourScale = () => (relative()
+  ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
+  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' });
+const withShare = (c, text) => ({
+  absolute: text,
+  year: `${text} (${fmtPct(c.share)} of the year)`,
+  busiest: `${text} (${fmtPct(c.peak)} of the year's top)`,
+}[state.scale]);
 const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 const fmtValue = (v) => Math.round(v).toLocaleString('en-US');
 
@@ -107,7 +121,7 @@ function drawCities() {
     const more = c.parts && c.parts.length > 5 ? [`+${c.parts.length - 5} more`] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
     const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.expandable ? `#toggle:${row.key}` : routeYearHref(row.codes[0], c.year);
-    return { ...c, year: String(c.year), href, title: [head, `${c.year}: ${fmtValue(c.value)} ${unit()}`, ...lines, ...more].join('\n') };
+    return { ...c, year: String(c.year), href, title: [head, withShare(c, `${c.year}: ${fmtValue(c.value)} ${unit()}`), ...lines, ...more].join('\n') };
   });
   const labels = res.rows.map((r) => ({
     ...r,
@@ -124,9 +138,9 @@ function drawCities() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.rows.map((r) => r.key), axis: null },
-    color: { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' },
+    color: colourScale(),
     marks: [
-      Plot.cell(data, { x: 'year', y: 'row', fill: 'value', title: 'title', href: 'href', tip: true }),
+      Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), title: 'title', href: 'href', tip: true }),
       Plot.text(labels, {
         y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: (d) => (d.kind === 'group' ? '#1a1a1a' : '#666'),
@@ -147,6 +161,13 @@ function useLabelTips() {
 }
 
 function draw() {
+  const note = $('scale-note');
+  note.hidden = !relative();
+  note.textContent = {
+    absolute: '',
+    year: `Colour shows each destination's share of ${origin}'s ${unit()} in that year, counting every destination (not just those listed), not the amount itself. A route can keep its colour while carrying more if the airport grew as fast. Hover over a cell for both.`,
+    busiest: `Colour compares each cell with ${origin}'s top ${state.group === 'city' ? 'city' : 'destination'} that year, the one with the most ${unit()}: the top one is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own, so colours show how a destination ranked then, not how much it carried. Hover over a cell for both.`,
+  }[state.scale];
   const year = latestYear();
   if (year !== null) $('heat-rank').options[1].textContent = `${year} only`;
   $('rank-note').textContent = rankYear() === null
@@ -208,6 +229,8 @@ function fillControls() {
   $('heat-n').value = String(state.n);
   $('heat-group').value = state.group;
   $('heat-rank').value = state.rank;
+  $('heat-scale').value = state.scale;
+  $('heat-scale').addEventListener('change', (e) => { state.scale = e.target.value; pushState(); draw(); });
   $('heat-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
   $('heat-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
   measure.addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });

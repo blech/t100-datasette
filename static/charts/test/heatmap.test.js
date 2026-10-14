@@ -52,7 +52,7 @@ test('cells with a zero value are dropped, and ties rank by code', () => {
 });
 
 test('empty input is empty output', () => {
-  assert.deepEqual(buildHeatmap([], { measure: 'deps', service: 'all', n: 5 }), { dests: [], years: [], cells: [] });
+  assert.deepEqual(buildHeatmap([], { measure: 'deps', service: 'all', n: 5 }), { dests: [], years: [], cells: [], yearTotals: {}, yearMax: {} });
 });
 
 test('menu of measures', () => {
@@ -135,7 +135,7 @@ test('service filter and freight conversion apply in city mode too', () => {
 });
 
 test('empty input', () => {
-  assert.deepEqual(buildCityHeatmap([], group), { rows: [], years: [], cells: [] });
+  assert.deepEqual(buildCityHeatmap([], group), { rows: [], years: [], cells: [], yearTotals: {}, yearMax: {} });
 });
 
 // ---- ranking by one year ----
@@ -183,4 +183,75 @@ test('airports inside a group follow the chosen year too', () => {
   const codes = (opts) => buildCityHeatmap(markets, { n: 10, open: ['M1'], ...opts }).rows.filter((x) => x.kind === 'airport').map((x) => x.code);
   assert.deepEqual(codes({}), ['XXX', 'YYY']);
   assert.deepEqual(codes({ rankYear: 2019 }), ['YYY', 'XXX']);
+});
+
+// ---- share of each year ----
+const yearly = [
+  r('AAA', 2018, 600), r('BBB', 2018, 300), r('CCC', 2018, 100),
+  r('AAA', 2019, 100, { service: 'domestic' }), r('BBB', 2019, 100), r('CCC', 2019, 800),
+];
+
+test('every cell carries its share of the year\'s total, over all destinations and not just the ones kept', () => {
+  const res = buildHeatmap(yearly, { n: 1 });
+  assert.deepEqual(res.dests, ['CCC']);
+  assert.deepEqual(res.yearTotals, { 2018: 1000, 2019: 1000 });
+  assert.deepEqual(res.cells.map((c) => [c.year, c.share]), [[2018, 0.1], [2019, 0.8]]);
+});
+
+test('shares follow the service filter, and each year sums to one over every destination', () => {
+  const res = buildHeatmap(yearly, { n: 10, service: 'international' });
+  assert.deepEqual(res.yearTotals, { 2018: 1000, 2019: 900 });
+  for (const y of [2018, 2019]) {
+    const sum = res.cells.filter((c) => c.year === y).reduce((s, c) => s + c.share, 0);
+    assert.ok(Math.abs(sum - 1) < 1e-9, `${y}: ${sum}`);
+  }
+});
+
+test('shares use the chosen measure and its units', () => {
+  const res = buildHeatmap(yearly, { n: 10, measure: 'freight' });
+  assert.deepEqual(res.yearTotals, { 2018: 6, 2019: 6 });
+  assert.ok(res.cells.every((c) => Math.abs(c.share - 1 / 3) < 1e-9));
+});
+
+test('city view cells carry shares too, for groups and for the airports opened beneath them', () => {
+  const res = buildCityHeatmap(markets, { n: 10, open: ['M1'] });
+  assert.deepEqual(res.yearTotals, { 2018: 1400, 2019: 405 });
+  const share = (row, year) => res.cells.find((c) => c.row === row && c.year === year).share;
+  assert.ok(Math.abs(share('M1', 2019) - 305 / 405) < 1e-9);
+  assert.ok(Math.abs(share('M1/YYY', 2019) - 300 / 405) < 1e-9);
+  assert.ok(Math.abs(share('M2', 2018) - 900 / 1400) < 1e-9);
+});
+
+test('an empty selection has no totals', () => {
+  assert.deepEqual(buildHeatmap([], {}).yearTotals, {});
+});
+
+// ---- compared with the year's busiest destination ----
+test('every cell carries its value relative to the busiest destination that year, whether or not that one is kept', () => {
+  const res = buildHeatmap(yearly, { n: 1 });
+  assert.deepEqual(res.dests, ['CCC']);
+  assert.deepEqual(res.yearMax, { 2018: 600, 2019: 800 });
+  assert.deepEqual(res.cells.map((c) => [c.year, c.peak]), [[2018, 100 / 600], [2019, 1]]);
+});
+
+test('the busiest destination of each year is exactly 1, and the service filter decides who that is', () => {
+  const all = buildHeatmap(yearly, { n: 10 });
+  for (const y of [2018, 2019]) assert.equal(Math.max(...all.cells.filter((c) => c.year === y).map((c) => c.peak)), 1);
+  const dom = buildHeatmap(yearly, { n: 10, service: 'domestic' });
+  assert.deepEqual(dom.yearMax, { 2019: 100 });
+  assert.deepEqual(dom.cells.map((c) => c.peak), [1]);
+});
+
+test('city view compares markets with the busiest market, and opened airports with it too', () => {
+  const res = buildCityHeatmap(markets, { n: 10, open: ['M1'] });
+  assert.deepEqual(res.yearMax, { 2018: 900, 2019: 305 });
+  const peak = (row, year) => res.cells.find((c) => c.row === row && c.year === year).peak;
+  assert.equal(peak('M2', 2018), 1);
+  assert.equal(peak('M1', 2019), 1);
+  assert.ok(Math.abs(peak('M1', 2018) - 500 / 900) < 1e-9);
+  assert.ok(Math.abs(peak('M1/YYY', 2019) - 300 / 305) < 1e-9);
+});
+
+test('an empty selection has no maxima', () => {
+  assert.deepEqual(buildHeatmap([], {}).yearMax, {});
 });
