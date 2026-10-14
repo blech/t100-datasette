@@ -18,3 +18,6 @@ wheels/
 # SDD workspace scratch
 .superpowers/
 !data/airport_overrides.csv
+
+# explore/ scratch cubes (rebuild with explore/README.md steps)
+explore/cubes.duckdb
