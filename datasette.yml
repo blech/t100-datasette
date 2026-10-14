@@ -237,6 +237,8 @@ databases:
             dest_city_name,
             c.name AS carrier,
             a.name AS aircraft,
+            MIN(g.group_id) AS group_id,
+            MIN(f.family) AS family,
             SUM(departures_performed) AS deps,
             SUM(departures_scheduled) AS scheduled,
             SUM(payload) AS total_payload,
@@ -249,6 +251,8 @@ databases:
           FROM t100 AS t
             JOIN aircraft_types a ON t.aircraft_type = a.AC_TYPEID
             JOIN carriers c ON t.carrier_entity = c.CARRIER_ENTITY
+            LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+            LEFT JOIN aircraft_family f ON f.aircraft_type = t.aircraft_type
           WHERE
             origin = :origin
             AND dest = :dest
@@ -271,6 +275,8 @@ databases:
             dest_city_name,
             c.name AS carrier,
             a.name AS aircraft,
+            g.group_id AS group_id,
+            f.family AS family,
             departures_performed AS deps,
             departures_scheduled AS scheduled,
             payload AS total_payload,
@@ -283,6 +289,8 @@ databases:
           FROM t100 AS t
             JOIN aircraft_types a ON t.aircraft_type = a.AC_TYPEID
             JOIN carriers c ON t.carrier_entity = c.CARRIER_ENTITY
+            LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+            LEFT JOIN aircraft_family f ON f.aircraft_type = t.aircraft_type
           WHERE
             origin = :origin
             AND dest = :dest

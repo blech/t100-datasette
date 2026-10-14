@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { slugify } from '/static/charts/src/rollup.js';
 import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
 import { formatCount, formatTons } from '/static/landing/src/table.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -75,13 +76,26 @@ function cell(text, className, title) {
   return td;
 }
 
+// a name that opens the airline's or aircraft family's own page, when the data says which it is
+function linkCell(text, href, title) {
+  const td = cell('', 'left');
+  if (!href) { td.textContent = text; return td; }
+  const a = document.createElement('a');
+  a.href = href;
+  a.textContent = text;
+  a.title = title;
+  td.append(a);
+  return td;
+}
+
 function drawTable() {
   const body = document.querySelector('#route-table tbody');
   body.replaceChildren();
   for (const t of aggregateTable(viewRows)) {
     const tr = document.createElement('tr');
     tr.append(
-      cell(t.carrier, 'left'), cell(t.aircraft, 'left'),
+      linkCell(t.carrier, t.groupId && `/carriers/${t.groupId}`, 'All of this airline\'s flying'),
+      linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}`, `${t.family}, all versions`),
       cell(formatCount(t.deps), 'num', t.deps.toLocaleString('en-US')),
       cell(formatCount(t.seats), 'num', t.seats.toLocaleString('en-US')),
       cell(formatCount(t.passengers), 'num', t.passengers.toLocaleString('en-US')),

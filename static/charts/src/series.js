@@ -79,7 +79,7 @@ export function aggregateTable(rows) {
     const carrier = name(r.carrier);
     const aircraft = name(r.aircraft);
     const key = `${carrier}\u0000${aircraft}`;
-    const t = byPair.get(key) || { carrier, aircraft, deps: 0, seats: 0, passengers: 0, freight: 0 };
+    const t = byPair.get(key) || { carrier, aircraft, groupId: r.group_id || null, family: r.family || null, deps: 0, seats: 0, passengers: 0, freight: 0 };
     t.deps += num(r.deps);
     t.seats += num(r.total_seats);
     t.passengers += num(r.total_passengers);

@@ -101,7 +101,7 @@ test('aggregateTable sums carrier and aircraft pairs over all rows, biggest firs
     row(2019, 'BA', 'B777', 20, 6000, 8000, 0),
   ]);
   assert.deepEqual(t.map((r) => `${r.carrier}|${r.aircraft}`), ['BA|B777', 'United|B777']);
-  assert.deepEqual(t[1], { carrier: 'United', aircraft: 'B777', deps: 14, seats: 5600, passengers: 3800, freight: 3, loadFactor: (3800 / 5600) * 100 });
+  assert.deepEqual(t[1], { carrier: 'United', aircraft: 'B777', groupId: null, family: null, deps: 14, seats: 5600, passengers: 3800, freight: 3, loadFactor: (3800 / 5600) * 100 });
 });
 
 test('aggregateTable leaves load factor empty where there were no seats, and names unknowns', () => {
@@ -109,4 +109,10 @@ test('aggregateTable leaves load factor empty where there were no seats, and nam
   assert.equal(t[0].carrier, 'Unknown');
   assert.equal(t[0].aircraft, 'Unknown');
   assert.equal(t[0].loadFactor, null);
+});
+
+test('aggregateTable carries the airline group and aircraft family through, for linking', () => {
+  const t = aggregateTable([{ ...row(2019, 'United', 'B777', 10, 3000, 4000), group_id: 'united', family: 'Boeing 777' }]);
+  assert.equal(t[0].groupId, 'united');
+  assert.equal(t[0].family, 'Boeing 777');
 });
