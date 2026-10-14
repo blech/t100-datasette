@@ -11,6 +11,10 @@ import { maxOf } from './src/scale.js';
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
 const state = parseState(location.search);
+// The chooser and info panel sit just below the header, whatever height it ends up.
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--below-header', `${Math.ceil($('header').getBoundingClientRect().bottom) + 8}px`);
+}).observe($('header'));
 const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
 let airports = new Map();
