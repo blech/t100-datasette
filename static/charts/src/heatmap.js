@@ -7,18 +7,19 @@ const valueOf = (row, measure) => {
 };
 
 // Rows from routes_by_year (one per destination, year and service) -> a destination-by-year grid.
-// Destinations are ranked by the measure summed over all years; only the top `n` are kept.
-export function buildHeatmap(rows, { measure = 'passengers', service = 'all', n = 25 } = {}) {
+// Destinations are ranked by the measure summed over all years, or in `rankYear` alone (which drops
+// destinations that did not fly then); only the top `n` are kept, and their whole history is shown.
+export function buildHeatmap(rows, { measure = 'passengers', service = 'all', n = 25, rankYear = null } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const cellMap = new Map(); // `${dest}\u0000${year}` -> value
-  const totals = new Map();
+  const totals = new Map(); // what ranks a destination
   const yearSet = new Set();
   for (const r of kept) {
     yearSet.add(r.year);
     const v = valueOf(r, measure);
     const key = `${r.dest}\u0000${r.year}`;
     cellMap.set(key, (cellMap.get(key) || 0) + v);
-    totals.set(r.dest, (totals.get(r.dest) || 0) + v);
+    if (rankYear === null || Number(r.year) === rankYear) totals.set(r.dest, (totals.get(r.dest) || 0) + v);
   }
   const dests = [...totals.entries()]
     .filter(([, t]) => t > 0)
@@ -39,21 +40,22 @@ const CODES_IN_LABEL = 3;
 
 // Same grid, but airports in one BTS city market are one row. Groups with several airports can be
 // opened (`open` lists market ids), which puts their airports on rows directly beneath.
-export function buildCityHeatmap(rows, { measure = 'passengers', service = 'all', n = 25, open = [] } = {}) {
+export function buildCityHeatmap(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const openSet = new Set(open.map(String));
-  const groups = new Map(); // key -> { total, airports: Map(dest -> {total, name, nameYear, byYear}), byYear: Map(year -> {value, parts: Map}) }
+  const groups = new Map(); // key -> { rank, airports: Map(dest -> {rank, name, nameYear, byYear}), byYear: Map(year -> {value, parts: Map}) }
   const yearSet = new Set();
   for (const r of kept) {
     yearSet.add(r.year);
     const key = r.market_id !== null && r.market_id !== undefined && r.market_id !== '' ? String(r.market_id) : `solo:${r.dest}`;
     const v = valueOf(r, measure);
-    const g = groups.get(key) || { key, total: 0, airports: new Map(), byYear: new Map() };
+    const g = groups.get(key) || { key, rank: 0, airports: new Map(), byYear: new Map() };
     groups.set(key, g);
-    g.total += v;
-    const a = g.airports.get(r.dest) || { dest: r.dest, total: 0, name: null, nameYear: -Infinity, byYear: new Map() };
+    const ranked = rankYear === null || Number(r.year) === rankYear;
+    if (ranked) g.rank += v;
+    const a = g.airports.get(r.dest) || { dest: r.dest, rank: 0, name: null, nameYear: -Infinity, byYear: new Map() };
     g.airports.set(r.dest, a);
-    a.total += v;
+    if (ranked) a.rank += v;
     if (r.city && r.year >= a.nameYear) { a.name = r.city; a.nameYear = r.year; }
     a.byYear.set(r.year, (a.byYear.get(r.year) || 0) + v);
     const cell = g.byYear.get(r.year) || { value: 0, parts: new Map() };
@@ -62,11 +64,11 @@ export function buildCityHeatmap(rows, { measure = 'passengers', service = 'all'
     cell.parts.set(r.dest, (cell.parts.get(r.dest) || 0) + v);
   }
 
-  const byVolume = (a, b) => b.total - a.total || a.dest.localeCompare(b.dest);
+  const byVolume = (a, b) => b.rank - a.rank || a.dest.localeCompare(b.dest);
   const ranked = [...groups.values()]
-    .filter((g) => g.total > 0)
-    .map((g) => ({ ...g, list: [...g.airports.values()].filter((a) => a.total > 0).sort(byVolume) }))
-    .sort((a, b) => b.total - a.total || a.list[0].dest.localeCompare(b.list[0].dest))
+    .filter((g) => g.rank > 0)
+    .map((g) => ({ ...g, list: [...g.airports.values()].filter((a) => a.rank > 0).sort(byVolume) }))
+    .sort((a, b) => b.rank - a.rank || a.list[0].dest.localeCompare(b.list[0].dest))
     .slice(0, n);
 
   const outRows = [];

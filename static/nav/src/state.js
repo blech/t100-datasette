@@ -34,6 +34,7 @@ export function carryParams(search, target) {
   if (SERVICES.includes(service)) out.service = service;
   if (q.get('group') === 'city') out.group = 'city';
   if (['10', '50'].includes(q.get('n'))) out.n = q.get('n');
+  if (q.get('rank') === 'latest') out.rank = 'latest';
   return out;
 }
 

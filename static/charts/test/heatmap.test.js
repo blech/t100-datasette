@@ -137,3 +137,50 @@ test('service filter and freight conversion apply in city mode too', () => {
 test('empty input', () => {
   assert.deepEqual(buildCityHeatmap([], group), { rows: [], years: [], cells: [] });
 });
+
+// ---- ranking by one year ----
+const shifted = [
+  r('AAA', 2018, 1000), r('AAA', 2019, 10),
+  r('BBB', 2018, 100), r('BBB', 2019, 500),
+  r('CCC', 2018, 900),
+];
+
+test('ranking by all years is the default', () => {
+  assert.deepEqual(buildHeatmap(shifted, { n: 10 }).dests, ['AAA', 'CCC', 'BBB']);
+  assert.deepEqual(buildHeatmap(shifted, { n: 10, rankYear: null }).dests, ['AAA', 'CCC', 'BBB']);
+});
+
+test('ranking by a year uses that year alone, and drops destinations that did not fly then', () => {
+  const res = buildHeatmap(shifted, { n: 10, rankYear: 2019 });
+  assert.deepEqual(res.dests, ['BBB', 'AAA']);
+  assert.deepEqual(res.years, [2018, 2019]);
+  assert.ok(res.cells.every((x) => x.dest !== 'CCC'));
+  assert.deepEqual(res.cells.filter((x) => x.dest === 'AAA').map((x) => x.year), [2018, 2019]); // history is still shown
+});
+
+test('top n applies to the ranked year', () => {
+  assert.deepEqual(buildHeatmap(shifted, { n: 1, rankYear: 2019 }).dests, ['BBB']);
+});
+
+test('a ranking year with no flights gives an empty chart', () => {
+  assert.deepEqual(buildHeatmap(shifted, { n: 10, rankYear: 2030 }).dests, []);
+});
+
+const markets = [
+  c('XXX', 2018, 500, 'M1', 'One, US'), c('XXX', 2019, 5, 'M1', 'One, US'), c('YYY', 2019, 300, 'M1', 'One, US'),
+  c('ZZZ', 2018, 900, 'M2', 'Two, US'),
+  c('WWW', 2019, 100, 'M3', 'Three, US'),
+];
+
+test('city view ranks markets by the chosen year and drops those not served then', () => {
+  assert.deepEqual(buildCityHeatmap(markets, { n: 10 }).rows.map((x) => x.key), ['M2', 'M1', 'M3']);
+  const res = buildCityHeatmap(markets, { n: 10, rankYear: 2019 });
+  assert.deepEqual(res.rows.map((x) => x.key), ['M1', 'M3']);
+  assert.deepEqual(res.years, [2018, 2019]);
+});
+
+test('airports inside a group follow the chosen year too', () => {
+  const codes = (opts) => buildCityHeatmap(markets, { n: 10, open: ['M1'], ...opts }).rows.filter((x) => x.kind === 'airport').map((x) => x.code);
+  assert.deepEqual(codes({}), ['XXX', 'YYY']);
+  assert.deepEqual(codes({ rankYear: 2019 }), ['YYY', 'XXX']);
+});

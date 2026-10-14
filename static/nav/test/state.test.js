@@ -28,6 +28,14 @@ test('routes pages carry the heat map settings', () => {
   );
 });
 
+test('the ranking year follows the routes pages but is not carried to the globe or the home page', () => {
+  assert.deepEqual(carryParams('?rank=latest&measure=deps', 'routes'), { measure: 'deps', rank: 'latest' });
+  assert.deepEqual(carryParams('?rank=latest', 'route'), { rank: 'latest' });
+  assert.deepEqual(carryParams('?rank=latest', 'globe'), {});
+  assert.deepEqual(carryParams('?rank=latest', 'home'), {});
+  assert.deepEqual(carryParams('?rank=all&rank=bogus', 'routes'), {});
+});
+
 test('route pages pass the heat map settings through and accept load factor', () => {
   assert.deepEqual(carryParams('?measure=load_factor&split=aircraft&group=city', 'route'), { measure: 'load_factor', group: 'city' });
   assert.deepEqual(carryParams('?measure=load_factor', 'routes'), {});

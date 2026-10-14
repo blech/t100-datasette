@@ -13,6 +13,7 @@ const state = {
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '25')),
   group: pick('group', ['airport', 'city'], 'airport'),
+  rank: pick('rank', ['all', 'latest'], 'all'),
   open: (params.get('open') || '').split(',').filter(Boolean),
 };
 let rows = [];
@@ -20,6 +21,16 @@ let cities = new Map();
 let airportInfo = new Map();
 
 const ROW_PX = 20;
+const latestFullYear = Number(document.body.dataset.latestYear);
+
+// the latest full year this airport has data for (an airport that stopped before it uses its own last year)
+function latestYear() {
+  const years = rows.map((r) => Number(r.year)).filter((y) => y <= latestFullYear);
+  return years.length ? Math.max(...years) : null;
+}
+
+// the year that ranks the destinations, or null for all years
+const rankYear = () => (state.rank === 'latest' ? latestYear() : null);
 
 function pushState() {
   const q = new URLSearchParams();
@@ -27,15 +38,16 @@ function pushState() {
   if (state.service !== 'all') q.set('service', state.service);
   if (state.n !== 25) q.set('n', state.n);
   if (state.group !== 'airport') q.set('group', state.group);
+  if (state.rank !== 'all') q.set('rank', state.rank);
   if (state.group === 'city' && state.open.length) q.set('open', state.open.join(','));
   const s = q.toString();
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'open'], s ? `?${s}` : '')}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'rank', 'open'], s ? `?${s}` : '')}`);
 }
 
 function drawAirports() {
   const box = $('heatmap');
   box.replaceChildren();
-  const res = buildHeatmap(rows, state);
+  const res = buildHeatmap(rows, { ...state, rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
     return;
@@ -81,7 +93,7 @@ function toggle(key) {
 function drawCities() {
   const box = $('heatmap');
   box.replaceChildren();
-  const res = buildCityHeatmap(rows, state);
+  const res = buildCityHeatmap(rows, { ...state, rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
     return;
@@ -135,6 +147,11 @@ function useLabelTips() {
 }
 
 function draw() {
+  const year = latestYear();
+  if (year !== null) $('heat-rank').options[1].textContent = `${year} only`;
+  $('rank-note').textContent = rankYear() === null
+    ? 'Destinations are ranked by the measure summed over all years.'
+    : `Destinations are ranked by the measure in ${rankYear()} alone, so ones that did not fly then are not shown.`;
   if (state.group === 'city') drawCities();
   else drawAirports();
   useLabelTips();
@@ -190,6 +207,8 @@ function fillControls() {
   $('heat-service').value = state.service;
   $('heat-n').value = String(state.n);
   $('heat-group').value = state.group;
+  $('heat-rank').value = state.rank;
+  $('heat-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
   $('heat-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
   measure.addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
   $('heat-service').addEventListener('change', (e) => { state.service = e.target.value; pushState(); draw(); });

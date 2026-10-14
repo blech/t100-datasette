@@ -72,6 +72,7 @@ async def routes_page(datasette, request):
         "routes.html",
         {
             "origin": origin,
+            "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
             "crumbs": trail(datasette, ("routes", "/routes"), (origin, None)),
             "foreign": await is_foreign(datasette, origin),
         },

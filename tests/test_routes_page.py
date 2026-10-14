@@ -35,3 +35,9 @@ def test_page_offers_the_city_grouping(ds):
 
 def test_page_has_the_label_tooltip_element(ds):
     assert 'id="label-tip"' in get(ds, "/routes/ATL").text
+
+
+def test_page_offers_ranking_by_the_latest_full_year(ds):
+    html = get(ds, "/routes/ATL").text
+    assert 'id="heat-rank"' in html and '<option value="latest">' in html
+    assert 'data-latest-year="2025"' in html
