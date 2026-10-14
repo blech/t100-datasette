@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ name }} network · T-100</title>
+  <link rel="stylesheet" href="/static/globe/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-group="{{ group }}">
+  <canvas id="globe" aria-label="Map of the airline's routes"></canvas>
+
+  <header id="header">
+    {% include "_nav.html" %}
+    <div id="title">{{ name }}</div>
+    <div id="stats"></div>
+    <div class="picker-row">
+      <a href="/carriers/{{ group }}" class="plain">All charts for this airline</a>
+      <a href="/carriers/{{ group }}#changes" class="plain" id="table-link">Routes dropped and added, as a table</a>
+    </div>
+  </header>
+
+  <aside id="panel" hidden></aside>
+  <div id="tooltip" hidden></div>
+  <div id="status" role="status"></div>
+
+  <div id="controls">
+    <div id="legend">
+      <span id="legend-service"><span class="swatch" style="background:#ff5a00"></span> International
+      <span class="swatch" style="background:#2a9df4"></span> Domestic</span>
+      <span id="legend-status" hidden><span class="swatch" style="background:#d62728"></span> Dropped
+      <span class="swatch" style="background:#2a9df4"></span> Kept
+      <span class="swatch" style="background:#2ca02c"></span> Added</span>
+      <span class="note">Airport pairs flown at least <select id="min" aria-label="Minimum departures"><option value="1">once</option><option value="12">12 times</option><option value="52">52 times</option></select> in the year, both directions together. <a href="/about#groupings">How airlines are grouped</a>.</span>
+    </div>
+    <div class="row">
+      <button id="play" type="button" aria-label="Play through the years">▶</button>
+      <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      <span id="year-label"></span>
+    </div>
+    <div class="row">
+      <label>Compare with <select id="compare" aria-label="Year to compare with"><option value="">nothing</option></select></label>
+      <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
+      <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
+    </div>
+    <div id="footnote"></div>
+  </div>
+
+  <script src="/static/globe/vendor/d3-array.min.js"></script>
+  <script src="/static/globe/vendor/d3-geo.min.js"></script>
+  <script src="/static/globe/vendor/topojson-client.min.js"></script>
+  <script type="module" src="/static/charts/airlineglobe.js"></script>
+</body>
+</html>

@@ -178,6 +178,13 @@ databases:
           GROUP BY year
           ORDER BY year
 
+      carrier_routes_year:
+        sql: |
+          SELECT origin, dest, deps, seats, passengers, freight
+          FROM carrier_route_year
+          WHERE group_id = :group AND year = :year AND deps >= CAST(:min AS INTEGER)
+          ORDER BY passengers DESC
+
       carrier_route_changes:
         sql: |
           SELECT

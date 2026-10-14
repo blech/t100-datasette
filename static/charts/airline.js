@@ -92,6 +92,7 @@ function drawTable() {
 
 async function loadChanges() {
   const a = $('al-a').value, b = $('al-b').value, min = $('al-min').value;
+  $('map-link').href = `/carriers/${group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
   const { rows } = await fetchRows(queryUrl('carrier_route_changes', { group, a, b, min }));
   routes = classifyRoutes(rows, { min: Number(min) });
   const c = summariseRoutes(routes);
@@ -120,8 +121,10 @@ async function main() {
   for (const sel of [$('al-a'), $('al-b')]) {
     for (let y = firstYear; y <= lastYear; y++) sel.append(new Option(String(y), String(y)));
   }
-  $('al-b').value = String(lastYear);
-  $('al-a').value = String(Math.max(firstYear, lastYear - 6));
+  const qs = new URLSearchParams(location.search);
+  const within = (v, d) => (Number(v) >= firstYear && Number(v) <= lastYear ? String(Number(v)) : d);
+  $('al-b').value = within(qs.get('to'), String(lastYear));
+  $('al-a').value = within(qs.get('from'), String(Math.max(firstYear, lastYear - 6)));
   try {
     const [d, airports] = await Promise.all([fetchRows(queryUrl('carrier_group_detail', { group })), fetchRows(queryUrl('airports'))]);
     detail = d.rows;

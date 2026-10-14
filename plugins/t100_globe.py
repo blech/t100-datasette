@@ -30,6 +30,7 @@ def register_routes():
         (r"^/aircraft$", rollup_page("aircraft")),
         (r"^/carriers$", rollup_page("carriers")),
         (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)$", airline_page),
+        (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
         (r"^/aircraft/engines$", engines_page),
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
@@ -176,13 +177,33 @@ async def family_page(datasette, request):
     return Response.html(html)
 
 
+async def airline_name(datasette, group):
+    """The airline group's latest name, or a 404 if there is no such group."""
+    result = await datasette.get_database("t100").execute(
+        "SELECT group_name FROM carrier_group_year WHERE group_id = ? GROUP BY group_name ORDER BY MAX(year) DESC LIMIT 1", [group]
+    )
+    row = result.first()
+    if row is None:
+        raise NotFound(f"No airline {group}")
+    return row[0]
+
+
+async def airline_globe_page(datasette, request):
+    group = request.url_vars["group"]
+    name = await airline_name(datasette, group)
+    html = await datasette.render_template(
+        "airline_globe.html",
+        {"group": group, "name": name, "crumbs": trail(datasette, ("airlines", "/carriers"), (name, f"/carriers/{group}"), ("map", None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
 async def airline_page(datasette, request):
     group = request.url_vars["group"]
     db = datasette.get_database("t100")
-    names = await db.execute("SELECT group_name FROM carrier_group_year WHERE group_id = ? GROUP BY group_name ORDER BY MAX(year) DESC LIMIT 1", [group])
-    row = names.first()
-    if row is None:
-        raise NotFound(f"No airline {group}")
+    name = await airline_name(datasette, group)
+    row = (name,)
     span = (await db.execute("SELECT MIN(year), MAX(year) FROM carrier_group_year WHERE group_id = ? AND deps > 0", [group])).first()
     members = await db.execute(
         """

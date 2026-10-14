@@ -123,7 +123,7 @@ export class NetworkRenderer {
       const r = routes[i];
       ctx.beginPath();
       this.path({ type: 'LineString', coordinates: [r.from, r.to] });
-      ctx.strokeStyle = colourFor(r.service);
+      ctx.strokeStyle = r.colour ?? colourFor(r.service);
       ctx.globalAlpha = i === opts.highlight ? 1 : 0.65;
       ctx.lineWidth = widthFor(r[key], opts.max) + (i === opts.highlight ? 1.5 : 0);
       ctx.stroke();
@@ -140,6 +140,18 @@ export class NetworkRenderer {
       ctx.beginPath();
       ctx.arc(p[0], p[1], 1.6, 0, Math.PI * 2);
       ctx.fill();
+    }
+    if (opts.bothEnds) {
+      // a network has no single origin: dot the other end of each route too
+      for (const r of routes) {
+        if (!this.visible(r.from[0], r.from[1])) continue;
+        const p = this.proj(r.from);
+        if (!p) continue;
+        ctx.fillStyle = t.dot;
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.fillStyle = t.ui.fg;
     for (const i of order.slice(0, opts.labels ?? 8)) {
