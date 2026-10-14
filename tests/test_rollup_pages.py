@@ -57,5 +57,5 @@ def test_airline_page_names_the_airline_and_unknown_ones_are_not_found(ds, db_pa
     put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta (incl. Northwest)", domestic=1, service_class="F",
                                              deps=4, seats=400, passengers=300, freight=0)])
     r = get(ds, "/carriers/delta")
-    assert r.status_code == 200 and "<h1>Delta (incl. Northwest)</h1>" in r.text and "/static/charts/airline.js" in r.text
+    assert r.status_code == 200 and ">Delta (incl. Northwest)</h1>" in r.text and "/static/charts/airline.js" in r.text
     assert get(ds, "/carriers/nope").status_code == 404

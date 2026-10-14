@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { buildFamilySeries, SERIES_COLORS, OTHER_COLOR } from '/static/charts/src/rollup.js';
+import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -64,6 +65,8 @@ async function main() {
   for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
   try {
     rows = (await fetchRows(queryUrl('family_detail', { family }))).rows;
+    const shorts = shortNames(rows.map((r) => r.group_name));
+    rows = rows.map((r) => ({ ...r, group_name: shorts.get(r.group_name) }));
   } catch (err) {
     console.error(err);
     $('family-chart').textContent = 'Could not load the chart data.';

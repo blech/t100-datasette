@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { shortNames } from '/static/charts/src/names.js';
 import { slugify } from '/static/charts/src/rollup.js';
 import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
 import { formatCount, formatTons } from '/static/landing/src/table.js';
@@ -18,6 +19,7 @@ const routePath = (y) => `/airports/${origin}/${dest}${y ? `/${y}` : ''}`;
 
 let allRows = [];   // the route, every year
 let viewRows = [];  // the rows behind the chart and table: all years, or one year by month
+const fullNames = new Map(); // short carrier name -> BTS's full name
 
 function pushState() {
   const q = new URLSearchParams(location.search);
@@ -94,7 +96,7 @@ function drawTable() {
   for (const t of aggregateTable(viewRows)) {
     const tr = document.createElement('tr');
     tr.append(
-      linkCell(t.carrier, t.groupId && `/carriers/${t.groupId}`, 'All of this airline\'s flying'),
+      linkCell(t.carrier, t.groupId && `/carriers/${t.groupId}`, `${fullNames.get(t.carrier) || t.carrier}: all of this airline's flying`),
       linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}`, `${t.family}, all versions`),
       cell(formatCount(t.deps), 'num', t.deps.toLocaleString('en-US')),
       cell(formatCount(t.seats), 'num', t.seats.toLocaleString('en-US')),
@@ -136,6 +138,10 @@ async function main() {
       const monthly = await fetchRows(queryUrl('route_year', { origin, dest, year }));
       viewRows = monthly.rows;
     }
+    // long legal names ("Hyannis Air Service, Inc. dba Cape Air") crowd the chart and table: show short ones, keep the full as hover text
+    const shorts = shortNames([...allRows, ...viewRows].map((r) => r.carrier));
+    for (const [full, short] of shorts) fullNames.set(short, full);
+    for (const r of [...allRows, ...viewRows]) r.carrier = shorts.get(r.carrier);
   } catch (err) {
     console.error(err);
     $('status').textContent = 'Could not load the data. Try again in a moment.';

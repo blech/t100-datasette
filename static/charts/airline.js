@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
+import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 
 const group = document.body.dataset.group;
@@ -101,7 +102,19 @@ async function loadChanges() {
   drawTable();
 }
 
+// the page is rendered with BTS's full name; show the short one as the heading and keep the full one underneath
+function nameHeading() {
+  const h1 = $('airline-name');
+  const full = h1.textContent.trim();
+  const short = shortName(full);
+  if (short === full) return;
+  h1.textContent = short;
+  $('full-name').textContent = `Listed by BTS as ${full}`;
+  $('full-name').hidden = false;
+}
+
 async function main() {
+  nameHeading();
   const measure = $('al-measure');
   for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
   for (const sel of [$('al-a'), $('al-b')]) {

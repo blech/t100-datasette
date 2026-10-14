@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { buildHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { rollupRows, slugify } from '/static/charts/src/rollup.js';
+import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -49,6 +50,10 @@ const withShare = (c, text) => ({
   year: `${text} (${fmtPct(c.share)} of the year)`,
   busiest: `${text} (${fmtPct(c.peak)} of the year's biggest)`,
 }[state.scale]);
+
+// airlines are named by their legal entity, which is long: label rows with the short name (the full one is the hover text)
+let shorts = new Map();
+const labelOf = (name) => shorts.get(name) || name;
 
 // an aircraft family's label opens its own page, carrying over the measure and filters chosen here
 function familyHref(name) {
@@ -100,7 +105,7 @@ function draw() {
       : { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' },
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), title: 'title', tip: true }),
-      Plot.text(res.dests.map((d) => ({ dest: d, href: familyHref(d) })), { y: 'dest', text: 'dest', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8, fill: 'currentColor' }),
+      Plot.text(res.dests.map((d) => ({ dest: d, label: labelOf(d), href: familyHref(d) })), { y: 'dest', text: 'label', title: 'dest', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8, fill: 'currentColor' }),
     ],
   }));
 }
@@ -130,6 +135,7 @@ async function main() {
   try {
     const res = await fetchRows(queryUrl(page.query));
     rows = res.rows;
+    if (kind === 'carriers') shorts = shortNames(rows.map((r) => r.group_name));
     if (res.truncated) $('rank-note').textContent = 'Too many rows: some are missing from this chart.';
   } catch (err) {
     console.error(err);

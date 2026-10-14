@@ -13,7 +13,8 @@
   <main>
     {% include "_nav.html" %}
     <p class="related"><a href="/carriers">All airlines</a></p>
-    <h1>{{ name }}</h1>
+    <h1 id="airline-name">{{ name }}</h1>
+    <p class="related" id="full-name" hidden></p>
     <p class="intro">
       Flying in the data from {{ first_year }} to {{ last_year }}.
       {% if members %}Counted together here: {{ members|join(", ") }}.{% endif %}
