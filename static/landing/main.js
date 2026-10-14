@@ -37,9 +37,9 @@ function render() {
   for (const r of topBy(rows, state.sort, ROWS_SHOWN)) {
     const tr = document.createElement('tr');
     const code = cell('', 'code');
-    code.append(link(`/globe/${encodeURIComponent(r.origin)}?year=${state.year}`, r.origin));
+    code.append(link(`/airports/${encodeURIComponent(r.origin)}`, r.origin));
     const more = cell('', 'more');
-    more.append(link(`/routes/${encodeURIComponent(r.origin)}`, 'Routes over time →'));
+    more.append(link(`/airports/${encodeURIComponent(r.origin)}/globe?year=${state.year}`, 'Map →'));
     tr.append(
       code,
       cell(r.origin_city_name || '', 'city'),

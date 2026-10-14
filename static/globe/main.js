@@ -82,7 +82,7 @@ function tooltipText(r) {
 
 function showPanel(r) {
   const p = $('panel');
-  const routePath = `/route/${encodeURIComponent(origin)}/${encodeURIComponent(r.dest)}`;
+  const routePath = `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(r.dest)}`;
   p.innerHTML = '';
   const close = document.createElement('button');
   close.className = 'close';
@@ -91,7 +91,7 @@ function showPanel(r) {
   close.onclick = () => { selected = -1; p.hidden = true; dirty = true; };
   const h = document.createElement('h2');
   const destLink = document.createElement('a');
-  destLink.href = `/globe/${encodeURIComponent(r.dest)}${toSearch(state)}`;
+  destLink.href = `/airports/${encodeURIComponent(r.dest)}/globe${toSearch(state)}`;
   destLink.textContent = r.dest;
   destLink.title = `Show routes from ${r.dest}`;
   h.append(`${origin} → `, destLink);
@@ -160,7 +160,7 @@ function fillPicker() {
   $('picker').value = origin;
   $('picker').addEventListener('change', (e) => {
     const code = e.target.value.trim().toUpperCase();
-    if (/^[A-Z0-9]{3}$/.test(code)) location.href = `/globe/${code}${toSearch(state)}`;
+    if (/^[A-Z0-9]{3}$/.test(code)) location.href = `/airports/${code}/globe${toSearch(state)}`;
   });
 }
 
@@ -170,7 +170,7 @@ async function showChooser() {
   box.append(Object.assign(document.createElement('summary'), { textContent: 'Pick an airport on the map, or choose from a list' }));
   for (const r of res.rows.slice(0, 24)) {
     const a = document.createElement('a');
-    a.href = `/globe/${r.origin}`;
+    a.href = `/airports/${r.origin}/globe`;
     a.textContent = `${r.origin} ${r.origin_city_name}`;
     box.append(a);
   }
@@ -266,7 +266,7 @@ function bindCanvas() {
     onTap: (x, y) => {
       if (!origin) {
         const i = renderer.hitTestPoints(x, y, chooserPoints);
-        if (i >= 0) location.href = `/globe/${encodeURIComponent(chooserPoints[i].code)}${toSearch(state)}`;
+        if (i >= 0) location.href = `/airports/${encodeURIComponent(chooserPoints[i].code)}/globe${toSearch(state)}`;
         return;
       }
       const routes = currentRoutes();

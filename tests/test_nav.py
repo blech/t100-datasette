@@ -21,28 +21,29 @@ def test_landing_is_just_the_site_name(ds):
 
 def test_globe_trails(ds):
     assert crumbs(ds, "/globe") == [("t100.husk.org", "/"), ("globe", None)]
-    assert crumbs(ds, "/globe/ATL") == [("t100.husk.org", "/"), ("globe", "/globe"), ("ATL", None)]
+    assert crumbs(ds, "/airports/ATL/globe") == [
+        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("globe", None)]
 
 
 def test_routes_trail(ds):
-    assert crumbs(ds, "/routes/ATL") == [("t100.husk.org", "/"), ("routes", "/routes"), ("ATL", None)]
+    assert crumbs(ds, "/airports/ATL") == [("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", None)]
 
 
 def test_route_trails_end_at_the_year_when_there_is_one(ds):
-    assert crumbs(ds, "/route/ATL/LAX") == [
-        ("t100.husk.org", "/"), ("routes", "/routes"), ("ATL", "/routes/ATL"), ("LAX", None)]
-    assert crumbs(ds, "/route/atl/lax/2024") == [
-        ("t100.husk.org", "/"), ("routes", "/routes"), ("ATL", "/routes/ATL"), ("LAX", "/route/ATL/LAX"), ("2024", None)]
+    assert crumbs(ds, "/airports/ATL/LAX") == [
+        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("LAX", None)]
+    assert crumbs(ds, "/airports/atl/lax/2024") == [
+        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("LAX", "/airports/ATL/LAX"), ("2024", None)]
 
 
 def test_current_page_is_marked_and_the_trail_is_labelled(ds):
-    html = get(ds, "/routes/ATL").text
+    html = get(ds, "/airports/ATL").text
     assert 'aria-label="Breadcrumb"' in html
     assert re.search(r'<li aria-current="page">ATL</li>', html)
 
 
 def test_every_page_has_one_theme_chooser_and_the_shared_scripts(ds):
-    for path in ["/", "/globe", "/globe/ATL", "/routes/ATL", "/route/ATL/LAX"]:
+    for path in ["/", "/globe", "/airports/ATL/globe", "/airports/ATL", "/airports/ATL/LAX"]:
         html = get(ds, path).text
         assert html.count('id="theme"') == 1, path
         assert "/static/nav/main.js" in html and "/static/nav/style.css" in html, path

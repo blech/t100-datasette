@@ -5,11 +5,12 @@ import { targetOf, carryParams, decorate, replaceSearch } from '../src/state.js'
 test('targetOf recognises the site pages and nothing else', () => {
   assert.equal(targetOf('/'), 'home');
   assert.equal(targetOf('/globe'), 'globe');
-  assert.equal(targetOf('/globe/ATL'), 'globe');
-  assert.equal(targetOf('/routes'), 'routes');
-  assert.equal(targetOf('/routes/ATL'), 'routes');
-  assert.equal(targetOf('/route/ATL/LAX/2024'), 'route');
-  for (const p of ['/t100', '/-/', '/static/x.js', '#toggle:a', 'https://example.com/routes/ATL', '']) assert.equal(targetOf(p), null, p);
+  assert.equal(targetOf('/airports/ATL/globe'), 'globe');
+  assert.equal(targetOf('/airports'), 'home');
+  assert.equal(targetOf('/airports/ATL'), 'routes');
+  assert.equal(targetOf('/airports/ATL/LAX'), 'route');
+  assert.equal(targetOf('/airports/ATL/LAX/2024'), 'route');
+  for (const p of ['/t100', '/-/', '/static/x.js', '#toggle:a', 'https://example.com/airports/ATL', '', '/globe/ATL', '/routes/ATL', '/route/ATL/LAX', '/airports/ATL/LAX/2024/01']) assert.equal(targetOf(p), null, p);
 });
 
 test('home keeps only the theme', () => {
@@ -57,11 +58,11 @@ test('globe takes service and width, and width and measure translate', () => {
 });
 
 test('decorate adds carried settings to a path', () => {
-  assert.deepEqual(decorate('/routes/MCO', '?measure=deps&service=domestic'), { href: '/routes/MCO?measure=deps&service=domestic', keys: ['measure', 'service'] });
+  assert.deepEqual(decorate('/airports/MCO', '?measure=deps&service=domestic'), { href: '/airports/MCO?measure=deps&service=domestic', keys: ['measure', 'service'] });
 });
 
 test('decorate keeps a link\'s own parameters and never overrides them', () => {
-  const r = decorate('/globe/ATL?year=2025&service=international', '?service=domestic&theme=night');
+  const r = decorate('/airports/ATL/globe?year=2025&service=international', '?service=domestic&theme=night');
   assert.deepEqual(new URL(r.href, 'http://x').searchParams.getAll('service'), ['international']);
   assert.equal(new URL(r.href, 'http://x').searchParams.get('year'), '2025');
   assert.equal(new URL(r.href, 'http://x').searchParams.get('theme'), 'night');
@@ -69,17 +70,17 @@ test('decorate keeps a link\'s own parameters and never overrides them', () => {
 });
 
 test('decorate replaces what it added before, so a changed setting does not go stale', () => {
-  const first = decorate('/routes/MCO', '?theme=night&measure=deps');
+  const first = decorate('/airports/MCO', '?theme=night&measure=deps');
   const second = decorate(first.href, '?theme=natural', first.keys);
-  assert.equal(second.href, '/routes/MCO?theme=natural');
+  assert.equal(second.href, '/airports/MCO?theme=natural');
   assert.deepEqual(second.keys, ['theme']);
-  assert.equal(decorate(second.href, '', second.keys).href, '/routes/MCO');
+  assert.equal(decorate(second.href, '', second.keys).href, '/airports/MCO');
 });
 
 test('decorate leaves other links alone and keeps hashes', () => {
   assert.deepEqual(decorate('/t100/route?origin=ATL', '?theme=night'), { href: '/t100/route?origin=ATL', keys: [] });
   assert.deepEqual(decorate('#toggle:a', '?theme=night'), { href: '#toggle:a', keys: [] });
-  assert.equal(decorate('/routes/MCO#top', '?theme=night').href, '/routes/MCO?theme=night#top');
+  assert.equal(decorate('/airports/MCO#top', '?theme=night').href, '/airports/MCO?theme=night#top');
 });
 
 test('replaceSearch swaps a page\'s own keys and keeps everything else', () => {

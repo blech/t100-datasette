@@ -2,15 +2,34 @@ from datasette import hookimpl
 from datasette.utils.asgi import Response
 
 
+CODE = r"[A-Za-z0-9]{3}"
+
+
+def moved(template):
+    """A permanent redirect to `template` (filled from the URL's variables), keeping the query string."""
+
+    async def view(request):
+        path = template.format(**request.url_vars)
+        return Response.redirect(f"{path}?{request.query_string}" if request.query_string else path, status=301)
+
+    return view
+
+
 @hookimpl
 def register_routes():
     return [
         (r"^/$", landing_page),
-        (r"^/routes$", routes_index),
-        (r"^/route/(?P<origin>[A-Za-z0-9]{3})/(?P<dest>[A-Za-z0-9]{3})(?:/(?P<year>[0-9]{4}))?$", route_page),
-        (r"^/routes/(?P<origin>[A-Za-z0-9]{3})$", routes_page),
+        (r"^/airports$", airports_index),
+        (rf"^/airports/(?P<origin>{CODE})$", routes_page),
+        (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
+        (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
         (r"^/globe$", globe_page),
-        (r"^/globe/(?P<origin>[A-Za-z0-9]{3})$", globe_page),
+        # the paths the site used before airports came first
+        (r"^/routes$", airports_index),
+        (rf"^/globe/(?P<origin>{CODE})$", moved("/airports/{origin}/globe")),
+        (rf"^/routes/(?P<origin>{CODE})$", moved("/airports/{origin}")),
+        (rf"^/route/(?P<origin>{CODE})/(?P<dest>{CODE})$", moved("/airports/{origin}/{dest}")),
+        (rf"^/route/(?P<origin>{CODE})/(?P<dest>{CODE})/(?P<year>[0-9]{{4}})$", moved("/airports/{origin}/{dest}/{year}")),
     ]
 
 
@@ -35,7 +54,7 @@ async def is_foreign(datasette, code):
     return bool(row) and row[0] is not None and not 1 <= row[0] <= 93
 
 
-async def routes_index(datasette, request):
+async def airports_index(datasette, request):
     # there is no page of its own for "all routes"; the landing table is where you pick an airport
     query = request.query_string
     return Response.redirect(f"/?{query}" if query else "/")
@@ -43,7 +62,7 @@ async def routes_index(datasette, request):
 
 async def globe_page(datasette, request):
     origin = (request.url_vars.get("origin") or "").upper()
-    steps = [("globe", "/globe" if origin else None)] + ([(origin, None)] if origin else [])
+    steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("globe", None)]
     html = await datasette.render_template(
         "globe.html",
         {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin)},
@@ -73,7 +92,7 @@ async def routes_page(datasette, request):
         {
             "origin": origin,
             "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
-            "crumbs": trail(datasette, ("routes", "/routes"), (origin, None)),
+            "crumbs": trail(datasette, ("airports", "/airports"), (origin, None)),
             "foreign": await is_foreign(datasette, origin),
         },
         request=request,
@@ -85,8 +104,8 @@ async def route_page(datasette, request):
     origin = request.url_vars["origin"].upper()
     dest = request.url_vars["dest"].upper()
     year = request.url_vars.get("year") or ""
-    steps = [("routes", "/routes"), (origin, f"/routes/{origin}")]
-    steps += [(dest, f"/route/{origin}/{dest}"), (year, None)] if year else [(dest, None)]
+    steps = [("airports", "/airports"), (origin, f"/airports/{origin}")]
+    steps += [(dest, f"/airports/{origin}/{dest}"), (year, None)] if year else [(dest, None)]
     html = await datasette.render_template(
         "route.html",
         {"origin": origin, "dest": dest, "year": year, "crumbs": trail(datasette, *steps)},

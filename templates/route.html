@@ -13,8 +13,8 @@
   <main>
     {% include "_nav.html" %}
     <p class="related">
-      <a href="/routes/{{ dest }}">{{ dest }} routes over time</a> ·
-      <a href="/globe/{{ origin }}" id="map-link">Map of {{ origin }}</a>
+      <a href="/airports/{{ dest }}">{{ dest }} routes over time</a> ·
+      <a href="/airports/{{ origin }}/globe" id="map-link">Map of {{ origin }}</a>
     </p>
     <h1 id="title">{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %}</h1>
     <p class="intro" id="subtitle"></p>

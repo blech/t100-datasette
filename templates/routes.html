@@ -12,7 +12,7 @@
 <body data-origin="{{ origin }}" data-latest-year="{{ latest_year }}"{% if foreign %} data-foreign="1"{% endif %}>
   <main>
     {% include "_nav.html" %}
-    <p class="related"><a href="/globe/{{ origin }}" id="map-link">Map of {{ origin }}</a></p>
+    <p class="related"><a href="/airports/{{ origin }}/globe" id="map-link">Map of {{ origin }}</a></p>
     <h1 id="title">{{ origin }}: routes over time</h1>
     <p class="intro" id="subtitle"></p>
     {% include "_foreign_note.html" %}

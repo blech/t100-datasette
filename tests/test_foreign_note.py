@@ -15,7 +15,7 @@ def load(db_path):
 
 def test_routes_page_for_a_foreign_airport_says_only_us_destinations_are_listed(ds, db_path):
     load(db_path)
-    html = get(ds, "/routes/LHR").text
+    html = get(ds, "/airports/LHR").text
     assert NOTE in html and 'data-foreign="1"' in html
     assert "LHR is outside the US" in html
 
@@ -23,22 +23,22 @@ def test_routes_page_for_a_foreign_airport_says_only_us_destinations_are_listed(
 def test_routes_page_for_us_airports_and_territories_has_no_note(ds, db_path):
     load(db_path)
     for code in ["ATL", "JFK", "SJU"]:
-        html = get(ds, f"/routes/{code}").text
+        html = get(ds, f"/airports/{code}").text
         assert NOTE not in html and 'data-foreign="1"' not in html, code
 
 
 def test_airport_with_no_data_has_no_note(ds, db_path):
     load(db_path)
-    assert NOTE not in get(ds, "/routes/ZZZ").text
+    assert NOTE not in get(ds, "/airports/ZZZ").text
 
 
 def test_lowercase_code_is_recognised(ds, db_path):
     load(db_path)
-    assert NOTE in get(ds, "/routes/lhr").text
+    assert NOTE in get(ds, "/airports/lhr").text
 
 
 def test_globe_page_flags_foreign_airports_and_not_the_chooser(ds, db_path):
     load(db_path)
-    assert 'data-foreign="1"' in get(ds, "/globe/LHR").text and NOTE in get(ds, "/globe/LHR").text
-    assert NOTE not in get(ds, "/globe/ATL").text
+    assert 'data-foreign="1"' in get(ds, "/airports/LHR/globe").text and NOTE in get(ds, "/airports/LHR/globe").text
+    assert NOTE not in get(ds, "/airports/ATL/globe").text
     assert NOTE not in get(ds, "/globe").text

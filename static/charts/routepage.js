@@ -12,7 +12,7 @@ const state = {
   split: Object.hasOwn(SPLITS, params.get('split')) ? params.get('split') : 'carrier',
 };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const routePath = (y) => `/route/${origin}/${dest}${y ? `/${y}` : ''}`;
+const routePath = (y) => `/airports/${origin}/${dest}${y ? `/${y}` : ''}`;
 
 let allRows = [];   // the route, every year
 let viewRows = [];  // the rows behind the chart and table: all years, or one year by month
@@ -134,7 +134,7 @@ async function main() {
     return;
   }
   const mapLink = $('map-link');
-  mapLink.href = `/globe/${origin}${year !== null ? `?year=${year}` : ''}`;
+  mapLink.href = `/airports/${origin}/globe${year !== null ? `?year=${year}` : ''}`;
   $('raw-link').href = year === null
     ? `/t100/route?origin=${origin}&dest=${dest}&_hide_sql=1`
     : `/t100/route_year?origin=${origin}&dest=${dest}&year=${year}&_hide_sql=1`;

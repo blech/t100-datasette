@@ -4,9 +4,9 @@ This is a [Datasette](https://datasette.io/) project for exploring the BTS T-100
 
 It has two layers:
 - a **landing page** at `/` (Datasette's own index is at `/-/`): a sortable table of the busiest US airports for any year, linking to each airport's map and its routes over time. The year range comes from `plugins: t100_globe: min_year / max_year` in `datasette.yml`; update `max_year` when a new year of data is loaded.
-- an **airport network map** at `/globe/<AIRPORT>` (for example `/globe/ATL`): pick a US airport, see its routes by year on a globe or flat map (international in orange, domestic in blue), play through the years, and drill down to months. Clicking a route links to its route page.
-- a **routes-over-time** page at `/routes/<AIRPORT>`: a destination-by-year heat map (optionally grouped by BTS city market, with rows that open into their airports).
-- a **route** page at `/route/<FROM>/<TO>` (and `/route/<FROM>/<TO>/<YEAR>` for the months of one year): a stacked chart by carrier or aircraft and a carrier-and-aircraft table. These replace the Datasette `route` and `route_year` pages for browsing; those queries remain as raw data tables.
+- an **airport network map** at `/airports/<AIRPORT>/globe` (for example `/airports/ATL/globe`; `/globe` is the same map with an airport chooser): pick a US airport, see its routes by year on a globe or flat map (international in orange, domestic in blue), play through the years, and drill down to months. Clicking a route links to its route page.
+- a **routes-over-time** page, the main page for an airport, at `/airports/<AIRPORT>`: a destination-by-year heat map (optionally grouped by BTS city market, with rows that open into their airports).
+- a **route** page at `/airports/<FROM>/<TO>` (and `/airports/<FROM>/<TO>/<YEAR>` for the months of one year): a stacked chart by carrier or aircraft and a carrier-and-aircraft table. These replace the Datasette `route` and `route_year` pages for browsing; those queries remain as raw data tables.
 - the standard **Datasette interface** for tables and canned queries, for exploring everything else.
 
 ## Prerequisites
@@ -46,7 +46,7 @@ The project relies on the following key packages:
 
 - **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides, `airport_year_totals` (per-airport yearly totals) and `airport_names` (BTS's newest city name per airport code), the last two derived from the segment tables: rebuild them with `build_database.rebuild_derived_tables` after loading data. Not committed.
 - **`datasette.yml`**: Datasette configuration and canned queries: `top_us_airports`, `destinations`, `route`, `route_year`, and the queries behind the map (`airports`, `routes_by_year`, `routes_by_month`).
-- **`plugins/`**: `t100_globe.py` registers the `/globe` pages; `t100_render_links.py` renders `more_detail` columns as links.
+- **`plugins/`**: `t100_globe.py` registers the `/airports/...` and `/globe` pages (the older `/globe/ATL`, `/routes/ATL` and `/route/A/B` paths redirect); `t100_render_links.py` renders `more_detail` columns as links.
 - **`templates/`**: `globe.html` (the map page) and templates for the canned query pages.
 - **`static/nav/`** and **`templates/_nav.html`**: the header shared by every page (breadcrumb trail, theme chooser) and the code that keeps `theme`, `measure`, `service` and the heat map settings in in-site links. The site name in the trail is `site_name` under `plugins: t100_globe` (default `t100.husk.org`).
 - **`static/globe/`**: the map's browser code (plain ES modules, no build step) and vendored d3-geo; served at `/static/globe/`.
