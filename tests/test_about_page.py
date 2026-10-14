@@ -59,3 +59,8 @@ def test_family_page_links_to_about(ds, db_path):
 def test_foreign_airport_note_links_to_the_direction_section(ds, db_path):
     load(db_path)
     assert 'href="/about#direction"' in get(ds, "/airports/LHR").text
+
+
+def test_quad_jets_are_described_as_including_six_engined_aircraft(ds):
+    assert "six-engine" in get(ds, "/about").text
+    assert "six-engined" in get(ds, "/aircraft/engines").text
