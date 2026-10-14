@@ -143,7 +143,7 @@ function drawCities() {
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), title: 'title', href: 'href', tip: true }),
       Plot.text(labels, {
         y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
-        fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: (d) => (d.kind === 'group' ? '#1a1a1a' : '#666'),
+        fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
       }),
     ],
   }));
