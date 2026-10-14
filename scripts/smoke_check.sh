@@ -20,6 +20,11 @@ check 200 /globe                                                    "data-origin
 check 200 /airports/SFO                                             "heatmap"
 check 200 /airports/SFO/globe                                       "data-origin"
 check 200 /airports/SFO/LHR/2019                                    "route-chart"
+check 200 /aircraft                                                "heat-kind"
+check 200 /aircraft/engines                                         "engine-chart"
+check 200 /aircraft/boeing-737                                      "family-chart"
+check 404 /aircraft/no-such-plane
+check 200 /carriers                                                 "heat-kind"
 check 301 /routes/SFO
 check 301 /globe/SFO
 check 301 /route/SFO/LHR/2019
@@ -27,6 +32,10 @@ check 200 "/t100/airports.json?_shape=objects"                  '"Raleigh/Durham
 check 200 "/t100/top_airports.json?year=2025&_shape=objects"        '"ATL"'
 check 200 "/t100/routes_by_year.json?origin=SFO&_shape=objects"     '"LAX"'
 check 200 "/t100/route.json?origin=SFO&dest=LHR&_shape=objects"     '"carrier"'
+check 200 "/t100/family_by_year.json?_shape=objects"                '"Boeing 737"'
+check 200 "/t100/carrier_group_by_year.json?_shape=objects"         '"Delta (incl. Northwest)"'
+check 200 "/t100/engines_by_year.json?_shape=objects"               '"distance_band"'
+check 200 "/t100/family_detail.json?family=Boeing+737&_shape=objects" '"737 NG"'
 check 404 /airports/SFO/LH
 check 403 "/t100/-/query.json?sql=select+1"
 check 403 /t100.db
