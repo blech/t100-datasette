@@ -1,3 +1,5 @@
+import re
+
 from tests.helpers import get
 
 
@@ -45,6 +47,27 @@ def test_page_offers_ranking_by_the_latest_full_year(ds):
 
 def test_page_offers_colouring_by_share_of_each_year(ds):
     html = get(ds, "/airports/ATL").text
-    assert 'id="heat-scale"' in html and '<option value="year">' in html
-    assert '<option value="busiest">Compared to top destination</option>' in html
-    assert 'id="scale-note"' in html
+    assert 'id="heat-scale"' in html and 'id="scale-note"' in html
+    for value, label in [("absolute", "Amount"), ("year", "Share of each year"), ("busiest", "Compared to top destination")]:
+        assert re.search(rf'<input type="radio" name="scale" value="{value}"[^>]*>\s*{label}', html), value
+
+
+def test_the_settings_read_as_one_sentence(ds):
+    html = get(ds, "/airports/ATL").text
+    sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
+    ids = re.findall(r'<select id="([^"]+)"', sentence)
+    assert ids == ["heat-measure", "heat-service", "heat-n", "heat-group", "heat-rank"]
+    text = re.sub(r"<select.*?</select>", "*", sentence, flags=re.S)
+    assert " ".join(text.split()) == "Show * on * for the top * *, ranked by *."
+
+
+def test_colour_choice_sits_with_the_legend_not_in_the_sentence(ds):
+    html = get(ds, "/airports/ATL").text
+    assert 'id="heat-scale"' not in re.search(r'<p class="chart-sentence">.*?</p>', html, re.S).group(0)
+    assert html.index('id="heat-scale"') < html.index('id="heatmap"')
+
+
+def test_service_and_grouping_options_read_naturally_in_the_sentence(ds):
+    html = get(ds, "/airports/ATL").text
+    for text in ["all flights", "domestic flights", "international flights", "airports", "cities (BTS markets)"]:
+        assert f">{text}</option>" in html, text

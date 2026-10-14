@@ -223,14 +223,16 @@ async function main() {
 
 function fillControls() {
   const measure = $('heat-measure');
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label, k));
+  for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label.toLowerCase(), k)); // reads mid-sentence
   measure.value = state.measure;
   $('heat-service').value = state.service;
   $('heat-n').value = String(state.n);
   $('heat-group').value = state.group;
   $('heat-rank').value = state.rank;
-  $('heat-scale').value = state.scale;
-  $('heat-scale').addEventListener('change', (e) => { state.scale = e.target.value; pushState(); draw(); });
+  for (const radio of document.querySelectorAll('input[name="scale"]')) {
+    radio.checked = radio.value === state.scale;
+    radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
+  }
   $('heat-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
   $('heat-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
   measure.addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
