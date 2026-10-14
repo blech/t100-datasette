@@ -11,6 +11,7 @@ const state = {
   measure: Object.hasOwn(MEASURES, params.get('measure')) ? params.get('measure') : 'passengers',
   split: Object.hasOwn(SPLITS, params.get('split')) ? params.get('split') : 'carrier',
 };
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const routePath = (y) => `/airports/${origin}/${dest}${y ? `/${y}` : ''}`;
 
@@ -40,16 +41,19 @@ function drawChart() {
   const data = res.points.map((p) => ({
     ...p,
     x: String(p.period),
+    when: monthly ? MONTH_NAMES[p.period - 1] : String(p.period),
     href: monthly ? null : routePath(p.period),
   }));
   const x = {
     label: null, domain,
     tickFormat: (d) => (monthly ? MONTHS[Number(d) - 1] : Number(d) % labelEvery === 0 ? d : ''),
   };
-  const bars = Plot.barY(data, { x: 'x', y: 'value', fill: 'series', tip: true, ...(monthly ? {} : { href: 'href' }) });
+  const tip = { format: { x: false, fill: false, stroke: false } };
+  const channels = { [monthly ? 'Month' : 'Year']: 'when', Series: 'series' };
+  const bars = Plot.barY(data, { x: 'x', y: 'value', fill: 'series', channels, tip, ...(monthly ? {} : { href: 'href' }) });
   const marks = res.stackable
     ? [bars, Plot.ruleY([0])]
-    : [Plot.lineY(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.dot(data, { x: 'x', y: 'value', stroke: 'series', tip: true }), Plot.ruleY([0])];
+    : [Plot.lineY(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.dot(data, { x: 'x', y: 'value', stroke: 'series', channels, tip }), Plot.ruleY([0])];
   box.append(Plot.plot({
     width: Math.min(box.clientWidth || 800, 1000),
     height: 420,
