@@ -40,6 +40,12 @@ CREATE TABLE "carrier_group_year" (
    PRIMARY KEY ([year], [group_id], [domestic], [service_class])
 ) WITHOUT ROWID;
 
+CREATE TABLE "carrier_route_year" (
+   [group_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
+   PRIMARY KEY ([group_id], [year], [origin], [dest])
+) WITHOUT ROWID;
+
 CREATE TABLE "carriers" (
    [airline_id] TEXT, [carrier] TEXT, [carrier_entity] TEXT, [name] TEXT,
    [unique_carrier] TEXT, [unique_carrier_entity] TEXT, [unique_carrier_name] TEXT,

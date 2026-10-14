@@ -52,6 +52,10 @@ const withShare = (c, text) => ({
 
 // an aircraft family's label opens its own page, carrying over the measure and filters chosen here
 function familyHref(name) {
+  if (kind === 'carriers') {
+    const id = rows.find((r) => r.group_name === name)?.group_id;
+    return id ? `/carriers/${id}` : undefined;
+  }
   if (kind !== 'aircraft') return undefined;
   const q = new URLSearchParams();
   if (state.measure !== 'passengers') q.set('measure', state.measure);
@@ -69,7 +73,7 @@ function draw() {
     busiest: `Colour compares each cell with the year's biggest ${page.noun}: the biggest is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own. Hover over a cell for both.`,
   }[state.scale];
   $('heat-rank').options[1].textContent = `${latestFullYear} only`;
-  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'aircraft' ? ' Click a family\'s name to see it on its own page.' : ''}${kind === 'carriers' ? ' Airlines that merged are counted together for every year, including years before the merger.' : ''}`;
+  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'aircraft' ? ' Click a family\'s name to see it on its own page.' : ''}${kind === 'carriers' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}`;
 
   const box = $('heatmap');
   box.replaceChildren();

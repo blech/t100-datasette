@@ -51,3 +51,11 @@ def test_a_family_page_is_found_by_its_slug(ds, db_path):
 def test_an_unknown_family_is_404_and_engines_is_not_a_family(ds):
     assert get(ds, "/aircraft/no-such-plane").status_code == 404
     assert "engine-chart" in get(ds, "/aircraft/engines").text
+
+
+def test_airline_page_names_the_airline_and_unknown_ones_are_not_found(ds, db_path):
+    put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta (incl. Northwest)", domestic=1, service_class="F",
+                                             deps=4, seats=400, passengers=300, freight=0)])
+    r = get(ds, "/carriers/delta")
+    assert r.status_code == 200 and "<h1>Delta (incl. Northwest)</h1>" in r.text and "/static/charts/airline.js" in r.text
+    assert get(ds, "/carriers/nope").status_code == 404

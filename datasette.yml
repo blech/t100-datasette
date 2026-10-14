@@ -158,6 +158,42 @@ databases:
           GROUP BY year, subfamily, group_id, group_name, service, kind
           ORDER BY year
 
+      carrier_group_detail:
+        sql: |
+          SELECT
+            year,
+            CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+          FROM carrier_group_year
+          WHERE group_id = :group
+          GROUP BY year, service, kind
+          ORDER BY year
+
+      carrier_route_counts:
+        sql: |
+          SELECT year, COUNT(*) AS pairs
+          FROM carrier_route_year
+          WHERE group_id = :group AND deps >= :min
+          GROUP BY year
+          ORDER BY year
+
+      carrier_route_changes:
+        sql: |
+          SELECT
+            origin, dest,
+            SUM(CASE WHEN year = :a THEN deps ELSE 0 END) AS deps_a,
+            SUM(CASE WHEN year = :b THEN deps ELSE 0 END) AS deps_b,
+            SUM(CASE WHEN year = :a THEN passengers ELSE 0 END) AS pax_a,
+            SUM(deps) AS deps_all,
+            MIN(year * 100 + first_month) AS first_ym,
+            MAX(year * 100 + last_month) AS last_ym
+          FROM carrier_route_year
+          WHERE group_id = :group
+          GROUP BY origin, dest
+          HAVING deps_a >= CAST(:min AS INTEGER) OR deps_b >= CAST(:min AS INTEGER)
+          ORDER BY deps_a DESC, deps_b DESC
+
       engines_by_year:
         sql: |
           SELECT

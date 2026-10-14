@@ -97,6 +97,12 @@ CREATE TABLE IF NOT EXISTS "carrier_group_year" (
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [group_id], [domestic], [service_class])
 ) WITHOUT ROWID;
+-- Yearly totals per airline group and airport pair, both directions together (origin < dest), for an airline's own page, by rebuild_carrier_route_year()
+CREATE TABLE IF NOT EXISTS "carrier_route_year" (
+   [group_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
+   PRIMARY KEY ([group_id], [year], [origin], [dest])
+) WITHOUT ROWID;
 -- Yearly totals per aircraft family by subfamily and airline group (for a family's own page), by rebuild_family_detail_year()
 CREATE TABLE IF NOT EXISTS "family_detail_year" (
    [family] TEXT, [year] INTEGER, [subfamily] TEXT, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
@@ -279,6 +285,28 @@ def rebuild_carrier_group_year(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM carrier_group_year").fetchone()[0]
 
 
+def rebuild_carrier_route_year(conn: sqlite3.Connection) -> int:
+    """Recompute carrier_route_year: each airline group's yearly flying on each airport pair, with the first and last month it flew."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM carrier_route_year")
+        conn.execute(
+            """
+            INSERT INTO carrier_route_year
+            SELECT COALESCE(g.group_id, 'unknown'), t.year,
+                   MIN(t.origin, t.dest), MAX(t.origin, t.dest),
+                   SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight),
+                   MIN(CASE WHEN t.departures_performed > 0 THEN t.month END), MAX(CASE WHEN t.departures_performed > 0 THEN t.month END)
+            FROM t100 t
+            LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+            LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+            WHERE t.year IS NOT NULL
+            GROUP BY COALESCE(g.group_id, 'unknown'), t.year, MIN(t.origin, t.dest), MAX(t.origin, t.dest)
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM carrier_route_year").fetchone()[0]
+
+
 def rebuild_family_detail_year(conn: sqlite3.Connection) -> int:
     """Recompute family_detail_year: each aircraft family's yearly totals by subfamily and airline group."""
     create_schema(conn)
@@ -330,6 +358,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "carrier_group_year": rebuild_carrier_group_year(conn),
         "aircraft_group_band_year": rebuild_aircraft_group_band_year(conn),
         "family_detail_year": rebuild_family_detail_year(conn),
+        "carrier_route_year": rebuild_carrier_route_year(conn),
     }
 
 

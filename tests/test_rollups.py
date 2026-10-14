@@ -136,3 +136,12 @@ def test_rebuilding_twice_gives_the_same_tables(db_path):
     second = rebuild_derived_tables(conn)
     assert first == second
     assert {"aircraft_family", "family_year", "carrier_group", "carrier_group_year", "aircraft_group_band_year", "family_detail_year"} <= set(first)
+
+
+def test_carrier_route_year_joins_both_directions_and_both_merged_airlines(db_path):
+    add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."), ("19386", "B1", "Northwest Airlines Inc."))
+    add_segments(db_path, "t100_domestic", [
+        flight("SFO", "DEN", carrier_entity="A1", **{"class": "F"}, deps=10),
+        flight("DEN", "SFO", carrier_entity="B1", **{"class": "F"}, deps=4)])
+    rows = query(db_path, "SELECT group_id, year, origin, dest, deps FROM carrier_route_year")
+    assert rows == [("delta", 2019, "DEN", "SFO", 14)]

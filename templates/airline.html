@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ name }} · T-100</title>
+  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-group="{{ group }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}">
+  <main>
+    {% include "_nav.html" %}
+    <p class="related"><a href="/carriers">All airlines</a></p>
+    <h1>{{ name }}</h1>
+    <p class="intro">
+      Flying in the data from {{ first_year }} to {{ last_year }}.
+      {% if members %}Counted together here: {{ members|join(", ") }}.{% endif %}
+    </p>
+
+    <h2>How big</h2>
+    <p class="chart-sentence">
+      Show <select id="al-measure" aria-label="Measure"></select>
+      for <select id="al-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>,
+      split by <select id="al-split" aria-label="Split by"><option value="service">domestic or international</option><option value="kind">passenger or freight</option></select>.
+    </p>
+    <div id="size-chart" aria-live="polite">Loading chart…</div>
+
+    <h2>How many places</h2>
+    <p class="chart-sentence">
+      Airport pairs flown at least <select id="al-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> in the year, in either direction.
+    </p>
+    <div id="pairs-chart" aria-live="polite">Loading chart…</div>
+
+    <h2>What changed</h2>
+    <p class="chart-sentence">
+      Compare <select id="al-a" aria-label="From year"></select> with <select id="al-b" aria-label="To year"></select>.
+    </p>
+    <p id="change-summary" class="intro"></p>
+    <p class="chart-sentence">Show routes that were <select id="al-status" aria-label="Which routes"><option value="dropped">dropped</option><option value="added">added</option><option value="kept">kept</option></select>.</p>
+    <table id="change-table">
+      <thead><tr><th class="left">Route</th><th id="th-a" class="num"></th><th id="th-b" class="num"></th><th class="left" id="th-last">Last flown</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="note">A route is an airport pair, with both directions counted together, so "dropped" means the airline stopped flying between the two airports in either direction (or fell below the threshold), not that a particular flight number ended. Where the airline flies a route under a different name after a merger the flying is counted together. Flying done for the airline by a regional partner, such as SkyWest for Alaska or United, is reported under the regional's own name and is not included. More on <a href="/about#groupings">how airlines are grouped</a>.</p>
+  </main>
+  <script type="module" src="/static/charts/airline.js"></script>
+</body>
+</html>

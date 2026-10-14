@@ -29,6 +29,7 @@ def register_routes():
         (r"^/about$", about_page),
         (r"^/aircraft$", rollup_page("aircraft")),
         (r"^/carriers$", rollup_page("carriers")),
+        (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)$", airline_page),
         (r"^/aircraft/engines$", engines_page),
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
@@ -170,6 +171,42 @@ async def family_page(datasette, request):
     html = await datasette.render_template(
         "family.html",
         {"family": family, "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+async def airline_page(datasette, request):
+    group = request.url_vars["group"]
+    db = datasette.get_database("t100")
+    names = await db.execute("SELECT group_name FROM carrier_group_year WHERE group_id = ? GROUP BY group_name ORDER BY MAX(year) DESC LIMIT 1", [group])
+    row = names.first()
+    if row is None:
+        raise NotFound(f"No airline {group}")
+    span = (await db.execute("SELECT MIN(year), MAX(year) FROM carrier_group_year WHERE group_id = ? AND deps > 0", [group])).first()
+    members = await db.execute(
+        """
+        SELECT c.airline_id, c.unique_carrier_name, MIN(c.start_date_source), MAX(c.thru_date_source)
+        FROM carrier_group g JOIN carriers c ON c.airline_id = g.airline_id
+        WHERE g.group_id = ? GROUP BY c.airline_id, c.unique_carrier_name ORDER BY MIN(c.start_date_source)
+        """,
+        [group],
+    )
+    seen = []
+    for airline_id, name, *_ in members.rows:
+        if name and name not in seen:
+            seen.append(name)
+    html = await datasette.render_template(
+        "airline.html",
+        {
+            "group": group,
+            "name": row[0],
+            "first_year": span[0],
+            "last_year": span[1],
+            "members": seen if len(seen) > 1 else [],
+            "max_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+            "crumbs": trail(datasette, ("airlines", "/carriers"), (row[0], None)),
+        },
         request=request,
     )
     return Response.html(html)
