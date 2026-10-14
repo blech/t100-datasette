@@ -73,3 +73,11 @@ npm test        # the map's pure JavaScript modules
 - **`route_year`**: month-by-month data for a route in one year.
 - **`top_airports`**: reads `airport_year_totals`. For one year (`year=2025`), the airports in the top 20 by passengers, departures, seats or freight, so the landing page can show a top 20 for whichever column is sorted. **`destinations`** also takes an optional `year`.
 - **`airports`, `routes_by_year`, `routes_by_month`**: JSON for the `/globe` page. `routes_by_year` and `routes_by_month` label each destination `domestic` or `international` by whether most of that period's departures were domestic. Routes with fewer than 12 departures in the year (one-off charters, diversion legs, positioning flights) are left out of both; pass `min_deps=N` to change the cut-off (`min_deps=0` shows everything). In the month query the cut-off applies to the year's total, so a route shows all its months or none.
+
+## Deployment
+
+Every push to `main` runs `.github/workflows/deploy.yml`: the Python and JavaScript tests, then `flyctl deploy` to the Fly app named in `fly.toml`, then `scripts/smoke_check.sh` against the live site (also usable by hand: `scripts/smoke_check.sh [base-url]`). The deploy needs a Fly deploy token stored as the `FLY_API_TOKEN` repository secret:
+
+    flyctl tokens create deploy -a blech-datasette-t100 | gh secret set FLY_API_TOKEN
+
+The database is not part of the image: it lives on the Fly volume (`/mnt/db/t100.db`) and a code deploy does not change it. If a code change needs a new table or column, load it on the volume first, or the smoke check will fail after the deploy. A deploy restarts the machine, which means a few seconds of downtime.
