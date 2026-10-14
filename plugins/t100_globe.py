@@ -26,6 +26,7 @@ def register_routes():
         (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
         (r"^/globe$", globe_page),
+        (r"^/about$", about_page),
         (r"^/aircraft$", rollup_page("aircraft")),
         (r"^/carriers$", rollup_page("carriers")),
         (r"^/aircraft/engines$", engines_page),
@@ -169,6 +170,16 @@ async def family_page(datasette, request):
     html = await datasette.render_template(
         "family.html",
         {"family": family, "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+async def about_page(datasette, request):
+    config = datasette.plugin_config("t100_globe") or {}
+    html = await datasette.render_template(
+        "about.html",
+        {"min_year": config.get("min_year", 1990), "max_year": config.get("max_year", 2025), "crumbs": trail(datasette, ("about", None))},
         request=request,
     )
     return Response.html(html)

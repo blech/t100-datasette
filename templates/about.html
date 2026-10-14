@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>About the data · T-100</title>
+  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/about/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body>
+  <main class="about">
+    {% include "_nav.html" %}
+    <h1>About the data</h1>
+    <p class="intro">
+      Everything here comes from the US Bureau of Transportation Statistics' T-100 segment data, {{ min_year }}&ndash;{{ max_year }}. It is easy to read more into it than it says, so this page sets out what each number means and where the data has gaps.
+    </p>
+    <nav aria-label="Contents"><ul class="contents">
+      <li><a href="#direction">Routes are one-way</a></li>
+      <li><a href="#freight">Freight-only and belly cargo</a></li>
+      <li><a href="#measures">What the numbers measure</a></li>
+      <li><a href="#groupings">How things are grouped</a></li>
+      <li><a href="#breaks">Known gaps and breaks</a></li>
+      <li><a href="#coverage">What is and isn't covered</a></li>
+      <li><a href="#source">Source</a></li>
+    </ul></nav>
+
+    <h2 id="direction">Routes are one-way</h2>
+    <p>
+      Each row of T-100 is one nonstop flight segment in one direction, from an origin airport to a destination airport. A route page for ATL&ndash;LAX shows flights from ATL to LAX; the flights back are the route LAX&ndash;ATL. An airport's page counts flights <em>from</em> that airport, and its passenger figure is people departing it, not arriving.
+    </p>
+    <p>
+      Nearly every busy route has a return: of airport pairs with at least 100 departures in a year, 99% also have flights the other way. Counting every pair, however small, only about 71% do. The ones without a return are mostly:
+    </p>
+    <ul>
+      <li><strong>Loops and triangles.</strong> A small plane can fly PDX&ndash;Newport, Newport&ndash;Corvallis, Corvallis&ndash;PDX (about 500 flights each in 2019) instead of out and back, so each leg has no reverse.</li>
+      <li><strong>Cargo rotations.</strong> In 2019 FedEx flew Shanghai to Memphis 313 times and never Memphis to Shanghai: its Memphis departures for Asia went to Anchorage (988), Tokyo (275) and Seoul (157). Long cargo itineraries often go round the world rather than back the way they came.</li>
+      <li><strong>Tech stops.</strong> A landing to refuel (a tech stop, with nobody or nothing loaded or unloaded) is reported as a segment of its own. If the outbound flight stops somewhere to refuel and the return flight stops somewhere else, the data shows four different pairs, none of them with a reverse.</li>
+      <li><strong>Charters and positioning flights</strong>, which often fly empty in one direction.</li>
+    </ul>
+    <p>
+      T-100 only includes flights with a US airport at one end. For an airport outside the US, only its US routes appear: Heathrow's page lists its flights to and from the US, not to Paris. Flights between two foreign airports are not in the data at all, even by US airlines.
+    </p>
+
+    <h2 id="freight">Freight-only and belly cargo</h2>
+    <p>
+      BTS gives each segment a service class. Scheduled and non-scheduled passenger flights (classes F and L) are <strong>passenger flights</strong>, and any cargo they carry in the hold is <strong>belly cargo</strong>. All-cargo flights (classes G and P) are <strong>freight-only</strong>, flown by freighter aircraft. The charts' "passenger flights", "freight flights" and "all flights" options mean exactly these. "Freight" totals on a passenger flight are belly cargo; a freight-only flight has essentially no passengers.
+    </p>
+    <p>
+      Freight and mail are separate columns in the data, and the site shows <strong>freight only</strong>, not mail. The data is in pounds; the site converts to <strong>short tons</strong> (2,000 lb), the US ton.
+    </p>
+
+    <h2 id="measures">What the numbers measure</h2>
+    <ul>
+      <li><strong>Departures</strong> are flights actually performed (BTS also records those scheduled, which the site does not use).</li>
+      <li><strong>Seats</strong> are the seats available on those flights, and <strong>passengers</strong> are those carried. <strong>Load factor</strong> is passengers divided by seats.</li>
+      <li><strong>Passengers count each leg.</strong> A segment is a nonstop flight, not a journey. Someone flying Seattle&ndash;Denver&ndash;Boston is counted once on each leg, and counted again going home. Passenger totals therefore are not numbers of trips, and an airport's total includes people connecting through it.</li>
+      <li><strong>Distance</strong> is the great-circle distance between the airports, in miles. The aircraft pages group it into under 500, 500 to 1,500, 1,500 to 3,000 and 3,000 or more.</li>
+      <li><strong>Flight times</strong> (air time, and ramp to ramp) are totals for the month, so the average is that total divided by departures. A zero means <em>not reported</em>, not an instant flight: Concorde and some routes have no times at all.</li>
+      <li><strong>Routes with fewer than 12 departures</strong> in a year are hidden on the route charts and the map, to keep out one-off charters and positioning flights.</li>
+    </ul>
+
+    <h2 id="groupings">How things are grouped</h2>
+    <ul>
+      <li><strong>Airports and city markets.</strong> BTS gives each airport a city market, so that New York's three airports, or Tokyo's Haneda and Narita, can be read as one city. Where an airport's code has changed (OSA to KIX for Osaka, SEL to ICN for Seoul) the market keeps them together. The city view of an airport's routes uses this.</li>
+      <li><strong>Aircraft families.</strong> BTS lists hundreds of aircraft types. The site groups them into about 50 families (a 737-300 and a 737-800 are both Boeing 737s), using rules that can be read in <code>data/aircraft_families.csv</code>. A few types BTS lumps together cannot be told apart, such as the 737-700 and the MAX 7. Types the rules don't recognise fall back on BTS's own groups ("Other jet", "Other turboprop") and make up well under 1% of flights.</li>
+      <li><strong>Twin, tri and quad jets.</strong> These are BTS's aircraft groups, so "twin jet" includes business jets and "tri-jet" includes the Boeing 727, which is mostly a short-range type. The engine chart is limited to long distances, where that matters least.</li>
+      <li><strong>Airlines.</strong> Airlines that merged are counted as one throughout, including before the merger: Delta includes Northwest, United includes Continental, American includes US Airways, America West and TWA, Southwest includes AirTran, and Alaska includes Virgin America. The list is in <code>data/carrier_groups.csv</code>. Regional airlines such as SkyWest or Republic are shown on their own, even when they fly under a major airline's name, so a major's own share is smaller than the share of the flights sold under its name.</li>
+    </ul>
+
+    <h2 id="breaks">Known gaps and breaks</h2>
+    <ul>
+      <li><strong>FedEx and UPS domestic flights are missing early on.</strong> UPS's domestic freight flying appears in January 2001 (about 9,000 departures a month, up from about 40) and FedEx's in October 2002 (about 25,000 a month, up from none). Both airlines' international flights are there throughout. Domestic freight in the data goes from 1.8 million short tons in 2000 to 12.3 million in 2004, while international freight barely moves. That is the data starting to cover them, almost certainly not a change in how much they flew, though the data itself does not say why. Take freight shares, and any freight trend across 2000&ndash;2003 that includes domestic flights, with that in mind.</li>
+      <li><strong>Missing flight times</strong> as above, and none at all for some carriers and years.</li>
+      <li><strong>Revisions.</strong> BTS revises recent months when it publishes a new release, so the latest figures can change slightly.</li>
+      <li><strong>Partial years.</strong> A year that is still in progress is only part of a year, so its totals are not comparable with a full one. The charts that rank by "the latest year" mean the latest full one.</li>
+    </ul>
+
+    <h2 id="coverage">What is and isn't covered</h2>
+    <ul>
+      <li>Every flight with a US airport at one end, by US and foreign airlines, scheduled and charter, passengers and cargo. Domestic means both ends are in the US or its territories.</li>
+      <li>Not covered: flights between two foreign airports, passengers' origins and destinations (only legs), fares or prices, delays or cancellations, and which airline a codeshare ticket was sold by. The airline in the data is the one that operated the flight.</li>
+    </ul>
+
+    <h2 id="source">Source</h2>
+    <p>
+      The data is the Bureau of Transportation Statistics' Data Bank 28DS and 28IS: <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/data-bank-28ds-t-100-domestic-segment-data">T-100 Domestic Segment</a> and <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/%E2%80%A2-data-bank-28is-t-100-and-t-100f">T-100 International Segment</a>. Airport names and coordinates come from <a href="https://openflights.org/data.html">OpenFlights</a>, with some corrections of our own, and city names are BTS's. The grouping rules and the code behind the site are in the <a href="https://github.com/blech/t100-datasette">project on GitHub</a>.
+    </p>
+  </main>
+</body>
+</html>

@@ -37,6 +37,10 @@
     <p class="note" id="scale-note" hidden></p>
     <div id="heatmap" aria-live="polite">Loading chart…</div>
     <p class="note" id="rank-note"></p>
+    <p class="note" id="about-note">
+      {% if kind == "aircraft" %}How aircraft are <a href="/about#groupings">grouped into families</a>.{% else %}How airlines are <a href="/about#groupings">grouped</a>.{% endif %}
+      Freight before 2003 leaves out most domestic FedEx and UPS flying, so shares of freight jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.
+    </p>
   </main>
   <div id="label-tip" role="tooltip" hidden></div>
   <script type="module" src="/static/charts/rollup.js"></script>
