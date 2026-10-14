@@ -42,12 +42,6 @@ def test_service_menu_offers_all_domestic_international(ds):
         assert f'<option value="{v}">' in html
 
 
-def test_route_page_includes_the_chart_script(ds):
-    r = get(ds, "/t100/route?origin=SFO&dest=LHR")
-    assert r.status_code == 200
-    assert "/static/charts/route.js" in r.text and 'id="route-chart"' in r.text
-
-
 def test_chart_assets_are_served(ds):
-    for path in ("/static/charts/route.js", "/static/charts/src/series.js", "/static/charts/vendor/plot.js"):
+    for path in ("/static/charts/routepage.js", "/static/charts/src/series.js", "/static/charts/vendor/plot.js"):
         assert get(ds, path).status_code == 200

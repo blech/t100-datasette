@@ -13,3 +13,10 @@
 #label-tip[hidden] { display: none; }
 /* the chart's own cell tooltip follows the nearest cell, so hide it while a row label is hovered */
 #heatmap.over-label g[aria-label="tip"] { display: none !important; }
+.crumbs { color: var(--muted, #777); font-size: 14px; }
+#years { display: flex; gap: 16px; margin: 0 0 16px; }
+#years a[aria-current] { font-weight: 600; }
+#route-table { margin-top: 24px; }
+#route-table td.left, #route-table th.left { text-align: left; }
+/* the tooltip sits under the pointer; let clicks go through it to the linked bar or cell beneath */
+#route-chart-plot g[aria-label="tip"], #heatmap g[aria-label="tip"] { pointer-events: none; }

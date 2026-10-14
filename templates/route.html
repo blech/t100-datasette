@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %} · T-100</title>
+  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+</head>
+<body data-origin="{{ origin }}" data-dest="{{ dest }}" data-year="{{ year }}">
+  <main>
+    <p class="crumbs">
+      <a href="/">All airports</a> ·
+      <a href="/routes/{{ origin }}">{{ origin }} routes over time</a> ·
+      <a href="/routes/{{ dest }}">{{ dest }} routes over time</a> ·
+      <a href="/globe/{{ origin }}" id="map-link">Map of {{ origin }}</a>
+    </p>
+    <h1 id="title">{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %}</h1>
+    <p class="intro" id="subtitle"></p>
+    <nav id="years" aria-label="Years"></nav>
+
+    <section id="route-chart" hidden>
+      <div class="chart-controls">
+        <label>Show <select id="chart-measure" aria-label="Measure"></select></label>
+        <label>Split by <select id="chart-split" aria-label="Split by"></select></label>
+      </div>
+      <div id="route-chart-plot" aria-live="polite">Loading chart…</div>
+      <p class="note" id="chart-note"></p>
+    </section>
+
+    <section id="route-table" hidden>
+      <h2 id="table-heading">Carriers and aircraft</h2>
+      <div class="scroll">
+        <table>
+          <thead><tr>
+            <th scope="col" class="left">Carrier</th><th scope="col" class="left">Aircraft</th>
+            <th scope="col" class="num">Departures</th><th scope="col" class="num">Seats</th>
+            <th scope="col" class="num">Passengers</th><th scope="col" class="num">Load factor</th>
+            <th scope="col" class="num">Freight</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="note">Freight is in short tons (2,000 lb). Hover over a number for the exact figure.
+        <a id="raw-link" href="/t100/route?origin={{ origin }}&dest={{ dest }}&_hide_sql=1">Raw data table</a></p>
+    </section>
+    <p id="status" role="status"></p>
+  </main>
+  <script type="module" src="/static/charts/routepage.js"></script>
+</body>
+</html>

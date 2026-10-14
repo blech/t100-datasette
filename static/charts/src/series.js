@@ -31,14 +31,15 @@ function valueOf(measure, t) {
 
 // Rows from the `route` or `route_year` query -> one value per (period, series).
 // Series beyond the `top` biggest overall are folded into "Other", listed last.
-export function buildSeries(rows, { measure = 'passengers', split = 'carrier', top = 8 } = {}) {
+export function buildSeries(rows, { measure = 'passengers', split = 'carrier', top = 8, periodKey = 'year' } = {}) {
   const cells = new Map(); // `${period}\u0000${label}` -> sums
   const overall = new Map(); // label -> total of the measure's base quantity
   for (const r of rows) {
     const label = labelFor(r, split);
     const t = { deps: num(r.deps), seats: num(r.total_seats), passengers: num(r.total_passengers), freight: num(r.total_freight) };
-    const key = `${r.year}\u0000${label}`;
-    const sum = cells.get(key) || { period: r.year, label, deps: 0, seats: 0, passengers: 0, freight: 0 };
+    const period = Number(r[periodKey]);
+    const key = `${period}\u0000${label}`;
+    const sum = cells.get(key) || { period, label, deps: 0, seats: 0, passengers: 0, freight: 0 };
     for (const k of ['deps', 'seats', 'passengers', 'freight']) sum[k] += t[k];
     cells.set(key, sum);
     const weight = measure === 'load_factor' ? t.passengers : Math.abs(valueOf(measure, t) ?? 0);
@@ -62,11 +63,30 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
   const points = [];
   for (const m of merged.values()) {
     const value = valueOf(measure, m);
-    if (value !== null) points.push({ year: m.period, series: m.label, value });
+    if (value !== null) points.push({ period: m.period, series: m.label, value });
   }
-  points.sort((a, b) => a.year - b.year || a.series.localeCompare(b.series));
+  points.sort((a, b) => a.period - b.period || a.series.localeCompare(b.series));
   const series = ranked.slice(0, top).filter((l) => points.some((p) => p.series === l));
   if (folded && points.some((p) => p.series === 'Other')) series.push('Other');
-  const years = [...new Set(points.map((p) => p.year))].sort((a, b) => a - b);
-  return { points, series, years, stackable: measure !== 'load_factor' };
+  const periods = [...new Set(points.map((p) => p.period))].sort((a, b) => a - b);
+  return { points, series, periods, stackable: measure !== 'load_factor' };
+}
+
+// One row per carrier and aircraft pair, summed over the rows given, biggest passenger total first
+export function aggregateTable(rows) {
+  const byPair = new Map();
+  for (const r of rows) {
+    const carrier = name(r.carrier);
+    const aircraft = name(r.aircraft);
+    const key = `${carrier}\u0000${aircraft}`;
+    const t = byPair.get(key) || { carrier, aircraft, deps: 0, seats: 0, passengers: 0, freight: 0 };
+    t.deps += num(r.deps);
+    t.seats += num(r.total_seats);
+    t.passengers += num(r.total_passengers);
+    t.freight += num(r.total_freight) / LB_PER_SHORT_TON;
+    byPair.set(key, t);
+  }
+  return [...byPair.values()]
+    .map((t) => ({ ...t, loadFactor: t.seats > 0 ? (t.passengers / t.seats) * 100 : null }))
+    .sort((a, b) => b.passengers - a.passengers || a.carrier.localeCompare(b.carrier) || a.aircraft.localeCompare(b.aircraft));
 }
