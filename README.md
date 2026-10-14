@@ -44,7 +44,7 @@ The project relies on the following key packages:
 
 ## Project Structure
 
-- **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides, and `airport_year_totals` (per-airport yearly totals derived from the segment tables; rebuild with `build_database.rebuild_airport_year_totals` after loading data). Not committed.
+- **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides, `airport_year_totals` (per-airport yearly totals) and `airport_names` (BTS's newest city name per airport code), the last two derived from the segment tables: rebuild them with `build_database.rebuild_derived_tables` after loading data. Not committed.
 - **`datasette.yml`**: Datasette configuration and canned queries: `top_us_airports`, `destinations`, `route`, `route_year`, and the queries behind the map (`airports`, `routes_by_year`, `routes_by_month`).
 - **`plugins/`**: `t100_globe.py` registers the `/globe` pages; `t100_render_links.py` renders `more_detail` columns as links.
 - **`templates/`**: `globe.html` (the map page) and templates for the canned query pages.

@@ -19,6 +19,7 @@ check 200 /                                                         "airports"
 check 200 /globe                                                    "data-origin"
 check 200 /routes/SFO                                               "heatmap"
 check 200 /route/SFO/LHR/2019                                       "route-chart"
+check 200 "/t100/airports.json?_shape=objects"                  '"Raleigh/Durham, NC"'
 check 200 "/t100/top_airports.json?year=2025&_shape=objects"        '"ATL"'
 check 200 "/t100/routes_by_year.json?origin=SFO&_shape=objects"     '"LAX"'
 check 200 "/t100/route.json?origin=SFO&dest=LHR&_shape=objects"     '"carrier"'

@@ -74,6 +74,10 @@ CREATE TABLE IF NOT EXISTS "airport_year_totals" (
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [origin])
 ) WITHOUT ROWID;
+-- BTS's own name for each airport code ("Raleigh/Durham, NC"), derived by rebuild_airport_names()
+CREATE TABLE IF NOT EXISTS "airport_names" (
+   [code] TEXT PRIMARY KEY, [name] TEXT
+) WITHOUT ROWID;
 """
 
 
@@ -124,6 +128,43 @@ def rebuild_airport_year_totals(conn: sqlite3.Connection) -> int:
             """
         )
     return conn.execute("SELECT COUNT(*) FROM airport_year_totals").fetchone()[0]
+
+
+def rebuild_airport_names(conn: sqlite3.Connection) -> int:
+    """Recompute airport_names: the newest BTS city name for each airport code, trimmed.
+
+    The literal text 'NULL' (which BTS uses for some rows) is not a name. Within a year the commonest name wins.
+    """
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM airport_names")
+        conn.execute(
+            """
+            INSERT INTO airport_names (code, name)
+            SELECT code, name FROM (
+              SELECT code, name,
+                     ROW_NUMBER() OVER (PARTITION BY code ORDER BY year DESC, uses DESC, name) AS rank
+              FROM (
+                SELECT code, name, year, SUM(uses) AS uses FROM (
+                  SELECT origin AS code, TRIM(origin_city_name) AS name, year, COUNT(*) AS uses FROM t100 GROUP BY 1, 2, 3
+                  UNION ALL
+                  SELECT dest, TRIM(dest_city_name), year, COUNT(*) FROM t100 GROUP BY 1, 2, 3
+                )
+                WHERE code IS NOT NULL AND name IS NOT NULL AND name NOT IN ('', 'NULL')
+                GROUP BY code, name, year
+              )
+            ) WHERE rank = 1
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM airport_names").fetchone()[0]
+
+
+def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
+    """Rebuild everything derived from the segment tables. Run after loading or changing segment data."""
+    return {
+        "airport_year_totals": rebuild_airport_year_totals(conn),
+        "airport_names": rebuild_airport_names(conn),
+    }
 
 
 def load_airport_overrides(conn: sqlite3.Connection, csv_path) -> int:

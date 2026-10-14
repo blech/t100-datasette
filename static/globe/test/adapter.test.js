@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, forService } from '../src/adapter.js';
 
 const airports = indexAirports([
-  { code: 'ATL', name: 'Atlanta', city: 'Atlanta', country: 'United States', latitude: 33.6, longitude: -84.4, is_us: 1 },
-  { code: 'LHR', name: 'Heathrow', city: 'London', country: 'United Kingdom', latitude: 51.5, longitude: -0.46, is_us: 0 },
+  { code: 'ATL', name: 'Atlanta', city: 'Atlanta', country: 'United States', place: 'Atlanta, GA', latitude: 33.6, longitude: -84.4, is_us: 1 },
+  { code: 'LHR', name: 'Heathrow', city: 'London', country: 'United Kingdom', place: 'London, United Kingdom', latitude: 51.5, longitude: -0.46, is_us: 0 },
 ]);
 
 test('indexAirports keys by code with lon/lat', () => {
-  assert.deepEqual(airports.get('ATL'), { code: 'ATL', name: 'Atlanta', city: 'Atlanta', country: 'United States', lat: 33.6, lon: -84.4, isUs: true });
+  assert.deepEqual(airports.get('ATL'), { code: 'ATL', name: 'Atlanta', city: 'Atlanta', country: 'United States', place: 'Atlanta, GA', lat: 33.6, lon: -84.4, isUs: true });
 });
 
 test('placeRoutes places known routes and lists skipped codes once, sorted', () => {
@@ -23,7 +23,7 @@ test('placeRoutes places known routes and lists skipped codes once, sorted', () 
   assert.equal(routes.length, 1);
   assert.deepEqual(routes[0].from, [-84.4, 33.6]);
   assert.deepEqual(routes[0].to, [-0.46, 51.5]);
-  assert.equal(routes[0].destCity, 'London');
+  assert.equal(routes[0].destCity, 'London, United Kingdom');
   assert.deepEqual(skipped, ['AAA', 'ZZZ']);
 });
 
@@ -69,4 +69,14 @@ test('placePoints turns listed airports into dots, skipping those with no coordi
   const pts = placePoints(rows, airports);
   assert.equal(pts.length, airports.has('SEL') ? 2 : 1);
   assert.deepEqual(pts[0], { code: 'ATL', city: 'Atlanta, GA', pos: [airports.get('ATL').lon, airports.get('ATL').lat], passengers: 51 });
+});
+
+test('place falls back to city and country when the query gives none', () => {
+  const m = indexAirports([{ code: 'ZZZ', name: 'Z', city: 'Zed', country: 'Zedland', latitude: 1, longitude: 2, is_us: 0 }]);
+  assert.equal(m.get('ZZZ').place, 'Zed, Zedland');
+});
+
+test('routes name their destination by place', () => {
+  const { routes } = placeRoutes([{ dest: 'LHR', year: 2019 }], 'ATL', airports);
+  assert.equal(routes[0].destCity, 'London, United Kingdom');
 });

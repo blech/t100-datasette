@@ -5,6 +5,10 @@ CREATE TABLE "aircraft_types" (
    [name] TEXT, [short_name] TEXT, [begin_date] TEXT
 );
 
+CREATE TABLE "airport_names" (
+   [code] TEXT PRIMARY KEY, [name] TEXT
+) WITHOUT ROWID;
+
 CREATE TABLE "airport_overrides" (
    [code] TEXT PRIMARY KEY, [name] TEXT, [city] TEXT, [country] TEXT,
    [latitude] REAL, [longitude] REAL

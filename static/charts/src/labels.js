@@ -6,7 +6,7 @@ const codes = (code, info) => (info && info.icao ? `${code} · ${info.icao}` : c
 export function airportTip(code, airports) {
   const a = airports.get(code);
   if (!a) return code;
-  const place = [a.city, a.country].filter(Boolean).join(', ');
+  const place = a.place || [a.city, a.country].filter(Boolean).join(', ');
   return [a.name || code, codes(code, a), place].filter(Boolean).join('\n');
 }
 

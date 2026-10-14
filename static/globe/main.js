@@ -160,7 +160,7 @@ function fillPicker() {
     if (!a.isUs) continue;
     const o = document.createElement('option');
     o.value = a.code;
-    o.label = `${a.city} – ${a.name}`;
+    o.label = `${a.place} – ${a.name}`;
     list.append(o);
   }
   $('picker').value = origin;
@@ -340,7 +340,7 @@ async function main() {
   if (!origin) { setStatus(''); $('controls').hidden = true; await showChooser(); return; }
 
   const a = airports.get(origin);
-  $('title').textContent = a ? `${origin} · ${a.city}` : origin;
+  $('title').textContent = a ? `${origin} · ${a.place}` : origin;
   const res = await fetchRows(queryUrl('routes_by_year', { origin }));
   truncated = res.truncated;
   const problem = originProblem(res.rows, airports, origin);

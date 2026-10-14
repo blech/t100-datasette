@@ -3,6 +3,7 @@ export function indexAirports(rows) {
   for (const r of rows) {
     m.set(r.code, {
       code: r.code, name: r.name, city: r.city, country: r.country,
+      place: r.place || [r.city, r.country].filter(Boolean).join(', '),
       lat: r.latitude, lon: r.longitude, isUs: Boolean(r.is_us),
     });
   }
@@ -17,7 +18,7 @@ export function placeRoutes(rows, origin, airports) {
   for (const r of rows) {
     const to = airports.get(r.dest);
     if (!to) { skipped.add(r.dest); continue; }
-    routes.push({ ...r, from: [from.lon, from.lat], to: [to.lon, to.lat], destCity: to.city, destName: to.name });
+    routes.push({ ...r, from: [from.lon, from.lat], to: [to.lon, to.lat], destCity: to.place, destName: to.name });
   }
   return { routes, skipped: [...skipped].sort(), originMissing: false };
 }

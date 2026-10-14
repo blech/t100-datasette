@@ -18,9 +18,10 @@ databases:
       airports:
         sql: |
           SELECT
-            code, name, city, country, latitude, longitude, icao,
-            CASE WHEN country IN ('United States', 'Puerto Rico', 'Guam', 'Virgin Islands',
-                                  'American Samoa', 'Northern Mariana Islands')
+            a.code, a.name, a.city, a.country, a.latitude, a.longitude, a.icao,
+            COALESCE(n.name, a.city || ', ' || a.country) AS place,
+            CASE WHEN a.country IN ('United States', 'Puerto Rico', 'Guam', 'Virgin Islands',
+                                    'American Samoa', 'Northern Mariana Islands')
                  THEN 1 ELSE 0 END AS is_us
           FROM (
             SELECT iata_code AS code, name, city, country, latitude, longitude,
@@ -32,8 +33,9 @@ databases:
               AND iata_code NOT IN (SELECT code FROM airport_overrides)
             UNION ALL
             SELECT code, name, city, country, latitude, longitude, NULL AS icao FROM airport_overrides
-          )
-          ORDER BY code
+          ) AS a
+          LEFT JOIN airport_names AS n ON n.code = a.code
+          ORDER BY a.code
 
       top_us_airports:
         sql: |

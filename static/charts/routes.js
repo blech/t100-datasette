@@ -168,10 +168,10 @@ async function main() {
       fetchRows(queryUrl('airports')),
     ]);
     rows = byYear.rows;
-    cities = new Map(airports.rows.map((a) => [a.code, a.city]));
+    cities = new Map(airports.rows.map((a) => [a.code, a.place]));
     airportInfo = new Map(airports.rows.map((a) => [a.code, a]));
     const here = airports.rows.find((a) => a.code === origin);
-    if (here) $('title').textContent = `${origin} (${here.city}): routes over time`;
+    if (here) $('title').textContent = `${origin} (${here.place}): routes over time`;
     if (byYear.truncated) $('subtitle').textContent = 'Too many rows: some routes are missing from this chart.';
   } catch (err) {
     console.error(err);

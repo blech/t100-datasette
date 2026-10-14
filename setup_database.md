@@ -41,13 +41,13 @@ Repeat for each file, using `t100_international` for the `fd` files. Then create
 uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); b.create_indexes(c)"
 ```
 
-Finally, build the derived table the landing page reads (it holds one row per airport and year, and takes about 15 seconds):
+Finally, build the derived tables: `airport_year_totals` (one row per airport and year, read by the landing page) and `airport_names` (BTS's newest city name for each airport code, read by the map and chart pages). This takes about a minute:
 
 ```sh
-uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); print(b.rebuild_airport_year_totals(c))"
+uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); print(b.rebuild_derived_tables(c))"
 ```
 
-**Run this again whenever segment data is loaded or changed**, or the landing page will show stale totals. It deletes and recomputes the table, so it is safe to repeat. Also update `max_year` under `plugins: t100_globe` in `datasette.yml` when a new year is added.
+**Run this again whenever segment data is loaded or changed**, or the landing page will show stale totals. It deletes and recomputes the tables, so it is safe to repeat. Also update `max_year` under `plugins: t100_globe` in `datasette.yml` when a new year is added.
 
 (A repeatable build script that does all of this is not written yet.)
 
