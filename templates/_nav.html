@@ -1,0 +1,8 @@
+<div class="site-header">
+  <nav class="crumbs" aria-label="Breadcrumb"><ol>
+    {%- for c in crumbs %}
+    {% if c.href %}<li><a href="{{ c.href }}">{{ c.label }}</a></li>{% else %}<li aria-current="page">{{ c.label }}</li>{% endif %}
+    {%- endfor %}
+  </ol></nav>
+  <select id="theme" aria-label="Theme"></select>
+</div>

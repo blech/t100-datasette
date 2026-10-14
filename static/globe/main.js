@@ -1,4 +1,4 @@
-import { THEMES, THEME_ORDER, resolveTheme } from './src/themes.js';
+import { THEMES, resolveTheme } from './src/themes.js';
 import { defaultView, clamp } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
@@ -39,19 +39,13 @@ function setStatus(text, warn = false) {
   el.className = warn ? 'warn' : '';
 }
 
+// the page chrome is themed by the shared header (static/nav/main.js); the canvas follows its choice
 function applyTheme(id) {
   themeId = THEMES[id] ? id : 'paper';
-  const t = THEMES[themeId];
-  const root = document.documentElement.style;
-  root.setProperty('--bg', t.bg);
-  root.setProperty('--fg', t.ui.fg);
-  root.setProperty('--muted', t.ui.muted);
-  root.setProperty('--panel', t.ui.panel);
-  root.setProperty('--accent', t.ui.accent);
-  if (renderer) renderer.setTheme(t);
-  try { localStorage.setItem('t100-theme', themeId); } catch (e) { /* storage may be unavailable */ }
+  if (renderer) renderer.setTheme(THEMES[themeId]);
   dirty = true;
 }
+document.addEventListener('t100:theme', (e) => { applyTheme(e.detail.id); pushState(); });
 
 function currentRoutes() {
   if (state.year === null) return [];
@@ -195,14 +189,6 @@ function bindControls() {
     pushState();
     dirty = true;
   });
-  const tsel = $('theme');
-  for (const id of THEME_ORDER) {
-    const o = document.createElement('option');
-    o.value = id; o.textContent = THEMES[id].label;
-    tsel.append(o);
-  }
-  tsel.value = themeId;
-  tsel.addEventListener('change', () => { applyTheme(tsel.value); pushState(); });
   const service = $('service');
   service.value = state.service;
   service.addEventListener('change', () => { state.service = service.value; hover = -1; selected = -1; $('panel').hidden = true; updateStats(); pushState(); dirty = true; });

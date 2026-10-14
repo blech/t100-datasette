@@ -14,7 +14,13 @@ def test_lowercase_is_normalised(ds):
 
 def test_bad_codes_are_404(ds):
     assert get(ds, "/routes/toolong").status_code == 404
-    assert get(ds, "/routes").status_code == 404
+
+
+def test_routes_index_goes_to_the_landing_page_keeping_the_query(ds):
+    r = get(ds, "/routes?theme=night&measure=deps")
+    assert r.status_code == 302
+    assert r.headers["location"] == "/?theme=night&measure=deps"
+    assert get(ds, "/routes").headers["location"] == "/"
 
 
 def test_globe_page_links_to_routes_over_time(ds):

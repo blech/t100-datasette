@@ -2,6 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { buildHeatmap, buildCityHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { replaceSearch } from '/static/nav/src/state.js';
 
 const origin = document.body.dataset.origin;
 const $ = (id) => document.getElementById(id);
@@ -28,7 +29,7 @@ function pushState() {
   if (state.group !== 'airport') q.set('group', state.group);
   if (state.group === 'city' && state.open.length) q.set('open', state.open.join(','));
   const s = q.toString();
-  history.replaceState(null, '', `${location.pathname}${s ? `?${s}` : ''}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'open'], s ? `?${s}` : '')}`);
 }
 
 function drawAirports() {

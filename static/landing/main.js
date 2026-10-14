@@ -1,4 +1,5 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { replaceSearch } from '/static/nav/src/state.js';
 import { SORTS, formatCount, formatTons, topBy, parseState, toSearch } from './src/table.js';
 
 const ROWS_SHOWN = 20;
@@ -53,7 +54,7 @@ function render() {
 }
 
 function pushState() {
-  history.replaceState(null, '', `${location.pathname}${toSearch(state, maxYear)}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['year', 'sort'], toSearch(state, maxYear))}`);
 }
 
 async function load() {

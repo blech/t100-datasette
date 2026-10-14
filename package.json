@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test static/globe/test/*.test.js static/landing/test/*.test.js static/charts/test/*.test.js"
+    "test": "node --test static/globe/test/*.test.js static/landing/test/*.test.js static/charts/test/*.test.js static/nav/test/*.test.js"
   }
 }

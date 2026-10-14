@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% if origin %}{{ origin }} routes{% else %}Airport network{% endif %} · T-100</title>
   <link rel="stylesheet" href="/static/globe/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
 </head>
 <body data-origin="{{ origin }}">
   <canvas id="globe" aria-label="Map of routes from the selected airport"></canvas>
 
   <header id="header">
+    {% include "_nav.html" %}
     <div id="title"></div>
     <div id="stats"></div>
     <div class="picker-row">
@@ -42,7 +45,6 @@
       <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
       <select id="service" aria-label="Service shown"><option value="all">All flights</option><option value="domestic">Domestic only</option><option value="international">International only</option></select>
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
-      <select id="theme" aria-label="Theme"></select>
     </div>
     <div id="footnote"></div>
   </div>

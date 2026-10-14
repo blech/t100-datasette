@@ -5,15 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>US air traffic, 1990–{{ max_year }} · T-100</title>
   <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
 </head>
 <body data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
+    {% include "_nav.html" %}
     <h1>US air traffic, {{ min_year }}–{{ max_year }}</h1>
     <p class="intro">
       Every scheduled and charter flight segment reported to the US
       <a href="https://www.bts.gov/">Bureau of Transportation Statistics</a>, both
       <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/data-bank-28ds-t-100-domestic-segment-data">domestic</a> and
-      <a href="https://www.google.com/search?q=t100+bts+international&oq=t100+bts+international&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIGCAEQRRhB0gEIMzY5MmowajeoAgCwAgA&sourceid=chrome&source=chrome.ob&ie=UTF-8">international</a>.
+      <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/%E2%80%A2-data-bank-28is-t-100-and-t-100f">international</a>.
       Pick an airport to see where it flies, or
       <a href="/globe">browse the map</a>.
     </p>

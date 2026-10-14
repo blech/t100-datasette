@@ -6,12 +6,13 @@
   <title>{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %} · T-100</title>
   <link rel="stylesheet" href="/static/landing/style.css">
   <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
 </head>
 <body data-origin="{{ origin }}" data-dest="{{ dest }}" data-year="{{ year }}">
   <main>
-    <p class="crumbs">
-      <a href="/">All airports</a> ·
-      <a href="/routes/{{ origin }}">{{ origin }} routes over time</a> ·
+    {% include "_nav.html" %}
+    <p class="related">
       <a href="/routes/{{ dest }}">{{ dest }} routes over time</a> ·
       <a href="/globe/{{ origin }}" id="map-link">Map of {{ origin }}</a>
     </p>
