@@ -61,7 +61,7 @@ Of 4,360 distinct codes in the data, 1,634 have no coordinates in `openflights_a
 - Globe and flat map toggle. The flat map uses d3-geo's built-in Equal Earth projection; flightglobe's interrupted homolosine needs two more vendored libraries and a UMD shim, so it is left out for now. Both read the same data.
 - Rendering uses HTML canvas. ATL has roughly 400 destinations in a year.
 - The URL carries state (`origin`, `year`, projection) so pages are shareable and the back button works.
-- The existing Leaflet `destinations` template stays until the new page replaces it.
+- The Leaflet `destinations` template and `destinations_map` query were retired once the map and routes-over-time pages replaced them (they also loaded tiles and scripts from third-party CDNs).
 
 ## Deployment
 

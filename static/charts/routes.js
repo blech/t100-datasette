@@ -45,7 +45,7 @@ function drawAirports() {
     ...c,
     year: String(c.year),
     label: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}\n${c.year}: ${Math.round(c.value).toLocaleString('en-US')} ${HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '')}`,
-    href: `/t100/route?origin=${encodeURIComponent(origin)}&dest=${encodeURIComponent(c.dest)}&_hide_sql=1`,
+    href: routeYearHref(c.dest, c.year),
   }));
   box.append(Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100),
@@ -59,14 +59,15 @@ function drawAirports() {
     color: { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' },
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: 'value', title: 'label', href: 'href', tip: true }),
-      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: routeHref(d) })), {
+      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: airportHref(d) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
     ],
   }));
 }
 
-const routeHref = (dest) => `/t100/route?origin=${encodeURIComponent(origin)}&dest=${encodeURIComponent(dest)}&_hide_sql=1`;
+const routeYearHref = (dest, year) => `/route/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}`;
+const airportHref = (code) => `/routes/${encodeURIComponent(code)}`;
 const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 const fmtValue = (v) => Math.round(v).toLocaleString('en-US');
 
@@ -92,13 +93,13 @@ function drawCities() {
     const lines = c.parts ? c.parts.slice(0, 5).map((p) => `${p.dest}  ${fmtValue(p.value)}`) : [];
     const more = c.parts && c.parts.length > 5 ? [`+${c.parts.length - 5} more`] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
-    const href = row.kind === 'airport' ? routeHref(row.code) : row.expandable ? `#toggle:${row.key}` : routeHref(row.codes[0]);
+    const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.expandable ? `#toggle:${row.key}` : routeYearHref(row.codes[0], c.year);
     return { ...c, year: String(c.year), href, title: [head, `${c.year}: ${fmtValue(c.value)} ${unit()}`, ...lines, ...more].join('\n') };
   });
   const labels = res.rows.map((r) => ({
     ...r,
     text: r.kind === 'airport' ? `${r.code}${r.name ? ` · ${r.name}` : ''}` : `${r.expandable ? (r.open ? '▾' : '▸') : '\u2003'} ${r.label}`,
-    href: r.kind === 'airport' ? routeHref(r.code) : r.expandable ? `#toggle:${r.key}` : routeHref(r.codes[0]),
+    href: r.kind === 'airport' ? airportHref(r.code) : r.expandable ? `#toggle:${r.key}` : airportHref(r.codes[0]),
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
   box.append(Plot.plot({

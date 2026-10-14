@@ -88,8 +88,7 @@ function tooltipText(r) {
 
 function showPanel(r) {
   const p = $('panel');
-  const q = new URLSearchParams({ origin, dest: r.dest, _hide_sql: '1' });
-  const yq = new URLSearchParams({ origin, dest: r.dest, year: String(state.year), _hide_sql: '1' });
+  const routePath = `/route/${encodeURIComponent(origin)}/${encodeURIComponent(r.dest)}`;
   p.innerHTML = '';
   const close = document.createElement('button');
   close.className = 'close';
@@ -111,10 +110,10 @@ function showPanel(r) {
     dl.append(dt, dd);
   }
   const a1 = document.createElement('a');
-  a1.href = `/t100/route?${q}`;
-  a1.textContent = 'Carriers and aircraft by year →';
+  a1.href = routePath;
+  a1.textContent = 'This route over time →';
   const a2 = document.createElement('a');
-  a2.href = `/t100/route_year?${yq}`;
+  a2.href = `${routePath}/${state.year}`;
   a2.textContent = `Month by month in ${state.year} →`;
   p.append(close, h, sub, dl, a1, a2);
   p.hidden = false;

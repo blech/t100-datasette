@@ -58,13 +58,6 @@ def test_ordered_by_year_then_dest(ds, db_path):
     assert [(r["year"], r["dest"]) for r in body["rows"]] == [(2000, "AAA"), (2000, "ZZZ"), (2001, "AAA")]
 
 
-def test_destinations_map_domestic_flag_uses_same_rule(ds, db_path):
-    add_segments(db_path, "t100_domestic", [seg("ATL", "LAX", 2018, 100, 10000)])
-    add_segments(db_path, "t100_international", [seg("ATL", "LAX", 2018, 5, 13)])
-    body = get_json(ds, "/t100/destinations_map.json?origin=ATL&_shape=objects")
-    assert [r["domestic"] for r in body["rows"]] == [1]
-
-
 def test_truncation_flag_is_reported(db_path):
     add_segments(db_path, "t100_international", [seg("ATL", f"D{i:02d}", 2019, 12, 1) for i in range(5)])
     ds = make_datasette(db_path, settings={"max_returned_rows": 3})
