@@ -30,7 +30,7 @@ function carry(a) {
   a.dataset.carried = keys.join(',');
 }
 
-let themeId = resolveTheme(location.search, stored());
+let themeId = resolveTheme(location.search, stored(), matchMedia('(prefers-color-scheme: dark)').matches);
 paint(themeId);
 
 const select = document.getElementById('theme');

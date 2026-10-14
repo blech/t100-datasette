@@ -43,9 +43,10 @@ export const THEME_ORDER = ['paper', 'night', 'natural', 'airtrailLight', 'airtr
 
 const valid = (id) => typeof id === 'string' && Object.hasOwn(THEMES, id);
 
-export function resolveTheme(search, stored) {
+// An explicit choice (query, then stored) wins; otherwise follow the system's dark mode.
+export function resolveTheme(search, stored, prefersDark = false) {
   const q = new URLSearchParams(search || '').get('theme');
   if (valid(q)) return q;
   if (valid(stored)) return stored;
-  return DEFAULT_THEME;
+  return prefersDark ? 'night' : DEFAULT_THEME;
 }
