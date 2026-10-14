@@ -23,6 +23,18 @@ def trail(datasette, *steps):
     return [{"label": label, "href": href} for label, href in items[:-1]] + [{"label": items[-1][0], "href": None}]
 
 
+async def is_foreign(datasette, code):
+    """True if BTS places the airport outside the US and its territories (its WAC is outside 1-93).
+
+    T-100 only records flights with a US airport at one end, so for these airports only the
+    US side of their network is in the data."""
+    if not code:
+        return False
+    result = await datasette.get_database("t100").execute("SELECT origin_wac FROM t100 WHERE origin = ? LIMIT 1", [code])
+    row = result.first()
+    return bool(row) and row[0] is not None and not 1 <= row[0] <= 93
+
+
 async def routes_index(datasette, request):
     # there is no page of its own for "all routes"; the landing table is where you pick an airport
     query = request.query_string
@@ -33,7 +45,9 @@ async def globe_page(datasette, request):
     origin = (request.url_vars.get("origin") or "").upper()
     steps = [("globe", "/globe" if origin else None)] + ([(origin, None)] if origin else [])
     html = await datasette.render_template(
-        "globe.html", {"origin": origin, "crumbs": trail(datasette, *steps)}, request=request
+        "globe.html",
+        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin)},
+        request=request,
     )
     return Response.html(html)
 
@@ -56,7 +70,11 @@ async def routes_page(datasette, request):
     origin = request.url_vars["origin"].upper()
     html = await datasette.render_template(
         "routes.html",
-        {"origin": origin, "crumbs": trail(datasette, ("routes", "/routes"), (origin, None))},
+        {
+            "origin": origin,
+            "crumbs": trail(datasette, ("routes", "/routes"), (origin, None)),
+            "foreign": await is_foreign(datasette, origin),
+        },
         request=request,
     )
     return Response.html(html)

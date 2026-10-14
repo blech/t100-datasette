@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-origin="{{ origin }}">
+<body data-origin="{{ origin }}"{% if foreign %} data-foreign="1"{% endif %}>
   <canvas id="globe" aria-label="Map of routes from the selected airport"></canvas>
 
   <header id="header">
@@ -47,6 +47,7 @@
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
     </div>
     <div id="footnote"></div>
+    <div id="foreign-note-box">{% include "_foreign_note.html" %}</div>
   </div>
 
   <script src="/static/globe/vendor/d3-array.min.js"></script>

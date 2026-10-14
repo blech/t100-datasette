@@ -63,7 +63,7 @@ function updateStats() {
   const pax = routes.reduce((s, r) => s + Number(r.passengers || 0), 0);
   const deps = routes.reduce((s, r) => s + Number(r.deps || 0), 0);
   const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : `${state.year}`;
-  $('stats').textContent = `${label} · ${routes.length} destinations · ${fmt(deps)} departures · ${fmt(pax)} passengers`;
+  $('stats').textContent = `${label} · ${routes.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${fmt(deps)} departures · ${fmt(pax)} passengers`;
   $('year-label').textContent = label;
   const periodRows = state.month !== null ? monthRaw.filter((r) => r.month === state.month) : yearRaw.filter((r) => r.year === state.year);
   const skipped = skippedFor(forService(periodRows, state.service), airports);
