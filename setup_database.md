@@ -41,7 +41,7 @@ Repeat for each file, using `t100_international` for the `fd` files. Then create
 uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); b.create_indexes(c)"
 ```
 
-Finally, build the derived tables: `airport_year_totals` (one row per airport and year, read by the landing page) and `airport_names` (BTS's newest city name for each airport code, read by the map and chart pages). This takes about a minute:
+Finally, build the derived tables: `airport_year_totals` (one row per airport and year, read by the landing page), `airport_names` (BTS's newest city name for each airport code, read by the map and chart pages), and the rollups behind the aircraft and carrier charts: `aircraft_family` and `family_year` (types grouped into families by the rules in `data/aircraft_families.csv`), `carrier_group` and `carrier_group_year` (merger-aware carriers, from `data/carrier_groups.csv`) `aircraft_group_band_year` (totals by BTS aircraft group and distance band, for the twin/tri/quad-jet stories) and `family_detail_year` (each aircraft family by version and airline group, for the family pages). This takes about two minutes:
 
 ```sh
 uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); print(b.rebuild_derived_tables(c))"

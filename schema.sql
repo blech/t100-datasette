@@ -1,5 +1,15 @@
 -- Generated from build_database.py (create_schema + create_indexes). Regenerate rather than edit by hand.
 
+CREATE TABLE "aircraft_family" (
+   [aircraft_type] TEXT PRIMARY KEY, [name] TEXT, [family] TEXT, [subfamily] TEXT, [aircraft_class] TEXT, [fallback] INTEGER
+) WITHOUT ROWID;
+
+CREATE TABLE "aircraft_group_band_year" (
+   [year] INTEGER, [aircraft_group] TEXT, [distance_band] INTEGER, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [aircraft_group], [distance_band], [domestic], [service_class])
+) WITHOUT ROWID;
+
 CREATE TABLE "aircraft_types" (
    [ac_typeid] TEXT, [ac_group] TEXT, [ssd_name] TEXT, [manufacturer] TEXT,
    [name] TEXT, [short_name] TEXT, [begin_date] TEXT
@@ -20,12 +30,34 @@ CREATE TABLE "airport_year_totals" (
    PRIMARY KEY ([year], [origin])
 ) WITHOUT ROWID;
 
+CREATE TABLE "carrier_group" (
+   [airline_id] TEXT PRIMARY KEY, [group_id] TEXT, [group_name] TEXT
+) WITHOUT ROWID;
+
+CREATE TABLE "carrier_group_year" (
+   [year] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
+
 CREATE TABLE "carriers" (
    [airline_id] TEXT, [carrier] TEXT, [carrier_entity] TEXT, [name] TEXT,
    [unique_carrier] TEXT, [unique_carrier_entity] TEXT, [unique_carrier_name] TEXT,
    [wac] TEXT, [carrier_group] TEXT, [carrier_group_new] TEXT, [region] TEXT,
    [start_date_source] TEXT, [thru_date_source] TEXT
 );
+
+CREATE TABLE "family_detail_year" (
+   [family] TEXT, [year] INTEGER, [subfamily] TEXT, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([family], [year], [subfamily], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
+
+CREATE TABLE "family_year" (
+   [year] INTEGER, [family] TEXT, [aircraft_class] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [family], [domestic], [service_class])
+) WITHOUT ROWID;
 
 CREATE TABLE "openflights_airports" (
    "id" INTEGER, "name" TEXT, "city" TEXT, "country" TEXT, "iata_code" TEXT,

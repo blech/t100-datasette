@@ -44,13 +44,14 @@ The project relies on the following key packages:
 
 ## Project Structure
 
-- **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides, `airport_year_totals` (per-airport yearly totals) and `airport_names` (BTS's newest city name per airport code), the last two derived from the segment tables: rebuild them with `build_database.rebuild_derived_tables` after loading data. Not committed.
+- **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides, `airport_year_totals` (per-airport yearly totals), `airport_names` (BTS's newest city name per airport code), and rollups by aircraft family, merger-aware carrier group and aircraft group/distance band (`aircraft_family`, `family_year`, `carrier_group`, `carrier_group_year`, `aircraft_group_band_year`, `family_detail_year`), all derived from the segment tables: rebuild them with `build_database.rebuild_derived_tables` after loading data. Not committed.
 - **`datasette.yml`**: Datasette configuration and canned queries: `top_us_airports`, `destinations`, `route`, `route_year`, and the queries behind the map (`airports`, `routes_by_year`, `routes_by_month`).
 - **`plugins/`**: `t100_globe.py` registers the `/airports/...` and `/globe` pages (the older `/globe/ATL`, `/routes/ATL` and `/route/A/B` paths redirect); `t100_render_links.py` renders `more_detail` columns as links.
 - **`templates/`**: `globe.html` (the map page) and templates for the canned query pages.
 - **`static/nav/`** and **`templates/_nav.html`**: the header shared by every page (breadcrumb trail, theme chooser) and the code that keeps `theme`, `measure`, `service` and the heat map settings in in-site links. The site name in the trail is `site_name` under `plugins: t100_globe` (default `t100.husk.org`).
 - **`static/globe/`**: the map's browser code (plain ES modules, no build step) and vendored d3-geo; served at `/static/globe/`.
 - **`build_database.py`**: schema, indexes, the `t100` view and airport override loading (`schema.sql` is generated from it).
+- **`data/aircraft_families.csv`** and **`data/carrier_groups.csv`**: the editable rules for the family and merged-carrier rollups (re-run `rebuild_derived_tables` after editing).
 - **`data/airport_overrides.csv`**: coordinates for airport codes missing from OpenFlights.
 - **`serve_public.sh`**: run command for a locked-down public instance.
 - **`tests/`** and **`static/globe/test/`**: pytest and `node --test` suites.
