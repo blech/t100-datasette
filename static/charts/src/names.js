@@ -38,3 +38,14 @@ export function shortNames(fullNames) {
   for (const [n, s] of shorts) if (uses.get(s) > 1) shorts.set(n, n);
   return shorts;
 }
+
+// Replace `field` in every row with its short name, once per row (rows may be passed in more than one list, or the same list twice).
+// Returns a map from each short name back to the full one, for hover text.
+export function shortenField(rowLists, field) {
+  const rows = [...new Set(rowLists.flat())];
+  const shorts = shortNames(rows.map((r) => r[field]));
+  const full = new Map();
+  for (const [long, short] of shorts) full.set(short, long);
+  for (const r of rows) r[field] = shorts.get(r[field]);
+  return full;
+}

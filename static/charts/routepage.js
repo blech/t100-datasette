@@ -1,5 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { shortNames } from '/static/charts/src/names.js';
+import { shortenField } from '/static/charts/src/names.js';
 import { slugify } from '/static/charts/src/rollup.js';
 import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
 import { formatCount, formatTons } from '/static/landing/src/table.js';
@@ -139,9 +139,7 @@ async function main() {
       viewRows = monthly.rows;
     }
     // long legal names ("Hyannis Air Service, Inc. dba Cape Air") crowd the chart and table: show short ones, keep the full as hover text
-    const shorts = shortNames([...allRows, ...viewRows].map((r) => r.carrier));
-    for (const [full, short] of shorts) fullNames.set(short, full);
-    for (const r of [...allRows, ...viewRows]) r.carrier = shorts.get(r.carrier);
+    for (const [short, full] of shortenField([allRows, viewRows], 'carrier')) fullNames.set(short, full);
   } catch (err) {
     console.error(err);
     $('status').textContent = 'Could not load the data. Try again in a moment.';

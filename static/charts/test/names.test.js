@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shortName, shortNames } from '../src/names.js';
+import { shortName, shortNames, shortenField } from '../src/names.js';
 
 test('a trade name after d/b/a replaces the legal name', () => {
   assert.equal(shortName('Hyannis Air Service, Inc. dba Cape Air'), 'Cape Air');
@@ -31,4 +31,11 @@ test('shortNames keeps the full names of airlines whose short names would collid
   const m = shortNames(['Pacific International Airlines', 'Pacific International Airlines Inc.', 'Delta Air Lines Inc.']);
   assert.equal(m.get('Delta Air Lines Inc.'), 'Delta Air Lines');
   assert.equal(m.get('Pacific International Airlines Inc.'), 'Pacific International Airlines Inc.');
+});
+
+test('shortenField shortens each row once, even when the same rows are in two lists', () => {
+  const rows = [{ carrier: 'British Airways Plc' }, { carrier: 'Delta Air Lines Inc.' }, { carrier: null }];
+  const full = shortenField([rows, rows], 'carrier');
+  assert.deepEqual(rows.map((r) => r.carrier), ['British Airways', 'Delta Air Lines', '']);
+  assert.equal(full.get('British Airways'), 'British Airways Plc');
 });
