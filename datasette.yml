@@ -195,11 +195,26 @@ databases:
 
       route:
         sql: >
+          WITH cn AS (
+            -- BTS lists an airline's entity once per name and start date, and often repeats a row, so joining on the entity
+            -- alone would count every segment once per row. Make one period per name instead, each running until the next name starts.
+            SELECT carrier_entity AS entity, name, MIN(airline_id) AS airline_id,
+              CAST(substr(start_date_source, instr(start_date_source, ' ') - 4, 4) AS INTEGER) * 100
+                + CAST(substr(start_date_source, 1, instr(start_date_source, '/') - 1) AS INTEGER) AS s
+            FROM carriers
+            GROUP BY carrier_entity, name, s
+          ), cp AS (
+            SELECT entity, name, airline_id,
+              CASE WHEN ROW_NUMBER() OVER w = 1 THEN 0 ELSE s END AS s2,
+              COALESCE(LEAD(s) OVER w - 1, 999912) AS e2
+            FROM cn
+            WINDOW w AS (PARTITION BY entity ORDER BY s, name)
+          )
           SELECT
             year,
             origin_city_name,
             dest_city_name,
-            c.name AS carrier,
+            cp.name AS carrier,
             a.name AS aircraft,
             SUM(departures_performed) AS deps,
             SUM(departures_scheduled) AS scheduled,
@@ -212,28 +227,43 @@ databases:
             '/t100/route_year?origin=' || origin || '&dest=' || dest || '&year=' || year || '&_hide_sql=1' as more_detail
           FROM t100 AS t
             JOIN aircraft_types a ON t.aircraft_type = a.AC_TYPEID
-            JOIN carriers c ON t.carrier_entity = c.CARRIER_ENTITY
+            LEFT JOIN cp ON cp.entity = t.carrier_entity AND t.year * 100 + t.month BETWEEN cp.s2 AND cp.e2
           WHERE
             origin = :origin
             AND dest = :dest
           GROUP BY
             year,
-            c.name,
+            cp.name,
             a.name
           ORDER BY
             year DESC,
             a.name ASC,
-            c.name ASC,
+            cp.name ASC,
             total_passengers DESC
 
       route_year:
         sql: >
+          WITH cn AS (
+            -- BTS lists an airline's entity once per name and start date, and often repeats a row, so joining on the entity
+            -- alone would count every segment once per row. Make one period per name instead, each running until the next name starts.
+            SELECT carrier_entity AS entity, name, MIN(airline_id) AS airline_id,
+              CAST(substr(start_date_source, instr(start_date_source, ' ') - 4, 4) AS INTEGER) * 100
+                + CAST(substr(start_date_source, 1, instr(start_date_source, '/') - 1) AS INTEGER) AS s
+            FROM carriers
+            GROUP BY carrier_entity, name, s
+          ), cp AS (
+            SELECT entity, name, airline_id,
+              CASE WHEN ROW_NUMBER() OVER w = 1 THEN 0 ELSE s END AS s2,
+              COALESCE(LEAD(s) OVER w - 1, 999912) AS e2
+            FROM cn
+            WINDOW w AS (PARTITION BY entity ORDER BY s, name)
+          )
           SELECT
             year,
             printf('%02d', month) AS month,
             origin_city_name,
             dest_city_name,
-            c.name AS carrier,
+            cp.name AS carrier,
             a.name AS aircraft,
             departures_performed AS deps,
             departures_scheduled AS scheduled,
@@ -246,7 +276,7 @@ databases:
             air_time AS total_air_time
           FROM t100 AS t
             JOIN aircraft_types a ON t.aircraft_type = a.AC_TYPEID
-            JOIN carriers c ON t.carrier_entity = c.CARRIER_ENTITY
+            LEFT JOIN cp ON cp.entity = t.carrier_entity AND t.year * 100 + t.month BETWEEN cp.s2 AND cp.e2
           WHERE
             origin = :origin
             AND dest = :dest
@@ -254,6 +284,5 @@ databases:
           ORDER BY
             month ASC,
             a.name ASC,
-            c.name ASC,
+            cp.name ASC,
             total_passengers DESC
-
