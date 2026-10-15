@@ -1,6 +1,6 @@
 import sqlite3
 
-from tests.helpers import get_json
+from tests.helpers import add_segments, get_json
 
 
 def put(db_path, table, rows):
@@ -80,3 +80,24 @@ def test_airline_list_offers_each_group_and_each_member_of_a_merged_one(ds, db_p
     assert [(r["id"], r["name"], r["parent"]) for r in rows] == [
         ("alaska", "Alaska (incl. Virgin America)", ""), ("19930", "Alaska Airlines Inc.", "Alaska (incl. Virgin America)"),
         ("20304", "SkyWest Airlines Inc.", ""), ("21171", "Virgin America", "Alaska (incl. Virgin America)")]
+
+
+def test_route_page_counts_each_segment_once_however_many_lookup_rows_an_airline_entity_has(ds, db_path):
+    # BTS repeats an entity once per name and start date, and sometimes exactly; a plain join counted each segment once per row
+    lookup = lambda name, start: dict(airline_id="19950", carrier_entity="19756", unique_carrier_entity="19756", name=name, start_date_source=start)
+    put(db_path, "carriers", [lookup("Rosenbalm Aviation Inc.", "1/1/1990 12:00:00 AM"), lookup("Rosenbalm Aviation Inc.", "1/1/1990 12:00:00 AM"),
+                              lookup("Flagship Express Services", "7/1/1991 12:00:00 AM")])
+    put(db_path, "aircraft_types", [dict(ac_typeid="852", ac_group="8", name="DC-8-63F")])
+    seg = lambda year, month, deps: dict(year=year, month=month, origin="LHR", dest="PHL", carrier_entity="19756", aircraft_type="852", departures_performed=deps, passengers=0, seats=0, freight=0)
+    add_segments(db_path, "t100_international", [seg(1991, 2, 5), seg(1991, 8, 3)])
+    rows = get_json(ds, "/t100/route.json?_shape=objects&origin=LHR&dest=PHL")["rows"]
+    assert sorted((r["carrier"], r["deps"]) for r in rows) == [("Flagship Express Services", 3), ("Rosenbalm Aviation Inc.", 5)]  # each name for its own months
+    monthly = get_json(ds, "/t100/route_year.json?_shape=objects&origin=LHR&dest=PHL&year=1991")["rows"]
+    assert [(r["month"], r["carrier"], r["deps"]) for r in monthly] == [("02", "Rosenbalm Aviation Inc.", 5), ("08", "Flagship Express Services", 3)]
+
+
+def test_route_page_keeps_segments_whose_carrier_is_missing_from_the_lookup(ds, db_path):
+    put(db_path, "aircraft_types", [dict(ac_typeid="852", ac_group="8", name="DC-8-63F")])
+    add_segments(db_path, "t100_international", [dict(year=2019, month=1, origin="LHR", dest="PHL", carrier_entity="NOPE", aircraft_type="852", departures_performed=4, passengers=0, seats=0, freight=0)])
+    rows = get_json(ds, "/t100/route.json?_shape=objects&origin=LHR&dest=PHL")["rows"]
+    assert [(r["carrier"], r["deps"]) for r in rows] == [(None, 4)]
