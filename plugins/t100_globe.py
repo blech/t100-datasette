@@ -29,12 +29,12 @@ def register_routes():
         (r"^/about$", about_page),
         (r"^/aircraft$", rollup_page("aircraft")),
         (r"^/airlines$", rollup_page("airlines")),
-        (r"^/airlines/(?P<group>[A-Za-z0-9_-]+)$", airline_page),
-        (r"^/airlines/(?P<group>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
+        (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)$", airline_page),
+        (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
         # the paths airlines had before the URL used the word the pages do
         (r"^/carriers$", moved("/airlines")),
-        (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)$", moved("/airlines/{group}")),
-        (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{group}/globe")),
+        (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)$", moved("/airlines/{slug}")),
+        (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{slug}/globe")),
         (r"^/aircraft/engines$", engines_page),
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
@@ -181,56 +181,69 @@ async def family_page(datasette, request):
     return Response.html(html)
 
 
-async def airline_name(datasette, group):
-    """The airline group's latest name, or a 404 if there is no such group."""
-    result = await datasette.get_database("t100").execute(
-        "SELECT group_name FROM carrier_group_year WHERE group_id = ? GROUP BY group_name ORDER BY MAX(year) DESC LIMIT 1", [group]
-    )
-    row = result.first()
+async def resolve_airline(datasette, slug):
+    """What /airlines/<slug> is: a group of airlines (a merger such as Delta with Northwest, or one airline on its own)
+    or one member of a merged group. Returns the ids to query with, the names, and the group's members; 404 if neither."""
+    db = datasette.get_database("t100")
+    members = (await db.execute(
+        """
+        SELECT d.airline_id, COALESCE(g.airline_name, d.group_name), MIN(d.year), MAX(d.year), SUM(d.deps)
+        FROM carrier_group_year d LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
+        WHERE d.group_id = ? AND d.deps > 0 GROUP BY d.airline_id ORDER BY SUM(d.deps) DESC
+        """,
+        [slug],
+    )).rows
+    if members:
+        group_name = (await db.execute("SELECT group_name FROM carrier_group_year WHERE group_id = ? GROUP BY group_name ORDER BY MAX(year) DESC LIMIT 1", [slug])).first()[0]
+        return {
+            "group": slug, "airline": "", "name": group_name, "parent": None,
+            "first_year": min(m[2] for m in members), "last_year": max(m[3] for m in members),
+            "members": [{"id": m[0], "name": m[1], "first_year": m[2], "last_year": m[3]} for m in members] if len(members) > 1 else [],
+        }
+    # one airline inside a merged group
+    row = (await db.execute(
+        """
+        SELECT d.group_id, d.group_name, COALESCE(g.airline_name, d.group_name), MIN(d.year), MAX(d.year)
+        FROM carrier_group_year d LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
+        WHERE d.airline_id = ? AND d.deps > 0 GROUP BY d.group_id, d.group_name, g.airline_name ORDER BY MAX(d.year) DESC LIMIT 1
+        """,
+        [slug],
+    )).first()
     if row is None:
-        raise NotFound(f"No airline {group}")
-    return row[0]
+        raise NotFound(f"No airline {slug}")
+    return {
+        "group": row[0], "airline": slug, "name": row[2], "parent": {"id": row[0], "name": row[1]},
+        "first_year": row[3], "last_year": row[4], "members": [],
+    }
+
+
+def airline_crumbs(datasette, info, *tail):
+    steps = [("airlines", "/airlines")]
+    if info["parent"]:
+        steps.append((info["parent"]["name"], f"/airlines/{info['parent']['id']}"))
+    own = info["airline"] or info["group"]
+    steps.append((info["name"], f"/airlines/{own}" if tail else None))
+    return trail(datasette, *steps, *tail)
 
 
 async def airline_globe_page(datasette, request):
-    group = request.url_vars["group"]
-    name = await airline_name(datasette, group)
+    info = await resolve_airline(datasette, request.url_vars["slug"])
     html = await datasette.render_template(
         "airline_globe.html",
-        {"group": group, "name": name, "crumbs": trail(datasette, ("airlines", "/airlines"), (name, f"/airlines/{group}"), ("map", None))},
+        {**info, "own": info["airline"] or info["group"], "crumbs": airline_crumbs(datasette, info, ("map", None))},
         request=request,
     )
     return Response.html(html)
 
 
 async def airline_page(datasette, request):
-    group = request.url_vars["group"]
-    db = datasette.get_database("t100")
-    name = await airline_name(datasette, group)
-    row = (name,)
-    span = (await db.execute("SELECT MIN(year), MAX(year) FROM carrier_group_year WHERE group_id = ? AND deps > 0", [group])).first()
-    members = await db.execute(
-        """
-        SELECT c.airline_id, c.unique_carrier_name, MIN(c.start_date_source), MAX(c.thru_date_source)
-        FROM carrier_group g JOIN carriers c ON c.airline_id = g.airline_id
-        WHERE g.group_id = ? GROUP BY c.airline_id, c.unique_carrier_name ORDER BY MIN(c.start_date_source)
-        """,
-        [group],
-    )
-    seen = []
-    for airline_id, name, *_ in members.rows:
-        if name and name not in seen:
-            seen.append(name)
+    info = await resolve_airline(datasette, request.url_vars["slug"])
     html = await datasette.render_template(
         "airline.html",
         {
-            "group": group,
-            "name": row[0],
-            "first_year": span[0],
-            "last_year": span[1],
-            "members": seen if len(seen) > 1 else [],
+            **info, "own": info["airline"] or info["group"],
             "max_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
-            "crumbs": trail(datasette, ("airlines", "/airlines"), (row[0], None)),
+            "crumbs": airline_crumbs(datasette, info),
         },
         request=request,
     )

@@ -271,6 +271,10 @@ def rebuild_carrier_groups(conn: sqlite3.Connection, groups_path=None) -> int:
     create_schema(conn)
     with open(groups_path or DATA_DIR / "carrier_groups.csv", newline="") as f:
         listed = {r["airline_id"]: (r["group_id"], r["group_name"]) for r in csv.DictReader(f)}
+    numeric = sorted({g for g, _ in listed.values() if g.isdigit()})
+    if numeric:
+        # /airlines/<id> serves both merged groups and single airlines (by their numeric airline id), so a group's id must be a word
+        raise ValueError(f"group ids in carrier_groups.csv must not be numbers: {', '.join(numeric)}")
     airlines = conn.execute(
         "SELECT airline_id, MIN(unique_carrier_name) FROM carriers WHERE airline_id IS NOT NULL GROUP BY airline_id"
     ).fetchall()

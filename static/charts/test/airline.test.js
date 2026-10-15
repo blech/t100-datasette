@@ -50,14 +50,15 @@ test('centreOf points at the middle of the routes, and at the US when there are 
   assert.deepEqual(centreOf([]), [-96, 38]);
 });
 
-test('airlineOptions offers each group once under its short name, with years and full name as the hint', () => {
+test('airlineOptions offers each airline once under its short name, with years, full name and any parent as the hint', () => {
   const opts = airlineOptions([
-    { group_id: '21618', group_name: 'Southern Airways Express, dba Mokulele Airlines', first_year: 2012, last_year: 2025, deps: 5 },
-    { group_id: '21242', group_name: 'Mokulele Flight Services, Inc.', first_year: 2006, last_year: 2020, deps: 3 },
-    { group_id: '21242', group_name: 'Mokulele Flight Services, Inc.', first_year: 2006, last_year: 2019, deps: 1 },
+    { id: '21618', name: 'Spirit Airlines Inc.', parent: '', first_year: 2012, last_year: 2025, deps: 5 },
+    { id: '19790', name: 'Delta Air Lines Inc.', parent: 'Delta (incl. Northwest)', first_year: 1990, last_year: 2025, deps: 3 },
+    { id: '19790', name: 'Delta Air Lines Inc.', parent: 'Delta (incl. Northwest)', first_year: 1990, last_year: 2019, deps: 1 },
   ]);
-  assert.deepEqual(opts.map((o) => o.value), ['Mokulele Airlines', 'Mokulele Flight Services']);
-  assert.equal(opts[0].hint, '2012–2025 · Southern Airways Express, dba Mokulele Airlines');
+  assert.deepEqual(opts.map((o) => o.value), ['Spirit Airlines', 'Delta Air Lines']);
+  assert.equal(opts[0].hint, '2012–2025 · Spirit Airlines Inc.');
+  assert.equal(opts[1].hint, '1990–2025 · Delta Air Lines Inc. · part of Delta');
 });
 
 test('findAirline matches the picked name, ignoring case, and refuses a partial or ambiguous one', () => {
@@ -76,11 +77,6 @@ test('merged members: a route one member stopped and another took over is kept',
   assert.deepEqual(out[0].airlines, ['Virgin America', 'Alaska']);
 });
 
-test('split members: the same route is dropped for one airline and added for the other', () => {
-  const out = classifyRoutes([member('LAX', 'BOS', 'Virgin America', 300, 0), member('LAX', 'BOS', 'Alaska', 0, 400)], { min: 12, split: true });
-  assert.deepEqual(out.map((r) => [r.airline, r.status]), [['Virgin America', 'dropped'], ['Alaska', 'added']]);
-});
-
 test('mergeMembers adds up departures and widens the first and last month', () => {
   const [m] = mergeMembers([member('A', 'B', 'x', 10, 0, { first_ym: 200001, last_ym: 200512 }), member('A', 'B', 'y', 0, 5, { first_ym: 200301, last_ym: 201012 })]);
   assert.deepEqual([m.deps_a, m.deps_b, m.first_ym, m.last_ym], [10, 5, 200001, 201012]);
@@ -94,15 +90,3 @@ test('mapRoutes adds members up on a shared pair, and applies the minimum to the
   assert.deepEqual(routes.map((r) => [r.dest, r.deps]), [['LAX', 16]]);
 });
 
-test('mapRoutes in split mode keeps members apart and colours them, listing each member once', () => {
-  const rows = [mrow('SFO', 'LAX', 'VX', 20), mrow('SFO', 'LAX', 'AS', 30)];
-  const { routes, members } = mapRoutes(rows, null, airports, { min: 12, split: true });
-  assert.equal(routes.length, 2);
-  assert.equal(new Set(routes.map((r) => r.colour)).size, 2);
-  assert.deepEqual(members.map((m) => m.id), ['AS', 'VX']);
-});
-
-test('mapRoutes compares each member alone when split, so a hand-over shows a drop and an addition', () => {
-  const { routes } = mapRoutes([mrow('SFO', 'LAX', 'AS', 30)], [mrow('SFO', 'LAX', 'VX', 20)], airports, { min: 12, split: true });
-  assert.deepEqual(routes.map((r) => r.status).sort(), ['added', 'dropped']);
-});

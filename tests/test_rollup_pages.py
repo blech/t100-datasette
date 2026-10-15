@@ -90,3 +90,18 @@ def test_airline_map_has_two_handles_on_one_track_and_no_compare_menu(ds, db_pat
     put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
     html = get(ds, "/airlines/delta/globe").text
     assert 'id="year-from"' in html and 'id="year"' in html and 'id="compare"' not in html
+
+
+def test_a_merged_group_lists_its_members_and_each_member_has_a_page_of_its_own(ds, db_path):
+    put(db_path, "carrier_group", [dict(airline_id="19790", group_id="delta", group_name="Delta (incl. Northwest)", airline_name="Delta Air Lines Inc."),
+                                   dict(airline_id="19386", group_id="delta", group_name="Delta (incl. Northwest)", airline_name="Northwest Airlines Inc.")])
+    year = lambda airline, deps, y: dict(year=y, group_id="delta", group_name="Delta (incl. Northwest)", airline_id=airline, domestic=1, service_class="F", deps=deps, seats=0, passengers=0, freight=0)
+    put(db_path, "carrier_group_year", [year("19790", 50, 2019), year("19386", 20, 2008)])
+    group = get(ds, "/airlines/delta").text
+    assert 'data-members="2"' in group and 'href="/airlines/19790"' in group and 'href="/airlines/19386"' in group
+    assert 'id="th-airline"' in group
+    member = get(ds, "/airlines/19386")
+    assert member.status_code == 200 and "Northwest Airlines Inc." in member.text and 'href="/airlines/delta"' in member.text
+    assert 'data-airline="19386"' in member.text and 'data-group="delta"' in member.text and 'id="th-airline"' not in member.text
+    assert get(ds, "/airlines/19386/globe").status_code == 200
+    assert get(ds, "/airlines/00000").status_code == 404

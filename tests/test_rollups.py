@@ -161,3 +161,12 @@ def test_an_older_shape_of_a_derived_table_is_dropped_and_rebuilt(db_path):
     conn.commit()
     rebuild_derived_tables(conn)
     assert "airline_id" in [r[1] for r in conn.execute("PRAGMA table_info(carrier_group_year)")]
+
+
+def test_a_numeric_group_id_is_refused_because_it_would_collide_with_airline_page_urls(db_path, tmp_path):
+    import pytest
+    rules = tmp_path / "groups.csv"
+    rules.write_text("airline_id,group_id,group_name,note\n19790,19999,Delta,\n")
+    conn = sqlite3.connect(db_path)
+    with pytest.raises(ValueError, match="19999"):
+        rebuild_carrier_groups(conn, rules)

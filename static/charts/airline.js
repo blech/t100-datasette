@@ -1,10 +1,12 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { classifyRoutes, summariseRoutes, formatYearMonth, MEMBER_COLOURS } from '/static/charts/src/airline.js';
-import { shortName, shortNames } from '/static/charts/src/names.js';
+import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
+import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 
 const group = document.body.dataset.group;
+const airline = document.body.dataset.airline; // '' for a whole group, else one member of a merged group
+const isGroup = Number(document.body.dataset.members) > 0; // a merged group: show who flew each route
 const firstYear = Number(document.body.dataset.firstYear);
 const lastYear = Number(document.body.dataset.lastYear);
 const $ = (id) => document.getElementById(id);
@@ -14,11 +16,7 @@ const LB_PER_SHORT_TON = 2000;
 let detail = [];
 let places = new Map();
 let routes = [];
-let members = [];       // [{ id, name }] sorted by id, when this airline is several merged ones; else []
-let separate = false;   // show the members apart rather than added up
-const colourOf = (id) => MEMBER_COLOURS[members.findIndex((m) => m.id === id) % MEMBER_COLOURS.length];
-const labels = new Map(); // member's full name -> short name (full where two would share one)
-const memberLabel = (name) => labels.get(name) || shortName(name);
+const memberLabel = (name) => shortName(name);
 
 const unit = (m) => HEAT_MEASURES[m].toLowerCase().replace(/ \(.*/, '');
 const plot = (box, options) => box.replaceChildren(Plot.plot({
@@ -35,7 +33,7 @@ function drawSize() {
   const measure = $('al-measure').value, kind = $('al-kind').value, split = $('al-split').value;
   const data = [];
   const years = [];
-  const seriesOf = (r) => (split === 'member' ? memberLabel(r.airline) : split === 'kind' ? r.kind : r.service);
+  const seriesOf = (r) => (split === 'kind' ? r.kind : r.service);
   for (const r of detail) {
     if (kind !== 'all' && r.kind !== kind) continue;
     const v = (Number(r[measure]) || 0) / (measure === 'freight' ? LB_PER_SHORT_TON : 1);
@@ -44,8 +42,8 @@ function drawSize() {
   }
   const box = $('size-chart');
   if (!data.length) { box.textContent = `No ${unit(measure)} for this selection.`; return; }
-  const series = split === 'member' ? members.map((m) => memberLabel(m.name)) : split === 'kind' ? ['passenger', 'freight'] : ['domestic', 'international'];
-  const range = split === 'member' ? members.map((m) => colourOf(m.id)) : ['#4292c6', '#08306b'];
+  const series = split === 'kind' ? ['passenger', 'freight'] : ['domestic', 'international'];
+  const range = ['#4292c6', '#08306b'];
   plot(box, {
     x: yearAxis(years), y: { label: HEAT_MEASURES[measure], tickFormat: '~s', grid: true },
     color: { domain: series, range, legend: true },
@@ -55,15 +53,13 @@ function drawSize() {
 
 async function drawPairs() {
   const min = $('al-min').value;
-  const { rows } = await fetchRows(queryUrl(separate ? 'carrier_route_counts_by_member' : 'carrier_route_counts', { group, min }));
+  const { rows } = await fetchRows(queryUrl('carrier_route_counts', { group, airline, min }));
   const box = $('pairs-chart');
   if (!rows.length) { box.textContent = 'No airport pairs at that level.'; return; }
-  const data = rows.map((r) => ({ year: String(r.year), pairs: r.pairs, series: separate ? memberLabel(r.airline) : 'All' }));
-  const series = separate ? members.map((m) => memberLabel(m.name)) : ['All'];
+  const data = rows.map((r) => ({ year: String(r.year), pairs: r.pairs }));
   plot(box, {
     x: yearAxis(rows.map((r) => r.year)), y: { label: 'Airport pairs', grid: true },
-    color: separate ? { domain: series, range: members.map((m) => colourOf(m.id)), legend: true } : { domain: series, range: ['#4292c6'] },
-    marks: [Plot.barY(data, { x: 'year', y: 'pairs', fill: 'series', order: series, title: (d) => `${d.year}${separate ? `, ${d.series}` : ''}: ${fmt(d.pairs)} airport pairs`, tip: true }), Plot.ruleY([0])],
+    marks: [Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6', title: (d) => `${d.year}: ${fmt(d.pairs)} airport pairs`, tip: true }), Plot.ruleY([0])],
   });
 }
 
@@ -93,28 +89,31 @@ function drawTable() {
   tbody.replaceChildren(...shown.map((r) => {
     const tr = document.createElement('tr');
     const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
-    tr.append(routeCell(r), ...(members.length ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), cell(fmt(r.deps_a), 'num'), cell(fmt(r.deps_b), 'num'), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
+    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), cell(fmt(r.deps_a), 'num'), cell(fmt(r.deps_b), 'num'), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
     return tr;
   }));
-  if (!shown.length) tbody.innerHTML = `<tr><td class="left" colspan="${members.length ? 5 : 4}">None.</td></tr>`;
+  if (!shown.length) tbody.innerHTML = `<tr><td class="left" colspan="${isGroup ? 5 : 4}">None.</td></tr>`;
 }
 
 async function loadChanges() {
   const a = $('al-a').value, b = $('al-b').value, min = $('al-min').value;
-  $('map-link').href = `/airlines/${group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}${separate ? '&members=separate' : ''}`;
-  const { rows } = await fetchRows(queryUrl('carrier_route_changes', { group, a, b }));
-  routes = classifyRoutes(rows, { min: Number(min), split: separate });
+  $('map-link').href = `/airlines/${airline || group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
+  const { rows } = await fetchRows(queryUrl('carrier_route_changes', { group, airline, a, b }));
+  routes = classifyRoutes(rows, { min: Number(min) });
   const c = summariseRoutes(routes);
   const total = c.kept + c.dropped;
-  const each = separate ? ' (counting each of the merged airlines separately, so a route handed from one to another is both dropped and added)' : '';
   $('change-summary').textContent = total
-    ? `In ${a} this airline flew ${fmt(total)} airport pairs at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${fmt(c.kept)} of them were still flown, ${fmt(c.dropped)} were dropped, and ${fmt(c.added)} new ones had been added${each}.`
+    ? `In ${a} this airline flew ${fmt(total)} airport pairs at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${fmt(c.kept)} of them were still flown, ${fmt(c.dropped)} were dropped, and ${fmt(c.added)} new ones had been added.`
     : `No airport pairs reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`;
   drawTable();
 }
 
 // the page is rendered with BTS's full name; show the short one as the heading and keep the full one underneath
 function nameHeading() {
+  for (const a of document.querySelectorAll('.members a[data-name]')) {
+    a.title = a.dataset.name;
+    a.textContent = shortName(a.dataset.name);
+  }
   const h1 = $('airline-name');
   const full = h1.textContent.trim();
   const short = shortName(full);
@@ -136,36 +135,13 @@ async function main() {
   $('al-b').value = within(qs.get('to'), String(lastYear));
   $('al-a').value = within(qs.get('from'), String(Math.max(firstYear, lastYear - 6)));
   try {
-    const [d, airports] = await Promise.all([fetchRows(queryUrl('carrier_group_detail', { group })), fetchRows(queryUrl('airports'))]);
+    const [d, airports] = await Promise.all([fetchRows(queryUrl('carrier_group_detail', { group, airline })), fetchRows(queryUrl('airports'))]);
     detail = d.rows;
     places = new Map(airports.rows.map((r) => [r.code, r.place]));
   } catch (err) {
     console.error(err);
     $('size-chart').textContent = 'Could not load the chart data.';
     return;
-  }
-  members = [...new Map(detail.filter((r) => r.airline_id).map((r) => [r.airline_id, r.airline])).entries()]
-    .sort((x, y) => String(x[0]).localeCompare(String(y[0])))
-    .map(([id, name]) => ({ id, name }));
-  if (members.length < 2) members = [];
-  if (members.length) {
-    // two airlines can share a short name: fall back to the full name for those
-    const shorts = shortNames(members.map((m) => m.name));
-    for (const [full, short] of shorts) labels.set(full, short);
-    $('members-row').hidden = false;
-    $('th-airline').hidden = false;
-    $('al-split').append(new Option('airline', 'member'));
-    separate = qs.get('members') === 'separate';
-    $('al-members').checked = separate;
-    if (separate) $('al-split').value = 'member';
-    $('al-members').addEventListener('change', () => {
-      separate = $('al-members').checked;
-      $('al-split').value = separate ? 'member' : 'service';
-      const q = new URLSearchParams(location.search);
-      if (separate) q.set('members', 'separate'); else q.delete('members');
-      history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}`);
-      drawSize(); drawPairs(); loadChanges();
-    });
   }
   for (const id of ['al-measure', 'al-kind', 'al-split']) $(id).addEventListener('change', drawSize);
   $('al-min').addEventListener('change', () => { drawPairs(); loadChanges(); });

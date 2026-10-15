@@ -158,24 +158,31 @@ databases:
           GROUP BY year, subfamily, group_id, group_name, service, kind
           ORDER BY year
 
+      # what the airline search offers: every group, and each member of a merged group on its own
       airline_list:
         sql: |
-          SELECT group_id, group_name, MIN(year) AS first_year, MAX(year) AS last_year, SUM(deps) AS deps
+          SELECT group_id AS id, group_name AS name, '' AS parent, MIN(year) AS first_year, MAX(year) AS last_year, SUM(deps) AS deps
           FROM carrier_group_year
           GROUP BY group_id, group_name
+          UNION ALL
+          SELECT d.airline_id, COALESCE(g.airline_name, d.group_name), d.group_name, MIN(d.year), MAX(d.year), SUM(d.deps)
+          FROM carrier_group_year d
+          LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
+          WHERE d.group_id IN (SELECT group_id FROM carrier_group_year GROUP BY group_id HAVING COUNT(DISTINCT airline_id) > 1)
+          GROUP BY d.airline_id, COALESCE(g.airline_name, d.group_name), d.group_name
           ORDER BY deps DESC
 
+      # the airline queries take :group (a merged group's id, or an airline's own) and :airline ('' for the whole group, or one member)
       carrier_group_detail:
         sql: |
           SELECT
-            d.year, d.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline,
+            d.year,
             CASE WHEN d.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
             CASE WHEN d.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
             SUM(d.deps) AS deps, SUM(d.seats) AS seats, SUM(d.passengers) AS passengers, SUM(d.freight) AS freight
           FROM carrier_group_year d
-          LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
-          WHERE d.group_id = :group
-          GROUP BY d.year, d.airline_id, airline, service, kind
+          WHERE d.group_id = :group AND (:airline = '' OR d.airline_id = :airline)
+          GROUP BY d.year, service, kind
           ORDER BY d.year
 
       carrier_route_counts:
@@ -184,28 +191,19 @@ databases:
           FROM (
             SELECT year, origin, dest, SUM(deps) AS deps
             FROM carrier_route_year
-            WHERE group_id = :group
+            WHERE group_id = :group AND (:airline = '' OR airline_id = :airline)
             GROUP BY year, origin, dest
           )
           WHERE deps >= CAST(:min AS INTEGER)
           GROUP BY year
           ORDER BY year
 
-      carrier_route_counts_by_member:
-        sql: |
-          SELECT r.year, r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, COUNT(*) AS pairs
-          FROM carrier_route_year r
-          LEFT JOIN carrier_group g ON g.airline_id = r.airline_id
-          WHERE r.group_id = :group AND r.deps >= CAST(:min AS INTEGER)
-          GROUP BY r.year, r.airline_id, airline
-          ORDER BY r.year
-
       carrier_routes_year:
         sql: |
           SELECT r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, r.origin, r.dest, r.deps, r.seats, r.passengers, r.freight
           FROM carrier_route_year r
           LEFT JOIN carrier_group g ON g.airline_id = r.airline_id
-          WHERE r.group_id = :group AND r.year = :year
+          WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline) AND r.year = :year
           ORDER BY r.passengers DESC
 
       carrier_route_changes:
@@ -220,7 +218,7 @@ databases:
             MAX(r.year * 100 + r.last_month) AS last_ym
           FROM carrier_route_year r
           LEFT JOIN carrier_group g ON g.airline_id = r.airline_id
-          WHERE r.group_id = :group
+          WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline)
           GROUP BY r.origin, r.dest, r.airline_id, airline
           HAVING deps_a > 0 OR deps_b > 0
           ORDER BY deps_a DESC, deps_b DESC
