@@ -6,7 +6,7 @@ import { indexAirports } from '/static/globe/src/adapter.js';
 import { NetworkRenderer } from '/static/globe/src/renderer.js';
 import { maxOf } from '/static/globe/src/scale.js';
 import { mapRoutes, centreOf } from '/static/charts/src/airline.js';
-import { shortName } from '/static/charts/src/names.js';
+import { shortName, shortNames } from '/static/charts/src/names.js';
 
 const $ = (id) => document.getElementById(id);
 const group = document.body.dataset.group;
@@ -19,12 +19,15 @@ const state = {
   proj: params.get('proj') === 'flat' ? 'flat' : 'globe',
   width: ['passengers', 'deps', 'freight'].includes(params.get('width')) ? params.get('width') : 'passengers',
   min: MINS.includes(params.get('min')) ? params.get('min') : '12',
+  split: params.get('members') === 'separate',
 };
 
 let airports = new Map();
 let years = [];
 let routes = [];
 let skipped = [];
+let members = [];   // the airlines merged into this one, with their colours, once two or more have been seen
+let labels = new Map();
 let themeId = resolveTheme(location.search, localStorage.getItem('t100-theme'));
 let dirty = true;
 let hover = -1;
@@ -60,15 +63,15 @@ function pushState() {
   if (state.proj === 'flat') q.set('proj', 'flat');
   if (state.width !== 'passengers') q.set('width', state.width);
   if (state.min !== '12') q.set('min', state.min);
+  if (state.split) q.set('members', 'separate');
   if (themeId !== 'paper') q.set('theme', themeId);
   const s = q.toString();
   history.replaceState(null, '', `${location.pathname}${s ? `?${s}` : ''}`);
 }
 
 async function yearRows(year) {
-  const key = `${year}:${state.min}`;
-  if (!cache.has(key)) cache.set(key, fetchRows(queryUrl('carrier_routes_year', { group, year, min: state.min })));
-  return cache.get(key);
+  if (!cache.has(year)) cache.set(year, fetchRows(queryUrl('carrier_routes_year', { group, year })));
+  return cache.get(year);
 }
 
 async function load() {
@@ -77,7 +80,13 @@ async function load() {
   try {
     const [now, then] = await Promise.all([yearRows(state.year), state.compare ? yearRows(state.compare) : null]);
     if (id !== latest) return;
-    ({ routes, skipped } = mapRoutes(now.rows, then ? then.rows : null, airports));
+    const built = mapRoutes(now.rows, then ? then.rows : null, airports, { min: Number(state.min), split: state.split });
+    ({ routes, skipped } = built);
+    if (built.members.length > 1) {
+      members = built.members;
+      labels = shortNames(members.map((m) => m.name));
+      $('members-label').hidden = false;
+    }
     setStatus(now.truncated || (then && then.truncated) ? 'Too many rows: some routes are missing from this view.' : '', true);
   } catch (err) {
     if (id !== latest) return;
@@ -107,11 +116,20 @@ function refresh() {
     ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
     : `${state.year} · ${routes.length} airport pairs · ${fmt(pax)} passengers`;
   $('legend-status').hidden = !state.compare;
-  $('legend-service').hidden = Boolean(state.compare);
+  const byMember = state.split && !state.compare && members.length > 1;
+  $('legend-members').hidden = !byMember;
+  $('legend-service').hidden = Boolean(state.compare) || byMember;
+  if (byMember) {
+    $('legend-members').replaceChildren(...members.flatMap((m) => {
+      const sw = Object.assign(document.createElement('span'), { className: 'swatch' });
+      sw.style.background = m.colour;
+      return [sw, document.createTextNode(` ${labels.get(m.name) || m.name} `)];
+    }));
+  }
   $('footnote').textContent = skipped.length ? `${skipped.length} airport${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}` : '';
   if (!routes.length && !$('status').textContent) setStatus('No routes at this level in this year.');
   else if (routes.length && $('status').className !== 'warn') setStatus('');
-  $('table-link').href = `/airlines/${group}${state.compare ? `?from=${state.compare}&to=${state.year}` : ''}#changes`;
+  $('table-link').href = `/airlines/${group}${state.compare ? `?from=${state.compare}&to=${state.year}${state.split ? '&members=separate' : ''}` : state.split ? '?members=separate' : ''}#changes`;
   pushState();
   dirty = true;
 }
@@ -121,6 +139,8 @@ const place = (code) => airports.get(code)?.place || '';
 
 function tooltipText(r) {
   const lines = [`${label(r)}`, `${place(r.origin)} – ${place(r.dest)}`];
+  const who = r.airline ? [r.airline] : r.airlines.length > 1 ? r.airlines : [];
+  if (who.length) lines.push(who.map((n) => labels.get(n) || shortName(n)).join(', '));
   if (r.status) lines.push(r.status === 'dropped' ? `Dropped: ${fmt(r.depsThen)} departures in ${state.compare}` : `${fmt(r.depsThen)} → ${fmt(r.depsNow)} departures`);
   else lines.push(`${fmt(r.passengers)} passengers · ${fmt(r.deps)} departures`);
   return lines.join('\n');
@@ -174,6 +194,10 @@ function bindControls() {
     const lo = Number(from.value);
     apply(lo, Math.max(lo, years.indexOf(state.year)));
   });
+
+  const sep = $('members');
+  sep.checked = state.split;
+  sep.addEventListener('change', () => { state.split = sep.checked; load(); });
 
   const min = $('min');
   min.value = state.min;

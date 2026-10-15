@@ -25,7 +25,7 @@ def test_family_by_year_labels_service_and_kind_and_merges_classes(ds, db_path):
 
 
 def test_carrier_group_by_year_keeps_the_group_name(ds, db_path):
-    put(db_path, "carrier_group_year", [dict(year=2019, group_id="DL", group_name="Delta", domestic=1, service_class="F",
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="DL", group_name="Delta", domestic=1, service_class="F",
                                              deps=4, seats=400, passengers=300, freight=0)])
     row = get_json(ds, "/t100/carrier_group_by_year.json?_shape=objects")["rows"][0]
     assert (row["group_id"], row["group_name"], row["kind"], row["passengers"]) == ("DL", "Delta", "passenger", 300)
@@ -48,8 +48,21 @@ def test_family_detail_returns_one_family_split_by_version_and_airline(ds, db_pa
 
 
 def test_carrier_route_changes_compares_two_years_per_pair(ds, db_path):
-    row = lambda year, dest, deps: dict(group_id="vx", year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=0, freight=0, first_month=1, last_month=12)
+    row = lambda year, dest, deps: dict(group_id="vx", airline_id="21171", year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=0, freight=0, first_month=1, last_month=12)
     put(db_path, "carrier_route_year", [row(2017, "DEN", 300), row(2017, "LAX", 900), row(2019, "LAX", 800), row(2019, "PDX", 200), row(2017, "TINY", 3)])
-    rows = get_json(ds, "/t100/carrier_route_changes.json?_shape=objects&group=vx&a=2017&b=2019&min=12")["rows"]
-    assert [(r["dest"], r["deps_a"], r["deps_b"]) for r in rows] == [("LAX", 900, 800), ("DEN", 300, 0), ("PDX", 0, 200)]
+    rows = get_json(ds, "/t100/carrier_route_changes.json?_shape=objects&group=vx&a=2017&b=2019")["rows"]
+    assert [(r["dest"], r["deps_a"], r["deps_b"]) for r in rows] == [("LAX", 900, 800), ("DEN", 300, 0), ("TINY", 3, 0), ("PDX", 0, 200)]
     assert get_json(ds, "/t100/carrier_route_counts.json?_shape=objects&group=vx&min=12")["rows"] == [{"year": 2017, "pairs": 2}, {"year": 2019, "pairs": 2}]
+
+
+def test_airline_queries_can_keep_merged_members_apart_or_add_them_up(ds, db_path):
+    put(db_path, "carrier_group", [dict(airline_id="21171", group_id="alaska", group_name="Alaska (incl. Virgin America)", airline_name="Virgin America"),
+                                   dict(airline_id="19930", group_id="alaska", group_name="Alaska (incl. Virgin America)", airline_name="Alaska Airlines Inc.")])
+    row = lambda airline, dest, deps: dict(group_id="alaska", airline_id=airline, year=2017, origin="LAX", dest=dest, deps=deps, seats=0, passengers=deps, freight=0, first_month=1, last_month=12)
+    put(db_path, "carrier_route_year", [row("21171", "BOS", 8), row("19930", "BOS", 8), row("19930", "SEA", 20)])
+    merged = get_json(ds, "/t100/carrier_route_counts.json?_shape=objects&group=alaska&min=12")["rows"]
+    assert merged == [{"year": 2017, "pairs": 2}]  # LAX-BOS reaches 12 only with both airlines added up
+    apart = get_json(ds, "/t100/carrier_route_counts_by_member.json?_shape=objects&group=alaska&min=12")["rows"]
+    assert [(r["airline"], r["pairs"]) for r in apart] == [("Alaska Airlines Inc.", 1)]
+    rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=alaska&year=2017")["rows"]
+    assert sorted((r["airline"], r["dest"]) for r in rows) == [("Alaska Airlines Inc.", "BOS"), ("Alaska Airlines Inc.", "SEA"), ("Virgin America", "BOS")]

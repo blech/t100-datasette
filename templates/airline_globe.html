@@ -30,6 +30,7 @@
     <div id="legend">
       <span id="legend-service"><span class="swatch" style="background:#ff5a00"></span> International
       <span class="swatch" style="background:#2a9df4"></span> Domestic</span>
+      <span id="legend-members" hidden></span>
       <span id="legend-status" hidden><span class="swatch" style="background:#d62728"></span> Dropped
       <span class="swatch" style="background:#2a9df4"></span> Kept
       <span class="swatch" style="background:#2ca02c"></span> Added</span>
@@ -46,6 +47,7 @@
     </div>
     <div id="range-hint">Drag the hollow handle back to compare with an earlier year: routes since dropped show red, new ones green.</div>
     <div class="row">
+      <label id="members-label" hidden><input type="checkbox" id="members"> Merged airlines separately</label>
       <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
     </div>

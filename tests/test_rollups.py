@@ -111,6 +111,12 @@ def test_a_merged_carrier_maps_to_the_surviving_parent(db_path):
     assert got["19386"] == got["19790"] == ("delta", "Delta (incl. Northwest)")
 
 
+def test_each_airline_keeps_its_own_name_inside_its_group(db_path):
+    add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."), ("19386", "B1", "Northwest Airlines Inc."))
+    names = dict(query(db_path, "SELECT airline_id, airline_name FROM carrier_group", rebuild_carrier_groups))
+    assert names == {"19790": "Delta Air Lines Inc.", "19386": "Northwest Airlines Inc."}
+
+
 def test_an_unmerged_carrier_is_its_own_group_under_its_own_name(db_path):
     assert groups(db_path)["20304"] == ("20304", "SkyWest Airlines Inc.")
 
@@ -118,7 +124,8 @@ def test_an_unmerged_carrier_is_its_own_group_under_its_own_name(db_path):
 def test_carrier_group_year_adds_up_across_entities_and_ignores_duplicate_lookup_rows(db_path):
     add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."), ("19386", "B1", "Northwest Airlines Inc."), ("19386", "B1", "Northwest Airlines Inc."))
     add_segments(db_path, "t100_domestic", [flight(carrier_entity="A1", **{"class": "F"}, deps=10, pax=100), flight(carrier_entity="B1", **{"class": "F"}, deps=4, pax=40)])
-    assert query(db_path, "SELECT group_id, group_name, deps, passengers FROM carrier_group_year") == [("delta", "Delta (incl. Northwest)", 14, 140)]
+    assert query(db_path, "SELECT group_id, group_name, SUM(deps), SUM(passengers) FROM carrier_group_year GROUP BY group_id") == [("delta", "Delta (incl. Northwest)", 14, 140)]
+    assert query(db_path, "SELECT airline_id, deps FROM carrier_group_year ORDER BY airline_id") == [("19386", 4), ("19790", 10)]  # the members stay apart in the table
 
 
 def test_distance_bands_use_lower_bounds(db_path):
@@ -143,5 +150,14 @@ def test_carrier_route_year_joins_both_directions_and_both_merged_airlines(db_pa
     add_segments(db_path, "t100_domestic", [
         flight("SFO", "DEN", carrier_entity="A1", **{"class": "F"}, deps=10),
         flight("DEN", "SFO", carrier_entity="B1", **{"class": "F"}, deps=4)])
-    rows = query(db_path, "SELECT group_id, year, origin, dest, deps FROM carrier_route_year")
-    assert rows == [("delta", 2019, "DEN", "SFO", 14)]
+    rows = query(db_path, "SELECT group_id, airline_id, year, origin, dest, deps FROM carrier_route_year ORDER BY airline_id")
+    assert rows == [("delta", "19386", 2019, "DEN", "SFO", 4), ("delta", "19790", 2019, "DEN", "SFO", 10)]
+
+
+def test_an_older_shape_of_a_derived_table_is_dropped_and_rebuilt(db_path):
+    conn = sqlite3.connect(db_path)
+    conn.execute("DROP TABLE carrier_group_year")
+    conn.execute("CREATE TABLE carrier_group_year (year INTEGER, group_id TEXT, group_name TEXT, domestic INTEGER, service_class TEXT, deps INTEGER, seats INTEGER, passengers INTEGER, freight INTEGER)")
+    conn.commit()
+    rebuild_derived_tables(conn)
+    assert "airline_id" in [r[1] for r in conn.execute("PRAGMA table_info(carrier_group_year)")]

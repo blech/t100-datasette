@@ -168,44 +168,61 @@ databases:
       carrier_group_detail:
         sql: |
           SELECT
-            year,
-            CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
-            CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
-            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
-          FROM carrier_group_year
-          WHERE group_id = :group
-          GROUP BY year, service, kind
-          ORDER BY year
+            d.year, d.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline,
+            CASE WHEN d.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN d.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(d.deps) AS deps, SUM(d.seats) AS seats, SUM(d.passengers) AS passengers, SUM(d.freight) AS freight
+          FROM carrier_group_year d
+          LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
+          WHERE d.group_id = :group
+          GROUP BY d.year, d.airline_id, airline, service, kind
+          ORDER BY d.year
 
       carrier_route_counts:
         sql: |
           SELECT year, COUNT(*) AS pairs
-          FROM carrier_route_year
-          WHERE group_id = :group AND deps >= :min
+          FROM (
+            SELECT year, origin, dest, SUM(deps) AS deps
+            FROM carrier_route_year
+            WHERE group_id = :group
+            GROUP BY year, origin, dest
+          )
+          WHERE deps >= CAST(:min AS INTEGER)
           GROUP BY year
           ORDER BY year
 
+      carrier_route_counts_by_member:
+        sql: |
+          SELECT r.year, r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, COUNT(*) AS pairs
+          FROM carrier_route_year r
+          LEFT JOIN carrier_group g ON g.airline_id = r.airline_id
+          WHERE r.group_id = :group AND r.deps >= CAST(:min AS INTEGER)
+          GROUP BY r.year, r.airline_id, airline
+          ORDER BY r.year
+
       carrier_routes_year:
         sql: |
-          SELECT origin, dest, deps, seats, passengers, freight
-          FROM carrier_route_year
-          WHERE group_id = :group AND year = :year AND deps >= CAST(:min AS INTEGER)
-          ORDER BY passengers DESC
+          SELECT r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, r.origin, r.dest, r.deps, r.seats, r.passengers, r.freight
+          FROM carrier_route_year r
+          LEFT JOIN carrier_group g ON g.airline_id = r.airline_id
+          WHERE r.group_id = :group AND r.year = :year
+          ORDER BY r.passengers DESC
 
       carrier_route_changes:
         sql: |
           SELECT
-            origin, dest,
-            SUM(CASE WHEN year = :a THEN deps ELSE 0 END) AS deps_a,
-            SUM(CASE WHEN year = :b THEN deps ELSE 0 END) AS deps_b,
-            SUM(CASE WHEN year = :a THEN passengers ELSE 0 END) AS pax_a,
-            SUM(deps) AS deps_all,
-            MIN(year * 100 + first_month) AS first_ym,
-            MAX(year * 100 + last_month) AS last_ym
-          FROM carrier_route_year
-          WHERE group_id = :group
-          GROUP BY origin, dest
-          HAVING deps_a >= CAST(:min AS INTEGER) OR deps_b >= CAST(:min AS INTEGER)
+            r.origin, r.dest, r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline,
+            SUM(CASE WHEN r.year = :a THEN r.deps ELSE 0 END) AS deps_a,
+            SUM(CASE WHEN r.year = :b THEN r.deps ELSE 0 END) AS deps_b,
+            SUM(CASE WHEN r.year = :a THEN r.passengers ELSE 0 END) AS pax_a,
+            SUM(r.deps) AS deps_all,
+            MIN(r.year * 100 + r.first_month) AS first_ym,
+            MAX(r.year * 100 + r.last_month) AS last_ym
+          FROM carrier_route_year r
+          LEFT JOIN carrier_group g ON g.airline_id = r.airline_id
+          WHERE r.group_id = :group
+          GROUP BY r.origin, r.dest, r.airline_id, airline
+          HAVING deps_a > 0 OR deps_b > 0
           ORDER BY deps_a DESC, deps_b DESC
 
       engines_by_year:

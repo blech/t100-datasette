@@ -54,7 +54,7 @@ def test_an_unknown_family_is_404_and_engines_is_not_a_family(ds):
 
 
 def test_airline_page_names_the_airline_and_unknown_ones_are_not_found(ds, db_path):
-    put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta (incl. Northwest)", domestic=1, service_class="F",
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta (incl. Northwest)", domestic=1, service_class="F",
                                              deps=4, seats=400, passengers=300, freight=0)])
     r = get(ds, "/airlines/delta")
     assert r.status_code == 200 and ">Delta (incl. Northwest)</h1>" in r.text and "/static/charts/airline.js" in r.text
@@ -62,7 +62,7 @@ def test_airline_page_names_the_airline_and_unknown_ones_are_not_found(ds, db_pa
 
 
 def test_airline_map_page_renders_and_links_back_to_the_airline(ds, db_path):
-    put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta (incl. Northwest)", domestic=1, service_class="F",
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta (incl. Northwest)", domestic=1, service_class="F",
                                              deps=4, seats=400, passengers=300, freight=0)])
     r = get(ds, "/airlines/delta/globe")
     assert r.status_code == 200 and 'id="globe"' in r.text and "/static/charts/airlineglobe.js" in r.text
@@ -71,15 +71,15 @@ def test_airline_map_page_renders_and_links_back_to_the_airline(ds, db_path):
     assert 'href="/airlines/delta/globe"' in get(ds, "/airlines/delta").text
 
 
-def test_carrier_routes_year_returns_one_years_pairs_above_the_minimum(ds, db_path):
-    row = lambda year, dest, deps: dict(group_id="vx", year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=deps, freight=0, first_month=1, last_month=12)
+def test_carrier_routes_year_returns_one_years_pairs(ds, db_path):
+    row = lambda year, dest, deps: dict(group_id="vx", airline_id="21171", year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=deps, freight=0, first_month=1, last_month=12)
     put(db_path, "carrier_route_year", [row(2017, "LAX", 900), row(2017, "TINY", 3), row(2018, "DEN", 300)])
-    rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=vx&year=2017&min=12")["rows"]
-    assert [r["dest"] for r in rows] == ["LAX"]
+    rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=vx&year=2017")["rows"]
+    assert [r["dest"] for r in rows] == ["LAX", "TINY"]  # the page applies the minimum, so it can add members up first
 
 
 def test_airline_search_box_is_on_the_airlines_page_and_each_airline_page(ds, db_path):
-    put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
     for path in ["/airlines", "/airlines/delta"]:
         html = get(ds, path).text
         assert 'id="airline-search"' in html and 'id="airline-list"' in html and "/static/charts/airlinesearch.js" in html
@@ -87,6 +87,6 @@ def test_airline_search_box_is_on_the_airlines_page_and_each_airline_page(ds, db
 
 
 def test_airline_map_has_two_handles_on_one_track_and_no_compare_menu(ds, db_path):
-    put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
     html = get(ds, "/airlines/delta/globe").text
     assert 'id="year-from"' in html and 'id="year"' in html and 'id="compare"' not in html

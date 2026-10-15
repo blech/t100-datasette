@@ -90,18 +90,18 @@ CREATE TABLE IF NOT EXISTS "family_year" (
 ) WITHOUT ROWID;
 -- Merger-aware carrier groups (data/carrier_groups.csv; unlisted airlines are their own group), by rebuild_carrier_groups()
 CREATE TABLE IF NOT EXISTS "carrier_group" (
-   [airline_id] TEXT PRIMARY KEY, [group_id] TEXT, [group_name] TEXT
+   [airline_id] TEXT PRIMARY KEY, [group_id] TEXT, [group_name] TEXT, [airline_name] TEXT
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS "carrier_group_year" (
-   [year] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [year] INTEGER, [group_id] TEXT, [group_name] TEXT, [airline_id] TEXT, [domestic] INTEGER, [service_class] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
-   PRIMARY KEY ([year], [group_id], [domestic], [service_class])
+   PRIMARY KEY ([year], [group_id], [airline_id], [domestic], [service_class])
 ) WITHOUT ROWID;
--- Yearly totals per airline group and airport pair, both directions together (origin < dest), for an airline's own page, by rebuild_carrier_route_year()
+-- Yearly totals per airline group, member airline and airport pair, both directions together (origin < dest), for an airline's own page, by rebuild_carrier_route_year()
 CREATE TABLE IF NOT EXISTS "carrier_route_year" (
-   [group_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
+   [group_id] TEXT, [airline_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
-   PRIMARY KEY ([group_id], [year], [origin], [dest])
+   PRIMARY KEY ([group_id], [airline_id], [year], [origin], [dest])
 ) WITHOUT ROWID;
 -- Yearly totals per aircraft family by subfamily and airline group (for a family's own page), by rebuild_family_detail_year()
 CREATE TABLE IF NOT EXISTS "family_detail_year" (
@@ -136,7 +136,23 @@ def _view_sql():
     )
 
 
+# derived tables that gained a column: an older copy is dropped (it is only ever rebuilt data) so the rebuild recreates it
+_ADDED_COLUMNS = [("carrier_group", "airline_name"), ("carrier_group_year", "airline_id"), ("carrier_route_year", "airline_id")]
+
+
+def drop_outdated_derived_tables(conn: sqlite3.Connection) -> list:
+    dropped = []
+    for table, column in _ADDED_COLUMNS:
+        columns = [r[1] for r in conn.execute(f'PRAGMA table_info("{table}")')]
+        if columns and column not in columns:
+            conn.execute(f'DROP TABLE "{table}"')
+            dropped.append(table)
+    conn.commit()
+    return dropped
+
+
 def create_schema(conn: sqlite3.Connection) -> None:
+    drop_outdated_derived_tables(conn)
     conn.executescript(_LOOKUP_TABLES)
     for table in SEGMENT_TABLES:
         conn.execute(_segment_ddl(table))
@@ -258,10 +274,10 @@ def rebuild_carrier_groups(conn: sqlite3.Connection, groups_path=None) -> int:
     airlines = conn.execute(
         "SELECT airline_id, MIN(unique_carrier_name) FROM carriers WHERE airline_id IS NOT NULL GROUP BY airline_id"
     ).fetchall()
-    rows = [(a, *listed.get(a, (a, name))) for a, name in airlines]
+    rows = [(a, *listed.get(a, (a, name)), name) for a, name in airlines]
     with conn:
         conn.execute("DELETE FROM carrier_group")
-        conn.executemany("INSERT INTO carrier_group VALUES (?, ?, ?)", rows)
+        conn.executemany("INSERT INTO carrier_group VALUES (?, ?, ?, ?)", rows)
     return len(rows)
 
 
@@ -273,27 +289,27 @@ def rebuild_carrier_group_year(conn: sqlite3.Connection) -> int:
         conn.execute(
             """
             INSERT INTO carrier_group_year
-            SELECT t.year, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, ''),
+            SELECT t.year, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), COALESCE(c.airline_id, 'unknown'), t.domestic, COALESCE(t.class, ''),
                    SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight)
             FROM t100 t
             LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
             LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
             WHERE t.year IS NOT NULL
-            GROUP BY t.year, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, '')
+            GROUP BY t.year, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), COALESCE(c.airline_id, 'unknown'), t.domestic, COALESCE(t.class, '')
             """
         )
     return conn.execute("SELECT COUNT(*) FROM carrier_group_year").fetchone()[0]
 
 
 def rebuild_carrier_route_year(conn: sqlite3.Connection) -> int:
-    """Recompute carrier_route_year: each airline group's yearly flying on each airport pair, with the first and last month it flew."""
+    """Recompute carrier_route_year: each airline group's yearly flying on each airport pair, by member airline, with the first and last month it flew."""
     create_schema(conn)
     with conn:
         conn.execute("DELETE FROM carrier_route_year")
         conn.execute(
             """
             INSERT INTO carrier_route_year
-            SELECT COALESCE(g.group_id, 'unknown'), t.year,
+            SELECT COALESCE(g.group_id, 'unknown'), COALESCE(c.airline_id, 'unknown'), t.year,
                    MIN(t.origin, t.dest), MAX(t.origin, t.dest),
                    SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight),
                    MIN(CASE WHEN t.departures_performed > 0 THEN t.month END), MAX(CASE WHEN t.departures_performed > 0 THEN t.month END)
@@ -301,7 +317,7 @@ def rebuild_carrier_route_year(conn: sqlite3.Connection) -> int:
             LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
             LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
             WHERE t.year IS NOT NULL
-            GROUP BY COALESCE(g.group_id, 'unknown'), t.year, MIN(t.origin, t.dest), MAX(t.origin, t.dest)
+            GROUP BY COALESCE(g.group_id, 'unknown'), COALESCE(c.airline_id, 'unknown'), t.year, MIN(t.origin, t.dest), MAX(t.origin, t.dest)
             """
         )
     return conn.execute("SELECT COUNT(*) FROM carrier_route_year").fetchone()[0]

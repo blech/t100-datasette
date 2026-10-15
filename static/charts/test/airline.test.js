@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyRoutes, summariseRoutes, formatYearMonth, mapRoutes, centreOf, STATUS_COLOURS, airlineOptions, findAirline } from '../src/airline.js';
+import { classifyRoutes, summariseRoutes, formatYearMonth, mapRoutes, centreOf, STATUS_COLOURS, airlineOptions, findAirline, mergeMembers } from '../src/airline.js';
 
 const r = (origin, dest, deps_a, deps_b) => ({ origin, dest, deps_a, deps_b });
 
@@ -65,4 +65,44 @@ test('findAirline matches the picked name, ignoring case, and refuses a partial 
   assert.equal(findAirline(opts, 'cape air').id, 'a');
   assert.equal(findAirline(opts, 'Cap'), null);
   assert.equal(findAirline(opts, 'Twin'), null);
+});
+
+const member = (origin, dest, airline, deps_a, deps_b, extra = {}) => ({ origin, dest, airline_id: airline, airline, deps_a, deps_b, pax_a: 0, deps_all: deps_a + deps_b, first_ym: 201701, last_ym: 201812, ...extra });
+
+test('merged members: a route one member stopped and another took over is kept', () => {
+  const out = classifyRoutes([member('LAX', 'BOS', 'Virgin America', 300, 0), member('LAX', 'BOS', 'Alaska', 0, 400)], { min: 12 });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].status, 'kept');
+  assert.deepEqual(out[0].airlines, ['Virgin America', 'Alaska']);
+});
+
+test('split members: the same route is dropped for one airline and added for the other', () => {
+  const out = classifyRoutes([member('LAX', 'BOS', 'Virgin America', 300, 0), member('LAX', 'BOS', 'Alaska', 0, 400)], { min: 12, split: true });
+  assert.deepEqual(out.map((r) => [r.airline, r.status]), [['Virgin America', 'dropped'], ['Alaska', 'added']]);
+});
+
+test('mergeMembers adds up departures and widens the first and last month', () => {
+  const [m] = mergeMembers([member('A', 'B', 'x', 10, 0, { first_ym: 200001, last_ym: 200512 }), member('A', 'B', 'y', 0, 5, { first_ym: 200301, last_ym: 201012 })]);
+  assert.deepEqual([m.deps_a, m.deps_b, m.first_ym, m.last_ym], [10, 5, 200001, 201012]);
+});
+
+const mrow = (origin, dest, airline_id, deps) => ({ origin, dest, airline_id, airline: airline_id, deps, seats: deps * 100, passengers: deps * 80, freight: 0 });
+
+test('mapRoutes adds members up on a shared pair, and applies the minimum to the total', () => {
+  const rows = [mrow('SFO', 'LAX', 'VX', 8), mrow('SFO', 'LAX', 'AS', 8), mrow('SFO', 'DEN', 'AS', 8)];
+  const { routes } = mapRoutes(rows, null, airports, { min: 12 });
+  assert.deepEqual(routes.map((r) => [r.dest, r.deps]), [['LAX', 16]]);
+});
+
+test('mapRoutes in split mode keeps members apart and colours them, listing each member once', () => {
+  const rows = [mrow('SFO', 'LAX', 'VX', 20), mrow('SFO', 'LAX', 'AS', 30)];
+  const { routes, members } = mapRoutes(rows, null, airports, { min: 12, split: true });
+  assert.equal(routes.length, 2);
+  assert.equal(new Set(routes.map((r) => r.colour)).size, 2);
+  assert.deepEqual(members.map((m) => m.id), ['AS', 'VX']);
+});
+
+test('mapRoutes compares each member alone when split, so a hand-over shows a drop and an addition', () => {
+  const { routes } = mapRoutes([mrow('SFO', 'LAX', 'AS', 30)], [mrow('SFO', 'LAX', 'VX', 20)], airports, { min: 12, split: true });
+  assert.deepEqual(routes.map((r) => r.status).sort(), ['added', 'dropped']);
 });
