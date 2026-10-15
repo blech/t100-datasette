@@ -17,7 +17,7 @@ async function main() {
   list.replaceChildren(...options.map((o) => Object.assign(document.createElement('option'), { value: o.value, label: o.hint })));
   const go = () => {
     const hit = findAirline(options, input.value);
-    if (hit) location.href = `/carriers/${hit.id}`;
+    if (hit) location.href = `/airlines/${hit.id}`;
   };
   input.addEventListener('change', go);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });

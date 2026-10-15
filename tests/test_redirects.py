@@ -10,6 +10,10 @@ OLD = [
     ("/routes/ATL?measure=deps&service=domestic", "/airports/ATL?measure=deps&service=domestic"),
     ("/route/ATL/LAX", "/airports/ATL/LAX"),
     ("/route/ATL/LAX/2019?split=aircraft", "/airports/ATL/LAX/2019?split=aircraft"),
+    ("/carriers", "/airlines"),
+    ("/carriers?measure=deps", "/airlines?measure=deps"),
+    ("/carriers/delta", "/airlines/delta"),
+    ("/carriers/delta/globe?year=2019&compare=2010", "/airlines/delta/globe?year=2019&compare=2010"),
 ]
 
 

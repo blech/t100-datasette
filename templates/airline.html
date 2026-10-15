@@ -12,7 +12,7 @@
 <body data-group="{{ group }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}">
   <main>
     {% include "_nav.html" %}
-    <p class="related"><a href="/carriers">All airlines</a> · <a href="/carriers/{{ group }}/globe" id="map-link">Map of the network</a></p>
+    <p class="related"><a href="/airlines">All airlines</a> · <a href="/airlines/{{ group }}/globe" id="map-link">Map of the network</a></p>
     {% include "_airline_search.html" %}
     <h1 id="airline-name">{{ name }}</h1>
     <p class="related" id="full-name" hidden></p>

@@ -41,8 +41,8 @@ def test_landing_page_links_to_about_in_its_prose(ds):
     ("/airports/ATL/globe", "direction"),
     ("/aircraft", "groupings"),
     ("/aircraft", "breaks"),
-    ("/carriers", "groupings"),
-    ("/carriers", "breaks"),
+    ("/airlines", "groupings"),
+    ("/airlines", "breaks"),
     ("/aircraft/engines", "freight"),
     ("/aircraft/engines", "breaks"),
 ])

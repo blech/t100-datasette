@@ -7,7 +7,7 @@ import { replaceSearch } from '/static/nav/src/state.js';
 
 const KINDS = {
   aircraft: { query: 'family_by_year', key: 'family', noun: 'aircraft family' },
-  carriers: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
+  airlines: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
 };
 const kind = document.body.dataset.kind;
 const page = KINDS[kind];
@@ -57,9 +57,9 @@ const labelOf = (name) => shorts.get(name) || name;
 
 // an aircraft family's label opens its own page, carrying over the measure and filters chosen here
 function familyHref(name) {
-  if (kind === 'carriers') {
+  if (kind === 'airlines') {
     const id = rows.find((r) => r.group_name === name)?.group_id;
-    return id ? `/carriers/${id}` : undefined;
+    return id ? `/airlines/${id}` : undefined;
   }
   if (kind !== 'aircraft') return undefined;
   const q = new URLSearchParams();
@@ -78,7 +78,7 @@ function draw() {
     busiest: `Colour compares each cell with the year's biggest ${page.noun}: the biggest is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own. Hover over a cell for both.`,
   }[state.scale];
   $('heat-rank').options[1].textContent = `${latestFullYear} only`;
-  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'aircraft' ? ' Click a family\'s name to see it on its own page.' : ''}${kind === 'carriers' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}`;
+  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'aircraft' ? ' Click a family\'s name to see it on its own page.' : ''}${kind === 'airlines' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}`;
 
   const box = $('heatmap');
   box.replaceChildren();
@@ -135,7 +135,7 @@ async function main() {
   try {
     const res = await fetchRows(queryUrl(page.query));
     rows = res.rows;
-    if (kind === 'carriers') shorts = shortNames(rows.map((r) => r.group_name));
+    if (kind === 'airlines') shorts = shortNames(rows.map((r) => r.group_name));
     if (res.truncated) $('rank-note').textContent = 'Too many rows: some are missing from this chart.';
   } catch (err) {
     console.error(err);

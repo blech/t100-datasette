@@ -28,9 +28,13 @@ def register_routes():
         (r"^/globe$", globe_page),
         (r"^/about$", about_page),
         (r"^/aircraft$", rollup_page("aircraft")),
-        (r"^/carriers$", rollup_page("carriers")),
-        (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)$", airline_page),
-        (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
+        (r"^/airlines$", rollup_page("airlines")),
+        (r"^/airlines/(?P<group>[A-Za-z0-9_-]+)$", airline_page),
+        (r"^/airlines/(?P<group>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
+        # the paths airlines had before the URL used the word the pages do
+        (r"^/carriers$", moved("/airlines")),
+        (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)$", moved("/airlines/{group}")),
+        (r"^/carriers/(?P<group>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{group}/globe")),
         (r"^/aircraft/engines$", engines_page),
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
@@ -125,7 +129,7 @@ async def route_page(datasette, request):
 
 ROLLUP_PAGES = {
     "aircraft": {"title": "Aircraft families", "crumb": "aircraft", "noun": "aircraft families", "query": "family_by_year", "key": "family"},
-    "carriers": {"title": "Airlines", "crumb": "airlines", "noun": "airlines", "query": "carrier_group_by_year", "key": "group_name"},
+    "airlines": {"title": "Airlines", "crumb": "airlines", "noun": "airlines", "query": "carrier_group_by_year", "key": "group_name"},
 }
 
 
@@ -193,7 +197,7 @@ async def airline_globe_page(datasette, request):
     name = await airline_name(datasette, group)
     html = await datasette.render_template(
         "airline_globe.html",
-        {"group": group, "name": name, "crumbs": trail(datasette, ("airlines", "/carriers"), (name, f"/carriers/{group}"), ("map", None))},
+        {"group": group, "name": name, "crumbs": trail(datasette, ("airlines", "/airlines"), (name, f"/airlines/{group}"), ("map", None))},
         request=request,
     )
     return Response.html(html)
@@ -226,7 +230,7 @@ async def airline_page(datasette, request):
             "last_year": span[1],
             "members": seen if len(seen) > 1 else [],
             "max_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
-            "crumbs": trail(datasette, ("airlines", "/carriers"), (row[0], None)),
+            "crumbs": trail(datasette, ("airlines", "/airlines"), (row[0], None)),
         },
         request=request,
     )

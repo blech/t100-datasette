@@ -111,7 +111,7 @@ function refresh() {
   $('footnote').textContent = skipped.length ? `${skipped.length} airport${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}` : '';
   if (!routes.length && !$('status').textContent) setStatus('No routes at this level in this year.');
   else if (routes.length && $('status').className !== 'warn') setStatus('');
-  $('table-link').href = `/carriers/${group}${state.compare ? `?from=${state.compare}&to=${state.year}` : ''}#changes`;
+  $('table-link').href = `/airlines/${group}${state.compare ? `?from=${state.compare}&to=${state.year}` : ''}#changes`;
   pushState();
   dirty = true;
 }

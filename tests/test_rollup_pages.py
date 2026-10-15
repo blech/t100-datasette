@@ -6,7 +6,7 @@ from tests.helpers import get, get_json
 from tests.test_rollup_queries import fam, put
 
 
-@pytest.mark.parametrize("path, kind", [("/aircraft", "aircraft"), ("/carriers", "carriers")])
+@pytest.mark.parametrize("path, kind", [("/aircraft", "aircraft"), ("/airlines", "airlines")])
 def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     r = get(ds, path)
     assert r.status_code == 200
@@ -15,7 +15,7 @@ def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     assert 'id="heatmap"' in r.text and 'id="label-tip"' in r.text
 
 
-@pytest.mark.parametrize("path", ["/aircraft", "/carriers"])
+@pytest.mark.parametrize("path", ["/aircraft", "/airlines"])
 def test_settings_read_as_one_sentence(ds, path):
     html = get(ds, path).text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
@@ -36,7 +36,7 @@ def test_engine_story_has_its_own_page_and_the_aircraft_page_links_to_it(ds):
 def test_breadcrumbs_and_landing_links(ds):
     assert 'aria-current="page">aircraft<' in get(ds, "/aircraft").text
     landing = get(ds, "/").text
-    assert 'href="/aircraft"' in landing and 'href="/carriers"' in landing and 'href="/aircraft/engines"' in landing
+    assert 'href="/aircraft"' in landing and 'href="/airlines"' in landing and 'href="/aircraft/engines"' in landing
 
 
 def test_a_family_page_is_found_by_its_slug(ds, db_path):
@@ -56,19 +56,19 @@ def test_an_unknown_family_is_404_and_engines_is_not_a_family(ds):
 def test_airline_page_names_the_airline_and_unknown_ones_are_not_found(ds, db_path):
     put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta (incl. Northwest)", domestic=1, service_class="F",
                                              deps=4, seats=400, passengers=300, freight=0)])
-    r = get(ds, "/carriers/delta")
+    r = get(ds, "/airlines/delta")
     assert r.status_code == 200 and ">Delta (incl. Northwest)</h1>" in r.text and "/static/charts/airline.js" in r.text
-    assert get(ds, "/carriers/nope").status_code == 404
+    assert get(ds, "/airlines/nope").status_code == 404
 
 
 def test_airline_map_page_renders_and_links_back_to_the_airline(ds, db_path):
     put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta (incl. Northwest)", domestic=1, service_class="F",
                                              deps=4, seats=400, passengers=300, freight=0)])
-    r = get(ds, "/carriers/delta/globe")
+    r = get(ds, "/airlines/delta/globe")
     assert r.status_code == 200 and 'id="globe"' in r.text and "/static/charts/airlineglobe.js" in r.text
-    assert 'href="/carriers/delta"' in r.text
-    assert get(ds, "/carriers/nope/globe").status_code == 404
-    assert 'href="/carriers/delta/globe"' in get(ds, "/carriers/delta").text
+    assert 'href="/airlines/delta"' in r.text
+    assert get(ds, "/airlines/nope/globe").status_code == 404
+    assert 'href="/airlines/delta/globe"' in get(ds, "/airlines/delta").text
 
 
 def test_carrier_routes_year_returns_one_years_pairs_above_the_minimum(ds, db_path):
@@ -80,7 +80,7 @@ def test_carrier_routes_year_returns_one_years_pairs_above_the_minimum(ds, db_pa
 
 def test_airline_search_box_is_on_the_airlines_page_and_each_airline_page(ds, db_path):
     put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
-    for path in ["/carriers", "/carriers/delta"]:
+    for path in ["/airlines", "/airlines/delta"]:
         html = get(ds, path).text
         assert 'id="airline-search"' in html and 'id="airline-list"' in html and "/static/charts/airlinesearch.js" in html
     assert 'id="airline-search"' not in get(ds, "/aircraft").text
@@ -88,5 +88,5 @@ def test_airline_search_box_is_on_the_airlines_page_and_each_airline_page(ds, db
 
 def test_airline_map_has_two_handles_on_one_track_and_no_compare_menu(ds, db_path):
     put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
-    html = get(ds, "/carriers/delta/globe").text
+    html = get(ds, "/airlines/delta/globe").text
     assert 'id="year-from"' in html and 'id="year"' in html and 'id="compare"' not in html

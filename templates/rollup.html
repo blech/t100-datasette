@@ -12,9 +12,9 @@
 <body data-kind="{{ kind }}" data-latest-year="{{ latest_year }}">
   <main>
     {% include "_nav.html" %}
-    <p class="related">{% if kind == "aircraft" %}<a href="/carriers">Airlines</a> · <a href="/aircraft/engines">Twin jets took over the long haul</a>{% else %}<a href="/aircraft">Aircraft families</a>{% endif %}</p>
+    <p class="related">{% if kind == "aircraft" %}<a href="/airlines">Airlines</a> · <a href="/aircraft/engines">Twin jets took over the long haul</a>{% else %}<a href="/aircraft">Aircraft families</a>{% endif %}</p>
     <h1>{{ page.title }} over time</h1>
-    {% if kind == "carriers" %}{% include "_airline_search.html" %}{% endif %}
+    {% if kind == "airlines" %}{% include "_airline_search.html" %}{% endif %}
     <p class="intro">
       {% if kind == "aircraft" %}
       Every aircraft type BTS reports, gathered into families (a 737-300 and a 737-800 are both Boeing 737s) so that one type's decline and the next one's rise read as one story.

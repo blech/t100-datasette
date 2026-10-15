@@ -92,7 +92,7 @@ function drawTable() {
 
 async function loadChanges() {
   const a = $('al-a').value, b = $('al-b').value, min = $('al-min').value;
-  $('map-link').href = `/carriers/${group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
+  $('map-link').href = `/airlines/${group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
   const { rows } = await fetchRows(queryUrl('carrier_route_changes', { group, a, b, min }));
   routes = classifyRoutes(rows, { min: Number(min) });
   const c = summariseRoutes(routes);

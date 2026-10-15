@@ -96,7 +96,7 @@ function drawTable() {
   for (const t of aggregateTable(viewRows)) {
     const tr = document.createElement('tr');
     tr.append(
-      linkCell(t.carrier, t.groupId && `/carriers/${t.groupId}`, `${fullNames.get(t.carrier) || t.carrier}: all of this airline's flying`),
+      linkCell(t.carrier, t.groupId && `/airlines/${t.groupId}`, `${fullNames.get(t.carrier) || t.carrier}: all of this airline's flying`),
       linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}`, `${t.family}, all versions`),
       cell(formatCount(t.deps), 'num', t.deps.toLocaleString('en-US')),
       cell(formatCount(t.seats), 'num', t.seats.toLocaleString('en-US')),

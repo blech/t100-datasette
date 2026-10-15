@@ -25,7 +25,8 @@ check 200 /aircraft                                                "heat-kind"
 check 200 /aircraft/engines                                         "engine-chart"
 check 200 /aircraft/boeing-737                                      "family-chart"
 check 404 /aircraft/no-such-plane
-check 200 /carriers                                                 "heat-kind"
+check 200 /airlines                                                 "heat-kind"
+check 301 /carriers
 check 301 /routes/SFO
 check 301 /globe/SFO
 check 301 /route/SFO/LHR/2019
