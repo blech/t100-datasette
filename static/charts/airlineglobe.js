@@ -99,7 +99,8 @@ function refresh() {
   selected = -1;
   $('panel').hidden = true;
   $('tooltip').hidden = true;
-  $('year-label').textContent = state.year;
+  $('year-label').textContent = state.compare ? `${state.compare} → ${state.year}` : state.year;
+  syncHandles();
   const c = counts();
   const pax = routes.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
   $('stats').textContent = state.compare
@@ -144,16 +145,35 @@ function showPanel(r) {
   p.hidden = false;
 }
 
-function bindControls() {
-  const slider = $('year');
-  slider.max = String(years.length - 1);
-  slider.value = String(years.indexOf(state.year));
-  slider.addEventListener('input', () => { state.year = years[Number(slider.value)]; load(); });
+// the two handles are indexes into `years`; the solid one (year) never sits below the hollow one (year-from)
+function syncHandles() {
+  const from = $('year-from'), to = $('year');
+  const lo = years.indexOf(state.compare ?? state.year), hi = years.indexOf(state.year);
+  from.value = String(lo);
+  to.value = String(hi);
+  const span = Math.max(1, years.length - 1);
+  const fill = $('range-fill');
+  fill.style.left = `calc(8px + (100% - 16px) * ${lo / span})`;
+  fill.style.width = `calc((100% - 16px) * ${(hi - lo) / span})`;
+}
 
-  const compare = $('compare');
-  for (const y of years) compare.append(new Option(String(y), String(y)));
-  compare.value = state.compare ? String(state.compare) : '';
-  compare.addEventListener('change', () => { state.compare = compare.value ? Number(compare.value) : null; load(); });
+function bindControls() {
+  const from = $('year-from'), slider = $('year');
+  for (const el of [from, slider]) { el.max = String(years.length - 1); }
+  // moving one handle past the other carries it along; the hollow handle only stays behind when the solid one moves away from it
+  const apply = (lo, hi) => {
+    state.year = years[hi];
+    state.compare = lo < hi ? years[lo] : null;
+    load();
+  };
+  slider.addEventListener('input', () => {
+    const hi = Number(slider.value);
+    apply(Math.min(years.indexOf(state.compare ?? state.year), hi), hi);
+  });
+  from.addEventListener('input', () => {
+    const lo = Number(from.value);
+    apply(lo, Math.max(lo, years.indexOf(state.year)));
+  });
 
   const min = $('min');
   min.value = state.min;
@@ -169,11 +189,14 @@ function bindControls() {
   $('play').addEventListener('click', () => {
     if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
     $('play').textContent = '⏸';
-    if (slider.value === slider.max) slider.value = '0';
+    // play moves the solid handle on towards the end, keeping the hollow one where it is; from the end, start again from it
+    const base = state.compare;
+    if (state.year === years.at(-1)) { state.year = base ?? years[0]; state.compare = null; load(); }
     playTimer = setInterval(() => {
-      if (Number(slider.value) >= years.length - 1) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
-      slider.value = String(Number(slider.value) + 1);
-      state.year = years[Number(slider.value)];
+      const next = years.indexOf(state.year) + 1;
+      if (next >= years.length) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
+      state.year = years[next];
+      state.compare = base && base < state.year ? base : null;
       load();
     }, 900);
   });
@@ -231,7 +254,7 @@ async function main() {
   years = yearRes.rows.map((r) => r.year);
   if (!years.length) { $('controls').hidden = true; setStatus('No routes in the data for this airline.'); return; }
   if (!years.includes(state.year)) state.year = years[years.length - 1];
-  if (!years.includes(state.compare) || state.compare === state.year) state.compare = null;
+  if (!years.includes(state.compare) || state.compare >= state.year) state.compare = null;
   renderer = new NetworkRenderer(canvas, land);
   renderer.setMode(state.proj);
   applyTheme(themeId);

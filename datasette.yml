@@ -158,6 +158,13 @@ databases:
           GROUP BY year, subfamily, group_id, group_name, service, kind
           ORDER BY year
 
+      airline_list:
+        sql: |
+          SELECT group_id, group_name, MIN(year) AS first_year, MAX(year) AS last_year, SUM(deps) AS deps
+          FROM carrier_group_year
+          GROUP BY group_id, group_name
+          ORDER BY deps DESC
+
       carrier_group_detail:
         sql: |
           SELECT

@@ -76,3 +76,17 @@ def test_carrier_routes_year_returns_one_years_pairs_above_the_minimum(ds, db_pa
     put(db_path, "carrier_route_year", [row(2017, "LAX", 900), row(2017, "TINY", 3), row(2018, "DEN", 300)])
     rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=vx&year=2017&min=12")["rows"]
     assert [r["dest"] for r in rows] == ["LAX"]
+
+
+def test_airline_search_box_is_on_the_airlines_page_and_each_airline_page(ds, db_path):
+    put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
+    for path in ["/carriers", "/carriers/delta"]:
+        html = get(ds, path).text
+        assert 'id="airline-search"' in html and 'id="airline-list"' in html and "/static/charts/airlinesearch.js" in html
+    assert 'id="airline-search"' not in get(ds, "/aircraft").text
+
+
+def test_airline_map_has_two_handles_on_one_track_and_no_compare_menu(ds, db_path):
+    put(db_path, "carrier_group_year", [dict(year=2019, group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
+    html = get(ds, "/carriers/delta/globe").text
+    assert 'id="year-from"' in html and 'id="year"' in html and 'id="compare"' not in html

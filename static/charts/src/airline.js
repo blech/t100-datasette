@@ -1,3 +1,5 @@
+import { shortNames } from './names.js';
+
 // Rows from carrier_route_changes (one per airport pair, with departures in year A and year B) ->
 // each pair's fate between the two years, for an airline's own page.
 export function classifyRoutes(rows, { min = 12 } = {}) {
@@ -75,4 +77,29 @@ export function centreOf(routes) {
   }
   if (!x && !y && !z) return [-96, 38];
   return [(Math.atan2(y, x) * 180) / Math.PI, (Math.atan2(z, Math.hypot(x, y)) * 180) / Math.PI];
+}
+
+// Rows from airline_list -> what the search box offers: one entry per airline group, the biggest first.
+// `value` is the short name (what gets typed into the box), `hint` the years and full name (which the box also searches).
+export function airlineOptions(rows) {
+  const latest = new Map();
+  for (const r of rows) {
+    const had = latest.get(r.group_id);
+    if (!had || r.last_year > had.last_year) latest.set(r.group_id, r);
+  }
+  const entries = [...latest.values()];
+  const shorts = shortNames(entries.map((r) => r.group_name));
+  return entries.map((r) => ({
+    id: r.group_id,
+    value: shorts.get(r.group_name),
+    hint: `${r.first_year}–${r.last_year}${shorts.get(r.group_name) === r.group_name ? '' : ` · ${r.group_name}`}`,
+  }));
+}
+
+// the airline whose value matches what was typed or picked, ignoring case; null if none or if the text is ambiguous
+export function findAirline(options, text) {
+  const want = String(text).trim().toLowerCase();
+  if (!want) return null;
+  const hits = options.filter((o) => o.value.toLowerCase() === want);
+  return hits.length === 1 ? hits[0] : null;
 }

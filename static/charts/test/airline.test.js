@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyRoutes, summariseRoutes, formatYearMonth, mapRoutes, centreOf, STATUS_COLOURS } from '../src/airline.js';
+import { classifyRoutes, summariseRoutes, formatYearMonth, mapRoutes, centreOf, STATUS_COLOURS, airlineOptions, findAirline } from '../src/airline.js';
 
 const r = (origin, dest, deps_a, deps_b) => ({ origin, dest, deps_a, deps_b });
 
@@ -48,4 +48,21 @@ test('centreOf points at the middle of the routes, and at the US when there are 
   const [lon] = centreOf(mapRoutes([pair('SFO', 'DEN', 1)], null, airports).routes);
   assert.ok(lon < -104 && lon > -123);
   assert.deepEqual(centreOf([]), [-96, 38]);
+});
+
+test('airlineOptions offers each group once under its short name, with years and full name as the hint', () => {
+  const opts = airlineOptions([
+    { group_id: '21618', group_name: 'Southern Airways Express, dba Mokulele Airlines', first_year: 2012, last_year: 2025, deps: 5 },
+    { group_id: '21242', group_name: 'Mokulele Flight Services, Inc.', first_year: 2006, last_year: 2020, deps: 3 },
+    { group_id: '21242', group_name: 'Mokulele Flight Services, Inc.', first_year: 2006, last_year: 2019, deps: 1 },
+  ]);
+  assert.deepEqual(opts.map((o) => o.value), ['Mokulele Airlines', 'Mokulele Flight Services']);
+  assert.equal(opts[0].hint, '2012–2025 · Southern Airways Express, dba Mokulele Airlines');
+});
+
+test('findAirline matches the picked name, ignoring case, and refuses a partial or ambiguous one', () => {
+  const opts = [{ id: 'a', value: 'Cape Air' }, { id: 'b', value: 'Cape' }, { id: 'c', value: 'Twin' }, { id: 'd', value: 'twin' }];
+  assert.equal(findAirline(opts, 'cape air').id, 'a');
+  assert.equal(findAirline(opts, 'Cap'), null);
+  assert.equal(findAirline(opts, 'Twin'), null);
 });

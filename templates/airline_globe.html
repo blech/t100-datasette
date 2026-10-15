@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{ name }} network · T-100</title>
   <link rel="stylesheet" href="/static/globe/style.css">
+  <link rel="stylesheet" href="/static/charts/airlineglobe.css">
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
@@ -36,11 +37,15 @@
     </div>
     <div class="row">
       <button id="play" type="button" aria-label="Play through the years">▶</button>
-      <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      <div id="range">
+        <div id="range-fill"></div>
+        <input id="year-from" type="range" min="0" max="0" value="0" step="1" aria-label="Compare with this year">
+        <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      </div>
       <span id="year-label"></span>
     </div>
+    <div id="range-hint">Drag the hollow handle back to compare with an earlier year: routes since dropped show red, new ones green.</div>
     <div class="row">
-      <label>Compare with <select id="compare" aria-label="Year to compare with"><option value="">nothing</option></select></label>
       <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
     </div>
