@@ -30,3 +30,17 @@ test('resolveTheme ignores unknown and hostile values', () => {
   }
   assert.equal(resolveTheme('?theme=nope', 'night'), 'night');
 });
+
+test('resolveTheme falls back to Night when the system prefers dark', () => {
+  assert.equal(resolveTheme('', null, true), 'night');
+  assert.equal(resolveTheme('?x=1', undefined, true), 'night');
+  assert.equal(resolveTheme('', null, false), 'paper');
+  assert.equal(resolveTheme('', null), 'paper');
+});
+
+test('an explicit theme beats the system preference', () => {
+  assert.equal(resolveTheme('?theme=paper', null, true), 'paper');
+  assert.equal(resolveTheme('', 'paper', true), 'paper');
+  assert.equal(resolveTheme('?theme=nope', 'natural', true), 'natural');
+  assert.equal(resolveTheme('?theme=nope', 'nope', true), 'night');
+});
