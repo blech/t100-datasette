@@ -28,6 +28,10 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    # records each run as a GitHub deployment, shown in the repo sidebar
+    environment:
+      name: production
+      url: https://blech-datasette-t100.fly.dev
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
