@@ -7,6 +7,9 @@ import { NetworkRenderer } from '/static/globe/src/renderer.js';
 import { maxOf } from '/static/globe/src/scale.js';
 import { mapRoutes, centreOf } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
+import { parseStyle, styleParams, colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from '/static/globe/src/routestyle.js';
+import { countStatuses, changeText, moveHandle, playStep } from '/static/globe/src/compare.js';
+import { renderLegend, syncRange } from '/static/globe/src/controls.js';
 
 const $ = (id) => document.getElementById(id);
 const group = document.body.dataset.group;
@@ -21,11 +24,14 @@ const state = {
   proj: params.get('proj') === 'flat' ? 'flat' : 'globe',
   width: ['passengers', 'deps', 'freight'].includes(params.get('width')) ? params.get('width') : 'passengers',
   min: MINS.includes(params.get('min')) ? params.get('min') : '12',
+  ...parseStyle(location.search),
 };
 
 let airports = new Map();
 let years = [];
 let routes = [];
+let shown = []; // routes after the legend's filters: what is drawn and hit-tested
+const range = { from: $('year-from'), to: $('year'), fill: $('range-fill') };
 let skipped = [];
 let themeId = resolveTheme(location.search, localStorage.getItem('t100-theme'));
 let dirty = true;
@@ -62,6 +68,7 @@ function pushState() {
   if (state.proj === 'flat') q.set('proj', 'flat');
   if (state.width !== 'passengers') q.set('width', state.width);
   if (state.min !== '12') q.set('min', state.min);
+  for (const [k, v] of Object.entries(styleParams(state))) q.set(k, v);
   if (themeId !== 'paper') q.set('theme', themeId);
   const s = q.toString();
   history.replaceState(null, '', `${location.pathname}${s ? `?${s}` : ''}`);
@@ -89,28 +96,27 @@ async function load() {
   refresh();
 }
 
-function counts() {
-  const c = { kept: 0, added: 0, dropped: 0 };
-  for (const r of routes) if (r.status) c[r.status] += 1;
-  return c;
-}
-
 function refresh() {
   hover = -1;
   selected = -1;
   $('panel').hidden = true;
   $('tooltip').hidden = true;
-  $('year-label').textContent = state.compare ? `${state.compare} → ${state.year}` : state.year;
-  syncHandles();
-  const c = counts();
-  const pax = routes.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
-  $('stats').textContent = state.compare
+  const comparing = Boolean(state.compare);
+  shown = visibleRoutes(routes, state.hide, comparing);
+  $('year-label').textContent = comparing ? `${state.compare} → ${state.year}` : state.year;
+  syncRange(range, years, state.year, state.compare);
+  const c = countStatuses(routes);
+  const pax = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
+  $('stats').textContent = comparing
     ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
-    : `${state.year} · ${routes.length} airport pairs · ${fmt(pax)} passengers`;
-  $('legend-status').hidden = !state.compare;
-  $('legend-service').hidden = Boolean(state.compare);
+    : `${state.year} · ${shown.length} airport pairs · ${fmt(pax)} passengers`;
+  const mode = colourMode(state.colour, comparing);
+  $('colour').value = mode;
+  $('colour').querySelector('option[value="change"]').disabled = !comparing;
+  renderLegend($('legend-chips'), legendItems({ mode, comparing, hide: state.hide, routes }), (key) => { state.hide = toggleHide(state.hide, key); refresh(); });
   $('footnote').textContent = skipped.length ? `${skipped.length} airport${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}` : '';
   if (!routes.length && !$('status').textContent) setStatus('No routes at this level in this year.');
+  else if (routes.length && !shown.length) setStatus('Every route here is hidden: click a legend entry to show it again.');
   else if (routes.length && $('status').className !== 'warn') setStatus('');
   $('table-link').href = `/airlines/${own}${state.compare ? `?from=${state.compare}&to=${state.year}` : ''}#changes`;
   pushState();
@@ -123,7 +129,7 @@ const place = (code) => airports.get(code)?.place || '';
 function tooltipText(r) {
   const lines = [`${label(r)}`, `${place(r.origin)} – ${place(r.dest)}`];
   if (r.airlines.length > 1) lines.push(r.airlines.map(shortName).join(', '));
-  if (r.status) lines.push(r.status === 'dropped' ? `Dropped: ${fmt(r.depsThen)} departures in ${state.compare}` : `${fmt(r.depsThen)} → ${fmt(r.depsNow)} departures`);
+  if (r.status) lines.push(changeText(r, state.compare));
   else lines.push(`${fmt(r.passengers)} passengers · ${fmt(r.deps)} departures`);
   return lines.join('\n');
 }
@@ -147,35 +153,12 @@ function showPanel(r) {
   p.hidden = false;
 }
 
-// the two handles are indexes into `years`; the solid one (year) never sits below the hollow one (year-from)
-function syncHandles() {
-  const from = $('year-from'), to = $('year');
-  const lo = years.indexOf(state.compare ?? state.year), hi = years.indexOf(state.year);
-  from.value = String(lo);
-  to.value = String(hi);
-  const span = Math.max(1, years.length - 1);
-  const fill = $('range-fill');
-  fill.style.left = `calc(8px + (100% - 16px) * ${lo / span})`;
-  fill.style.width = `calc((100% - 16px) * ${(hi - lo) / span})`;
-}
-
 function bindControls() {
   const from = $('year-from'), slider = $('year');
   for (const el of [from, slider]) { el.max = String(years.length - 1); }
-  // moving one handle past the other carries it along; the hollow handle only stays behind when the solid one moves away from it
-  const apply = (lo, hi) => {
-    state.year = years[hi];
-    state.compare = lo < hi ? years[lo] : null;
-    load();
-  };
-  slider.addEventListener('input', () => {
-    const hi = Number(slider.value);
-    apply(Math.min(years.indexOf(state.compare ?? state.year), hi), hi);
-  });
-  from.addEventListener('input', () => {
-    const lo = Number(from.value);
-    apply(lo, Math.max(lo, years.indexOf(state.year)));
-  });
+  const move = (which, el) => () => { Object.assign(state, moveHandle(years, state, which, Number(el.value))); load(); };
+  slider.addEventListener('input', move('year', slider));
+  from.addEventListener('input', move('compare', from));
 
   const min = $('min');
   min.value = state.min;
@@ -187,6 +170,7 @@ function bindControls() {
   const width = $('width');
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
+  $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
 
   $('play').addEventListener('click', () => {
     if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
@@ -195,10 +179,9 @@ function bindControls() {
     const base = state.compare;
     if (state.year === years.at(-1)) { state.year = base ?? years[0]; state.compare = null; load(); }
     playTimer = setInterval(() => {
-      const next = years.indexOf(state.year) + 1;
-      if (next >= years.length) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
-      state.year = years[next];
-      state.compare = base && base < state.year ? base : null;
+      const step = playStep(years, state.year, base);
+      if (!step) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
+      Object.assign(state, step);
       load();
     }, 900);
   });
@@ -210,18 +193,18 @@ function bindCanvas() {
     onUserMove: () => { dirty = true; $('tooltip').hidden = true; },
     onReset: () => { Object.assign(view, defaultView(), { rot: initialRot() }); dirty = true; },
     onHover: (x, y) => {
-      const i = renderer.hitTest(x, y, routes);
+      const i = renderer.hitTest(x, y, shown);
       if (i !== hover) { hover = i; dirty = true; }
       const tip = $('tooltip');
       if (i < 0) { tip.hidden = true; return; }
-      tip.textContent = tooltipText(routes[i]);
+      tip.textContent = tooltipText(shown[i]);
       tip.style.left = `${x + 14}px`;
       tip.style.top = `${y + 14}px`;
       tip.hidden = false;
     },
     onTap: (x, y) => {
-      selected = renderer.hitTest(x, y, routes, 10);
-      if (selected >= 0) showPanel(routes[selected]); else $('panel').hidden = true;
+      selected = renderer.hitTest(x, y, shown, 10);
+      if (selected >= 0) showPanel(shown[selected]); else $('panel').hidden = true;
       dirty = true;
     },
   });
@@ -237,7 +220,8 @@ function frame(last, now) {
   if (moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
-    renderer.draw(view, routes, { widthKey: state.width, max: maxOf(routes, state.width), highlight: selected >= 0 ? selected : hover, labels: 0, bothEnds: true });
+    const styles = styleRoutes(shown, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: state.width });
+    renderer.draw(view, shown, { widthKey: state.width, max: maxOf(shown, state.width), highlight: selected >= 0 ? selected : hover, labels: 0, bothEnds: true, styles });
   }
   requestAnimationFrame((n) => frame(now, n));
 }

@@ -67,6 +67,8 @@ def test_airline_map_page_renders_and_links_back_to_the_airline(ds, db_path):
     r = get(ds, "/airlines/delta/globe")
     assert r.status_code == 200 and 'id="globe"' in r.text and "/static/charts/airlineglobe.js" in r.text
     assert 'href="/airlines/delta"' in r.text
+    assert 'id="legend-chips"' in r.text and 'id="colour"' in r.text
+    assert 'id="legend-service"' not in r.text
     assert get(ds, "/airlines/nope/globe").status_code == 404
     assert 'href="/airlines/delta/globe"' in get(ds, "/airlines/delta").text
 
