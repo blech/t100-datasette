@@ -119,15 +119,20 @@ export class NetworkRenderer {
     const key = opts.widthKey || 'passengers';
     const order = routes.map((r, i) => i).sort((a, b) => Number(routes[b][key]) - Number(routes[a][key]));
     ctx.lineCap = 'round';
+    // while a route is highlighted the rest step back
+    const dim = opts.highlight >= 0 ? 0.6 : 1;
     for (const i of order) {
       const r = routes[i];
+      const s = opts.styles?.[i];
       ctx.beginPath();
       this.path({ type: 'LineString', coordinates: [r.from, r.to] });
-      ctx.strokeStyle = r.colour ?? colourFor(r.service);
-      ctx.globalAlpha = i === opts.highlight ? 1 : 0.65;
+      ctx.strokeStyle = s?.colour ?? colourFor(r.service);
+      ctx.setLineDash(s?.dashed ? [5, 4] : []);
+      ctx.globalAlpha = i === opts.highlight ? 1 : (s?.alpha ?? 0.65) * dim;
       ctx.lineWidth = widthFor(r[key], opts.max) + (i === opts.highlight ? 1.5 : 0);
       ctx.stroke();
     }
+    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
 
     ctx.font = '11px -apple-system, system-ui, sans-serif';
