@@ -36,6 +36,15 @@ export function moveHandle(years, { year, compare }, which, index) {
   return { year: years[b], compare: a < b ? years[a] : null };
 }
 
+// Months and a comparison don't mix: in the month view the solid handle only changes the year,
+// and moving the hollow one back leaves the months for a comparison
+export function moveRange(years, state, which, index) {
+  const next = moveHandle(years, state, which, index);
+  if (state.month === null) return { ...next, month: null };
+  if (which === 'year') return { year: next.year, compare: null, month: state.month };
+  return { ...next, month: next.compare === null ? state.month : null };
+}
+
 // One step of play: the solid handle moves on a year and the hollow one stays at `base`; null once at the end
 export function playStep(years, year, base) {
   const next = years.indexOf(year) + 1;

@@ -8,7 +8,7 @@ import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
 import { colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
-import { compareYears, countStatuses, changeText, moveHandle, playStep } from './src/compare.js';
+import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
 import { renderLegend, syncRange } from './src/controls.js';
 
 const $ = (id) => document.getElementById(id);
@@ -222,10 +222,9 @@ function bindControls() {
   $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
 
   for (const el of [range.from, range.to]) { el.min = '0'; el.max = String(years.length - 1); }
-  // comparing is by year, so moving the hollow handle back leaves the month view
   const move = (which, el) => async () => {
-    Object.assign(state, moveHandle(years, state, which, Number(el.value)));
-    if (state.compare !== null && state.month !== null) { state.month = null; $('month-toggle').checked = false; }
+    Object.assign(state, moveRange(years, state, which, Number(el.value)));
+    $('month-toggle').checked = state.month !== null;
     if (state.month !== null && (await loadMonths()) === false) return;
     refresh();
   };
@@ -251,6 +250,8 @@ function bindControls() {
   const toggle = $('month-toggle');
   toggle.checked = state.month !== null;
   toggle.addEventListener('change', async () => {
+    // play steps through whole years, so a month view stops it
+    if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; }
     if (toggle.checked) {
       state.compare = null;
       state.month = state.month ?? 1;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compareYears, countStatuses, changeText, moveHandle, playStep } from '../src/compare.js';
+import { compareYears, countStatuses, changeText, moveHandle, moveRange, playStep } from '../src/compare.js';
 
 const r = (dest, deps) => ({ dest, deps, passengers: deps * 80 });
 const byDest = (x) => x.dest;
@@ -63,4 +63,17 @@ test('playStep moves the year on and keeps the comparison year, stopping at the 
   assert.deepEqual(playStep(years, 2020, 2019), { year: 2021, compare: 2019 });
   assert.deepEqual(playStep(years, 2019, null), { year: 2020, compare: null });
   assert.equal(playStep(years, 2022, 2019), null);
+});
+
+test('moveRange: in the month view the solid handle moves the year and keeps the months', () => {
+  assert.deepEqual(moveRange(years, { year: 2020, compare: null, month: 3 }, 'year', 3), { year: 2022, compare: null, month: 3 });
+  assert.deepEqual(moveRange(years, { year: 2022, compare: null, month: 3 }, 'year', 0), { year: 2019, compare: null, month: 3 });
+});
+
+test('moveRange: moving the hollow handle back leaves the month view for a comparison', () => {
+  assert.deepEqual(moveRange(years, { year: 2022, compare: null, month: 3 }, 'compare', 0), { year: 2022, compare: 2019, month: null });
+});
+
+test('moveRange outside the month view is moveHandle', () => {
+  assert.deepEqual(moveRange(years, { year: 2022, compare: 2019, month: null }, 'year', 2), { year: 2021, compare: 2019, month: null });
 });

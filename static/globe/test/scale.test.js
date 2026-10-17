@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { colourFor, widthFor, maxOf, SERVICE_COLOURS } from '../src/scale.js';
+import { colourFor, widthFor, maxOf, dashFor, SERVICE_COLOURS } from '../src/scale.js';
 
 test('colours', () => {
   assert.equal(colourFor('domestic'), '#2a9df4');
@@ -25,4 +25,12 @@ test('maxOf and widthFor work on freight values', () => {
   const routes = [{ freight: 5_000_000 }, { freight: 20_000_000 }, { freight: 0 }];
   assert.equal(maxOf(routes, 'freight'), 20_000_000);
   assert.ok(widthFor(20_000_000, 20_000_000) > widthFor(5_000_000, 20_000_000));
+});
+
+test('dashFor leaves a visible gap at every line width, round caps and all', () => {
+  for (const w of [0.6, 2, 4.5, 6]) {
+    const [dash, gap] = dashFor(w);
+    assert.ok(gap - w >= 4 - 1e-9, `w=${w}: gap ${gap} closes to ${gap - w}`);
+    assert.ok(dash > 0);
+  }
 });
