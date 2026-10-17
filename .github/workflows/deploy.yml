@@ -31,7 +31,7 @@ jobs:
     # records each run as a GitHub deployment, shown in the repo sidebar
     environment:
       name: production
-      url: https://blech-datasette-t100.fly.dev
+      url: https://t100.husk.org
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
