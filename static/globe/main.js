@@ -3,10 +3,13 @@ import { defaultView, clamp } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
-import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, forService, skippedFor, originProblem } from './src/adapter.js';
+import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
 import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
+import { colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
+import { compareYears, countStatuses, changeText, moveHandle, playStep } from './src/compare.js';
+import { renderLegend, syncRange } from './src/controls.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -23,6 +26,10 @@ let monthRoutes = [];    // placed routes for the selected year, all months
 let years = [];
 let yearRaw = [];        // raw routes_by_year rows
 let monthRaw = [];       // raw routes_by_month rows for the selected year
+let periodRoutes = [];   // the period on screen, with kept/added/dropped when comparing
+let shown = [];          // periodRoutes after the legend's filters: what is drawn and hit-tested
+const range = { from: $('year-from'), to: $('year'), fill: $('range-fill') };
+const destKey = (r) => r.dest;
 let truncated = false;
 let loadError = '';
 const monthSeq = createLatest();
@@ -51,10 +58,12 @@ function applyTheme(id) {
 }
 document.addEventListener('t100:theme', (e) => { applyTheme(e.detail.id); pushState(); });
 
-function currentRoutes() {
-  if (state.year === null) return [];
-  const routes = state.month !== null ? forMonth(monthRoutes, state.month) : forYear(yearRoutes, state.year);
-  return forService(routes, state.service);
+function recompute() {
+  if (state.year === null) { periodRoutes = []; shown = []; return; }
+  periodRoutes = state.month !== null
+    ? compareYears(forMonth(monthRoutes, state.month), null, destKey)
+    : compareYears(forYear(yearRoutes, state.year), state.compare ? forYear(yearRoutes, state.compare) : null, destKey);
+  shown = visibleRoutes(periodRoutes, state.hide, Boolean(state.compare));
 }
 
 function pushState() {
@@ -63,25 +72,32 @@ function pushState() {
 }
 
 function updateStats() {
-  const routes = currentRoutes();
-  const pax = routes.reduce((s, r) => s + Number(r.passengers || 0), 0);
-  const deps = routes.reduce((s, r) => s + Number(r.deps || 0), 0);
-  const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : `${state.year}`;
-  $('stats').textContent = `${label} · ${routes.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${fmt(deps)} departures · ${fmt(pax)} passengers`;
+  const comparing = Boolean(state.compare);
+  const pax = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
+  const deps = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.deps || 0)), 0);
+  const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : comparing ? `${state.compare} → ${state.year}` : `${state.year}`;
+  const c = countStatuses(periodRoutes);
+  $('stats').textContent = comparing
+    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
+    : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${fmt(deps)} departures · ${fmt(pax)} passengers`;
   $('year-label').textContent = label;
-  const periodRows = state.month !== null ? monthRaw.filter((r) => r.month === state.month) : yearRaw.filter((r) => r.year === state.year);
-  const skipped = skippedFor(forService(periodRows, state.service), airports);
+  const periodRows = state.month !== null
+    ? monthRaw.filter((r) => r.month === state.month)
+    : yearRaw.filter((r) => r.year === state.year || r.year === state.compare);
+  const skipped = skippedFor(periodRows.filter((r) => !state.hide.includes(r.service)), airports);
   const notes = [];
   if (skipped.length) notes.push(`${skipped.length} destination${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}`);
   $('footnote').textContent = notes.join(' · ');
   if (loadError) setStatus(loadError, true);
   else if (truncated) setStatus('Too many rows: some routes are missing from this view.', true);
-  else if (!routes.length) setStatus('No flights from this airport in this period.');
+  else if (!periodRoutes.length) setStatus('No flights from this airport in this period.');
+  else if (!shown.length) setStatus('Every route here is hidden: click a legend entry to show it again.');
   else setStatus('');
 }
 
 function tooltipText(r) {
-  return `${r.dest} · ${r.destCity || ''}\n${fmt(r.passengers)} passengers · ${fmt(r.deps)} departures\n${r.service}`;
+  const change = changeText(r, state.compare);
+  return `${r.dest} · ${r.destCity || ''}\n${change || `${fmt(r.passengers)} passengers · ${fmt(r.deps)} departures`}\n${r.service}`;
 }
 
 function showPanel(r) {
@@ -100,7 +116,7 @@ function showPanel(r) {
   destLink.title = `Show routes from ${r.dest}`;
   h.append(`${origin} → `, destLink);
   const sub = document.createElement('div');
-  sub.textContent = `${r.destCity || ''} (${r.service})`;
+  sub.textContent = `${r.destCity || ''} (${r.service}${r.status ? `, ${r.status}` : ''})`;
   const dl = document.createElement('dl');
   for (const [k, v] of [['Departures', fmt(r.deps)], ['Seats', fmt(r.seats)], ['Passengers', fmt(r.passengers)], ['Freight (lb)', fmt(r.freight)]]) {
     const dt = document.createElement('dt'); dt.textContent = k;
@@ -147,6 +163,13 @@ function refresh() {
   $('panel').hidden = true;
   $('tooltip').hidden = true;
   $('month').hidden = state.month === null;
+  recompute();
+  const comparing = Boolean(state.compare);
+  const mode = colourMode(state.colour, comparing);
+  $('colour').value = mode;
+  $('colour').querySelector('option[value="change"]').disabled = !comparing;
+  renderLegend($('legend-chips'), legendItems({ mode, comparing, hide: state.hide, routes: periodRoutes }), (key) => { state.hide = toggleHide(state.hide, key); refresh(); });
+  if (years.length) syncRange(range, years, state.year, state.compare);
   updateStats();
   pushState();
   dirty = true;
@@ -193,33 +216,34 @@ function bindControls() {
     pushState();
     dirty = true;
   });
-  const service = $('service');
-  service.value = state.service;
-  service.addEventListener('change', () => { state.service = service.value; hover = -1; selected = -1; $('panel').hidden = true; updateStats(); pushState(); dirty = true; });
   const width = $('width');
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
+  $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
 
-  const slider = $('year');
-  slider.min = '0';
-  slider.max = String(years.length - 1);
-  slider.value = String(years.indexOf(state.year));
-  slider.addEventListener('input', async () => {
-    state.year = years[Number(slider.value)];
+  for (const el of [range.from, range.to]) { el.min = '0'; el.max = String(years.length - 1); }
+  // comparing is by year, so moving the hollow handle back leaves the month view
+  const move = (which, el) => async () => {
+    Object.assign(state, moveHandle(years, state, which, Number(el.value)));
+    if (state.compare !== null && state.month !== null) { state.month = null; $('month-toggle').checked = false; }
     if (state.month !== null && (await loadMonths()) === false) return;
     refresh();
-  });
+  };
+  range.to.addEventListener('input', move('year', range.to));
+  range.from.addEventListener('input', move('compare', range.from));
 
   $('play').addEventListener('click', () => {
     if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
     $('play').textContent = '⏸';
-    if (slider.value === slider.max) slider.value = '0';
+    state.month = null;
+    $('month-toggle').checked = false;
+    // play moves the solid handle on, keeping the hollow one where it is; from the end, start again from it
+    const base = state.compare;
+    if (state.year === years.at(-1)) { state.year = base ?? years[0]; state.compare = null; refresh(); }
     playTimer = setInterval(() => {
-      if (Number(slider.value) >= years.length - 1) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
-      slider.value = String(Number(slider.value) + 1);
-      state.year = years[Number(slider.value)];
-      state.month = null;
-      $('month-toggle').checked = false;
+      const step = playStep(years, state.year, base);
+      if (!step) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
+      Object.assign(state, step);
       refresh();
     }, 700);
   });
@@ -228,6 +252,7 @@ function bindControls() {
   toggle.checked = state.month !== null;
   toggle.addEventListener('change', async () => {
     if (toggle.checked) {
+      state.compare = null;
       state.month = state.month ?? 1;
       $('month').value = String(state.month);
       if ((await loadMonths()) === false) return;
@@ -257,7 +282,7 @@ function bindCanvas() {
         tip.hidden = false;
         return;
       }
-      const routes = currentRoutes();
+      const routes = shown;
       const i = renderer.hitTest(x, y, routes);
       if (i !== hover) { hover = i; dirty = true; }
       const tip = $('tooltip');
@@ -273,7 +298,7 @@ function bindCanvas() {
         if (i >= 0) location.href = `/airports/${encodeURIComponent(chooserPoints[i].code)}/globe${toSearch(state)}`;
         return;
       }
-      const routes = currentRoutes();
+      const routes = shown;
       const i = renderer.hitTest(x, y, routes, 10);
       selected = i;
       if (i >= 0) showPanel(routes[i]); else $('panel').hidden = true;
@@ -290,7 +315,7 @@ function frame(last, now) {
   if (moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
-    const routes = currentRoutes();
+    const routes = shown;
     const key = $('width').value;
     const a = airports.get(origin);
     renderer.draw(view, routes, {
@@ -301,6 +326,7 @@ function frame(last, now) {
       max: maxOf(routes, key),
       highlight: selected >= 0 ? selected : hover,
       labels: 8,
+      styles: styleRoutes(routes, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: key }),
     });
   }
   requestAnimationFrame((n) => frame(now, n));
@@ -343,6 +369,7 @@ async function main() {
   yearRoutes = placeRoutes(res.rows, origin, airports).routes;
   years = yearsIn(res.rows);
   if (state.year === null || !years.includes(state.year)) state.year = years[years.length - 1];
+  if (!years.includes(state.compare) || state.compare >= state.year || state.month !== null) state.compare = null;
   if (state.month !== null) await loadMonths();
   if (a) view.rot = [-a.lon, clamp(-a.lat, -70, 70)];
   bindControls();

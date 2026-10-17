@@ -36,10 +36,11 @@ def test_width_menu_offers_freight(ds):
     assert '<option value="freight">' in get(ds, "/airports/ATL/globe").text
 
 
-def test_service_menu_offers_all_domestic_international(ds):
+def test_map_has_year_comparison_colour_choice_and_legend(ds):
     html = get(ds, "/airports/ATL/globe").text
-    for v in ("all", "domestic", "international"):
-        assert f'<option value="{v}">' in html
+    for el in ('id="year-from"', 'id="year"', 'id="range-fill"', 'id="colour"', 'id="legend-chips"'):
+        assert el in html, el
+    assert 'id="service"' not in html
 
 
 def test_chart_assets_are_served(ds):

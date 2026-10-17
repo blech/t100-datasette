@@ -30,20 +30,24 @@
 
   <div id="controls">
     <div id="legend">
-      <span class="swatch" style="background:#ff5a00"></span> International
-      <span class="swatch" style="background:#2a9df4"></span> Domestic
+      <span id="legend-chips"></span>
       <span class="note">Routes with fewer than 12 departures a year are hidden. <a href="/about#direction">What a route means</a>.</span>
     </div>
     <div class="row">
       <button id="play" type="button" aria-label="Play through the years">▶</button>
-      <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      <div id="range">
+        <div id="range-fill"></div>
+        <input id="year-from" type="range" min="0" max="0" value="0" step="1" aria-label="Compare with this year">
+        <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      </div>
       <span id="year-label"></span>
     </div>
+    <div id="range-hint">Drag the hollow handle back to compare with an earlier year: new routes show green, dropped ones dashed pink. Click the legend to hide any kind of route.</div>
     <div class="row">
       <label class="check"><input id="month-toggle" type="checkbox"> Months</label>
       <input id="month" type="range" min="1" max="12" value="1" step="1" aria-label="Month" hidden>
       <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
-      <select id="service" aria-label="Service shown"><option value="all">All flights</option><option value="domestic">Domestic only</option><option value="international">International only</option></select>
+      <select id="colour" aria-label="Colour routes by"><option value="service">Colour: domestic or international</option><option value="change">Colour: kept, added or dropped</option></select>
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
     </div>
     <div id="footnote"></div>
