@@ -88,3 +88,11 @@ test('replaceSearch swaps a page\'s own keys and keeps everything else', () => {
   assert.equal(replaceSearch('?theme=night&year=2020', ['year'], ''), '?theme=night');
   assert.equal(replaceSearch('?year=2020', ['year'], ''), '');
 });
+
+test('a map hiding one service carries the other as the service setting', () => {
+  assert.deepEqual(carryParams('?hide=international,dropped', 'routes'), { service: 'domestic' });
+  assert.deepEqual(carryParams('?hide=domestic', 'globe'), { service: 'international' });
+  assert.deepEqual(carryParams('?hide=domestic,international', 'routes'), {});
+  assert.deepEqual(carryParams('?hide=kept', 'routes'), {});
+  assert.deepEqual(carryParams('?hide=domestic&service=domestic', 'routes'), { service: 'domestic' });
+});

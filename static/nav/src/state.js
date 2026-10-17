@@ -15,6 +15,12 @@ export function targetOf(href) {
   return null;
 }
 
+// the map pages hide a service with ?hide=; hiding just one of the two means showing the other
+function serviceFromHide(hide) {
+  const hidden = (hide || '').split(',').filter((s) => SERVICES.includes(s));
+  return hidden.length === 1 ? SERVICES.find((s) => s !== hidden[0]) : null;
+}
+
 // The settings in `search` that make sense on `target`, with defaults left out.
 export function carryParams(search, target) {
   const q = new URLSearchParams(search || '');
@@ -22,7 +28,7 @@ export function carryParams(search, target) {
   const theme = q.get('theme');
   if (Object.hasOwn(THEMES, theme) && theme !== DEFAULT_THEME) out.theme = theme;
   if (target === 'home') return out;
-  const service = q.get('service');
+  const service = q.get('service') ?? serviceFromHide(q.get('hide'));
   const measure = q.get('measure') ?? q.get('width');
   if (target === 'globe') {
     if (SERVICES.includes(service)) out.service = service;
