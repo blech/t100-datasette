@@ -97,3 +97,12 @@ test('legendItems lists services always and changes only when comparing, with co
     ['dropped', 1, CHANGE_COLOURS.dropped, true, false],
   ]);
 });
+
+test('colouring by change, kept routes step back and changed ones come forward', () => {
+  const routes = [route('domestic', 'kept'), route('domestic', 'added'), route('domestic', 'dropped'), ...Array(300).fill(route('domestic', 'kept', 10))];
+  const [kept, added, dropped] = styleRoutes(routes, { mode: 'change', theme, widthKey: 'passengers' });
+  assert.ok(added.alpha > kept.alpha * 2 && dropped.alpha > kept.alpha * 2, `${kept.alpha} ${added.alpha} ${dropped.alpha}`);
+  const byService = styleRoutes(routes, { mode: 'service', theme, widthKey: 'passengers' });
+  assert.equal(byService[0].alpha, byService[1].alpha);
+  for (const s of styleRoutes(routes, { mode: 'change', theme, widthKey: 'passengers' })) assert.ok(s.alpha >= 0.08 && s.alpha <= 0.9);
+});

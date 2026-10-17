@@ -46,13 +46,19 @@ export function alphaFor(n, value, max) {
   return Math.min(0.9, Math.max(0.08, base * (0.6 + 0.9 * w)));
 }
 
+// coloured by change, the kept routes are background to what changed
+const CHANGE_EMPHASIS = { kept: 0.6, added: 1.8, dropped: 1.8 };
+
 export function styleRoutes(routes, { mode, theme, widthKey }) {
   const max = maxOf(routes, widthKey);
-  return routes.map((r) => ({
-    colour: mode === 'change' ? CHANGE_COLOURS[r.status] ?? theme.ui.muted : colourFor(r.service),
-    alpha: alphaFor(routes.length, r[widthKey], max),
-    dashed: r.status === 'dropped',
-  }));
+  return routes.map((r) => {
+    const a = alphaFor(routes.length, r[widthKey], max) * (mode === 'change' ? CHANGE_EMPHASIS[r.status] ?? 1 : 1);
+    return {
+      colour: mode === 'change' ? CHANGE_COLOURS[r.status] ?? theme.ui.muted : colourFor(r.service),
+      alpha: Math.min(0.9, Math.max(0.08, a)),
+      dashed: r.status === 'dropped',
+    };
+  });
 }
 
 // The legend's chips: one group per dimension, the coloured one with swatches. Counts are before hiding,

@@ -48,8 +48,8 @@ The project relies on the following key packages:
 - **`datasette.yml`**: Datasette configuration and canned queries: `top_us_airports`, `destinations`, `route`, `route_year`, and the queries behind the map (`airports`, `routes_by_year`, `routes_by_month`).
 - **`plugins/`**: `t100_globe.py` registers the `/airports/...` and `/globe` pages (the older `/globe/ATL`, `/routes/ATL` and `/route/A/B` paths redirect); `t100_render_links.py` renders `more_detail` columns as links.
 - **`templates/`**: `globe.html` (the map page) and templates for the canned query pages.
-- **`static/nav/`** and **`templates/_nav.html`**: the header shared by every page (breadcrumb trail, theme chooser) and the code that keeps `theme`, `measure`, `service` and the heat map settings in in-site links. The site name in the trail is `site_name` under `plugins: t100_globe` (default `t100.husk.org`).
-- **`static/globe/`**: the map's browser code (plain ES modules, no build step) and vendored d3-geo; served at `/static/globe/`.
+- **`static/nav/`** and **`templates/_nav.html`**: the header shared by every page (breadcrumb trail, theme chooser) and the code that keeps `theme`, `measure`, `service` and the heat map settings in in-site links (reading a map's `hide` setting back into `service`). The site name in the trail is `site_name` under `plugins: t100_globe` (default `t100.husk.org`).
+- **`static/globe/`**: the map's browser code (plain ES modules, no build step) and vendored d3-geo; served at `/static/globe/` `src/routestyle.js` and `src/compare.js` hold the colouring, filtering and year comparison shared with the airline map (`static/charts/airlineglobe.js`).
 - **`build_database.py`**: schema, indexes, the `t100` view and airport override loading (`schema.sql` is generated from it).
 - **`data/aircraft_families.csv`** and **`data/carrier_groups.csv`**: the editable rules for the family and merged-carrier rollups (re-run `rebuild_derived_tables` after editing).
 - **`data/airport_overrides.csv`**: coordinates for airport codes missing from OpenFlights.
