@@ -1,0 +1,111 @@
+to_year,origin,dest,label,distance,base_deps,later_deps,base_avg_min,later_avg_min,lfl_change_min,coverage,later_mph_gc,base_mph_gc
+2023,DTW,ICN,"Detroit, MI -> Seoul, South Korea",6636,364,379,784.0,858.0,73.2,1.0,464.0,508.0
+2023,ATL,ICN,"Atlanta, GA -> Seoul, South Korea",7153,358,359,841.0,900.0,59.4,1.0,477.0,510.0
+2023,SEA,PVG,"Seattle, WA -> Shanghai, China",5722,168,130,705.0,748.0,42.5,0.99,459.0,487.0
+2023,DFW,ICN,"Dallas/Fort Worth, TX -> Seoul, South Korea",6841,364,352,825.0,855.0,25.3,0.93,480.0,498.0
+2023,IAD,HNL,"Washington, DC -> Honolulu, HI",4817,171,116,592.0,603.0,22.7,0.99,479.0,488.0
+2023,SEA,ICN,"Seattle, WA -> Seoul, South Korea",5217,358,404,673.0,696.0,20.9,0.96,450.0,465.0
+2023,BRU,EWR,"Brussels, Belgium -> Newark, NJ",3681,363,366,450.0,448.0,18.3,1.0,493.0,491.0
+2023,SAN,PHL,"San Diego, CA -> Philadelphia, PA",2370,664,882,272.0,271.0,16.4,0.99,525.0,523.0
+2023,HNL,ATL,"Honolulu, HI -> Atlanta, GA",4502,185,259,472.0,484.0,16.4,0.71,558.0,572.0
+2023,PHX,BOS,"Phoenix, AZ -> Boston, MA",2300,1554,1336,260.0,260.0,15.4,0.7,531.0,531.0
+2023,NRT,DEN,"Tokyo, Japan -> Denver, CO",5787,360,282,589.0,596.0,14.4,0.99,583.0,590.0
+2023,MIA,LAX,"Miami, FL -> Los Angeles, CA",2342,2763,2164,306.0,304.0,14.2,0.6,462.0,459.0
+2023,JFK,DUB,"New York, NY -> Dublin, Ireland",3180,359,362,347.0,351.0,14.2,0.99,544.0,550.0
+2023,ATL,LOS,"Atlanta, GA -> Lagos, Nigeria",5844,214,331,632.0,645.0,13.3,0.91,544.0,555.0
+2023,PHX,MIA,"Phoenix, AZ -> Miami, FL",1972,1099,1176,226.0,226.0,12.8,0.82,524.0,524.0
+2023,ICN,SEA,"Seoul, South Korea -> Seattle, WA",5217,360,418,587.0,579.0,12.7,0.96,541.0,533.0
+2023,AMS,PDX,"Amsterdam, Netherlands -> Portland, OR",5004,166,358,582.0,595.0,12.5,0.99,505.0,516.0
+2023,DUB,BOS,"Dublin, Ireland -> Boston, MA",2993,114,361,376.0,384.0,11.4,0.99,468.0,478.0
+2023,ONT,JFK,"Ontario, CA -> New York, NY",2429,348,290,285.0,285.0,10.7,0.81,511.0,511.0
+2023,SFO,MCO,"San Francisco, CA -> Orlando, FL",2446,929,1010,278.0,281.0,10.0,0.82,522.0,528.0
+2023,BDA,MIA,"Hamilton, Bermuda -> Miami, FL",1046,362,175,146.0,154.0,9.8,1.0,408.0,430.0
+2023,FCO,EWR,"Rome, Italy -> Newark, NJ",4293,227,339,531.0,532.0,9.7,0.66,484.0,485.0
+2023,DTW,CDG,"Detroit, MI -> Paris, France",3962,184,338,429.0,437.0,9.4,0.92,544.0,554.0
+2023,FRA,IAD,"Frankfurt, Germany -> Washington, DC",4081,716,701,499.0,495.0,9.4,1.0,495.0,491.0
+2023,MSP,MEX,"Minneapolis, MN -> Mexico City, Mexico",1785,172,354,224.0,233.0,9.2,1.0,460.0,478.0
+2023,SJO,LAX,"San Jose, Costa Rica -> Los Angeles, CA",2721,529,538,337.0,348.0,9.1,0.91,469.0,484.0
+2023,EWR,TLV,"Newark, NJ -> Tel Aviv, Israel",5692,721,554,584.0,588.0,9.0,1.0,581.0,585.0
+2023,DFW,STS,"Dallas/Fort Worth, TX -> Santa Rosa, CA",1495,200,308,206.0,215.0,9.0,1.0,417.0,435.0
+2023,PLS,EWR,"Providenciales, Turks and Caicos Islands -> Newark, NJ",1308,313,237,190.0,190.0,8.9,1.0,413.0,413.0
+2023,IAH,MUC,"Houston, TX -> Munich, Germany",5417,323,249,580.0,588.0,8.7,0.87,553.0,560.0
+2023,EWR,GVA,"Newark, NJ -> Geneva, Switzerland",3878,348,364,417.0,426.0,8.6,1.0,546.0,558.0
+2023,JFK,PSE,"New York, NY -> Ponce, PR",1617,314,319,201.0,210.0,8.6,1.0,462.0,483.0
+2023,YUL,DFW,"Montreal, Canada -> Dallas/Fort Worth, TX",1513,117,209,205.0,214.0,8.4,0.64,424.0,443.0
+2023,DEN,NRT,"Denver, CO -> Tokyo, Japan",5787,362,285,685.0,685.0,8.4,0.99,507.0,507.0
+2023,BAQ,MIA,"Barranquilla, Colombia -> Miami, FL",1087,339,268,144.0,145.0,8.3,0.71,450.0,453.0
+2023,IAD,BCN,"Washington, DC -> Barcelona, Spain",4059,150,206,436.0,431.0,8.1,1.0,565.0,559.0
+2023,EWR,NAP,"Newark, NJ -> Naples, Italy",4416,148,237,475.0,483.0,8.1,1.0,549.0,558.0
+2023,MSP,SJD,"Minneapolis, MN -> San Jose del Cabo, Mexico",1764,162,223,240.0,244.0,8.0,1.0,434.0,441.0
+2023,TYS,DEN,"Knoxville, TN -> Denver, CO",1162,169,898,165.0,175.0,8.0,0.99,398.0,423.0
+2023,FCO,IAD,"Rome, Italy -> Washington, DC",4505,233,277,550.0,552.0,8.0,1.0,490.0,491.0
+2023,PHL,SJU,"Philadelphia, PA -> San Juan, PR",1576,719,1150,218.0,204.0,-16.2,0.86,464.0,434.0
+2023,HNL,KIX,"Honolulu, HI -> Osaka, Japan",4117,367,346,558.0,541.0,-17.4,1.0,457.0,443.0
+2023,PUJ,PHL,"Punta Cana, Dominican Republic -> Philadelphia, PA",1523,184,445,225.0,210.0,-19.1,0.64,435.0,406.0
+2023,DUB,JFK,"Dublin, Ireland -> New York, NY",3180,361,362,407.0,405.0,-19.8,0.99,471.0,469.0
+2023,LGA,RSW,"New York, NY -> Fort Myers, FL",1080,536,1046,155.0,157.0,-19.8,0.81,413.0,418.0
+2023,SAN,FLL,"San Diego, CA -> Fort Lauderdale, FL",2269,282,392,259.0,259.0,-20.0,0.82,526.0,526.0
+2023,MBJ,EWR,"Montego Bay, Jamaica -> Newark, NJ",1544,467,858,203.0,202.0,-20.4,0.99,459.0,456.0
+2023,MIA,PHX,"Miami, FL -> Phoenix, AZ",1972,1093,1167,267.0,263.0,-20.6,0.81,450.0,443.0
+2023,CUN,BOS,"Cancun, Mexico -> Boston, MA",1734,332,722,212.0,216.0,-21.7,0.97,482.0,491.0
+2023,HNL,ICN,"Honolulu, HI -> Seoul, South Korea",4577,270,262,617.0,594.0,-23.6,1.0,462.0,445.0
+2023,BOS,PHX,"Boston, MA -> Phoenix, AZ",2300,1634,1386,316.0,313.0,-24.1,0.73,441.0,437.0
+2023,MIA,GYE,"Miami, FL -> Guayaquil, Ecuador",1922,352,725,234.0,233.0,-26.7,1.0,495.0,493.0
+2023,ATL,HNL,"Atlanta, GA -> Honolulu, HI",4502,184,258,571.0,550.0,-29.0,0.71,491.0,473.0
+2023,MEX,ATL,"Mexico City, Mexico -> Atlanta, GA",1330,291,1489,161.0,161.0,-35.8,0.99,496.0,496.0
+2023,EWR,FRA,"Newark, NJ -> Frankfurt, Germany",3870,365,690,402.0,413.0,-35.8,1.0,562.0,578.0
+2025,SFO,PEK,"San Francisco, CA -> Beijing, China",5913,366,365,703.0,796.0,92.4,1.0,446.0,505.0
+2025,DTW,PVG,"Detroit, MI -> Shanghai, China",7137,358,358,821.0,903.0,81.3,1.0,474.0,522.0
+2025,DTW,ICN,"Detroit, MI -> Seoul, South Korea",6636,364,363,784.0,859.0,74.5,1.0,464.0,508.0
+2025,ATL,ICN,"Atlanta, GA -> Seoul, South Korea",7153,358,722,841.0,902.0,61.4,1.0,476.0,510.0
+2025,SFO,PVG,"San Francisco, CA -> Shanghai, China",6151,645,366,742.0,753.0,39.9,1.0,490.0,497.0
+2025,SEA,PVG,"Seattle, WA -> Shanghai, China",5722,169,356,705.0,743.0,37.8,0.99,462.0,487.0
+2025,DFW,PVG,"Dallas/Fort Worth, TX -> Shanghai, China",7351,353,360,864.0,899.0,34.9,1.0,491.0,510.0
+2025,HNL,NRT,"Honolulu, HI -> Tokyo, Japan",3819,426,118,504.0,529.0,24.6,0.99,433.0,455.0
+2025,IAD,HNL,"Washington, DC -> Honolulu, HI",4817,171,143,592.0,600.0,19.5,1.0,482.0,488.0
+2025,PEK,SFO,"Beijing, China -> San Francisco, CA",5913,367,361,640.0,658.0,18.1,1.0,539.0,554.0
+2025,PHX,BOS,"Phoenix, AZ -> Boston, MA",2300,1542,1243,260.0,260.0,17.5,0.6,531.0,531.0
+2025,SIN,SFO,"Singapore, Singapore -> San Francisco, CA",8440,714,721,855.0,872.0,17.2,1.0,581.0,592.0
+2025,SAN,PHL,"San Diego, CA -> Philadelphia, PA",2370,665,1010,272.0,273.0,16.7,1.0,521.0,523.0
+2025,HNL,ATL,"Honolulu, HI -> Atlanta, GA",4502,185,369,472.0,485.0,16.5,0.98,557.0,572.0
+2025,VCE,EWR,"Venice, Italy -> Newark, NJ",4169,173,251,526.0,529.0,16.0,1.0,473.0,476.0
+2025,ONT,JFK,"Ontario, CA -> New York, NY",2429,348,151,285.0,288.0,14.4,0.86,506.0,511.0
+2025,DAL,PHL,"Dallas, TX -> Philadelphia, PA",1295,355,246,159.0,163.0,14.2,0.98,477.0,489.0
+2025,EWR,HNL,"Newark, NJ -> Honolulu, HI",4962,362,125,610.0,624.0,13.6,1.0,477.0,488.0
+2025,ATL,LOS,"Atlanta, GA -> Lagos, Nigeria",5844,214,243,632.0,645.0,13.2,0.67,544.0,555.0
+2025,LAS,FLL,"Las Vegas, NV -> Fort Lauderdale, FL",2173,930,907,245.0,249.0,12.6,0.87,524.0,532.0
+2025,PVG,LAX,"Shanghai, China -> Los Angeles, CA",6485,980,456,654.0,665.0,12.5,1.0,585.0,595.0
+2025,MDW,PUJ,"Chicago, IL -> Punta Cana, Dominican Republic",1965,217,115,238.0,240.0,12.4,1.0,491.0,495.0
+2025,SMF,MCO,"Sacramento, CA -> Orlando, FL",2408,191,209,271.0,276.0,12.2,0.75,523.0,533.0
+2025,SAN,BNA,"San Diego, CA -> Nashville, TN",1751,672,920,201.0,204.0,11.6,0.99,515.0,523.0
+2025,MYR,DFW,"Myrtle Beach, SC -> Dallas/Fort Worth, TX",1048,213,305,150.0,157.0,11.6,0.63,401.0,419.0
+2025,JFK,ZRH,"New York, NY -> Zurich, Switzerland",3931,360,295,419.0,422.0,11.3,0.87,559.0,563.0
+2025,PVG,DTW,"Shanghai, China -> Detroit, MI",7137,356,356,767.0,779.0,11.3,1.0,550.0,558.0
+2025,IAH,LHR,"Houston, TX -> London, United Kingdom",4834,685,721,511.0,521.0,11.3,1.0,557.0,568.0
+2025,TYS,DEN,"Knoxville, TN -> Denver, CO",1162,151,652,166.0,177.0,11.2,0.7,394.0,420.0
+2025,ATL,AMS,"Atlanta, GA -> Amsterdam, Netherlands",4401,784,677,470.0,473.0,11.2,0.73,558.0,562.0
+2025,SFO,MCO,"San Francisco, CA -> Orlando, FL",2446,927,1070,278.0,282.0,10.6,0.74,520.0,528.0
+2025,ATL,CDG,"Atlanta, GA -> Paris, France",4395,211,571,463.0,474.0,10.4,0.66,556.0,570.0
+2025,NRT,SFO,"Tokyo, Japan -> San Francisco, CA",5124,366,370,521.0,531.0,10.2,1.0,579.0,590.0
+2025,FRA,IAD,"Frankfurt, Germany -> Washington, DC",4081,716,679,499.0,495.0,10.1,0.96,495.0,491.0
+2025,SAT,PHL,"San Antonio, TX -> Philadelphia, PA",1496,244,148,183.0,193.0,10.0,0.97,465.0,490.0
+2025,EWR,NAP,"Newark, NJ -> Naples, Italy",4416,148,356,475.0,484.0,9.9,1.0,547.0,558.0
+2025,LIM,EWR,"Lima, Peru -> Newark, NJ",3631,289,305,438.0,448.0,9.9,0.99,486.0,497.0
+2025,JFK,DUB,"New York, NY -> Dublin, Ireland",3180,360,365,347.0,348.0,9.8,0.66,548.0,550.0
+2025,GIG,ATL,"Rio de Janeiro, Brazil -> Atlanta, GA",4735,364,242,551.0,559.0,9.7,1.0,508.0,516.0
+2025,DAL,BOS,"Dallas, TX -> Boston, MA",1554,396,170,186.0,193.0,9.6,0.99,483.0,501.0
+2025,SLC,SAT,"Salt Lake City, UT -> San Antonio, TX",1087,522,837,136.0,136.0,-17.6,0.84,480.0,480.0
+2025,IAH,EZE,"Houston, TX -> Ezeiza, Argentina",5062,354,504,568.0,550.0,-17.6,1.0,552.0,535.0
+2025,PHL,SAT,"Philadelphia, PA -> San Antonio, TX",1496,243,148,214.0,197.0,-18.6,0.97,456.0,419.0
+2025,BOS,DAL,"Boston, MA -> Dallas, TX",1554,396,170,224.0,213.0,-18.9,0.99,438.0,416.0
+2025,BNA,LAX,"Nashville, TN -> Los Angeles, CA",1797,2261,2013,244.0,240.0,-19.3,0.95,449.0,442.0
+2025,NRT,HNL,"Tokyo, Japan -> Honolulu, HI",3819,426,119,406.0,387.0,-19.8,1.0,592.0,564.0
+2025,JFK,ONT,"New York, NY -> Ontario, CA",2429,350,154,330.0,319.0,-20.4,0.85,457.0,442.0
+2025,ATL,HNL,"Atlanta, GA -> Honolulu, HI",4502,184,371,571.0,555.0,-22.9,0.98,487.0,473.0
+2025,BOS,PHX,"Boston, MA -> Phoenix, AZ",2300,1620,1497,316.0,315.0,-24.1,0.73,438.0,437.0
+2025,HNL,ICN,"Honolulu, HI -> Seoul, South Korea",4577,270,231,617.0,589.0,-28.6,1.0,466.0,445.0
+2025,CUN,BOS,"Cancun, Mexico -> Boston, MA",1734,290,841,212.0,216.0,-29.5,0.94,482.0,491.0
+2025,MIA,GYE,"Miami, FL -> Guayaquil, Ecuador",1922,352,396,234.0,231.0,-29.7,1.0,499.0,493.0
+2025,JFK,MAD,"New York, NY -> Madrid, Spain",3589,491,538,384.0,382.0,-36.2,0.79,564.0,561.0
+2025,EWR,FRA,"Newark, NJ -> Frankfurt, Germany",3870,279,525,399.0,411.0,-46.0,1.0,565.0,582.0
+2025,IAH,SCL,"Houston, TX -> Santiago, Chile",4645,299,155,520.0,513.0,-58.2,1.0,543.0,536.0

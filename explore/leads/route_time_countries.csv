@@ -1,0 +1,92 @@
+to_year,direction,foreign_country,routes,deps,avg_lfl_change_min
+2023,from US,South Korea,7,2666,28.5
+2023,from US,Ecuador,5,2822,-8.1
+2023,to US,South Korea,7,2672,7.9
+2023,to US,Spain,6,2693,-7.9
+2023,to US,Ecuador,4,2094,4.8
+2023,from US,Brazil,6,1941,-4.4
+2023,to US,United Kingdom,18,15571,-4.3
+2023,to US,Sint Maarten,5,1743,4.2
+2023,from US,Ireland,6,1987,4.1
+2023,from US,Panama,3,1844,-3.9
+2023,from US,Italy,8,3139,3.2
+2023,to US,Ireland,6,1877,-3.1
+2023,to US,Brazil,6,2027,-3.0
+2023,from US,Germany,10,4061,-2.9
+2023,to US,Germany,10,4032,-2.9
+2023,to US,Japan,10,4280,2.8
+2023,to US,Mexico,54,36102,-2.7
+2023,from US,Guatemala,5,2622,2.6
+2023,from US,Spain,7,2951,2.5
+2023,from US,France,8,3994,2.5
+2023,to US,Jamaica,15,8110,-2.3
+2023,to US,Panama,3,1839,2.3
+2023,from US,Sint Maarten,5,1751,1.9
+2023,to US,Italy,8,3119,-1.9
+2023,to US,France,8,4064,-1.5
+2023,from US,Japan,10,4356,-1.4
+2023,to US,Cayman Islands,7,1590,-1.2
+2023,from US,Colombia,13,5596,-1.2
+2023,to US,El Salvador,7,2920,-1.1
+2023,from US,Mexico,55,34265,1.1
+2023,from US,Cayman Islands,7,1595,1.1
+2023,to US,Guatemala,5,2614,-1.0
+2023,to US,Colombia,13,5568,0.9
+2023,from US,United Kingdom,18,15599,0.8
+2023,to US,Costa Rica,13,6812,0.8
+2023,from US,Aruba,10,4453,0.7
+2023,from US,Canada,15,7502,-0.7
+2023,from US,The Bahamas,6,2517,0.7
+2023,from US,Jamaica,15,7912,0.6
+2023,to US,Aruba,10,4414,0.5
+2023,from US,Netherlands,8,4545,0.5
+2023,to US,Dominican Republic,24,17691,-0.4
+2023,to US,The Bahamas,6,2508,0.4
+2023,from US,Dominican Republic,23,17390,0.4
+2023,from US,Costa Rica,14,6988,0.4
+2023,to US,Netherlands,7,4217,-0.1
+2023,from US,El Salvador,7,2944,0.1
+2023,to US,Canada,16,7658,0.0
+2025,from US,China,6,2262,47.5
+2025,from US,South Korea,5,2395,36.2
+2025,from US,Spain,5,2076,-9.3
+2025,from US,Switzerland,6,1853,8.1
+2025,from US,Ecuador,4,1611,-7.5
+2025,to US,China,6,2251,6.2
+2025,to US,South Korea,6,2753,5.9
+2025,from US,Germany,7,3103,-5.4
+2025,from US,France,8,3887,5.0
+2025,from US,Ireland,4,1715,4.9
+2025,from US,Netherlands,4,2202,4.9
+2025,from US,United Kingdom,16,14021,4.2
+2025,to US,Netherlands,3,1833,-4.1
+2025,to US,Spain,4,1536,-4.1
+2025,from US,Italy,6,2409,4.0
+2025,from US,Aruba,5,3167,3.6
+2025,to US,France,8,3971,-3.5
+2025,from US,Japan,9,4402,-3.2
+2025,to US,United Kingdom,16,13955,-3.1
+2025,to US,Germany,8,3352,-2.9
+2025,from US,Canada,13,7094,2.5
+2025,to US,Japan,9,4027,2.5
+2025,from US,Sint Maarten,3,1788,2.4
+2025,to US,Italy,6,2374,2.3
+2025,from US,Costa Rica,12,5812,1.9
+2025,from US,Brazil,8,2967,-1.8
+2025,from US,Colombia,7,2798,1.5
+2025,from US,Dominican Republic,13,8510,1.5
+2025,to US,Sint Maarten,3,1772,1.5
+2025,to US,Colombia,7,2792,1.4
+2025,to US,Switzerland,6,1827,-1.0
+2025,to US,Ireland,4,1666,-0.9
+2025,to US,Costa Rica,12,5727,0.8
+2025,to US,Dominican Republic,13,8873,-0.7
+2025,from US,Mexico,39,24813,0.5
+2025,to US,Mexico,39,27389,-0.5
+2025,to US,Jamaica,10,4925,-0.4
+2025,to US,El Salvador,5,2376,0.3
+2025,from US,Jamaica,8,3857,0.1
+2025,from US,El Salvador,5,2384,-0.0
+2025,to US,Brazil,8,2958,-0.0
+2025,to US,Aruba,5,3076,0.0
+2025,to US,Canada,11,6234,0.0

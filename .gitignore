@@ -23,3 +23,4 @@ wheels/
 
 # explore/ scratch cubes (rebuild with explore/README.md steps)
 explore/cubes.duckdb
+!explore/leads/*.csv
