@@ -1,4 +1,5 @@
 import { shortName, shortNames } from './names.js';
+import { compareYears } from '../../globe/src/compare.js';
 
 // Rows from carrier_route_changes (one per airport pair and member airline, with departures in years A and B) ->
 // one row per pair, the members' flying added up. `airlines` names the members who flew it in either year.
@@ -47,8 +48,6 @@ export function formatYearMonth(ym) {
   return `${MONTHS[(n % 100) - 1] || ''} ${Math.floor(n / 100)}`.trim();
 }
 
-export const STATUS_COLOURS = { kept: '#2a9df4', added: '#2ca02c', dropped: '#d62728' };
-
 // The routes to draw for year B, optionally compared with year A: every airport pair either year has coordinates for.
 // Rows are carrier_routes_year rows (one per pair and member airline, which are added up); `airports` maps a code to { lon, lat, isUs }.
 // A pair counts in a year when it is flown `min` times. Returns the routes and the airports skipped for want of coordinates.
@@ -67,22 +66,18 @@ export function mapRoutes(rowsB, rowsA, airports, { min = 1 } = {}) {
     return out;
   };
   const now = perYear(rowsB);
-  const then = compare ? perYear(rowsA) : new Map();
+  const then = compare ? perYear(rowsA) : null;
   const routes = [];
   const skipped = new Set();
-  for (const key of new Set([...now.keys(), ...then.keys()])) {
-    const b = now.get(key), a = then.get(key);
-    const shown = b || a;
-    const from = airports.get(shown.origin);
-    const to = airports.get(shown.dest);
-    if (!from || !to) { skipped.add(!from ? shown.origin : shown.dest); continue; }
-    const status = !compare ? null : a && b ? 'kept' : a ? 'dropped' : 'added';
+  for (const t of compareYears([...now.values()], then && [...then.values()], (x) => `${x.origin}\u0000${x.dest}`)) {
+    const from = airports.get(t.origin);
+    const to = airports.get(t.dest);
+    if (!from || !to) { skipped.add(!from ? t.origin : t.dest); continue; }
     routes.push({
-      origin: shown.origin, dest: shown.dest, status, from: [from.lon, from.lat], to: [to.lon, to.lat],
-      deps: shown.deps, seats: shown.seats, passengers: shown.passengers, freight: shown.freight,
-      depsThen: a ? a.deps : 0, depsNow: b ? b.deps : 0, airlines: shown.airlines,
+      origin: t.origin, dest: t.dest, status: t.status, from: [from.lon, from.lat], to: [to.lon, to.lat],
+      deps: t.deps, seats: t.seats, passengers: t.passengers, freight: t.freight,
+      depsThen: t.depsThen ?? 0, depsNow: t.depsNow ?? t.deps, airlines: t.airlines,
       service: from.isUs && to.isUs ? 'domestic' : 'international',
-      colour: status ? STATUS_COLOURS[status] : undefined,
     });
   }
   return { routes, skipped: [...skipped].sort() };

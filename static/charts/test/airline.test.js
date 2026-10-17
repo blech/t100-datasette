@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyRoutes, summariseRoutes, formatYearMonth, mapRoutes, centreOf, STATUS_COLOURS, airlineOptions, findAirline, mergeMembers } from '../src/airline.js';
+import { classifyRoutes, summariseRoutes, formatYearMonth, mapRoutes, centreOf, airlineOptions, findAirline, mergeMembers } from '../src/airline.js';
 
 const r = (origin, dest, deps_a, deps_b) => ({ origin, dest, deps_a, deps_b });
 
@@ -25,17 +25,18 @@ const airports = new Map([
 ]);
 const pair = (origin, dest, deps) => ({ origin, dest, deps, seats: deps * 100, passengers: deps * 80, freight: 0 });
 
-test('mapRoutes without a comparison year colours by domestic or international and has no status', () => {
+test('mapRoutes without a comparison year gives each pair a service and no status', () => {
   const { routes } = mapRoutes([pair('SFO', 'LAX', 10), pair('LAX', 'MEX', 5)], null, airports);
-  assert.deepEqual(routes.map((r) => [r.service, r.status, r.colour]), [['domestic', null, undefined], ['international', null, undefined]]);
+  assert.deepEqual(routes.map((r) => [r.service, r.status]), [['domestic', null], ['international', null]]);
+  assert.ok(routes.every((r) => !('colour' in r)));
 });
 
 test('mapRoutes with a comparison year marks pairs kept, dropped and added, drawing dropped ones with the old numbers', () => {
   const { routes } = mapRoutes([pair('SFO', 'LAX', 20), pair('SFO', 'MEX', 7)], [pair('SFO', 'LAX', 10), pair('SFO', 'DEN', 30)], airports);
   const by = Object.fromEntries(routes.map((r) => [r.dest, r]));
-  assert.equal(by.LAX.status, 'kept'); assert.equal(by.LAX.deps, 20); assert.equal(by.LAX.depsThen, 10);
-  assert.equal(by.DEN.status, 'dropped'); assert.equal(by.DEN.deps, 30); assert.equal(by.DEN.colour, STATUS_COLOURS.dropped);
-  assert.equal(by.MEX.status, 'added');
+  assert.equal(by.LAX.status, 'kept'); assert.equal(by.LAX.deps, 20); assert.equal(by.LAX.depsThen, 10); assert.equal(by.LAX.depsNow, 20);
+  assert.equal(by.DEN.status, 'dropped'); assert.equal(by.DEN.deps, 30); assert.equal(by.DEN.depsNow, 0);
+  assert.equal(by.MEX.status, 'added'); assert.equal(by.MEX.depsThen, 0);
 });
 
 test('mapRoutes leaves out pairs with an unknown airport and says which', () => {
