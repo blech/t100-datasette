@@ -36,3 +36,7 @@ export function toSearch(state, maxYear) {
   const s = q.toString();
   return s ? `?${s}` : '';
 }
+
+// the sort column carries over as the airport page's heat map measure (the keys are the same)
+export const airportHref = (code, sort) =>
+  `/airports/${encodeURIComponent(code)}${sort === 'passengers' ? '' : `?measure=${sort}`}`;

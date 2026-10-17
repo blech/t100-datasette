@@ -1,6 +1,6 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { SORTS, formatCount, formatTons, topBy, parseState, toSearch } from './src/table.js';
+import { SORTS, formatCount, formatTons, topBy, parseState, toSearch, airportHref } from './src/table.js';
 
 const ROWS_SHOWN = 20;
 const minYear = Number(document.body.dataset.minYear);
@@ -37,7 +37,7 @@ function render() {
   for (const r of topBy(rows, state.sort, ROWS_SHOWN)) {
     const tr = document.createElement('tr');
     const code = cell('', 'code');
-    code.append(link(`/airports/${encodeURIComponent(r.origin)}`, r.origin));
+    code.append(link(airportHref(r.origin, state.sort), r.origin));
     const more = cell('', 'more');
     more.append(link(`/airports/${encodeURIComponent(r.origin)}/globe?year=${state.year}`, 'Map →'));
     tr.append(

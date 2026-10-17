@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatCount, formatTons, topBy, parseState, toSearch, SORTS } from '../src/table.js';
+import { formatCount, formatTons, topBy, parseState, toSearch, SORTS, airportHref } from '../src/table.js';
 
 test('counts under a million are written out with commas', () => {
   assert.equal(formatCount(0), '0');
@@ -45,4 +45,11 @@ test('toSearch omits defaults', () => {
   assert.equal(toSearch({ year: 2019, sort: 'freight' }, 2025), '?year=2019&sort=freight');
   assert.equal(toSearch({ year: 2025, sort: 'deps' }, 2025), '?sort=deps');
   assert.deepEqual(Object.keys(SORTS), ['passengers', 'deps', 'seats', 'freight']);
+});
+
+test('airportHref carries the sort to the airport page as its heat map measure', () => {
+  assert.equal(airportHref('ATL', 'passengers'), '/airports/ATL');
+  assert.equal(airportHref('ATL', 'freight'), '/airports/ATL?measure=freight');
+  assert.equal(airportHref('ATL', 'deps'), '/airports/ATL?measure=deps');
+  assert.equal(airportHref('ATL', 'seats'), '/airports/ATL?measure=seats');
 });
