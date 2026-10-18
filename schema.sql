@@ -43,6 +43,7 @@ CREATE TABLE "carrier_group_year" (
 CREATE TABLE "carrier_route_year" (
    [group_id] TEXT, [airline_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
+   [domestic_deps] INTEGER,
    PRIMARY KEY ([group_id], [airline_id], [year], [origin], [dest])
 ) WITHOUT ROWID;
 

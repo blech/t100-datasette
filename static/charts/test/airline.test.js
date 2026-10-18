@@ -39,6 +39,19 @@ test('mapRoutes with a comparison year marks pairs kept, dropped and added, draw
   assert.equal(by.MEX.status, 'added'); assert.equal(by.MEX.depsThen, 0);
 });
 
+test('mapRoutes calls a pair domestic when most of its departures were filed domestic, whatever the airports', () => {
+  const dom = (origin, dest, deps, domestic_deps) => ({ ...pair(origin, dest, deps), domestic_deps });
+  const { routes } = mapRoutes([dom('SFO', 'LAX', 10, 4), dom('LAX', 'MEX', 10, 6), dom('SFO', 'DEN', 10, 5)], null, airports);
+  assert.deepEqual(routes.map((r) => r.service), ['international', 'domestic', 'international']);});
+
+test('mapRoutes adds up the domestic count over members and draws a dropped pair by its old year', () => {
+  const dom = (airline_id, deps, domestic_deps) => ({ ...mrow('SFO', 'LAX', airline_id, deps), domestic_deps });
+  const { routes } = mapRoutes([dom('VX', 4, 4), dom('AS', 8, 0)], [{ ...pair('SFO', 'DEN', 10), domestic_deps: 10 }], airports);
+  const by = Object.fromEntries(routes.map((r) => [r.dest, r]));
+  assert.equal(by.LAX.service, 'international');  // 4 of 12
+  assert.equal(by.DEN.service, 'domestic');
+});
+
 test('mapRoutes leaves out pairs with an unknown airport and says which', () => {
   const { routes, skipped } = mapRoutes([pair('SFO', 'ZZZ', 10)], null, airports);
   assert.equal(routes.length, 0);
