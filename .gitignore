@@ -19,6 +19,7 @@ wheels/
 .superpowers/
 !data/airport_overrides.csv
 !data/aircraft_families.csv
+!data/aircraft_makers.csv
 !data/carrier_groups.csv
 
 # explore/ scratch cubes (rebuild with explore/README.md steps)
