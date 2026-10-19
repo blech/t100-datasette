@@ -9,7 +9,7 @@ export function targetOf(href) {
   if (typeof href !== 'string' || !href.startsWith('/') || href.startsWith('//')) return null;
   const path = href.split(/[?#]/)[0];
   if (path === '/' || path === '/airports') return 'home';
-  if (path === '/globe' || /^\/airports\/[^/]+\/globe$/.test(path)) return 'globe';
+  if (path === '/globe' || path === '/airports/globe' || /^\/airports\/[^/]+\/globe$/.test(path)) return 'globe';
   if (/^\/airports\/[^/]+$/.test(path)) return 'routes';
   if (/^\/airports\/[^/]+\/[^/]+(\/\d{4})?$/.test(path)) return 'route';
   return null;

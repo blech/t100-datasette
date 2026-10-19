@@ -19,8 +19,12 @@ def test_landing_is_just_the_site_name(ds):
     assert crumbs(ds, "/") == [("t100.husk.org", None)]
 
 
+def test_airports_table_trail(ds):
+    assert crumbs(ds, "/airports") == [("t100.husk.org", "/"), ("airports", None)]
+
+
 def test_globe_trails(ds):
-    assert crumbs(ds, "/globe") == [("t100.husk.org", "/"), ("globe", None)]
+    assert crumbs(ds, "/airports/globe") == [("t100.husk.org", "/"), ("airports", "/airports"), ("globe", None)]
     assert crumbs(ds, "/airports/ATL/globe") == [
         ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("globe", None)]
 
@@ -43,7 +47,7 @@ def test_current_page_is_marked_and_the_trail_is_labelled(ds):
 
 
 def test_every_page_has_one_theme_chooser_and_the_shared_scripts(ds):
-    for path in ["/", "/globe", "/airports/ATL/globe", "/airports/ATL", "/airports/ATL/LAX"]:
+    for path in ["/", "/airports", "/airports/globe", "/airports/ATL/globe", "/airports/ATL", "/airports/ATL/LAX"]:
         html = get(ds, path).text
         assert html.count('id="theme"') == 1, path
         assert "/static/nav/main.js" in html and "/static/nav/style.css" in html, path

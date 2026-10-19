@@ -18,16 +18,14 @@ def test_bad_codes_are_404(ds):
     assert get(ds, "/airports/toolong").status_code == 404
 
 
-def test_airports_index_goes_to_the_landing_page_keeping_the_query(ds):
-    r = get(ds, "/airports?theme=night&measure=deps")
-    assert r.status_code == 302
-    assert r.headers["location"] == "/?theme=night&measure=deps"
-    assert get(ds, "/airports").headers["location"] == "/"
+def test_airports_index_is_the_table(ds):
+    r = get(ds, "/airports?theme=night")
+    assert r.status_code == 200 and 'id="airports"' in r.text
 
 
 def test_globe_page_links_to_routes_over_time(ds):
     assert 'href="/airports/ATL"' in get(ds, "/airports/ATL/globe").text
-    assert "/airports/" not in get(ds, "/globe").text
+    assert "/airports/" not in get(ds, "/airports/globe").text
 
 
 def test_page_offers_the_city_grouping(ds):

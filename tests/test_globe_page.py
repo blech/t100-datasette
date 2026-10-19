@@ -14,7 +14,7 @@ def test_lowercase_is_normalised(ds):
 
 
 def test_no_airport_shows_chooser_page(ds):
-    r = get(ds, "/globe")
+    r = get(ds, "/airports/globe")
     assert r.status_code == 200 and 'data-origin=""' in r.text
 
 

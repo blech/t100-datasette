@@ -14,6 +14,10 @@ OLD = [
     ("/carriers?measure=deps", "/airlines?measure=deps"),
     ("/carriers/delta", "/airlines/delta"),
     ("/carriers/delta/globe?year=2019&compare=2010", "/airlines/delta/globe?year=2019&compare=2010"),
+    ("/globe", "/airports/globe"),
+    ("/globe?year=2020&theme=night", "/airports/globe?year=2020&theme=night"),
+    ("/routes", "/airports"),
+    ("/routes?theme=night", "/airports?theme=night"),
 ]
 
 
@@ -24,18 +28,13 @@ def test_old_urls_redirect_permanently_keeping_the_query(ds, old, new):
     assert r.headers["location"] == new
 
 
-def test_old_routes_index_goes_to_the_landing_page(ds):
-    r = get(ds, "/routes?theme=night")
-    assert r.status_code == 302 and r.headers["location"] == "/?theme=night"
-
-
 @pytest.mark.parametrize("path", ["/globe/toolong", "/routes/toolong", "/route/SFO", "/route/SFO/LH", "/route/SFO/LHR/20x9"])
 def test_old_urls_that_never_worked_are_still_404(ds, path):
     assert get(ds, path).status_code == 404
 
 
-def test_the_all_airports_globe_keeps_its_place(ds):
-    assert get(ds, "/globe").status_code == 200
+def test_the_all_airports_globe_lives_under_airports(ds):
+    assert get(ds, "/airports/globe").status_code == 200
 
 
 def test_datasette_own_pages_are_not_shadowed(ds):

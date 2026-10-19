@@ -20,12 +20,12 @@ def moved(template):
 @hookimpl
 def register_routes():
     return [
-        (r"^/$", landing_page),
+        (r"^/$", home_page),
         (r"^/airports$", airports_index),
+        (r"^/airports/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})$", routes_page),
         (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
-        (r"^/globe$", globe_page),
         (r"^/about$", about_page),
         (r"^/aircraft$", rollup_page("aircraft")),
         (r"^/airlines$", rollup_page("airlines")),
@@ -38,7 +38,8 @@ def register_routes():
         (r"^/aircraft/engines$", engines_page),
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
-        (r"^/routes$", airports_index),
+        (r"^/globe$", moved("/airports/globe")),
+        (r"^/routes$", moved("/airports")),
         (rf"^/globe/(?P<origin>{CODE})$", moved("/airports/{origin}/globe")),
         (rf"^/routes/(?P<origin>{CODE})$", moved("/airports/{origin}")),
         (rf"^/route/(?P<origin>{CODE})/(?P<dest>{CODE})$", moved("/airports/{origin}/{dest}")),
@@ -65,7 +66,6 @@ async def is_foreign(datasette, code):
     result = await datasette.get_database("t100").execute("SELECT origin_wac FROM t100 WHERE origin = ? LIMIT 1", [code])
     row = result.first()
     return bool(row) and row[0] is not None and not 1 <= row[0] <= 93
-
 
 
 # --- front page stories: rows from the canned queries -> the numbers the prose quotes, or None without data
@@ -131,15 +131,9 @@ def carrier_shares(rows):
         return None
     return [{"name": short_airline_name(r["airline_name"]), "share": percent(r["share"], 1)} for r in rows]
 
-async def airports_index(datasette, request):
-    # there is no page of its own for "all routes"; the landing table is where you pick an airport
-    query = request.query_string
-    return Response.redirect(f"/?{query}" if query else "/")
-
-
 async def globe_page(datasette, request):
     origin = (request.url_vars.get("origin") or "").upper()
-    steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("globe", None)]
+    steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
     html = await datasette.render_template(
         "globe.html",
         {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin)},
@@ -148,14 +142,47 @@ async def globe_page(datasette, request):
     return Response.html(html)
 
 
-async def landing_page(datasette, request):
+def year_range(datasette):
     config = datasette.plugin_config("t100_globe") or {}
+    return config.get("min_year", 1990), config.get("max_year", 2025)
+
+
+async def airports_index(datasette, request):
+    """The busiest-airports table, which was the front page before the front page told stories."""
+    min_year, max_year = year_range(datasette)
     html = await datasette.render_template(
-        "landing.html",
+        "airports.html",
+        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+async def canned(datasette, name, params=None):
+    """Rows of one of datasette.yml's canned queries as dicts, so the prose quotes the same numbers the charts fetch."""
+    sql = datasette.config["databases"]["t100"]["queries"][name]["sql"]
+    result = await datasette.get_database("t100").execute(sql, params or {})
+    return [dict(row) for row in result.rows]
+
+
+# the busiest-airports table's settings; the front page used to be that table
+TABLE_PARAMS = ("year", "sort")
+
+
+async def home_page(datasette, request):
+    if any(request.args.get(key) is not None for key in TABLE_PARAMS):
+        return Response.redirect(f"/airports?{request.query_string}", status=301)
+    min_year, max_year = year_range(datasette)
+    html = await datasette.render_template(
+        "home.html",
         {
-            "min_year": config.get("min_year", 1990),
-            "max_year": config.get("max_year", 2025),
+            "min_year": min_year,
+            "max_year": max_year,
             "crumbs": trail(datasette),
+            "airports": airport_story(await canned(datasette, "busiest_airports", {"year": max_year})),
+            "engines": engine_story(await canned(datasette, "engines_by_year"), min_year, max_year),
+            "concentration": concentration_story(await canned(datasette, "carrier_concentration"), min_year, max_year),
+            "carriers": carrier_shares(await canned(datasette, "top_carriers", {"year": max_year})),
         },
         request=request,
     )

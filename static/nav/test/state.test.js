@@ -6,6 +6,7 @@ test('targetOf recognises the site pages and nothing else', () => {
   assert.equal(targetOf('/'), 'home');
   assert.equal(targetOf('/globe'), 'globe');
   assert.equal(targetOf('/airports/ATL/globe'), 'globe');
+  assert.equal(targetOf('/airports/globe'), 'globe');
   assert.equal(targetOf('/airports'), 'home');
   assert.equal(targetOf('/airports/ATL'), 'routes');
   assert.equal(targetOf('/airports/ATL/LAX'), 'route');

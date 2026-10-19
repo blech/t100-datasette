@@ -15,6 +15,7 @@ function paint(id) {
   root.setProperty('--panel', t.ui.panel);
   root.setProperty('--accent', t.ui.accent);
   root.setProperty('--line', `color-mix(in srgb, ${t.ui.fg} 18%, ${t.bg})`);
+  root.setProperty('--rule', `color-mix(in srgb, ${t.ui.fg} 45%, ${t.bg})`);
   document.documentElement.style.colorScheme = id === 'night' || id === 'natural' || id === 'airtrailDark' ? 'dark' : 'light';
 }
 
