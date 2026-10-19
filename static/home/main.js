@@ -2,7 +2,10 @@ import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { indexAirports, placePoints } from '/static/globe/src/adapter.js';
 import { THEMES, resolveTheme } from '/static/globe/src/themes.js';
 import { geoAlbersUsaTerritories } from '/static/globe/src/usamap.js';
+import * as Plot from '/static/charts/vendor/plot.js';
+import { buildEngineShares, ENGINE_SERIES, ENGINE_COLORS } from '/static/charts/src/rollup.js';
 import { placeOnMap, hitTest, drawMap } from './src/map.js';
+import { concentrationPoints, CONCENTRATION_SERIES } from './src/concentration.js';
 
 const $ = (id) => document.getElementById(id);
 const minYear = Number(document.body.dataset.minYear);
@@ -90,8 +93,61 @@ async function showMap() {
   $('map-status').remove();
 }
 
-// the two charts; filled in by the next task
-async function drawCharts() {}
+const pct = (v) => `${(v * 100).toFixed(1)}%`;
+const width = (box) => Math.min(box.clientWidth || 900, 1100);
+
+// the long-haul cut the /aircraft/engines page opens with
+const ENGINE_STATE = { measure: 'deps', kind: 'passenger', band: '3000' };
+
+async function showEngines() {
+  const box = $('engine-chart');
+  const rows = (await fetchRows(queryUrl('engines_by_year'))).rows;
+  const res = buildEngineShares(rows, ENGINE_STATE);
+  if (!res.points.length) { box.replaceChildren(); return; }
+  const data = res.points.map((p) => ({ ...p, title: `${p.series}, ${p.year}\n${pct(p.share)} of long-haul flights` }));
+  box.replaceChildren(Plot.plot({
+    width: width(box),
+    height: chartHeight(),
+    marginLeft: 48,
+    style: { background: 'transparent', fontSize: '12px' },
+    x: { label: null, tickFormat: 'd', domain: [minYear, maxYear] },
+    y: { label: 'Share of flights of 3,000 miles or more', tickFormat: '.0%', domain: [0, 1] },
+    color: { domain: ENGINE_SERIES, range: ENGINE_COLORS, legend: true },
+    marks: [
+      Plot.areaY(data, { x: 'year', y: 'share', fill: 'series', order: ENGINE_SERIES, title: 'title', tip: true }),
+      Plot.ruleY([0]),
+    ],
+  }));
+}
+
+async function showConcentration() {
+  const box = $('concentration-chart');
+  const data = concentrationPoints((await fetchRows(queryUrl('carrier_concentration'))).rows);
+  if (!data.length) { box.replaceChildren(); return; }
+  const [top4, top10] = CONCENTRATION_SERIES;
+  const line = (series, opts) => Plot.lineY(data.filter((d) => d.series === series), { x: 'year', y: 'share', stroke: 'currentColor', ...opts });
+  box.replaceChildren(Plot.plot({
+    width: width(box),
+    height: chartHeight(),
+    marginLeft: 48,
+    marginRight: 110,
+    style: { background: 'transparent', fontSize: '12px' },
+    x: { label: null, tickFormat: 'd', domain: [minYear, maxYear] },
+    y: { label: 'Share of all passengers', tickFormat: '.0%', domain: [0, 1], grid: true },
+    marks: [
+      Plot.ruleY([0]),
+      line(top10, { strokeWidth: 1.5, strokeOpacity: 0.45 }),
+      line(top4, { strokeWidth: 2.5 }),
+      Plot.text(data, Plot.selectLast({ x: 'year', y: 'share', z: 'series', text: 'series', textAnchor: 'start', dx: 6, fill: 'currentColor' })),
+      Plot.tip(data, Plot.pointerX({ x: 'year', y: 'share', title: (d) => `${d.series}, ${d.year}: ${pct(d.share)}` })),
+    ],
+  }));
+}
+
+async function drawCharts() {
+  showEngines().catch((err) => failed($('engine-chart'), 'chart', err));
+  showConcentration().catch((err) => failed($('concentration-chart'), 'chart', err));
+}
 
 showMap().catch((err) => failed($('map-box'), 'map', err));
 drawCharts();
