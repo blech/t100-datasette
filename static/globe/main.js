@@ -10,6 +10,7 @@ import { maxOf } from './src/scale.js';
 import { colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
 import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
 import { renderLegend, syncRange } from './src/controls.js';
+import { routesByOrigin, chooserTap } from './src/chooser.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -37,6 +38,9 @@ let themeId = resolveTheme(location.search, localStorage.getItem('t100-theme'), 
 let dirty = true;
 let hover = -1;
 let chooserPoints = []; // airport dots on the chooser page (no origin selected)
+let chooserRoutes = new Map(); // the latest year's domestic routes by origin, for the hovered dot
+const chooserPlaced = new Map(); // ...placed on the map, filled as dots are hovered
+const latestYear = document.body.dataset.maxYear;
 let selected = -1;
 let playTimer = null;
 const view = defaultView();
@@ -205,6 +209,32 @@ async function showChooser() {
   $('title').textContent = 'US airport network';
   chooserPoints = placePoints(res.rows, airports);
   dirty = true;
+  // without these the dots still work; hovering just shows no routes
+  try {
+    chooserRoutes = routesByOrigin((await fetchRows(queryUrl('domestic_routes', { year: latestYear, _size: 'max' }))).rows);
+  } catch (e) {
+    console.error(e);
+  }
+  dirty = true;
+}
+
+// the hovered dot's domestic routes, as its own map draws them with international hidden
+function chooserRoutesFor(i) {
+  if (i < 0) return [];
+  const code = chooserPoints[i].code;
+  if (!chooserPlaced.has(code)) chooserPlaced.set(code, placeRoutes(chooserRoutes.get(code) || [], code, airports).routes);
+  return chooserPlaced.get(code);
+}
+
+function showChooserTip(i, x, y) {
+  const tip = $('tooltip');
+  if (i < 0) { tip.hidden = true; return; }
+  const p = chooserPoints[i];
+  const n = chooserRoutesFor(i).length; // the routes drawn: a destination without coordinates can't be
+  tip.textContent = chooserRoutes.size ? `${p.code} · ${p.city} · ${n} domestic route${n === 1 ? '' : 's'} in ${latestYear}` : `${p.code} · ${p.city}`;
+  tip.style.left = `${x + 14}px`;
+  tip.style.top = `${y + 14}px`;
+  tip.hidden = false;
 }
 
 function bindControls() {
@@ -275,12 +305,7 @@ function bindCanvas() {
         const i = renderer.hitTestPoints(x, y, chooserPoints);
         if (i !== hover) { hover = i; dirty = true; }
         canvas.style.cursor = i >= 0 ? 'pointer' : '';
-        const tip = $('tooltip');
-        if (i < 0) { tip.hidden = true; return; }
-        tip.textContent = `${chooserPoints[i].code} · ${chooserPoints[i].city}`;
-        tip.style.left = `${x + 14}px`;
-        tip.style.top = `${y + 14}px`;
-        tip.hidden = false;
+        showChooserTip(i, x, y);
         return;
       }
       const routes = shown;
@@ -296,7 +321,11 @@ function bindCanvas() {
     onTap: (x, y) => {
       if (!origin) {
         const i = renderer.hitTestPoints(x, y, chooserPoints);
-        if (i >= 0) location.href = `/airports/${encodeURIComponent(chooserPoints[i].code)}/globe${toSearch(state)}`;
+        const action = chooserTap(hover, i);
+        if (action === 'open') { location.href = `/airports/${encodeURIComponent(chooserPoints[i].code)}/globe${toSearch(state)}`; return; }
+        hover = action === 'show' ? i : -1;
+        showChooserTip(hover, x, y);
+        dirty = true;
         return;
       }
       const routes = shown;
@@ -316,16 +345,18 @@ function frame(last, now) {
   if (moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
-    const routes = shown;
+    const routes = origin ? shown : chooserRoutesFor(hover);
     const key = $('width').value;
-    const a = airports.get(origin);
+    // on the chooser the hovered airport is drawn as its own map draws it, routes and all
+    const code = origin || (hover >= 0 ? chooserPoints[hover].code : '');
+    const a = airports.get(code);
     renderer.draw(view, routes, {
       points: origin ? null : chooserPoints,
-      highlightPoint: origin ? -1 : hover,
-      origin: a ? { lon: a.lon, lat: a.lat, code: origin } : null,
+      highlightPoint: origin || a ? -1 : hover,
+      origin: a ? { lon: a.lon, lat: a.lat, code } : null,
       widthKey: key,
       max: maxOf(routes, key),
-      highlight: selected >= 0 ? selected : hover,
+      highlight: origin ? (selected >= 0 ? selected : hover) : -1,
       labels: 8,
       styles: styleRoutes(routes, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: key }),
     });
