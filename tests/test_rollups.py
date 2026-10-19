@@ -154,6 +154,14 @@ def test_carrier_route_year_joins_both_directions_and_both_merged_airlines(db_pa
     assert rows == [("delta", "19386", 2019, "DEN", "SFO", 4), ("delta", "19790", 2019, "DEN", "SFO", 10)]
 
 
+def test_carrier_route_year_counts_the_departures_filed_as_domestic(db_path):
+    # a pair can sit in both BTS files; the airport map's rule needs how many of the departures were filed domestic
+    add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."))
+    add_segments(db_path, "t100_domestic", [flight("HNL", "GUM", carrier_entity="A1", **{"class": "F"}, deps=3)])
+    add_segments(db_path, "t100_international", [flight("GUM", "HNL", carrier_entity="A1", **{"class": "F"}, deps=9)])
+    assert query(db_path, "SELECT deps, domestic_deps FROM carrier_route_year") == [(12, 3)]
+
+
 def test_an_older_shape_of_a_derived_table_is_dropped_and_rebuilt(db_path):
     conn = sqlite3.connect(db_path)
     conn.execute("DROP TABLE carrier_group_year")
