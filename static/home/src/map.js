@@ -1,6 +1,18 @@
 import { colourFor } from '../../globe/src/scale.js';
 
 export const MAP_LABELS = 10;
+
+// `a` blended into `b` by `f` (0 gives b), for #rrggbb colours
+export function mix(a, b, f) {
+  const ch = (hex, i) => parseInt(hex.slice(i, i + 2), 16);
+  return `#${[1, 3, 5].map((i) => Math.round(ch(a, i) * f + ch(b, i) * (1 - f)).toString(16).padStart(2, '0')).join('')}`;
+}
+
+// The map sits straight on the page, with no ocean behind it, so its land is a tint of the text colour
+// on the page colour rather than the theme's land colour (which in some themes is almost the page colour).
+export function mapColours(t) {
+  return { land: mix(t.ui.fg, t.bg, 0.12), border: mix(t.ui.fg, t.bg, 0.3) };
+}
 const R_MIN = 2.5;
 const R_MAX = 12;
 
@@ -36,18 +48,19 @@ export function hitTest(placed, x, y, slop = 4) {
 
 // scene: {w, h, path (d3.geoPath on the context), frames, nation, borders, placed, theme, highlight}
 export function drawMap(ctx, { w, h, path, frames, nation, borders, placed, theme: t, highlight = -1 }) {
+  const c = mapColours(t);
   ctx.clearRect(0, 0, w, h);
   ctx.beginPath();
   path(nation);
-  ctx.fillStyle = t.land;
+  ctx.fillStyle = c.land;
   ctx.fill();
   ctx.beginPath();
   path(borders);
   ctx.lineWidth = 0.5;
-  ctx.strokeStyle = t.coast;
+  ctx.strokeStyle = c.border;
   ctx.stroke();
   ctx.lineWidth = 1;
-  ctx.strokeStyle = t.coast;
+  ctx.strokeStyle = c.border;
   for (const [[x0, y0], [x1, y1]] of frames) ctx.strokeRect(Math.round(x0) + 0.5, Math.round(y0) + 0.5, Math.round(x1 - x0), Math.round(y1 - y0));
 
   // big dots first so small ones stay visible on top
