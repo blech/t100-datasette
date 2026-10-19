@@ -11,7 +11,7 @@ ENV HOST=0.0.0.0 PORT=8808 DB=/mnt/db/t100.db
 WORKDIR /src
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked
-COPY datasette.yml serve_public.sh ./
+COPY datasette.yml serve_public.sh schema.sql ./
 COPY plugins plugins
 COPY templates templates
 COPY static static

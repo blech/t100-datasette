@@ -47,6 +47,8 @@ Finally, build the derived tables: `airport_year_totals` (one row per airport an
 uv run python -c "import sqlite3, build_database as b; c = sqlite3.connect('t100.db'); print(b.rebuild_derived_tables(c))"
 ```
 
+The server checks the database against `schema.sql` when it starts and logs a warning for each missing table or column; `/-/derived` reports the same as JSON (`"ok": true` when nothing is missing), and `scripts/smoke_check.sh` fails a deploy if it is not. After pulling code that adds a table or column, run the rebuild above on every machine and on the Fly volume. `schema.sql` is generated from `build_database.py`; a test fails if they drift apart.
+
 **Run this again whenever segment data is loaded or changed**, or the landing page will show stale totals. It deletes and recomputes the tables, so it is safe to repeat. Also update `max_year` under `plugins: t100_globe` in `datasette.yml` when a new year is added.
 
 (A repeatable build script that does all of this is not written yet.)
