@@ -12,7 +12,8 @@ CREATE TABLE "aircraft_group_band_year" (
 
 CREATE TABLE "aircraft_types" (
    [ac_typeid] TEXT, [ac_group] TEXT, [ssd_name] TEXT, [manufacturer] TEXT,
-   [name] TEXT, [short_name] TEXT, [begin_date] TEXT
+   [name] TEXT, [short_name] TEXT, [begin_date] TEXT,
+   [maker] TEXT, [kind] TEXT
 );
 
 CREATE TABLE "airport_names" (

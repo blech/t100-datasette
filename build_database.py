@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS "carriers" (
 );
 CREATE TABLE IF NOT EXISTS "aircraft_types" (
    [ac_typeid] TEXT, [ac_group] TEXT, [ssd_name] TEXT, [manufacturer] TEXT,
-   [name] TEXT, [short_name] TEXT, [begin_date] TEXT
+   [name] TEXT, [short_name] TEXT, [begin_date] TEXT,
+   [maker] TEXT, [kind] TEXT
 );
 CREATE TABLE IF NOT EXISTS "openflights_airports" (
    "id" INTEGER, "name" TEXT, "city" TEXT, "country" TEXT, "iata_code" TEXT,
@@ -249,6 +250,32 @@ def rebuild_aircraft_family(conn: sqlite3.Connection, rules_path=None) -> int:
     return conn.execute("SELECT COUNT(*) FROM aircraft_family").fetchone()[0]
 
 
+# BTS's own aircraft group, as checked against the type names (explore/check_groups.sql); the first digit of ac_typeid is only a hint
+_KIND_BY_GROUP = {
+    "0": "Piston, single-engine", "1": "Piston, twin-engine", "2": "Piston, four-engine", "3": "Helicopter",
+    "4": "Turboprop, one or two engines", "5": "Turboprop, four-engine", "6": "Jet, twin-engine", "7": "Jet, three-engine", "8": "Jet, four-engine",
+}
+
+
+def rebuild_aircraft_type_labels(conn: sqlite3.Connection, rules_path=None) -> int:
+    """Fill aircraft_types.maker (from the type's name, by the first matching rule in data/aircraft_makers.csv) and .kind (from ac_group)."""
+    create_schema(conn)
+    columns = [r[1] for r in conn.execute("PRAGMA table_info(aircraft_types)")]
+    for column in ("maker", "kind"):
+        if column not in columns:
+            conn.execute(f"ALTER TABLE aircraft_types ADD COLUMN [{column}] TEXT")
+    with open(rules_path or DATA_DIR / "aircraft_makers.csv", newline="") as f:
+        rules = sorted(csv.DictReader(f), key=lambda r: int(r["priority"]))
+    compiled = [(re.compile(r["name_regex"], re.IGNORECASE), r["maker"] or None) for r in rules]
+    rows = []
+    for code, group, name in conn.execute("SELECT ac_typeid, ac_group, name FROM aircraft_types WHERE ac_typeid IS NOT NULL").fetchall():
+        maker = next((m for pattern, m in compiled if pattern.search(name or "")), None)
+        rows.append((maker, _KIND_BY_GROUP.get(group), code))
+    with conn:
+        conn.executemany("UPDATE aircraft_types SET maker = ?, kind = ? WHERE ac_typeid = ?", rows)
+    return len(rows)
+
+
 def rebuild_family_year(conn: sqlite3.Connection) -> int:
     """Recompute family_year from the segment tables and aircraft_family. Segments with an unknown type are kept as 'Unknown'."""
     create_schema(conn)
@@ -374,6 +401,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
     return {
         "airport_year_totals": rebuild_airport_year_totals(conn),
         "airport_names": rebuild_airport_names(conn),
+        "aircraft_type_labels": rebuild_aircraft_type_labels(conn),
         "aircraft_family": rebuild_aircraft_family(conn),
         "family_year": rebuild_family_year(conn),
         "carrier_group": rebuild_carrier_groups(conn),

@@ -1,0 +1,92 @@
+priority,name_regex,maker
+1,^Boeing Vertol,Boeing Vertol
+2,^(Boeing|B7\d\d),Boeing
+3,^McDonnell Douglas,McDonnell Douglas
+4,^Air Bus Euro|^Eurocompter,Eurocopter
+5,^(Airbus|A2[02]0-),Airbus
+6,^Aerospatiale/Aeritalia,ATR
+7,^Aerospatiale/British Aerospace,Aerospatiale/British Aerospace
+8,^Aerospatiale,Aerospatiale
+9,^Aero Commander|^Grand Commander,Aero Commander
+10,^Aero Macchi,Aermacchi
+11,^Aeronca,Aeronca
+12,^Agustawestland,AgustaWestland
+13,^Agusta,Agusta
+14,^Air Tractor,Air Tractor
+15,^Antonov,Antonov
+16,^AW-650,Armstrong Whitworth
+17,^Avroliner,Avro
+18,^(Bell|BHT|HU-1H),Bell
+19,^Bellanca,Bellanca
+20,^Boelkow,Bolkow
+21,^Bo?mardier|^Bombardier,Bombardier
+22,^Brantley,Brantley
+23,^British Aerospace,British Aerospace
+24,^C-28 5ACF,Consolidated Vultee
+25,^Canadair,Canadair
+26,^Carstedt,Carstedt
+27,^Casa,CASA
+28,^Cessna,Cessna
+29,^Convair,Convair
+30,^Curtiss,Curtiss-Wright
+31,^Dassault-?\s?Breguet|^DassauLT-Breguet,Dassault-Breguet
+32,^Dassault,Dassault
+33,^Dehavilland (DH-\d|Dove),de Havilland
+34,^Dehavilland|^DHC-,De Havilland Canada
+35,^Dornier,Dornier
+36,^(Embraer|Emb\d),Embraer
+37,^Fairchild-Hiller,Fairchild Hiller
+38,^Fairchild,Fairchild
+39,^Float/Amphib|^Land-,
+40,^Fokker,Fokker
+41,^Gates Lear|^Lear 55,Gates Learjet
+42,^Learjet,Learjet
+43,^Gipps,GippsAero
+44,^Grumman,Grumman
+45,^Gulfstream,Gulfstream
+46,^HFB-320,Hamburger Flugzeugbau
+47,^Hamilton,Hamilton
+48,^Handley Page,Handley Page
+49,^Hawker Beechcraft,Hawker Beechcraft
+50,^Hawker Siddeley,Hawker Siddeley
+51,^Helio,Helio
+52,^Honda,Honda
+53,^Howard,Howard
+54,^Hughes,Hughes
+55,^1124A,Israel Aircraft Industries
+56,^Ilyushi+n,Ilyushin
+57,^Lake,Lake
+58,^Lockheed,Lockheed
+59,^Martin,Martin
+60,^(Mitsubishi|MRJ-),Mitsubishi
+61,^Mohawk,Mohawk
+62,^Mooney,Mooney
+63,^Nihon,Nihon
+64,^Noorduyn,Noorduyn
+65,^Nord ,Nord
+66,^P2012,Tecnam
+67,^Piaggio,Piaggio
+68,^Pilatus Britten-Norman,Britten-Norman
+69,^Pilatus,Pilatus
+70,^Piper,Piper
+71,^Pipistrel,Pipistrel
+72,^Quest,Quest
+73,^Raytheon Beechcraft|^Raytheon Beechraft,Raytheon Beechcraft
+74,^Raytheon,Raytheon
+75,^Robinson,Robinson
+76,^Rockwell,Rockwell
+77,^Saab-Fairchild,Saab-Fairchild
+78,^Saab,Saab
+79,^Shorts,Short Brothers
+80,^Sikorsky,Sikorsky
+81,^Socata,Socata
+82,^Stinson,Stinson
+83,^Sud ,Sud Aviation
+84,^Sukhoi,Sukhoi
+85,^Swearingen,Swearingen
+86,^Tupolev,Tupolev
+87,^Vickers,Vickers
+88,^Volpar,Volpar
+89,^Westland,Westland
+90,^Yakolev,Yakovlev
+91,^Beech,Beechcraft
