@@ -1,3 +1,4 @@
+import logging
 import re
 
 from datasette import hookimpl
@@ -5,6 +6,7 @@ from datasette.utils.asgi import NotFound, Response
 
 
 CODE = r"[A-Za-z0-9]{3}"
+log = logging.getLogger(__name__)
 
 
 def moved(template):
@@ -165,6 +167,16 @@ async def canned(datasette, name, params=None):
     return [dict(row) for row in result.rows]
 
 
+async def story(datasette, name, tell, params=None):
+    """tell(rows of the canned query `name`), or None if the query fails: one broken query costs its section, not the page."""
+    try:
+        rows = await canned(datasette, name, params)
+    except Exception:
+        log.exception("front page query %s failed", name)
+        return None
+    return tell(rows)
+
+
 # the busiest-airports table's settings; the front page used to be that table
 TABLE_PARAMS = ("year", "sort")
 
@@ -179,10 +191,10 @@ async def home_page(datasette, request):
             "min_year": min_year,
             "max_year": max_year,
             "crumbs": trail(datasette),
-            "airports": airport_story(await canned(datasette, "busiest_airports", {"year": max_year})),
-            "engines": engine_story(await canned(datasette, "engines_by_year"), min_year, max_year),
-            "concentration": concentration_story(await canned(datasette, "carrier_concentration"), min_year, max_year),
-            "carriers": carrier_shares(await canned(datasette, "top_carriers", {"year": max_year})),
+            "airports": await story(datasette, "busiest_airports", airport_story, {"year": max_year}),
+            "engines": await story(datasette, "engines_by_year", lambda rows: engine_story(rows, min_year, max_year)),
+            "concentration": await story(datasette, "carrier_concentration", lambda rows: concentration_story(rows, min_year, max_year)),
+            "carriers": await story(datasette, "top_carriers", carrier_shares, {"year": max_year}),
         },
         request=request,
     )

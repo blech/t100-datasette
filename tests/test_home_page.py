@@ -1,4 +1,5 @@
 import re
+import sqlite3
 
 from tests.helpers import get
 from tests.test_home_queries import apt, carrier
@@ -40,3 +41,15 @@ def test_root_with_table_params_redirects_to_airports(ds):
     assert r.status_code == 301 and r.headers["location"] == "/airports?year=2019&sort=deps"
     assert get(ds, "/?sort=seats").headers["location"] == "/airports?sort=seats"
     assert get(ds, "/?theme=night").status_code == 200
+
+
+def test_home_page_survives_a_failing_query(ds, db_path):
+    # a derived table missing (say, mid-rebuild) costs that section its numbers, not the whole page
+    load(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("DROP TABLE carrier_group_year")
+    conn.commit()
+    conn.close()
+    r = get(ds, "/")
+    assert r.status_code == 200
+    assert "51.5 million" in r.text and "four biggest airlines" not in r.text
