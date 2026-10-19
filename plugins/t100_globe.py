@@ -67,6 +67,70 @@ async def is_foreign(datasette, code):
     return bool(row) and row[0] is not None and not 1 <= row[0] <= 93
 
 
+
+# --- front page stories: rows from the canned queries -> the numbers the prose quotes, or None without data
+
+def percent(fraction, places=0):
+    return f"{fraction * 100:.{places}f}%"
+
+
+def airport_story(rows):
+    """busiest_airports rows (busiest first) -> the top three airports."""
+    if len(rows) < 3:
+        return None
+    return {"airports": [{"code": r["origin"], "city": r["origin_city_name"], "passengers": f"{r['total_passengers'] / 1e6:.1f} million"}
+                         for r in rows[:3]]}
+
+
+def engine_shares(rows, year):
+    """Shares of passenger departures on flights of 3,000 miles or more by BTS aircraft group (6 twin, 7 tri, 8 quad)."""
+    deps = {}
+    for r in rows:
+        if r["year"] == year and r["kind"] == "passenger" and r["distance_band"] >= 3000:
+            group = str(r["aircraft_group"])
+            deps[group] = deps.get(group, 0) + r["deps"]
+    total = sum(deps.values())
+    if not total:
+        return None
+    return {"twin": deps.get("6", 0) / total, "tri_quad": (deps.get("7", 0) + deps.get("8", 0)) / total}
+
+
+def engine_story(rows, first, last):
+    """engines_by_year rows -> how much of the long haul tri- and quad-jets flew in the first year, and twins in the last."""
+    a, b = engine_shares(rows, first), engine_shares(rows, last)
+    if not a or not b:
+        return None
+    return {"first_year": first, "last_year": last, "first_tri_quad": percent(a["tri_quad"]), "last_twin": percent(b["twin"])}
+
+
+def concentration_story(rows, first, last):
+    """carrier_concentration rows -> the top-four share at each end and at its lowest year in between (None if that is an end)."""
+    shares = {r["year"]: r["top4"] for r in rows}
+    if first not in shares or last not in shares:
+        return None
+    low_year = min(shares, key=lambda y: (shares[y], y))
+    dip = low_year not in (first, last)
+    return {"first_year": first, "first": percent(shares[first]), "low_year": low_year if dip else None,
+            "low": percent(shares[low_year]) if dip else None, "last_year": last, "last": percent(shares[last])}
+
+
+LEGAL_ENDING = re.compile(r"[\s,]+(?:Inc\.?|Co\.?|LLC|L\.L\.C\.|Corp\.?|Corporation|Ltd\.?)$")
+
+
+def short_airline_name(name):
+    """"Southwest Airlines Co." -> "Southwest Airlines": BTS's legal names without the legal ending."""
+    previous = None
+    while previous != name:
+        previous, name = name, LEGAL_ENDING.sub("", name).strip()
+    return name
+
+
+def carrier_shares(rows):
+    """top_carriers rows -> short names and one-decimal shares."""
+    if not rows:
+        return None
+    return [{"name": short_airline_name(r["airline_name"]), "share": percent(r["share"], 1)} for r in rows]
+
 async def airports_index(datasette, request):
     # there is no page of its own for "all routes"; the landing table is where you pick an airport
     query = request.query_string
