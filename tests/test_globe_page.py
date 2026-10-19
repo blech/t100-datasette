@@ -46,3 +46,7 @@ def test_map_has_year_comparison_colour_choice_and_legend(ds):
 def test_chart_assets_are_served(ds):
     for path in ("/static/charts/routepage.js", "/static/charts/src/series.js", "/static/charts/vendor/plot.js"):
         assert get(ds, path).status_code == 200
+
+
+def test_chooser_knows_the_latest_year_for_its_routes(ds):
+    assert 'data-max-year="2025"' in get(ds, "/airports/globe").text

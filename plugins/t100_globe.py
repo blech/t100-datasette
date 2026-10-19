@@ -138,7 +138,7 @@ async def globe_page(datasette, request):
     steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
     html = await datasette.render_template(
         "globe.html",
-        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin)},
+        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1]},
         request=request,
     )
     return Response.html(html)
