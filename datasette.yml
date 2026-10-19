@@ -78,6 +78,55 @@ databases:
           WHERE by_passengers <= 20 OR by_deps <= 20 OR by_seats <= 20 OR by_freight <= 20
           ORDER BY passengers DESC, origin
 
+      # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
+      busiest_airports:
+        sql: |
+          SELECT origin, origin_city_name, passengers AS total_passengers
+          FROM airport_year_totals
+          WHERE year = CAST(:year AS integer)
+            AND origin_wac BETWEEN 1 AND 93
+            AND passengers > 0
+          ORDER BY passengers DESC, origin
+          LIMIT 100
+
+      # the front page airline story: the share of all passengers carried by the four and ten biggest
+      # reporting carriers each year (operating carriers, so regional partners count on their own)
+      carrier_concentration:
+        sql: |
+          WITH totals AS (
+            SELECT year, airline_id, SUM(passengers) AS passengers
+            FROM carrier_group_year
+            GROUP BY year, airline_id
+            HAVING SUM(passengers) > 0
+          ), ranked AS (
+            SELECT year, passengers,
+              ROW_NUMBER() OVER (PARTITION BY year ORDER BY passengers DESC, airline_id) AS rank,
+              SUM(passengers) OVER (PARTITION BY year) AS total
+            FROM totals
+          )
+          SELECT year,
+            1.0 * SUM(CASE WHEN rank <= 4 THEN passengers ELSE 0 END) / MAX(total) AS top4,
+            1.0 * SUM(CASE WHEN rank <= 10 THEN passengers ELSE 0 END) / MAX(total) AS top10,
+            COUNT(*) AS carriers
+          FROM ranked
+          GROUP BY year
+          ORDER BY year
+
+      top_carriers:
+        sql: |
+          WITH totals AS (
+            SELECT airline_id, SUM(passengers) AS passengers
+            FROM carrier_group_year
+            WHERE year = CAST(:year AS integer)
+            GROUP BY airline_id
+          )
+          SELECT t.airline_id, COALESCE(g.airline_name, t.airline_id) AS airline_name,
+            1.0 * t.passengers / (SELECT SUM(passengers) FROM totals) AS share
+          FROM totals AS t
+          LEFT JOIN carrier_group AS g ON g.airline_id = t.airline_id
+          ORDER BY t.passengers DESC, t.airline_id
+          LIMIT 4
+
       destinations:
         sql: |
           SELECT
