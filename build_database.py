@@ -115,6 +115,12 @@ CREATE TABLE IF NOT EXISTS "aircraft_group_band_year" (
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [aircraft_group], [distance_band], [domestic], [service_class])
 ) WITHOUT ROWID;
+-- Yearly totals per airport pair in one direction, with the departures in the domestic table, by rebuild_route_year_totals()
+CREATE TABLE IF NOT EXISTS "route_year_totals" (
+   [year] INTEGER, [origin] TEXT, [dest] TEXT, [deps] INTEGER, [domestic_deps] INTEGER,
+   [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin], [dest])
+) WITHOUT ROWID;
 -- BTS's own name for each airport code ("Raleigh/Durham, NC"), derived by rebuild_airport_names()
 CREATE TABLE IF NOT EXISTS "airport_names" (
    [code] TEXT PRIMARY KEY, [name] TEXT
@@ -327,6 +333,25 @@ def rebuild_carrier_route_year(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM carrier_route_year").fetchone()[0]
 
 
+def rebuild_route_year_totals(conn: sqlite3.Connection) -> int:
+    """Recompute route_year_totals: every origin-destination pair's yearly totals from both segment tables, keeping the domestic
+    table's share of departures so a query can call a route domestic as routes_by_year does (most departures domestic)."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM route_year_totals")
+        conn.execute(
+            """
+            INSERT INTO route_year_totals
+            SELECT year, origin, dest, SUM(departures_performed), SUM(CASE WHEN domestic = 1 THEN departures_performed ELSE 0 END),
+                   SUM(seats), SUM(passengers), SUM(freight)
+            FROM t100
+            WHERE year IS NOT NULL AND origin IS NOT NULL AND dest IS NOT NULL
+            GROUP BY year, origin, dest
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM route_year_totals").fetchone()[0]
+
+
 def rebuild_family_detail_year(conn: sqlite3.Connection) -> int:
     """Recompute family_detail_year: each aircraft family's yearly totals by subfamily and airline group."""
     create_schema(conn)
@@ -379,6 +404,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "aircraft_group_band_year": rebuild_aircraft_group_band_year(conn),
         "family_detail_year": rebuild_family_detail_year(conn),
         "carrier_route_year": rebuild_carrier_route_year(conn),
+        "route_year_totals": rebuild_route_year_totals(conn),
     }
 
 

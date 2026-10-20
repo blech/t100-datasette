@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-origin="{{ origin }}"{% if foreign %} data-foreign="1"{% endif %}>
+<body data-origin="{{ origin }}" data-max-year="{{ max_year }}"{% if foreign %} data-foreign="1"{% endif %}>
   <canvas id="globe" aria-label="Map of routes from the selected airport"></canvas>
 
   <header id="header">
