@@ -101,3 +101,34 @@ def test_route_page_keeps_segments_whose_carrier_is_missing_from_the_lookup(ds, 
     add_segments(db_path, "t100_international", [dict(year=2019, month=1, origin="LHR", dest="PHL", carrier_entity="NOPE", aircraft_type="852", departures_performed=4, passengers=0, seats=0, freight=0)])
     rows = get_json(ds, "/t100/route.json?_shape=objects&origin=LHR&dest=PHL")["rows"]
     assert [(r["carrier"], r["deps"]) for r in rows] == [(None, 4)]
+
+
+def ty(year, aircraft_type, domestic, service_class, deps):
+    return dict(year=year, aircraft_type=aircraft_type, domestic=domestic, service_class=service_class,
+                deps=deps, seats=deps * 100, passengers=deps * 80, freight=deps * 1000)
+
+
+def test_type_table_gives_each_type_its_year_and_its_span(ds, db_path):
+    put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800", maker="Boeing", kind="Jet, twin-engine"),
+                                    dict(ac_typeid="091", ac_group="0", name="Float/Amphib Turbine", maker=None, kind="Piston, single-engine")])
+    put(db_path, "aircraft_family", [dict(aircraft_type="614", name="Boeing 737-800", family="Boeing 737", subfamily="737 NG", aircraft_class="Narrowbody jet", fallback=0)])
+    put(db_path, "type_year", [ty(2001, "614", 1, "F", 4), ty(2019, "614", 1, "F", 10), ty(2019, "614", 0, "G", 2),
+                               ty(2019, "091", 1, "F", 1), ty(2019, "999", 1, "F", 3), ty(2019, "unknown", 1, "F", 5)])
+    rows = {r["type_id"]: r for r in get_json(ds, "/t100/type_table.json?_shape=objects&year=2019")["rows"]}
+    assert rows["614"]["deps"] == 12 and rows["614"]["family"] == "Boeing 737" and rows["614"]["maker"] == "Boeing"
+    assert (rows["614"]["first_year"], rows["614"]["last_year"]) == (2001, 2019)
+    assert rows["091"]["maker"] == "Unknown maker" and rows["091"]["family"] == "Unknown"
+    assert rows["999"]["name"] == "Type 999" and rows["unknown"]["name"] == "Type not reported"
+    assert sum(r["deps"] for r in rows.values()) == 21
+    other = {r["type_id"]: r for r in get_json(ds, "/t100/type_table.json?_shape=objects&year=2001")["rows"]}
+    assert other["614"]["deps"] == 4 and other["091"]["deps"] == 0
+
+
+def test_maker_by_year_labels_service_and_kind_and_names_unknown_makers(ds, db_path):
+    put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800", maker="Boeing", kind="Jet, twin-engine"),
+                                    dict(ac_typeid="091", ac_group="0", name="Float/Amphib Turbine", maker=None, kind="Piston, single-engine")])
+    put(db_path, "type_year", [ty(2019, "614", 1, "F", 10), ty(2019, "614", 1, "L", 5), ty(2019, "614", 0, "G", 2), ty(2019, "091", 1, "F", 1)])
+    rows = get_json(ds, "/t100/maker_by_year.json?_shape=objects")["rows"]
+    got = {(r["maker"], r["service"], r["kind"]): r["deps"] for r in rows}
+    assert got == {("Boeing", "domestic", "passenger"): 15, ("Boeing", "international", "freight"): 2, ("Unknown maker", "domestic", "passenger"): 1}
+    assert {r["aircraft_kind"] for r in rows} == {"Jet, twin-engine", "Piston, single-engine"}
