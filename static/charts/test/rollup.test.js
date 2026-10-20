@@ -98,3 +98,19 @@ test('years with nothing in the selection are left out', () => {
   const res = buildFamilySeries([d(2000, '', 'A', 2), d(2001, '', 'A', 0)], { measure: 'deps', kind: 'all', split: 'airline' });
   assert.deepEqual(res.years, [2000]);
 });
+
+const m = (year, maker, deps, extra = {}) => ({ year, maker, aircraft_kind: 'Jet, twin-engine', service: 'domestic', kind: 'passenger', deps, seats: 0, passengers: 0, freight: 0, ...extra });
+
+test('buildFamilySeries can split by maker, keeping the biggest and folding the rest into Other', () => {
+  const rows = [m(2019, 'Boeing', 50), m(2019, 'Airbus', 30), m(2019, 'Embraer', 5), m(2019, 'Cessna', 1), m(2020, 'Boeing', 40)];
+  const res = buildFamilySeries(rows, { measure: 'deps', split: 'maker', top: 2 });
+  assert.deepEqual(res.series, ['Boeing', 'Airbus', 'Other']);
+  assert.equal(res.points.find((p) => p.year === 2019 && p.series === 'Other').value, 6);
+});
+
+test('buildFamilySeries filters by aircraft kind and still takes the other filters', () => {
+  const rows = [m(2019, 'Boeing', 50), m(2019, 'Pilatus', 7, { aircraft_kind: 'Turboprop, one or two engines' }), m(2019, 'Boeing', 9, { service: 'international' })];
+  const res = buildFamilySeries(rows, { measure: 'deps', split: 'maker', aircraftKind: 'Turboprop' });
+  assert.deepEqual(res.series, ['Pilatus']);
+  assert.deepEqual(buildFamilySeries(rows, { measure: 'deps', split: 'maker', service: 'domestic', aircraftKind: 'Jet' }).points.map((p) => p.value), [50]);
+});
