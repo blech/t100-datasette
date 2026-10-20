@@ -89,6 +89,12 @@ CREATE TABLE IF NOT EXISTS "family_year" (
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [family], [domestic], [service_class])
 ) WITHOUT ROWID;
+-- Yearly totals per aircraft type (service_class is the BTS class: F/L passenger, G/P cargo), by rebuild_type_year()
+CREATE TABLE IF NOT EXISTS "type_year" (
+   [year] INTEGER, [aircraft_type] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [aircraft_type], [domestic], [service_class])
+) WITHOUT ROWID;
 -- Merger-aware carrier groups (data/carrier_groups.csv; unlisted airlines are their own group), by rebuild_carrier_groups()
 CREATE TABLE IF NOT EXISTS "carrier_group" (
    [airline_id] TEXT PRIMARY KEY, [group_id] TEXT, [group_name] TEXT, [airline_name] TEXT
@@ -300,6 +306,24 @@ def rebuild_family_year(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM family_year").fetchone()[0]
 
 
+def rebuild_type_year(conn: sqlite3.Connection) -> int:
+    """Recompute type_year from the segment tables. Segments with no aircraft type are kept under 'unknown'."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM type_year")
+        conn.execute(
+            """
+            INSERT INTO type_year
+            SELECT year, COALESCE(NULLIF(aircraft_type, ''), 'unknown'), domestic, COALESCE(class, ''),
+                   SUM(departures_performed), SUM(seats), SUM(passengers), SUM(freight)
+            FROM t100
+            WHERE year IS NOT NULL
+            GROUP BY year, COALESCE(NULLIF(aircraft_type, ''), 'unknown'), domestic, COALESCE(class, '')
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM type_year").fetchone()[0]
+
+
 def rebuild_carrier_groups(conn: sqlite3.Connection, groups_path=None) -> int:
     """Map every airline_id to a merger-aware group. data/carrier_groups.csv lists the mainline mergers; every other airline is its own group."""
     create_schema(conn)
@@ -429,6 +453,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "aircraft_type_labels": rebuild_aircraft_type_labels(conn),
         "aircraft_family": rebuild_aircraft_family(conn),
         "family_year": rebuild_family_year(conn),
+        "type_year": rebuild_type_year(conn),
         "carrier_group": rebuild_carrier_groups(conn),
         "carrier_group_year": rebuild_carrier_group_year(conn),
         "aircraft_group_band_year": rebuild_aircraft_group_band_year(conn),
