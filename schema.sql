@@ -73,6 +73,12 @@ CREATE TABLE "openflights_airports" (
    "timezone" TEXT, "dst" TEXT, "tz" TEXT, "type" TEXT, "source" TEXT
 );
 
+CREATE TABLE "route_year_totals" (
+   [year] INTEGER, [origin] TEXT, [dest] TEXT, [deps] INTEGER, [domestic_deps] INTEGER,
+   [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin], [dest])
+) WITHOUT ROWID;
+
 CREATE TABLE "t100_domestic" (
    [year] INTEGER,
    [month] INTEGER,
