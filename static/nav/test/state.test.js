@@ -15,11 +15,16 @@ test('targetOf recognises the site pages and nothing else', () => {
 });
 
 test('home keeps only the theme', () => {
-  assert.deepEqual(carryParams('?theme=night&measure=deps&service=domestic', 'home'), { theme: 'night' });
+  assert.deepEqual(carryParams('?theme=dark&measure=deps&service=domestic', 'home'), { theme: 'dark' });
 });
 
-test('the default theme and default values are not carried', () => {
-  assert.deepEqual(carryParams('?theme=paper&service=all&measure=passengers', 'routes'), {});
+test('an explicit theme is carried, light included, since the default follows the system', () => {
+  assert.deepEqual(carryParams('?theme=light', 'routes'), { theme: 'light' });
+});
+
+test('default values and unknown or retired themes are not carried', () => {
+  assert.deepEqual(carryParams('?service=all&measure=passengers', 'routes'), {});
+  assert.deepEqual(carryParams('?theme=night', 'home'), {});
   assert.deepEqual(carryParams('?theme=bogus&service=bogus&measure=bogus&group=bogus&n=7', 'routes'), {});
 });
 
@@ -52,7 +57,7 @@ test('route pages pass the heat map settings through and accept load factor', ()
 });
 
 test('globe takes service and width, and width and measure translate', () => {
-  assert.deepEqual(carryParams('?measure=deps&service=international&theme=night&n=50', 'globe'), { theme: 'night', service: 'international', width: 'deps' });
+  assert.deepEqual(carryParams('?measure=deps&service=international&theme=dark&n=50', 'globe'), { theme: 'dark', service: 'international', width: 'deps' });
   assert.deepEqual(carryParams('?measure=seats', 'globe'), {});
   assert.deepEqual(carryParams('?width=freight', 'routes'), { measure: 'freight' });
   assert.deepEqual(carryParams('?width=freight&measure=deps', 'routes'), { measure: 'deps' });
@@ -63,30 +68,30 @@ test('decorate adds carried settings to a path', () => {
 });
 
 test('decorate keeps a link\'s own parameters and never overrides them', () => {
-  const r = decorate('/airports/ATL/globe?year=2025&service=international', '?service=domestic&theme=night');
+  const r = decorate('/airports/ATL/globe?year=2025&service=international', '?service=domestic&theme=dark');
   assert.deepEqual(new URL(r.href, 'http://x').searchParams.getAll('service'), ['international']);
   assert.equal(new URL(r.href, 'http://x').searchParams.get('year'), '2025');
-  assert.equal(new URL(r.href, 'http://x').searchParams.get('theme'), 'night');
+  assert.equal(new URL(r.href, 'http://x').searchParams.get('theme'), 'dark');
   assert.deepEqual(r.keys, ['theme']);
 });
 
 test('decorate replaces what it added before, so a changed setting does not go stale', () => {
-  const first = decorate('/airports/MCO', '?theme=night&measure=deps');
-  const second = decorate(first.href, '?theme=natural', first.keys);
-  assert.equal(second.href, '/airports/MCO?theme=natural');
+  const first = decorate('/airports/MCO', '?theme=dark&measure=deps');
+  const second = decorate(first.href, '?theme=dark', first.keys);
+  assert.equal(second.href, '/airports/MCO?theme=dark');
   assert.deepEqual(second.keys, ['theme']);
   assert.equal(decorate(second.href, '', second.keys).href, '/airports/MCO');
 });
 
 test('decorate leaves other links alone and keeps hashes', () => {
-  assert.deepEqual(decorate('/t100/route?origin=ATL', '?theme=night'), { href: '/t100/route?origin=ATL', keys: [] });
-  assert.deepEqual(decorate('#toggle:a', '?theme=night'), { href: '#toggle:a', keys: [] });
-  assert.equal(decorate('/airports/MCO#top', '?theme=night').href, '/airports/MCO?theme=night#top');
+  assert.deepEqual(decorate('/t100/route?origin=ATL', '?theme=dark'), { href: '/t100/route?origin=ATL', keys: [] });
+  assert.deepEqual(decorate('#toggle:a', '?theme=dark'), { href: '#toggle:a', keys: [] });
+  assert.equal(decorate('/airports/MCO#top', '?theme=dark').href, '/airports/MCO?theme=dark#top');
 });
 
 test('replaceSearch swaps a page\'s own keys and keeps everything else', () => {
-  assert.equal(replaceSearch('?theme=night&year=2020&sort=deps', ['year', 'sort'], '?year=2021'), '?theme=night&year=2021');
-  assert.equal(replaceSearch('?theme=night&year=2020', ['year'], ''), '?theme=night');
+  assert.equal(replaceSearch('?theme=dark&year=2020&sort=deps', ['year', 'sort'], '?year=2021'), '?theme=dark&year=2021');
+  assert.equal(replaceSearch('?theme=dark&year=2020', ['year'], ''), '?theme=dark');
   assert.equal(replaceSearch('?year=2020', ['year'], ''), '');
 });
 

@@ -1,4 +1,4 @@
-import { THEMES, DEFAULT_THEME } from '../../globe/src/themes.js';
+import { THEMES } from '../../globe/src/themes.js';
 
 // Settings that follow a visitor from page to page, and which pages they mean something to.
 const SERVICES = ['domestic', 'international'];
@@ -26,7 +26,7 @@ export function carryParams(search, target) {
   const q = new URLSearchParams(search || '');
   const out = {};
   const theme = q.get('theme');
-  if (Object.hasOwn(THEMES, theme) && theme !== DEFAULT_THEME) out.theme = theme;
+  if (Object.hasOwn(THEMES, theme)) out.theme = theme;
   if (target === 'home') return out;
   const service = q.get('service') ?? serviceFromHide(q.get('hide'));
   const measure = q.get('measure') ?? q.get('width');

@@ -1,4 +1,4 @@
-import { THEMES, resolveTheme } from '/static/globe/src/themes.js';
+import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { defaultView, clamp } from '/static/globe/src/camera.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -33,7 +33,11 @@ let routes = [];
 let shown = []; // routes after the legend's filters: what is drawn and hit-tested
 const range = { from: $('year-from'), to: $('year'), fill: $('range-fill') };
 let skipped = [];
-let themeId = resolveTheme(location.search, localStorage.getItem('t100-theme'));
+function storedTheme() {
+  try { return localStorage.getItem('t100-theme'); } catch (e) { return null; }
+}
+let themeId = resolveTheme(location.search, storedTheme(), matchMedia('(prefers-color-scheme: dark)').matches);
+let themeChosen = themeChoice(location.search, storedTheme()); // 'auto' stays out of the URL
 let dirty = true;
 let hover = -1;
 let selected = -1;
@@ -55,11 +59,11 @@ function setStatus(text, warn = false) {
 }
 
 function applyTheme(id) {
-  themeId = THEMES[id] ? id : 'paper';
+  themeId = THEMES[id] ? id : DEFAULT_THEME;
   if (renderer) renderer.setTheme(THEMES[themeId]);
   dirty = true;
 }
-document.addEventListener('t100:theme', (e) => { applyTheme(e.detail.id); pushState(); });
+document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); pushState(); });
 
 function pushState() {
   const q = new URLSearchParams();
@@ -69,7 +73,7 @@ function pushState() {
   if (state.width !== 'passengers') q.set('width', state.width);
   if (state.min !== '12') q.set('min', state.min);
   for (const [k, v] of Object.entries(styleParams(state))) q.set(k, v);
-  if (themeId !== 'paper') q.set('theme', themeId);
+  if (themeChosen !== 'auto') q.set('theme', themeChosen);
   const s = q.toString();
   history.replaceState(null, '', `${location.pathname}${s ? `?${s}` : ''}`);
 }
