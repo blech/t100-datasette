@@ -112,9 +112,10 @@ def test_a_merged_group_lists_its_members_and_each_member_has_a_page_of_its_own(
 def test_table_and_maker_pages_render_with_their_assets_and_controls(ds):
     table = get(ds, "/aircraft/table")
     assert table.status_code == 200
-    for id_ in ["aircraft-table", "at-measure", "at-year", "at-kind", "at-maker", "at-q"]:
+    for id_ in ["aircraft-table", "at-status", "at-measure", "at-year", "at-kind", "at-maker", "at-q"]:
         assert f'id="{id_}"' in table.text
     assert "/static/charts/aircrafttable.js" in table.text
+    assert 'id="aircraft-table" aria-live' not in table.text  # a rebuilt table must not be a live region; the status line is
     makers = get(ds, "/aircraft/makers")
     assert makers.status_code == 200
     for id_ in ["maker-chart", "mk-measure", "mk-kind", "mk-service", "mk-aircraft"]:

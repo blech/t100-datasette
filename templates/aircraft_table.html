@@ -22,7 +22,8 @@
       made by <select id="at-maker" aria-label="Maker"><option value="all">any maker</option></select>.
     </p>
     <p><label>Search <input id="at-q" type="search" placeholder="Name, such as 737 or Cessna" autocomplete="off"></label></p>
-    <div id="aircraft-table" aria-live="polite">Loading table…</div>
+    <p class="note" id="at-status" aria-live="polite"></p>
+    <div id="aircraft-table">Loading table…</div>
     <p class="note">Families group BTS's aircraft types (a 737-300 and a 737-800 are both Boeing 737s). A family's maker and kind are those of its busiest type. The share is of the total for the chosen year, kind and maker. Freight is in short tons (2,000 lb), and includes cargo in the holds of passenger aircraft. More on <a href="/about#groupings">how things are grouped</a>.</p>
   </main>
   <script type="module" src="/static/charts/aircrafttable.js"></script>

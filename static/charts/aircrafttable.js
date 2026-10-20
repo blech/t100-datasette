@@ -19,6 +19,9 @@ const state = {
 };
 const open = new Set();
 let rows = [];
+let seq = 0;          // the newest year request; an older answer arriving late is ignored
+let loading = false;  // while true the rows on hand belong to another year
+let focusKey = null;  // the sort header or toggle just used, so keyboard focus survives the redraw
 
 const fmt = (v) => Math.round(v).toLocaleString('en-US');
 const pct = (v) => `${(v * 100).toFixed(v > 0 && v < 0.001 ? 2 : 1)}%`;
@@ -40,11 +43,13 @@ function headerCell(key, label, cls) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'sort';
+  b.dataset.focus = `sort:${key}`;
   b.textContent = label + (state.sort === key ? (state.dir === 'asc' ? ' ▲' : ' ▼') : '');
   b.addEventListener('click', () => {
     state.dir = state.sort === key && state.dir === 'desc' ? 'asc' : 'desc';
     if (state.sort !== key) state.dir = key === 'value' || key === 'lastYear' ? 'desc' : 'asc';
     state.sort = key;
+    focusKey = `sort:${key}`;
     pushState(); draw();
   });
   th.append(b);
@@ -59,9 +64,12 @@ function typeRow(x) {
 }
 
 function draw() {
+  if (loading) return;
   const box = $('aircraft-table');
+  const status = $('at-status');
   const { families, total } = groupFamilies(rows, state);
   box.replaceChildren();
+  status.textContent = '';
   if (!families.length) { box.textContent = state.q ? `Nothing matches "${state.q}".` : `No ${unit()} for this selection.`; return; }
   const sorted = sortFamilies(families, state.sort, state.dir);
   const table = document.createElement('table');
@@ -79,11 +87,12 @@ function draw() {
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'twist';
+    toggle.dataset.focus = `twist:${f.family}`;
     const isOpen = open.has(f.family) || f.matched;
     toggle.textContent = isOpen ? '▾' : '▸';
     toggle.setAttribute('aria-expanded', String(isOpen));
     toggle.setAttribute('aria-label', `${isOpen ? 'Hide' : 'Show'} the types in ${f.family}`);
-    toggle.addEventListener('click', () => { if (open.has(f.family)) open.delete(f.family); else open.add(f.family); draw(); });
+    toggle.addEventListener('click', () => { if (open.has(f.family)) open.delete(f.family); else open.add(f.family); focusKey = `twist:${f.family}`; draw(); });
     const link = document.createElement('a');
     link.href = `/aircraft/${f.slug}`;
     link.textContent = f.family;
@@ -94,21 +103,30 @@ function draw() {
   }
   table.append(thead, tbody);
   box.append(table);
-  const note = document.createElement('p');
-  note.className = 'note';
-  note.textContent = `${families.length} families, ${fmt(total)} ${unit()} in ${state.year}.`;
-  box.append(note);
+  status.textContent = `${families.length} families, ${fmt(total)} ${unit()} in ${state.year}.`;
+  if (focusKey) {
+    box.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus();
+    focusKey = null;
+  }
 }
 
 async function load() {
+  const id = ++seq;
+  loading = true;
   $('aircraft-table').textContent = 'Loading table…';
+  $('at-status').textContent = '';
+  let fetched;
   try {
-    rows = (await fetchRows(queryUrl('type_table', { year: state.year }))).rows;
+    fetched = (await fetchRows(queryUrl('type_table', { year: state.year }))).rows;
   } catch (err) {
+    if (id !== seq) return;
     console.error(err);
     $('aircraft-table').textContent = 'Could not load the table.';
     return;
   }
+  if (id !== seq) return;
+  rows = fetched;
+  loading = false;
   const makers = [...new Set(rows.map((r) => r.maker))].sort((a, b) => a.localeCompare(b));
   const sel = $('at-maker');
   sel.replaceChildren(new Option('any maker', 'all'), ...makers.map((m) => new Option(m, m)));
