@@ -46,6 +46,8 @@ check 200 "/t100/family_by_year.json?_shape=objects"                '"Boeing 737
 check 200 "/t100/carrier_group_by_year.json?_shape=objects"         '"Delta (incl. Northwest)"'
 check 200 "/t100/engines_by_year.json?_shape=objects"               '"distance_band"'
 check 200 "/t100/carrier_concentration.json?_shape=objects"         '"top4"'
+check 200 "/t100/top_carrier_history.json?year=2025&_shape=objects"  '"Southwest Airlines Co."'
+check 200 "/t100/domestic_routes.json?year=2025&_shape=objects"      '"ATL"'
 check 200 "/t100/busiest_airports.json?year=2025&_shape=objects"    '"ATL"'
 check 200 "/t100/family_detail.json?family=Boeing+737&_shape=objects" '"737 NG"'
 check 404 /airports/SFO/LH
