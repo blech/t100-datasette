@@ -1,6 +1,6 @@
 import sqlite3
 
-from build_database import rebuild_derived_tables, rebuild_aircraft_family, rebuild_carrier_groups
+from build_database import rebuild_derived_tables, rebuild_aircraft_family, rebuild_aircraft_type_labels, rebuild_carrier_groups
 from tests.helpers import add_segments
 from tests.test_routes_by_year import seg
 
@@ -154,6 +154,14 @@ def test_carrier_route_year_joins_both_directions_and_both_merged_airlines(db_pa
     assert rows == [("delta", "19386", 2019, "DEN", "SFO", 4), ("delta", "19790", 2019, "DEN", "SFO", 10)]
 
 
+def test_carrier_route_year_counts_the_departures_filed_as_domestic(db_path):
+    # a pair can sit in both BTS files; the airport map's rule needs how many of the departures were filed domestic
+    add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."))
+    add_segments(db_path, "t100_domestic", [flight("HNL", "GUM", carrier_entity="A1", **{"class": "F"}, deps=3)])
+    add_segments(db_path, "t100_international", [flight("GUM", "HNL", carrier_entity="A1", **{"class": "F"}, deps=9)])
+    assert query(db_path, "SELECT deps, domestic_deps FROM carrier_route_year") == [(12, 3)]
+
+
 def test_an_older_shape_of_a_derived_table_is_dropped_and_rebuilt(db_path):
     conn = sqlite3.connect(db_path)
     conn.execute("DROP TABLE carrier_group_year")
@@ -170,3 +178,26 @@ def test_a_numeric_group_id_is_refused_because_it_would_collide_with_airline_pag
     conn = sqlite3.connect(db_path)
     with pytest.raises(ValueError, match="19999"):
         rebuild_carrier_groups(conn, rules)
+
+
+def test_aircraft_types_get_a_maker_from_their_name_and_a_kind_from_the_bts_group(db_path):
+    add_types(db_path, ("614", "6", "Boeing 737-800"), ("320", "3", "Boeing Vertol BV-107"), ("760", "7", "Lockheed L-1011-01/100/200"),
+              ("040", "0", "Dehavilland Dhc2 Beaver"), ("205", "2", "Dehavilland DH-114 Heron"), ("091", "0", "Float/Amphib Turbine"),
+              ("697", "8", "Airbus Industrie A340"), ("724", "6", "A220-300 BD-500-1A11"))
+    rows = dict((code, (maker, kind)) for code, maker, kind in query(
+        db_path, "SELECT ac_typeid, maker, kind FROM aircraft_types", rebuild=lambda c: rebuild_aircraft_type_labels(c)))
+    assert rows["614"] == ("Boeing", "Jet, twin-engine")
+    assert rows["320"] == ("Boeing Vertol", "Helicopter")  # not Boeing
+    assert rows["760"] == ("Lockheed", "Jet, three-engine")
+    assert rows["040"][0] == "De Havilland Canada" and rows["205"][0] == "de Havilland"
+    assert rows["091"] == (None, "Piston, single-engine")  # generic float/amphibian types name no maker
+    assert rows["697"][1] == "Jet, four-engine"  # the A340 has a 6xx code; the group, not the code, says four engines
+    assert rows["724"][0] == "Airbus"
+
+
+def test_adding_the_label_columns_to_an_older_aircraft_types_table(db_path):
+    conn = sqlite3.connect(db_path)
+    conn.executescript("DROP TABLE aircraft_types; CREATE TABLE aircraft_types (ac_typeid TEXT, ac_group TEXT, name TEXT);"
+                       "INSERT INTO aircraft_types VALUES ('614', '6', 'Boeing 737-800');")
+    rebuild_aircraft_type_labels(conn)
+    assert conn.execute("SELECT maker, kind FROM aircraft_types").fetchall() == [("Boeing", "Jet, twin-engine")]

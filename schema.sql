@@ -12,7 +12,8 @@ CREATE TABLE "aircraft_group_band_year" (
 
 CREATE TABLE "aircraft_types" (
    [ac_typeid] TEXT, [ac_group] TEXT, [ssd_name] TEXT, [manufacturer] TEXT,
-   [name] TEXT, [short_name] TEXT, [begin_date] TEXT
+   [name] TEXT, [short_name] TEXT, [begin_date] TEXT,
+   [maker] TEXT, [kind] TEXT
 );
 
 CREATE TABLE "airport_names" (
@@ -43,6 +44,7 @@ CREATE TABLE "carrier_group_year" (
 CREATE TABLE "carrier_route_year" (
    [group_id] TEXT, [airline_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
+   [domestic_deps] INTEGER,
    PRIMARY KEY ([group_id], [airline_id], [year], [origin], [dest])
 ) WITHOUT ROWID;
 

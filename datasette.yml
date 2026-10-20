@@ -282,7 +282,7 @@ databases:
 
       carrier_routes_year:
         sql: |
-          SELECT r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, r.origin, r.dest, r.deps, r.seats, r.passengers, r.freight
+          SELECT r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, r.origin, r.dest, r.deps, r.seats, r.passengers, r.freight, r.domestic_deps
           FROM carrier_route_year r
           LEFT JOIN carrier_group g ON g.airline_id = r.airline_id
           WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline) AND r.year = :year
