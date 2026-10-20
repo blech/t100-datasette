@@ -78,3 +78,14 @@ test('names with markup characters come through as plain strings', () => {
   const { families } = groupFamilies([t('1', '<b>x</b> & y', 'Fam <i>', 'M&M', 'Jet, twin-engine', 1)], { measure: 'deps' });
   assert.equal(families[0].types[0].name, '<b>x</b> & y');
 });
+
+test('types with nothing in the chosen measure are left out of an open family, unless the search names them', () => {
+  const withZeros = [
+    t('872', 'Airbus Industrie A340-500', 'Airbus A340', 'Airbus', 'Jet, four-engine', 0),
+    t('871', 'Airbus Industrie A340-300', 'Airbus A340', 'Airbus', 'Jet, four-engine', 7),
+    t('697', 'Airbus Industrie A340', 'Airbus A340', 'Airbus', 'Jet, four-engine', 0),
+  ];
+  assert.deepEqual(groupFamilies(withZeros, { measure: 'deps' }).families[0].types.map((x) => x.typeId), ['871']);
+  assert.deepEqual(groupFamilies(withZeros, { measure: 'deps', q: 'a340' }).families[0].types.map((x) => x.typeId), ['871']);
+  assert.deepEqual(groupFamilies(withZeros, { measure: 'deps', q: 'a340-500' }).families[0].types.map((x) => x.typeId), ['872']);
+});

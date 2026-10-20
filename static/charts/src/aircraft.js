@@ -44,7 +44,9 @@ export function groupFamilies(rows, { measure = 'passengers', kind = 'all', make
     if (value <= 0 && !needle) continue;
     const busiest = [...fam.types].sort(byValue)[0];
     const firsts = fam.types.map((x) => x.firstYear).filter(Boolean);
-    const types = (nameHit ? fam.types : typeHits).sort(byValue);
+    // an open family lists the types that have something in the chosen measure; a search naming a type lists it even at zero
+    const seen = fam.types.filter((x) => x.value > 0);
+    const types = (nameHit ? seen : typeHits).sort(byValue);
     for (const x of types) x.share = total > 0 ? x.value / total : 0;
     families.push({
       family: fam.family, slug: fam.slug, maker: busiest.maker, aircraftKind: busiest.aircraftKind,
