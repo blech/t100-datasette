@@ -43,3 +43,20 @@ def test_top_carriers_names_the_top_four_with_their_shares(ds, db_path):
     assert [r["airline_id"] for r in rows] == ["19393", "19805", "19790", "19977"]
     assert rows[0]["airline_name"] == "Southwest Airlines Co." and rows[1]["airline_name"] == "19805"
     assert rows[0]["share"] == pytest.approx(0.4)
+
+
+def test_top_carrier_history_follows_one_years_top_four_through_every_year(ds, db_path):
+    # 2025's top four are A, B, C, D (E is fifth); in 2024 E was bigger than all of them
+    put(db_path, "carrier_group_year", [
+        carrier(2025, "A", 30), carrier(2025, "A", 10, domestic=0), carrier(2025, "B", 20), carrier(2025, "C", 20),
+        carrier(2025, "D", 10), carrier(2025, "E", 5), carrier(2024, "A", 20), carrier(2024, "E", 60), carrier(2024, "F", 20)])
+    put(db_path, "carrier_group", [dict(airline_id="A", group_id="A", group_name="A", airline_name="Alpha Air Inc.")])
+    rows = get_json(ds, "/t100/top_carrier_history.json?_shape=objects&year=2025")["rows"]
+    assert [(r["year"], r["airline_id"]) for r in rows] == [
+        (2024, "A"), (2025, "A"), (2025, "B"), (2025, "C"), (2025, "D")]
+    # shares are of each year's whole market, not of the four
+    assert rows[0]["share"] == pytest.approx(0.2) and rows[1]["share"] == pytest.approx(40 / 95)
+    assert rows[1]["airline_name"] == "Alpha Air Inc." and rows[2]["airline_name"] == "B"
+    # passenger counts, and each year's whole market, for the absolute chart
+    assert (rows[0]["passengers"], rows[0]["total"]) == (20, 100) and (rows[1]["passengers"], rows[1]["total"]) == (40, 95)
+

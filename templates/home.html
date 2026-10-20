@@ -50,7 +50,7 @@
         {% if c.low_year %}As Southwest and other low-cost airlines grew, that fell to {{ c.low }} by {{ c.low_year }}; after a run of mergers it was {{ c.last }} in {{ c.last_year }}.
         {% else %}By {{ c.last_year }} it was {{ c.last }}.{% endif %}</p>
       {% endif %}
-      <div class="graphic chart-box" id="concentration-chart"><p class="graphic-status">Loading chart…</p></div>
+      <div class="graphic chart-box" id="passenger-chart"><p class="graphic-status">Loading chart…</p></div>
       {% if carriers %}<p class="story">The biggest in {{ max_year }}:
         {% for x in carriers %}{{ x.name }} {{ x.share }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
       <p class="more"><a href="/airlines">All airlines →</a></p>

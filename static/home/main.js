@@ -5,7 +5,7 @@ import { geoAlbersUsaTerritories } from '/static/globe/src/usamap.js';
 import * as Plot from '/static/charts/vendor/plot.js';
 import { buildEngineShares, ENGINE_SERIES, ENGINE_COLORS } from '/static/charts/src/rollup.js';
 import { placeOnMap, hitTest, drawMap } from './src/map.js';
-import { concentrationPoints, CONCENTRATION_SERIES } from './src/concentration.js';
+import { airlineLines, spreadLabels, passengerBands, OTHER_AIRLINES, tipRows, airlineColours } from './src/airlines.js';
 
 const $ = (id) => document.getElementById(id);
 const minYear = Number(document.body.dataset.minYear);
@@ -120,33 +120,121 @@ async function showEngines() {
   }));
 }
 
-async function showConcentration() {
-  const box = $('concentration-chart');
-  const data = concentrationPoints((await fetchRows(queryUrl('carrier_concentration'))).rows);
-  if (!data.length) { box.replaceChildren(); return; }
-  const [top4, top10] = CONCENTRATION_SERIES;
-  const line = (series, opts) => Plot.lineY(data.filter((d) => d.series === series), { x: 'year', y: 'share', stroke: 'currentColor', ...opts });
-  box.replaceChildren(Plot.plot({
-    width: width(box),
-    height: chartHeight(),
-    marginLeft: 48,
-    marginRight: 110,
-    style: { background: 'transparent', fontSize: '12px' },
-    x: { label: null, tickFormat: 'd', domain: [minYear, maxYear] },
-    y: { label: 'Share of all passengers', tickFormat: '.0%', domain: [0, 1], grid: true },
+const ALL_AIRLINES = 'All airlines';
+const millions = (n) => `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0)}M`;
+
+// labels at the bands' right-hand ends, nudged apart where they crowd
+function bandLabels(bands, names, height, yMax) {
+  const ends = names.map((s) => bands.filter((d) => d.series === s).at(-1)).filter(Boolean);
+  const y = spreadLabels(ends.map((d) => (d.y1 + d.y2) / 2), (14 * yMax) / (height - 62));
+  return ends.map((d, i) => ({ ...d, labelY: y[i] }));
+}
+
+// a key mark before each label, then the name in the text colour (gold text on cream would be unreadable):
+// a square in the band's colour for an airline, a pale square for everyone else
+function labelMarks(labels, colourOf) {
+  const at = { x: 'year', y: 'labelY', textAnchor: 'start' };
+  const keyed = (kind) => labels.filter((d) => keyOf(d.series, colourOf).kind === kind);
+  return [
+    Plot.text(keyed('square'), { ...at, text: () => '■', dx: 6, fill: (d) => colourOf(d.series), fontSize: 14 }),
+    Plot.text(keyed('other'), { ...at, text: () => '■', dx: 6, fill: 'currentColor', fillOpacity: 0.25, fontSize: 14 }),
+    Plot.text(keyed('line'), { ...at, text: () => '—', dx: 5, fill: 'currentColor', fontWeight: 700 }),
+    Plot.text(labels, { ...at, text: 'series', dx: 20, fill: 'currentColor' }),
+  ];
+}
+
+function keyOf(series, colourOf) {
+  if (series === OTHER_AIRLINES) return { kind: 'other' };
+  if (series === ALL_AIRLINES) return { kind: 'line' };
+  return { kind: 'square', colour: colourOf(series) };
+}
+
+// one tooltip per year, its rows in the chart's top-to-bottom order
+function yearTips(data, order, valueOf, format, topOf) {
+  const byYear = new Map();
+  for (const d of data) byYear.set(d.year, [...(byYear.get(d.year) || []), d]);
+  return [...byYear].map(([year, ds]) => ({ year, top: Math.max(...ds.map(topOf)), rows: tipRows(ds, order, valueOf, format) }));
+}
+
+// an HTML tooltip beside the pointed year: key, name, and the numbers in a right-aligned column
+function attachYearTip(box, plot, colourOf) {
+  const tip = Object.assign(document.createElement('div'), { className: 'chart-tip', hidden: true });
+  const el = (tag, className, textContent = '') => Object.assign(document.createElement(tag), { className, textContent });
+  plot.addEventListener('input', () => {
+    const d = plot.value;
+    if (!d) { tip.hidden = true; return; }
+    tip.replaceChildren(el('div', 'chart-tip-year', String(d.year)), ...d.rows.flatMap((r) => {
+      const key = keyOf(r.label, colourOf);
+      const swatch = el('span', `key key-${key.kind}`);
+      if (key.colour) swatch.style.background = key.colour;
+      return [swatch, el('span', '', r.label), el('span', 'num', r.value)];
+    }));
+    tip.hidden = false;
+    const x = plot.scale('x').apply(d.year);
+    const y = plot.scale('y').apply(d.top);
+    const right = x + 12 + tip.offsetWidth <= box.clientWidth;
+    tip.style.left = `${right ? x + 12 : Math.max(0, x - 12 - tip.offsetWidth)}px`;
+    tip.style.top = `${Math.max(0, Math.min(y - 10, box.clientHeight - tip.offsetHeight))}px`;
+  });
+  plot.addEventListener('pointerleave', () => { tip.hidden = true; });
+  return [plot, tip];
+}
+
+const plotFrame = (box, height) => ({
+  width: width(box),
+  height,
+  marginTop: 32,
+  marginBottom: 30,
+  marginLeft: 48,
+  marginRight: 140,
+  style: { background: 'transparent', fontSize: '12px' },
+  x: { label: null, tickFormat: 'd', domain: [minYear, maxYear] },
+});
+
+// each airline's band and its top edge, in its livery colour
+const airlineBands = (bands, colourOf) => [
+  Plot.areaY(bands, { x: 'year', y1: 'y1', y2: 'y2', z: 'series', fill: (d) => colourOf(d.series), fillOpacity: 0.35 }),
+  Plot.lineY(bands, { x: 'year', y: 'y2', z: 'series', stroke: (d) => colourOf(d.series), strokeWidth: 1.5 }),
+];
+
+// passengers carried: today's four biggest airlines, then everyone else, stacked to the whole market
+function passengerChart(box, { series, bands, colourOf }) {
+  const height = chartHeight();
+  const yMax = Math.max(...bands.map((d) => d.y2));
+  const labels = bandLabels(bands, [...series, OTHER_AIRLINES], height, yMax);
+  const totalByYear = new Map(bands.filter((d) => d.series === OTHER_AIRLINES).map((d) => [d.year, d.y2]));
+  const order = [ALL_AIRLINES, OTHER_AIRLINES, ...[...series].reverse()];
+  const tips = yearTips([...bands, ...[...totalByYear].map(([year, y2]) => ({ year, series: ALL_AIRLINES, passengers: y2, y2 }))],
+    order, (d) => d.passengers, millions, (d) => d.y2);
+  const others = bands.filter((d) => d.series === OTHER_AIRLINES);
+  return Plot.plot({
+    ...plotFrame(box, height),
+    y: { label: 'Passengers', tickFormat: (n) => (n >= 1e9 ? `${n / 1e9}bn` : n ? `${n / 1e6}M` : '0'), domain: [0, yMax], grid: true, nice: true, ticks: 6 },
     marks: [
+      ...airlineBands(bands.filter((d) => d.series !== OTHER_AIRLINES), colourOf),
+      // everyone else: a faint tint of the text colour, its top edge (the whole market) dashed
+      Plot.areaY(others, { x: 'year', y1: 'y1', y2: 'y2', fill: 'currentColor', fillOpacity: 0.07 }),
+      Plot.lineY(others, { x: 'year', y: 'y2', stroke: 'currentColor', strokeOpacity: 0.6, strokeWidth: 1.5, strokeDasharray: '4 3' }),
       Plot.ruleY([0]),
-      line(top10, { strokeWidth: 1.5, strokeOpacity: 0.45 }),
-      line(top4, { strokeWidth: 2.5 }),
-      Plot.text(data, Plot.selectLast({ x: 'year', y: 'share', z: 'series', text: 'series', textAnchor: 'start', dx: 6, fill: 'currentColor' })),
-      Plot.tip(data, Plot.pointerX({ x: 'year', y: 'share', title: (d) => `${d.series}, ${d.year}: ${pct(d.share)}` })),
+      ...labelMarks(labels, colourOf),
+      Plot.ruleX(tips, Plot.pointerX({ x: 'year', stroke: 'currentColor', strokeOpacity: 0.25 })),
     ],
-  }));
+  });
+}
+
+async function showAirlines() {
+  const box = $('passenger-chart');
+  const rows = (await fetchRows(queryUrl('top_carrier_history', { year: maxYear }))).rows;
+  const { series } = airlineLines(rows);
+  if (!series.length) { box.replaceChildren(); return; }
+  const colours = new Map(series.map((name, i) => [name, airlineColours(series)[i]]));
+  const colourOf = (name) => colours.get(name);
+  box.replaceChildren(...attachYearTip(box, passengerChart(box, { series, bands: passengerBands(rows, series), colourOf }), colourOf));
 }
 
 async function drawCharts() {
   showEngines().catch((err) => failed($('engine-chart'), 'chart', err));
-  showConcentration().catch((err) => failed($('concentration-chart'), 'chart', err));
+  showAirlines().catch((err) => failed($('passenger-chart'), 'chart', err));
 }
 
 showMap().catch((err) => failed($('map-box'), 'map', err));

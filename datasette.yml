@@ -127,6 +127,28 @@ databases:
           ORDER BY t.passengers DESC, t.airline_id
           LIMIT 4
 
+      top_carrier_history:
+        sql: |
+          WITH totals AS (
+            SELECT year, airline_id, SUM(passengers) AS passengers
+            FROM carrier_group_year
+            GROUP BY year, airline_id
+          ), years AS (
+            SELECT year, SUM(passengers) AS total FROM totals GROUP BY year
+          ), four AS (
+            SELECT airline_id FROM totals
+            WHERE year = CAST(:year AS integer)
+            ORDER BY passengers DESC, airline_id
+            LIMIT 4
+          )
+          SELECT t.year, t.airline_id, COALESCE(g.airline_name, t.airline_id) AS airline_name,
+            1.0 * t.passengers / y.total AS share, t.passengers, y.total
+          FROM totals AS t
+          JOIN four USING (airline_id)
+          JOIN years AS y USING (year)
+          LEFT JOIN carrier_group AS g ON g.airline_id = t.airline_id
+          ORDER BY t.year, t.passengers DESC, t.airline_id
+
       destinations:
         sql: |
           SELECT
