@@ -38,6 +38,8 @@ def register_routes():
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)$", moved("/airlines/{slug}")),
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{slug}/globe")),
         (r"^/aircraft/engines$", engines_page),
+        (r"^/aircraft/table$", aircraft_table_page),
+        (r"^/aircraft/makers$", aircraft_makers_page),
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
         (r"^/globe$", moved("/airports/globe")),
@@ -263,6 +265,25 @@ async def engines_page(datasette, request):
         request=request,
     )
     return Response.html(html)
+
+
+def aircraft_view(template, crumb):
+    async def view(datasette, request):
+        html = await datasette.render_template(
+            template,
+            {
+                "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+                "crumbs": trail(datasette, ("aircraft", "/aircraft"), (crumb, None)),
+            },
+            request=request,
+        )
+        return Response.html(html)
+
+    return view
+
+
+aircraft_table_page = aircraft_view("aircraft_table.html", "table")
+aircraft_makers_page = aircraft_view("aircraft_makers.html", "makers")
 
 
 def slugify(name):
