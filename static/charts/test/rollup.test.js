@@ -56,7 +56,7 @@ test('every series has a colour', async () => {
   assert.equal(ENGINE_COLORS.length, ENGINE_SERIES.length);
 });
 
-import { slugify, buildFamilySeries } from '../src/rollup.js';
+import { slugify, buildFamilySeries, hasVersions } from '../src/rollup.js';
 
 test('slugs are lower-case words joined by hyphens', () => {
   assert.equal(slugify('DC-9 / MD-80 / MD-90'), 'dc-9-md-80-md-90');
@@ -97,4 +97,11 @@ test('splitting by route type gives domestic and international, and an unsplit s
 test('years with nothing in the selection are left out', () => {
   const res = buildFamilySeries([d(2000, '', 'A', 2), d(2001, '', 'A', 0)], { measure: 'deps', kind: 'all', split: 'airline' });
   assert.deepEqual(res.years, [2000]);
+});
+
+test('hasVersions is true only when a family has more than one named version', () => {
+  assert.equal(hasVersions([{ subfamily: 'A340' }, { subfamily: 'A340' }]), false);
+  assert.equal(hasVersions([{ subfamily: '' }, { subfamily: null }]), false);
+  assert.equal(hasVersions([{ subfamily: '747-400' }, { subfamily: '747-8' }]), true);
+  assert.equal(hasVersions([]), false);
 });
