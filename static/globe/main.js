@@ -1,4 +1,4 @@
-import { THEMES, resolveTheme } from './src/themes.js';
+import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from './src/themes.js';
 import { defaultView, clamp } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
@@ -33,7 +33,11 @@ const destKey = (r) => r.dest;
 let truncated = false;
 let loadError = '';
 const monthSeq = createLatest();
-let themeId = resolveTheme(location.search, localStorage.getItem('t100-theme'), matchMedia('(prefers-color-scheme: dark)').matches);
+function storedTheme() {
+  try { return localStorage.getItem('t100-theme'); } catch (e) { return null; }
+}
+let themeId = resolveTheme(location.search, storedTheme(), matchMedia('(prefers-color-scheme: dark)').matches);
+let themeChosen = themeChoice(location.search, storedTheme()); // 'auto' stays out of the URL
 let dirty = true;
 let hover = -1;
 let chooserPoints = []; // airport dots on the chooser page (no origin selected)
@@ -52,11 +56,11 @@ function setStatus(text, warn = false) {
 
 // the page chrome is themed by the shared header (static/nav/main.js); the canvas follows its choice
 function applyTheme(id) {
-  themeId = THEMES[id] ? id : 'paper';
+  themeId = THEMES[id] ? id : DEFAULT_THEME;
   if (renderer) renderer.setTheme(THEMES[themeId]);
   dirty = true;
 }
-document.addEventListener('t100:theme', (e) => { applyTheme(e.detail.id); pushState(); });
+document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); pushState(); });
 
 function recompute() {
   if (state.year === null) { periodRoutes = []; shown = []; return; }
@@ -67,7 +71,7 @@ function recompute() {
 }
 
 function pushState() {
-  const extra = themeId === 'paper' ? {} : { theme: themeId };
+  const extra = themeChosen === 'auto' ? {} : { theme: themeChosen };
   history.replaceState(null, '', `${location.pathname}${toSearch(state, extra)}`);
 }
 

@@ -23,7 +23,7 @@ test('round trips and omits defaults', () => {
   assert.deepEqual(parseState(toSearch(full)), full);
 });
 test('extra params are preserved', () => {
-  assert.equal(toSearch({ ...DEFAULTS, year: 2019 }, { theme: 'night' }), '?year=2019&theme=night');
+  assert.equal(toSearch({ ...DEFAULTS, year: 2019 }, { theme: 'dark' }), '?year=2019&theme=dark');
 });
 test('the old service filter becomes a hidden service and is not written back', () => {
   assert.deepEqual(parseState('?service=domestic').hide, ['international']);

@@ -24,3 +24,5 @@
 .chart-tip .key { width:10px; height:10px; border-radius:2px; }
 .chart-tip .key-line { height:2px; background:currentColor; }
 .chart-tip .key-other { background:currentColor; opacity:.25; }
+/* on a dark background the bands need more colour to read as the airlines' */
+[data-scheme="dark"] .airline-band { fill-opacity:.55; }

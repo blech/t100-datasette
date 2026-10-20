@@ -193,7 +193,7 @@ const plotFrame = (box, height) => ({
 
 // each airline's band and its top edge, in its livery colour
 const airlineBands = (bands, colourOf) => [
-  Plot.areaY(bands, { x: 'year', y1: 'y1', y2: 'y2', z: 'series', fill: (d) => colourOf(d.series), fillOpacity: 0.35 }),
+  Plot.areaY(bands, { x: 'year', y1: 'y1', y2: 'y2', z: 'series', fill: (d) => colourOf(d.series), fillOpacity: 0.35, className: 'airline-band' }),
   Plot.lineY(bands, { x: 'year', y: 'y2', z: 'series', stroke: (d) => colourOf(d.series), strokeWidth: 1.5 }),
 ];
 
