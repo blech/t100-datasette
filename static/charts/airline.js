@@ -2,6 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
+import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 
 const group = document.body.dataset.group;
@@ -25,8 +26,9 @@ const plot = (box, options) => box.replaceChildren(Plot.plot({
 }));
 
 function yearAxis(years) {
-  const every = years.length <= 15 ? 1 : 5;
-  return { type: 'band', domain: years.map(String), label: null, tickFormat: (d) => (Number(d) % every === 0 ? d : '') };
+  const shown = yearDomain(years, { span: $('al-span').value, min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) });
+  const every = shown.length <= 15 ? 1 : 5;
+  return { type: 'band', domain: shown.map(String), label: null, tickFormat: (d) => (Number(d) % every === 0 ? d : '') };
 }
 
 function drawSize() {
@@ -133,6 +135,7 @@ async function main() {
   const qs = new URLSearchParams(location.search);
   const within = (v, d) => (Number(v) >= firstYear && Number(v) <= lastYear ? String(Number(v)) : d);
   $('al-b').value = within(qs.get('to'), String(lastYear));
+  $('al-span').value = parseSpan(qs.get('span'));
   $('al-a').value = within(qs.get('from'), String(Math.max(firstYear, lastYear - 6)));
   try {
     const [d, airports] = await Promise.all([fetchRows(queryUrl('carrier_group_detail', { group, airline })), fetchRows(queryUrl('airports'))]);
@@ -144,6 +147,12 @@ async function main() {
     return;
   }
   for (const id of ['al-measure', 'al-kind', 'al-split']) $(id).addEventListener('change', drawSize);
+  $('al-span').addEventListener('change', () => {
+    const q = new URLSearchParams(location.search);
+    if ($('al-span').value === 'all') q.set('span', 'all'); else q.delete('span');
+    history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}`);
+    drawSize(); drawPairs();
+  });
   $('al-min').addEventListener('change', () => { drawPairs(); loadChanges(); });
   for (const id of ['al-a', 'al-b']) $(id).addEventListener('change', loadChanges);
   $('al-status').addEventListener('change', drawTable);

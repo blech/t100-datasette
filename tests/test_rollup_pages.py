@@ -107,3 +107,14 @@ def test_a_merged_group_lists_its_members_and_each_member_has_a_page_of_its_own(
     assert 'data-airline="19386"' in member.text and 'data-group="delta"' in member.text and 'id="th-airline"' not in member.text
     assert get(ds, "/airlines/19386/globe").status_code == 200
     assert get(ds, "/airlines/00000").status_code == 404
+
+
+def test_chart_pages_offer_a_year_span_and_know_the_full_range(ds, db_path):
+    put(db_path, "family_year", [fam(2019, "Boeing 737", 1, "F", 1)])
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F",
+                                             deps=4, seats=400, passengers=300, freight=0)])
+    for path, select in [("/aircraft/boeing-737", "fam-span"), ("/airports/SFO/LHR", "chart-span"), ("/airlines/delta", "al-span")]:
+        html = get(ds, path).text
+        assert f'id="{select}"' in html, path
+        assert 'data-min-year="1990"' in html and 'data-max-year="2025"' in html, path
+        assert 'value="flown"' in html and 'value="all"' in html, path
