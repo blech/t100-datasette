@@ -22,7 +22,6 @@ th[aria-sort] button::after { content:" ▾"; }
 td.code a { font-weight:600; }
 td.city { white-space:normal; }
 .note, #status { color:var(--muted); font-size:13px; }
-.visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 /* a 1px rule above each section, its heading directly beneath (the husk.org/labs pattern) */
 .section { border-top:1px solid var(--rule); margin:36px 0 0; padding:4px 0 0; }
 .section > h2 { margin:0 0 8px; }
