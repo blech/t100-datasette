@@ -28,6 +28,8 @@ a.plain { color:var(--muted); }
 #year-label { font-variant-numeric:tabular-nums; font-weight:600; min-width:3.5em; }
 #legend { color:var(--muted); font-size:12px; } #legend .note { display:block; margin-top:2px; font-size:inherit; } .swatch { display:inline-block; width:18px; height:4px; border-radius:2px; vertical-align:middle; margin:0 4px 0 10px; }
 #footnote { color:var(--muted); font-size:12px; min-height:1em; }
+/* links in the map's small print take the note's muted colour, as the site footer's do */
+#legend a, #footnote a, #foreign-note-box a { color:inherit; }
 button, select { font:inherit; color:var(--fg); background:transparent; border:1px solid var(--muted); border-radius:8px; padding:4px 10px; cursor:pointer; }
 button:hover, select:hover { border-color:var(--accent); }
 .check { display:inline-flex; gap:4px; align-items:center; color:var(--muted); }
