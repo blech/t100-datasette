@@ -63,6 +63,15 @@ Questions:
   - **On an airline's changes page,** the minimum-flights sentence sits above `<h2 id="changes">`, so a `#changes` jump scrolls past it.
   - **`views_for` accepts any all-digit year** (`/airports/SFO/LHR/20190`). That route 404s, so there's no visible effect.
 
+**Part 2 (carrying a highlight across links): built on branch `highlight`**, spec `docs/superpowers/specs/2026-10-22-highlight-links-design.md`.
+
+- **Deferred minors from its final review:**
+  - **Clicking "clear" with a mouse** hides the highlight line, so the chart moves up about 30px under the pointer and highlights whatever is now beneath it until the pointer moves. Blanking the line rather than hiding it would keep its space.
+  - **The highlight line uses the airline group's legal name**, unshortened (e.g. "Hyannis Air Service, Inc. dba Cape Air").
+  - **With `measure=load_factor`** (lines, not a stack), the line still says "Highlighting …", but nothing is highlighted.
+  - **`setPinned` and its WeakMap in `static/common/highlight.js` are unused,** because "clear" redraws instead.
+  - **Tests:** the family `keep` test checks "Other"'s total but re-imports `buildFamilySeries`, which is already imported.
+
 ### 5. Colour: done (merged, branch `colour`)
 
 - **One palette:** `static/common/palette.js` holds every data colour by role, light and dark (spec `docs/superpowers/specs/2026-10-21-colour-design.md`).

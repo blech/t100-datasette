@@ -23,7 +23,7 @@ Two kinds of link carry it:
 - On a family split by airline, they're group names.
 - A malformed or unknown highlight gives an empty set.
 
-**Never folded into "Other".** The route chart (`buildSeries`) and the family chart (`buildFamilySeries`) keep their top eight series and fold the rest into "Other". They gain a `keep` option, a set of labels that are always kept as their own series. A highlighted airline outside the top eight becomes a ninth series, and takes the last Ember step as any ninth series does.
+**Never folded into "Other".** The route chart (`buildSeries`) and the family chart (`buildFamilySeries`) keep their top eight series and fold the rest into "Other". They gain a `keep` option, a set of labels kept as their own series. A highlighted airline outside the top eight **takes the eighth place**, and the eighth-ranked series folds into "Other" instead. There are never more than eight named series, so each keeps a colour of its own. Split by carrier and aircraft, nothing is forced in: only the airline's pairings already in the top eight are picked out. (Revised after the final review: a ninth series shared the eighth's colour, and keeping every pairing of a big airline swamped the chart.)
 
 **Pinned highlight.** `attachHighlight(plot, { pinned })` in `static/common/highlight.js` changes in three ways:
 - It takes a set of series, not one.
