@@ -7,7 +7,7 @@ const $ = (id) => document.getElementById(id);
 const latest = Number(document.body.dataset.latestYear);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
-const years = Array.from({ length: latest - 1990 + 1 }, (_, i) => String(latest - i));
+const years = ['all', ...Array.from({ length: latest - 1990 + 1 }, (_, i) => String(latest - i))];
 const state = {
   measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
   year: pick('year', years, String(latest)),
@@ -103,7 +103,7 @@ function draw() {
   }
   table.append(thead, tbody);
   box.append(table);
-  status.textContent = `${families.length} families, ${fmt(total)} ${unit()} in ${state.year}.`;
+  status.textContent = `${families.length} families, ${fmt(total)} ${unit()} ${state.year === 'all' ? 'across all years' : `in ${state.year}`}.`;
   if (focusKey) {
     box.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus();
     focusKey = null;
@@ -137,7 +137,7 @@ async function load() {
 
 function main() {
   for (const [k, label] of Object.entries(HEAT_MEASURES)) $('at-measure').append(new Option(label.toLowerCase(), k));
-  for (const y of years) $('at-year').append(new Option(y, y));
+  for (const y of years) $('at-year').append(new Option(y === 'all' ? 'all years' : y, y));
   $('at-measure').value = state.measure;
   $('at-year').value = state.year;
   $('at-q').value = state.q;

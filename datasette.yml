@@ -250,10 +250,10 @@ databases:
             COALESCE(t.kind, 'Unknown') AS aircraft_kind,
             MIN(CASE WHEN y.deps > 0 THEN y.year END) AS first_year,
             MAX(CASE WHEN y.deps > 0 THEN y.year END) AS last_year,
-            SUM(CASE WHEN y.year = CAST(:year AS INTEGER) THEN y.deps ELSE 0 END) AS deps,
-            SUM(CASE WHEN y.year = CAST(:year AS INTEGER) THEN y.seats ELSE 0 END) AS seats,
-            SUM(CASE WHEN y.year = CAST(:year AS INTEGER) THEN y.passengers ELSE 0 END) AS passengers,
-            SUM(CASE WHEN y.year = CAST(:year AS INTEGER) THEN y.freight ELSE 0 END) AS freight
+            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.deps ELSE 0 END) AS deps,
+            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.seats ELSE 0 END) AS seats,
+            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.passengers ELSE 0 END) AS passengers,
+            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.freight ELSE 0 END) AS freight
           FROM type_year y
             LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type
             LEFT JOIN aircraft_family f ON f.aircraft_type = y.aircraft_type
