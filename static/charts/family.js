@@ -3,7 +3,15 @@ import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { buildFamilySeries, SERIES_COLORS, OTHER_COLOR } from '/static/charts/src/rollup.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
+
+// the tallest stack, which sets the y axis's scale
+const stackMax = (points, key, value = (p) => p.value) => {
+  const sums = new Map();
+  for (const p of points) sums.set(p[key], (sums.get(p[key]) || 0) + value(p));
+  return Math.max(0, ...sums.values());
+};
 
 const family = document.body.dataset.family;
 const $ = (id) => document.getElementById(id);
@@ -18,7 +26,6 @@ const state = {
 let rows = [];
 
 const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
-const fmt = (v) => Math.round(v).toLocaleString('en-US');
 
 function pushState() {
   const q = new URLSearchParams();
@@ -36,7 +43,7 @@ function draw() {
   if (!res.points.length) { box.textContent = `No ${unit()} for this selection.`; return; }
   const years = res.years.map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
-  const data = res.points.map((p) => ({ ...p, year: String(p.year), title: `${family}, ${p.year}\n${p.series}: ${fmt(p.value)} ${unit()}` }));
+  const data = res.points.map((p) => ({ ...p, year: String(p.year), title: `${family}, ${p.year}\n${p.series}: ${formatCount(p.value)} ${unit()}` }));
   const colors = { domain: res.series, range: res.series.map((s, i) => (s === 'Other' ? OTHER_COLOR : SERIES_COLORS[i % SERIES_COLORS.length])), legend: true };
   box.append(Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100),
@@ -44,7 +51,7 @@ function draw() {
     marginLeft: 64,
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
-    y: { label: HEAT_MEASURES[state.measure], tickFormat: '~s', grid: true },
+    y: { ...millionsAxis(stackMax(res.points, 'year'), HEAT_MEASURES[state.measure]), grid: true },
     color: colors,
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series, title: 'title', tip: true }),

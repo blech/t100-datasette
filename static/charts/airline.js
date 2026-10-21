@@ -3,7 +3,14 @@ import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
-import { formatCount, exactCount, countLabel, spokenCount } from '/static/common/numbers.js';
+import { formatCount, exactCount, countLabel, spokenCount, millionsAxis } from '/static/common/numbers.js';
+
+// the tallest stack, which sets the y axis's scale
+const stackMax = (points, key, value = (p) => p.value) => {
+  const sums = new Map();
+  for (const p of points) sums.set(p[key], (sums.get(p[key]) || 0) + value(p));
+  return Math.max(0, ...sums.values());
+};
 
 const group = document.body.dataset.group;
 const airline = document.body.dataset.airline; // '' for a whole group, else one member of a merged group
@@ -11,7 +18,6 @@ const isGroup = Number(document.body.dataset.members) > 0; // a merged group: sh
 const firstYear = Number(document.body.dataset.firstYear);
 const lastYear = Number(document.body.dataset.lastYear);
 const $ = (id) => document.getElementById(id);
-const fmt = (v) => Math.round(v).toLocaleString('en-US');
 const LB_PER_SHORT_TON = 2000;
 
 let detail = [];
@@ -46,9 +52,9 @@ function drawSize() {
   const series = split === 'kind' ? ['passenger', 'freight'] : ['domestic', 'international'];
   const range = ['#4292c6', '#08306b'];
   plot(box, {
-    x: yearAxis(years), y: { label: HEAT_MEASURES[measure], tickFormat: '~s', grid: true },
+    x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), HEAT_MEASURES[measure]), grid: true },
     color: { domain: series, range, legend: true },
-    marks: [Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series, title: (d) => `${d.year}, ${d.series}: ${fmt(d.value)} ${unit(measure)}`, tip: true }), Plot.ruleY([0])],
+    marks: [Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series, title: (d) => `${d.year}, ${d.series}: ${formatCount(d.value)} ${unit(measure)}`, tip: true }), Plot.ruleY([0])],
   });
 }
 
@@ -60,7 +66,7 @@ async function drawPairs() {
   const data = rows.map((r) => ({ year: String(r.year), pairs: r.pairs }));
   plot(box, {
     x: yearAxis(rows.map((r) => r.year)), y: { label: 'Airport pairs', grid: true },
-    marks: [Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6', title: (d) => `${d.year}: ${fmt(d.pairs)} airport pairs`, tip: true }), Plot.ruleY([0])],
+    marks: [Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6', title: (d) => `${d.year}: ${exactCount(d.pairs)} airport pairs`, tip: true }), Plot.ruleY([0])],
   });
 }
 

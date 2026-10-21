@@ -2,8 +2,15 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { shortenField } from '/static/charts/src/names.js';
 import { slugify } from '/static/charts/src/rollup.js';
 import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
-import { formatCount, formatTons, exactCount, countLabel, spokenCount } from '/static/common/numbers.js';
+import { formatCount, formatTons, exactCount, countLabel, spokenCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+
+// the tallest stack, which sets the y axis's scale
+const stackMax = (points, key, value = (p) => p.value) => {
+  const sums = new Map();
+  for (const p of points) sums.set(p[key], (sums.get(p[key]) || 0) + value(p));
+  return Math.max(0, ...sums.values());
+};
 
 const { origin, dest, year: yearText } = document.body.dataset;
 const year = yearText ? Number(yearText) : null;
@@ -51,7 +58,7 @@ function drawChart() {
     label: null, domain,
     tickFormat: (d) => (monthly ? MONTHS[Number(d) - 1] : Number(d) % labelEvery === 0 ? d : ''),
   };
-  const tip = { format: { x: false, fill: false, stroke: false } };
+  const tip = { format: { x: false, fill: false, stroke: false, ...(state.measure === 'load_factor' ? {} : { y: (v) => formatCount(v) }) } };
   const channels = { [monthly ? 'Month' : 'Year']: 'when', Series: 'series' };
   const bars = Plot.barY(data, { x: 'x', y: 'value', fill: 'series', channels, tip, ...(monthly ? {} : { href: 'href' }) });
   const marks = res.stackable
@@ -63,7 +70,9 @@ function drawChart() {
     marginLeft: 64,
     style: { background: 'transparent', fontSize: '12px' },
     x: { ...x, type: res.stackable ? 'band' : 'point' },
-    y: { grid: true, label: MEASURES[state.measure], tickFormat: state.measure === 'load_factor' ? 'd' : '~s', ...(state.measure === 'load_factor' ? { domain: [0, 100] } : {}) },
+    y: state.measure === 'load_factor'
+      ? { grid: true, label: MEASURES.load_factor, tickFormat: 'd', domain: [0, 100] }
+      : { grid: true, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), MEASURES[state.measure]) },
     color: { legend: true, domain: res.series, scheme: 'tableau10' },
     marks,
   }));

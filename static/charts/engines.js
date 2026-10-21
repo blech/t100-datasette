@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { buildEngineShares, ENGINE_BANDS, ENGINE_COLORS, ENGINE_SERIES } from '/static/charts/src/rollup.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { formatCount } from '/static/common/numbers.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -22,7 +23,6 @@ function pushState() {
   history.replaceState(null, '', `${location.pathname}${s ? `?${s}` : ''}`);
 }
 
-const fmt = (v) => Math.round(v).toLocaleString('en-US');
 
 function draw() {
   const box = $('engine-chart');
@@ -30,7 +30,7 @@ function draw() {
   const res = buildEngineShares(rows, state);
   if (!res.points.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const unit = MEASURES[state.measure];
-  const data = res.points.map((p) => ({ ...p, title: `${p.series}, ${p.year}\n${(p.share * 100).toFixed(1)}% of ${unit} (${fmt(p.amount)})` }));
+  const data = res.points.map((p) => ({ ...p, title: `${p.series}, ${p.year}\n${(p.share * 100).toFixed(1)}% of ${unit} (${formatCount(p.amount)})` }));
   box.append(Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100),
     height: 380,
