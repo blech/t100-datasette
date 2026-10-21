@@ -19,13 +19,14 @@ a.plain { color:var(--muted); }
 #panel dt { color:var(--muted); } #panel dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; }
 #panel a { color:var(--fg); display:block; margin-top:4px; }
 #panel .close { float:right; }
-#status { position:fixed; top:50%; left:0; right:0; text-align:center; color:var(--muted); pointer-events:none; }
+/* the base stylesheet's .note and #status are 13px; on the map they keep the sizes around them */
+#status { position:fixed; top:50%; left:0; right:0; text-align:center; color:var(--muted); pointer-events:none; font-size:inherit; }
 #status.warn { top:auto; bottom:150px; color:#b45309; }
 #controls { position:fixed; left:0; right:0; bottom:0; padding:12px 16px max(12px, env(safe-area-inset-bottom));
   background:linear-gradient(transparent, var(--panel) 35%); display:flex; flex-direction:column; gap:8px; }
 .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 #year-label { font-variant-numeric:tabular-nums; font-weight:600; min-width:3.5em; }
-#legend { color:var(--muted); font-size:12px; } #legend .note { display:block; margin-top:2px; } .swatch { display:inline-block; width:18px; height:4px; border-radius:2px; vertical-align:middle; margin:0 4px 0 10px; }
+#legend { color:var(--muted); font-size:12px; } #legend .note { display:block; margin-top:2px; font-size:inherit; } .swatch { display:inline-block; width:18px; height:4px; border-radius:2px; vertical-align:middle; margin:0 4px 0 10px; }
 #footnote { color:var(--muted); font-size:12px; min-height:1em; }
 button, select { font:inherit; color:var(--fg); background:transparent; border:1px solid var(--muted); border-radius:8px; padding:4px 10px; cursor:pointer; }
 button:hover, select:hover { border-color:var(--accent); }
