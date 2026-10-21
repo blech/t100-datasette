@@ -12,7 +12,6 @@
 <body data-kind="{{ kind }}" data-latest-year="{{ latest_year }}">
   <main>
     {% include "_nav.html" %}
-    <p class="related">{% if kind == "aircraft" %}<a href="/airlines">Airlines</a> · <a href="/aircraft/engines">Twin jets took over the long haul</a>{% else %}<a href="/aircraft">Aircraft families</a>{% endif %}</p>
     <h1>{{ page.title }} over time</h1>
     {% if kind == "airlines" %}{% include "_airline_search.html" %}{% endif %}
     <p class="intro">
@@ -42,6 +41,7 @@
       {% if kind == "aircraft" %}How aircraft are <a href="/about#groupings">grouped into families</a>.{% else %}How airlines are <a href="/about#groupings">grouped</a>.{% endif %}
       Freight before 2003 leaves out most domestic FedEx and UPS flying, so shares of freight jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.
     </p>
+    {% include "_footer.html" %}
   </main>
   <div id="label-tip" class="popover text" role="tooltip" hidden></div>
   <script type="module" src="/static/charts/rollup.js"></script>

@@ -119,7 +119,9 @@ function drawTable() {
 
 async function loadChanges() {
   const a = $('al-a').value, b = $('al-b').value, min = $('al-min').value;
-  $('map-link').href = `/airlines/${airline || group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
+  // the views line's map link follows the years compared; a page without one (an old template) still gets its table
+  const mapLink = $('map-link');
+  if (mapLink) mapLink.href = `/airlines/${airline || group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
   const { rows } = await fetchRows(queryUrl('carrier_route_changes', { group, airline, a, b }));
   routes = classifyRoutes(rows, { min: Number(min) });
   const c = summariseRoutes(routes);

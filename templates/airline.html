@@ -12,7 +12,6 @@
 <body data-group="{{ group }}" data-airline="{{ airline }}" data-members="{{ members|length }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}">
   <main>
     {% include "_nav.html" %}
-    <p class="related"><a href="/airlines">All airlines</a> · <a href="/airlines/{{ own }}/globe" id="map-link">Map of the network</a></p>
     {% include "_airline_search.html" %}
     <h1 id="airline-name">{{ name }}</h1>
     <p class="related" id="full-name" hidden></p>
@@ -54,6 +53,7 @@
       <tbody></tbody>
     </table>
     <p class="note">A route is an airport pair, with both directions counted together, so "dropped" means the airline stopped flying between the two airports in either direction (or fell below the threshold), not that a particular flight number ended. Where the airline flies a route under a different name after a merger the flying is counted together. Flying done for the airline by a regional partner, such as SkyWest for Alaska or United, is reported under the regional's own name and is not included. More on <a href="/about#groupings">how airlines are grouped</a>.</p>
+    {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/charts/airline.js"></script>
 </body>

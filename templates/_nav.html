@@ -4,5 +4,12 @@
     {% if c.href %}<li><a href="{{ c.href }}">{{ c.label }}</a></li>{% else %}<li aria-current="page">{{ c.label }}</li>{% endif %}
     {%- endfor %}
   </ol></nav>
-  <select id="theme" aria-label="Theme"></select>
+  <nav class="sections" aria-label="Sections"><ul>
+    {%- for key, label in [("airports", "Airports"), ("aircraft", "Aircraft"), ("airlines", "Airlines"), ("about", "About")] %}
+    {% if key == nav_section %}<li><strong aria-current="{{ 'page' if request.path.rstrip('/') == '/' ~ key else 'true' }}">{{ label }}</strong></li>{% else %}<li><a href="/{{ key }}">{{ label }}</a></li>{% endif %}
+    {%- endfor %}
+  </ul></nav>
 </div>
+{% if nav_views %}<nav class="views" aria-label="Views">
+  {%- for v in nav_views %}{% if not loop.first %} · {% endif %}{% if v.current %}<strong aria-current="page">{{ v.label }}</strong>{% else %}<a href="{{ v.href }}"{% if v.id %} id="{{ v.id }}"{% endif %}>{{ v.label }}</a>{% endif %}{% endfor -%}
+</nav>{% endif %}

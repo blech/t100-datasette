@@ -190,7 +190,7 @@ async function main() {
     return;
   }
   const mapLink = $('map-link');
-  mapLink.href = `/airports/${origin}/globe${year !== null ? `?year=${year}` : ''}`;
+  if (mapLink) mapLink.href = `/airports/${origin}/globe${year !== null ? `?year=${year}` : ''}`;
   $('raw-link').href = year === null
     ? `/t100/route?origin=${origin}&dest=${dest}&_hide_sql=1`
     : `/t100/route_year?origin=${origin}&dest=${dest}&year=${year}&_hide_sql=1`;
