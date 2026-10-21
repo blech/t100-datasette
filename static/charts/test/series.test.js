@@ -138,3 +138,12 @@ test('aggregateTable keeps the link targets that still apply', () => {
   assert.equal(aggregateTable(tableRows, 'aircraft')[0].family, 'Airbus A320');
   assert.equal(aggregateTable(tableRows, 'aircraft')[0].groupId, null);
 });
+
+test('buildSeries keeps a series asked for, even outside the top', () => {
+  const rows = Array.from({ length: 10 }, (_, i) => ({ year: 2019, carrier: `C${i}`, aircraft: 'A', deps: 1, total_seats: 1, total_passengers: 100 - i, total_freight: 0 }));
+  const plain = buildSeries(rows, { top: 8 });
+  assert.ok(!plain.series.includes('C9') && plain.series.includes('Other'));
+  const kept = buildSeries(rows, { top: 8, keep: new Set(['C9']) });
+  assert.ok(kept.series.includes('C9') && kept.series.includes('Other'));
+  assert.deepEqual(kept.points.filter((p) => p.series === 'Other').map((p) => p.value), [92], 'only C8 is left in Other');
+});

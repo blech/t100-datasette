@@ -56,3 +56,17 @@ export function attachHighlight(plot) {
   }
   return plot;
 }
+
+// ?highlight=airline:{group id}: a series to pick out on arrival, named by id because labels differ between pages
+export function parseHighlight(search) {
+  const m = /^airline:([A-Za-z0-9_-]+)$/.exec(new URLSearchParams(search || '').get('highlight') || '');
+  return m ? { kind: 'airline', id: m[1] } : null;
+}
+
+// the chart's series labels whose rows belong to the highlighted airline group
+export function highlightedSeries(rows, highlight, labelOf) {
+  const out = new Set();
+  if (!highlight) return out;
+  for (const r of rows) if (r.group_id === highlight.id) out.add(labelOf(r));
+  return out;
+}

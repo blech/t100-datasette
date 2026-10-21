@@ -123,3 +123,10 @@ test('hasVersions is true only when a family has more than one named version', (
   assert.equal(hasVersions([{ subfamily: '747-400' }, { subfamily: '747-8' }]), true);
   assert.equal(hasVersions([]), false);
 });
+
+test('buildFamilySeries keeps an airline asked for, even outside the top eight', async () => {
+  const { buildFamilySeries } = await import('../src/rollup.js');
+  const rows = Array.from({ length: 10 }, (_, i) => ({ year: 2019, group_id: `g${i}`, group_name: `G${i}`, kind: 'passenger', service: 'domestic', passengers: 100 - i }));
+  const res = buildFamilySeries(rows, { split: 'airline', keep: new Set(['G9']) });
+  assert.ok(res.series.includes('G9') && res.series.includes('Other'));
+});
