@@ -1,5 +1,5 @@
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { groupFamilies, sortFamilies, kindOptions, makerOptions } from '/static/charts/src/aircraft.js';
+import { groupFamilies, sortFamilies, limitFamilies, LIMIT_OPTIONS, DEFAULT_LIMIT, kindOptions, makerOptions } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -13,6 +13,7 @@ const state = {
   year: pick('year', years, String(latest)),
   kind: params.get('kind') || 'all',   // checked against the menus once the data is in
   maker: params.get('maker') || 'all',
+  limit: pick('limit', LIMIT_OPTIONS.map((o) => o.value), DEFAULT_LIMIT),
   q: params.get('q') || '',
   sort: pick('sort', ['family', 'maker', 'aircraftKind', 'firstYear', 'lastYear', 'value'], 'value'),
   dir: pick('dir', ['asc', 'desc'], 'desc'),
@@ -30,7 +31,7 @@ const unit = () => HEAT_MEASURES[state.measure].toLowerCase();
 
 function pushState() {
   const q = new URLSearchParams();
-  const defaults = { measure: 'passengers', year: String(latest), kind: 'all', maker: 'all', q: '', sort: 'value', dir: 'desc' };
+  const defaults = { measure: 'passengers', year: String(latest), kind: 'all', maker: 'all', limit: DEFAULT_LIMIT, q: '', sort: 'value', dir: 'desc' };
   for (const [k, v] of Object.entries(state)) if (v !== defaults[k]) q.set(k, v);
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, Object.keys(defaults), `?${q}`)}`);
 }
@@ -71,7 +72,8 @@ function draw() {
   box.replaceChildren();
   status.textContent = '';
   if (!families.length) { box.textContent = state.q ? `Nothing matches "${state.q}".` : `No ${unit()} for this selection.`; return; }
-  const sorted = sortFamilies(families, state.sort, state.dir);
+  const { shown, hidden, shownShare } = limitFamilies(families, state.limit, { searching: Boolean(state.q.trim()) });
+  const sorted = sortFamilies(shown, state.sort, state.dir);
   const table = document.createElement('table');
   const head = document.createElement('tr');
   head.append(headerCell('family', 'Family', 'left'), headerCell('maker', 'Maker', 'left'), headerCell('aircraftKind', 'Kind', 'left'),
@@ -103,7 +105,10 @@ function draw() {
   }
   table.append(thead, tbody);
   box.append(table);
-  status.textContent = `${families.length} families, ${fmt(total)} ${unit()} ${state.year === 'all' ? 'across all years' : `in ${state.year}`}.`;
+  const when = state.year === 'all' ? 'across all years' : `in ${state.year}`;
+  status.textContent = hidden
+    ? `Showing ${shown.length} of ${families.length} families, ${pct(shownShare)} of the ${fmt(total)} ${unit()} ${when}.`
+    : `${families.length} families, ${fmt(total)} ${unit()} ${when}.`;
   if (focusKey) {
     box.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus();
     focusKey = null;
@@ -140,6 +145,9 @@ function main() {
   for (const y of years) $('at-year').append(new Option(y === 'all' ? 'all years' : y, y));
   $('at-measure').value = state.measure;
   $('at-year').value = state.year;
+  for (const o of LIMIT_OPTIONS) $('at-limit').append(new Option(o.label, o.value));
+  $('at-limit').value = state.limit;
+  $('at-limit').addEventListener('change', (e) => { state.limit = e.target.value; pushState(); draw(); });
   $('at-q').value = state.q;
   $('at-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
   $('at-kind').addEventListener('change', (e) => { state.kind = e.target.value; pushState(); draw(); });

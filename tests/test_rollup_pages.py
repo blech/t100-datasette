@@ -147,3 +147,8 @@ def test_chart_pages_offer_a_year_span_and_know_the_full_range(ds, db_path):
         assert f'id="{select}"' in html, path
         assert 'data-min-year="1990"' in html and 'data-max-year="2025"' in html, path
         assert 'value="flown"' in html and 'value="all"' in html, path
+
+
+def test_the_aircraft_table_offers_a_limit_and_an_all_years_choice(ds):
+    html = get(ds, "/aircraft").text
+    assert 'id="at-limit"' in html

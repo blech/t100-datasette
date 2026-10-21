@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { kindOptions, makerOptions, kindMatches, groupFamilies, sortFamilies } from '../src/aircraft.js';
+import { kindOptions, makerOptions, kindMatches, groupFamilies, sortFamilies, limitFamilies } from '../src/aircraft.js';
 
 const t = (type_id, name, family, maker, aircraft_kind, deps, extra = {}) => ({
   type_id, name, family, maker, aircraft_kind, first_year: 1990, last_year: 2025, deps, seats: deps * 100, passengers: deps * 80, freight: deps * 2000, ...extra,
@@ -102,4 +102,33 @@ test('types with nothing in the chosen measure are left out of an open family, u
   assert.deepEqual(groupFamilies(withZeros, { measure: 'deps' }).families[0].types.map((x) => x.typeId), ['871']);
   assert.deepEqual(groupFamilies(withZeros, { measure: 'deps', q: 'a340' }).families[0].types.map((x) => x.typeId), ['871']);
   assert.deepEqual(groupFamilies(withZeros, { measure: 'deps', q: 'a340-500' }).families[0].types.map((x) => x.typeId), ['872']);
+});
+
+const fam = (family, value, share) => ({ family, value, share, types: [] });
+const ranked = [fam('A', 50, 0.5), fam('B', 30, 0.3), fam('C', 15, 0.15), fam('D', 4.5, 0.045), fam('E', 0.5, 0.005)];
+
+test('limitFamilies keeps the top N by value, or those at or above a share', () => {
+  assert.deepEqual(limitFamilies(ranked, 'top2').shown.map((f) => f.family), ['A', 'B']);
+  assert.deepEqual(limitFamilies(ranked, 'min1').shown.map((f) => f.family), ['A', 'B', 'C', 'D']);
+  assert.deepEqual(limitFamilies(ranked, 'min0.1').shown.map((f) => f.family), ['A', 'B', 'C', 'D', 'E']);
+  assert.deepEqual(limitFamilies(ranked, 'all').shown.length, 5);
+});
+
+test('limitFamilies says how much is hidden, and leaves a search alone', () => {
+  const cut = limitFamilies(ranked, 'top2');
+  assert.equal(cut.hidden, 3);
+  assert.ok(Math.abs(cut.shownShare - 0.8) < 1e-9);
+  assert.equal(limitFamilies(ranked, 'top2', { searching: true }).shown.length, 5);
+  assert.equal(limitFamilies(ranked, 'top2', { searching: true }).hidden, 0);
+});
+
+test('limitFamilies reads any top N and falls back to showing everything for a limit it does not know', () => {
+  assert.equal(limitFamilies(ranked, 'top20').shown.length, 5);
+  assert.equal(limitFamilies(ranked, 'nonsense').shown.length, 5);
+  assert.equal(limitFamilies([], 'top2').shown.length, 0);
+});
+
+test('limitFamilies ranks by value even when the families come in another order', () => {
+  const shuffled = [ranked[3], ranked[0], ranked[4], ranked[1], ranked[2]];
+  assert.deepEqual(limitFamilies(shuffled, 'top2').shown.map((f) => f.family), ['A', 'B']);
 });
