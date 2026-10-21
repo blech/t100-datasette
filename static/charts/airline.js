@@ -93,7 +93,7 @@ async function drawPairs() {
 const place = (code) => places.get(code) || '';
 function routeCell(r) {
   const a = document.createElement('a');
-  a.href = `/airports/${r.origin}/${r.dest}`;
+  a.href = `/airports/${r.origin}/${r.dest}?split=carrier&highlight=airline:${group}`; // the route opens with this airline picked out
   a.textContent = `${r.origin} – ${r.dest}`;
   a.title = `${place(r.origin)} – ${place(r.dest)}`;
   const td = document.createElement('td');

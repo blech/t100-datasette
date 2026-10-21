@@ -169,7 +169,7 @@ function drawTable() {
     const tr = document.createElement('tr');
     const names = state.split === 'none' ? [cell('All', 'left')] : [
       ...(t.carrier !== null ? [linkCell(t.carrier, t.groupId && `/airlines/${t.groupId}`, `${fullNames.get(t.carrier) || t.carrier}: all of this airline's flying`)] : []),
-      ...(t.aircraft !== null ? [linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}`, `${t.family}, all versions`)] : []),
+      ...(t.aircraft !== null ? [linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}${t.groupId ? `?split=airline&highlight=airline:${t.groupId}` : ''}`, `${t.family}, all versions`)] : []),
     ];
     tr.append(
       ...names,
