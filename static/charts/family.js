@@ -57,7 +57,7 @@ function draw() {
     color: colors,
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series }),
-      Plot.ruleX(tips, Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 })),
+      Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
       Plot.ruleY([0]),
     ],
   });

@@ -56,7 +56,7 @@ function drawChart() {
   };
   const fmt = state.measure === 'load_factor' ? (v) => `${v.toFixed(1)}%` : (v) => formatCount(v);
   const tips = periodRows(data, { key: (p) => p.x, order: res.stackable ? res.series : null, format: fmt });
-  const pointer = Plot.ruleX(tips, Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 }));
+  const pointer = Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 }));
   // stacked in the legend's order, biggest at the bottom and "Other" on top
   const bars = Plot.barY(data, { x: 'x', y: 'value', fill: 'series', order: res.series, ...(monthly ? {} : { href: 'href' }) });
   const marks = res.stackable

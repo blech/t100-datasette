@@ -62,7 +62,7 @@ function drawSize() {
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series }),
       Plot.ruleY([0]),
-      Plot.ruleX(periodRows(data, { key: (d) => d.year, order: series, format: (v) => formatCount(v) }), Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 })),
+      Plot.ruleX(periodRows(data, { key: (d) => d.year, order: series, format: (v) => formatCount(v) }), Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   }, yearPopover);
 }
@@ -79,7 +79,7 @@ async function drawPairs() {
       Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6' }),
       Plot.ruleY([0]),
       Plot.ruleX(periodRows(data.map((d) => ({ ...d, series: 'Airport pairs', value: d.pairs })), { key: (d) => d.year, format: (v) => exactCount(v) }),
-        Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 })),
+        Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   }, { ...yearPopover, keyOf: () => ({ kind: 'square', colour: '#4292c6' }) });
 }

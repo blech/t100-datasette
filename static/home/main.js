@@ -117,7 +117,7 @@ async function showEngines() {
     marks: [
       Plot.areaY(res.points, { x: 'year', y: 'share', fill: 'series', order: ENGINE_SERIES }),
       Plot.ruleY([0]),
-      Plot.ruleX(tips, Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 })),
+      Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   });
   box.replaceChildren(...attachPopover(chart, { content: (d) => ({ title: String(d.period), rows: d.rows }), at: (d) => [d.period, 1] }));
@@ -189,7 +189,7 @@ function passengerChart(box, { series, bands, colourOf }) {
       Plot.lineY(others, { x: 'year', y: 'y2', stroke: 'currentColor', strokeOpacity: 0.6, strokeWidth: 1.5, strokeDasharray: '4 3' }),
       Plot.ruleY([0]),
       ...labelMarks(labels, colourOf),
-      Plot.ruleX(tips, Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 })),
+      Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   });
 }
