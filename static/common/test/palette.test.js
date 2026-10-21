@@ -26,10 +26,18 @@ test('the values the spec fixes', () => {
   assert.equal(palette(false), PALETTE.light);
 });
 
-test('seriesColours gives Ember steps in order and Other its grey', () => {
+test('seriesColours spreads fewer series across the whole ramp, and Other is grey', () => {
+  const L = PALETTE.light.series;
+  const steps = (n) => seriesColours(Array.from({ length: n }, (_, i) => `S${i}`), false).range.map((c) => L.indexOf(c));
+  assert.deepEqual(steps(1), [0]);
+  assert.deepEqual(steps(2), [0, 7]);
+  assert.deepEqual(steps(3), [0, 4, 7]);
+  assert.deepEqual(steps(4), [0, 2, 5, 7]);
+  assert.deepEqual(steps(5), [0, 2, 4, 5, 7]);
+  assert.deepEqual(steps(8), [0, 1, 2, 3, 4, 5, 6, 7]);
   const { domain, range } = seriesColours(['Delta', 'JetBlue', 'Other'], false);
   assert.deepEqual(domain, ['Delta', 'JetBlue', 'Other']);
-  assert.deepEqual(range, [PALETTE.light.series[0], PALETTE.light.series[1], PALETTE.light.other]);
+  assert.deepEqual(range, [L[0], L[7], PALETTE.light.other], '"Other" does not count towards the spread');
   assert.equal(seriesColours(['A'], true).range[0], PALETTE.dark.series[0]);
 });
 

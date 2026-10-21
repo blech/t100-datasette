@@ -28,11 +28,16 @@ export const PALETTE = {
 
 export const palette = (dark) => (dark ? PALETTE.dark : PALETTE.light);
 
-// a Plot colour scale for stacked series, biggest first: Ember steps in order, "Other" in grey
+// a Plot colour scale for stacked series, biggest first. Fewer series than steps are spread evenly across the whole
+// ramp (four series take steps 0, 2, 5 and 7), so neighbours sit as far apart as they can; more than eight reuse the
+// last step. "Other" is grey and doesn't count towards the spread.
 export function seriesColours(series, dark) {
   const p = palette(dark);
+  const last = p.series.length - 1;
+  const n = series.filter((s) => s !== 'Other').length;
+  const step = (i) => (n > p.series.length ? Math.min(i, last) : n <= 1 ? 0 : Math.round((i * last) / (n - 1)));
   let i = 0;
-  const range = series.map((s) => (s === 'Other' ? p.other : p.series[Math.min(i++, p.series.length - 1)]));
+  const range = series.map((s) => (s === 'Other' ? p.other : p.series[step(i++)]));
   return { domain: series, range };
 }
 
