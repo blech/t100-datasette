@@ -56,7 +56,7 @@ test('every series has a colour', async () => {
   assert.equal(ENGINE_COLORS.length, ENGINE_SERIES.length);
 });
 
-import { slugify, buildFamilySeries } from '../src/rollup.js';
+import { slugify, buildFamilySeries, hasVersions } from '../src/rollup.js';
 
 test('slugs are lower-case words joined by hyphens', () => {
   assert.equal(slugify('DC-9 / MD-80 / MD-90'), 'dc-9-md-80-md-90');
@@ -113,4 +113,11 @@ test('buildFamilySeries filters by aircraft kind and still takes the other filte
   const res = buildFamilySeries(rows, { measure: 'deps', split: 'maker', aircraftKind: 'Turboprop' });
   assert.deepEqual(res.series, ['Pilatus']);
   assert.deepEqual(buildFamilySeries(rows, { measure: 'deps', split: 'maker', service: 'domestic', aircraftKind: 'Jet' }).points.map((p) => p.value), [50]);
+});
+
+test('hasVersions is true only when a family has more than one named version', () => {
+  assert.equal(hasVersions([{ subfamily: 'A340' }, { subfamily: 'A340' }]), false);
+  assert.equal(hasVersions([{ subfamily: '' }, { subfamily: null }]), false);
+  assert.equal(hasVersions([{ subfamily: '747-400' }, { subfamily: '747-8' }]), true);
+  assert.equal(hasVersions([]), false);
 });

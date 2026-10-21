@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { buildFamilySeries, SERIES_COLORS, OTHER_COLOR } from '/static/charts/src/rollup.js';
+import { buildFamilySeries, hasVersions, SERIES_COLORS, OTHER_COLOR } from '/static/charts/src/rollup.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -58,10 +58,11 @@ function draw() {
 }
 
 function chooseSplit() {
-  // a family with several versions is most interesting split by version; otherwise by airline
-  if (state.split) return;
-  const versions = new Set(rows.map((r) => r.subfamily).filter(Boolean));
-  state.split = versions.size > 1 ? 'subfamily' : 'airline';
+  // a family with several versions is most interesting split by version; otherwise by airline.
+  // A family with one version has nothing to split, so the option is not offered and an old link falls back to airline.
+  const versions = hasVersions(rows);
+  if (!versions) $('fam-split').querySelector('option[value="subfamily"]')?.remove();
+  if (!state.split || (state.split === 'subfamily' && !versions)) state.split = versions ? 'subfamily' : 'airline';
 }
 
 async function main() {

@@ -69,6 +69,9 @@ const SPLIT_LABEL = {
   service: (r) => SERVICE_LABELS[r.service] || r.service,
 };
 
+// A family has versions to split by only when its types fall into more than one named subfamily
+export const hasVersions = (rows) => new Set(rows.map((r) => r.subfamily).filter(Boolean)).size > 1;
+
 // Rows from family_detail -> one aircraft family's value per year, split by subfamily, airline group or route type.
 // Subfamilies run in the order they first flew; airlines and the rest by total, the smaller ones folded into "Other".
 export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', service = 'all', split = 'subfamily', top = 8, aircraftKind = 'all' } = {}) {
