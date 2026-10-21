@@ -4,6 +4,7 @@ import { slugify } from '/static/charts/src/rollup.js';
 import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
 import { formatCount, formatTons, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { periodRows, attachPopover } from '/static/common/popover.js';
 
 // the tallest stack, which sets the y axis's scale
 const stackMax = (points, key, value = (p) => p.value) => {
@@ -48,23 +49,20 @@ function drawChart() {
   if (!res.points.length) { box.textContent = 'No data to chart for this selection.'; return; }
   const domain = monthly ? MONTHS.map((_, i) => String(i + 1)) : res.periods.map(String);
   const labelEvery = monthly || domain.length <= 15 ? 1 : 5;
-  const data = res.points.map((p) => ({
-    ...p,
-    x: String(p.period),
-    when: monthly ? MONTH_NAMES[p.period - 1] : String(p.period),
-    href: monthly ? null : routePath(p.period),
-  }));
+  const data = res.points.map((p) => ({ ...p, x: String(p.period), href: monthly ? null : routePath(p.period) }));
   const x = {
     label: null, domain,
     tickFormat: (d) => (monthly ? MONTHS[Number(d) - 1] : Number(d) % labelEvery === 0 ? d : ''),
   };
-  const tip = { format: { x: false, fill: false, stroke: false, ...(state.measure === 'load_factor' ? {} : { y: (v) => formatCount(v) }) } };
-  const channels = { [monthly ? 'Month' : 'Year']: 'when', Series: 'series' };
-  const bars = Plot.barY(data, { x: 'x', y: 'value', fill: 'series', channels, tip, ...(monthly ? {} : { href: 'href' }) });
+  const fmt = state.measure === 'load_factor' ? (v) => `${v.toFixed(1)}%` : (v) => formatCount(v);
+  const tips = periodRows(data, { key: (p) => p.x, order: res.stackable ? res.series : null, format: fmt });
+  const pointer = Plot.ruleX(tips, Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 }));
+  // stacked in the legend's order, biggest at the bottom and "Other" on top
+  const bars = Plot.barY(data, { x: 'x', y: 'value', fill: 'series', order: res.series, ...(monthly ? {} : { href: 'href' }) });
   const marks = res.stackable
-    ? [bars, Plot.ruleY([0])]
-    : [Plot.lineY(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.dot(data, { x: 'x', y: 'value', stroke: 'series', channels, tip }), Plot.ruleY([0])];
-  box.append(Plot.plot({
+    ? [bars, Plot.ruleY([0]), pointer]
+    : [Plot.lineY(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.dot(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.ruleY([0]), pointer];
+  const chart = Plot.plot({
     width: Math.min(box.clientWidth || 800, 1000),
     height: 420,
     marginLeft: 64,
@@ -75,6 +73,12 @@ function drawChart() {
       : { grid: true, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), MEASURES[state.measure]) },
     color: { legend: true, domain: res.series, scheme: 'tableau10' },
     marks,
+  });
+  box.append(...attachPopover(chart, {
+    content: (d) => ({ title: monthly ? `${MONTH_NAMES[Number(d.period) - 1]} ${year}` : d.period, rows: d.rows }),
+    at: (d) => [d.period, d.top],
+    keyOf: res.stackable ? null : (label) => ({ kind: 'line', colour: chart.scale('color').apply(label) }),
+    link: (d) => (monthly ? null : routePath(Number(d.period))),
   }));
   $('chart-note').textContent = monthly ? '' : 'Click a bar to see that year month by month.';
 }
@@ -103,14 +107,31 @@ function linkCell(text, href, title) {
   return td;
 }
 
+// the table follows the chart's split: its name columns, and its heading
+const TABLE_NAMES = { carrier: ['Carrier'], aircraft: ['Aircraft'], both: ['Carrier', 'Aircraft'], none: [''] };
+const TABLE_HEADINGS = { carrier: 'Carriers', aircraft: 'Aircraft', both: 'Carriers and aircraft', none: 'Totals' };
+const NUMBER_COLUMNS = ['Departures', 'Seats', 'Passengers', 'Load factor', 'Freight'];
+
+function th(text, className) {
+  const el = Object.assign(document.createElement('th'), { scope: 'col', className, textContent: text });
+  return el;
+}
+
 function drawTable() {
+  const head = document.querySelector('#route-table thead');
+  const headRow = document.createElement('tr');
+  headRow.append(...TABLE_NAMES[state.split].map((n) => th(n, 'left')), ...NUMBER_COLUMNS.map((n) => th(n, 'num')));
+  head.replaceChildren(headRow);
   const body = document.querySelector('#route-table tbody');
   body.replaceChildren();
-  for (const t of aggregateTable(viewRows)) {
+  for (const t of aggregateTable(viewRows, state.split)) {
     const tr = document.createElement('tr');
+    const names = state.split === 'none' ? [cell('All', 'left')] : [
+      ...(t.carrier !== null ? [linkCell(t.carrier, t.groupId && `/airlines/${t.groupId}`, `${fullNames.get(t.carrier) || t.carrier}: all of this airline's flying`)] : []),
+      ...(t.aircraft !== null ? [linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}`, `${t.family}, all versions`)] : []),
+    ];
     tr.append(
-      linkCell(t.carrier, t.groupId && `/airlines/${t.groupId}`, `${fullNames.get(t.carrier) || t.carrier}: all of this airline's flying`),
-      linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}`, `${t.family}, all versions`),
+      ...names,
       countCell(t.deps, 'departures'),
       countCell(t.seats, 'seats'),
       countCell(t.passengers, 'passengers'),
@@ -119,7 +140,7 @@ function drawTable() {
     );
     body.append(tr);
   }
-  $('table-heading').textContent = year === null ? 'Carriers and aircraft, all years' : `Carriers and aircraft in ${year}`;
+  $('table-heading').textContent = `${TABLE_HEADINGS[state.split]}${year === null ? ', all years' : ` in ${year}`}`;
 }
 
 function drawYears(years) {
@@ -176,7 +197,7 @@ async function main() {
   fillSelect($('chart-measure'), MEASURES, state.measure);
   fillSelect($('chart-split'), SPLITS, state.split);
   $('chart-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); drawChart(); });
-  $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); drawChart(); });
+  $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); drawChart(); drawTable(); });
   $('route-chart').hidden = false;
   $('route-table').hidden = false;
   drawChart();

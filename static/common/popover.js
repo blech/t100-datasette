@@ -70,16 +70,19 @@ export function attachPopover(plot, { content, at, keyOf = null, link = () => nu
   // touch: the first tap shows, a second on the same target follows its link. When the plot is a bare <svg> our
   // pointerdown can run before Plot's own has moved the pointer, so read the target again at the click, by when Plot
   // has (a click also makes Plot's pointer sticky, so it survives the pointerleave touch fires after every tap)
-  let touch = false, tapped = null, showing = null;
+  // A tap never takes the bar's own link: a bar is a few pixels wide on a phone, so the bar under the finger can be the
+  // next year along from the one Plot picked, and the second tap goes to the year the popover shows.
+  let touch = false, tapped = null, showing = null, shown = null;
   plot.addEventListener('pointerdown', (e) => { touch = e.pointerType === 'touch'; tapped = plot.value; });
   plot.addEventListener('click', (e) => {
     if (!touch) return;
+    e.preventDefault();
     tapped = plot.value ?? tapped;
     const action = tapAction(showing, idOf(tapped), Boolean(tapped && link(tapped)));
-    if (action === 'follow') { location.href = link(tapped); return; }
-    e.preventDefault();
-    if (action === 'hide') { showing = null; pop.hidden = true; return; }
+    if (action === 'follow') { location.href = link(shown); return; }
+    if (action === 'hide') { showing = null; shown = null; pop.hidden = true; return; }
     showing = idOf(tapped);
+    shown = tapped;
     show(tapped);
   }, true);
   plot.addEventListener('input', () => { if (!touch) show(plot.value); });
