@@ -21,6 +21,7 @@
       split by <select id="fam-split" aria-label="Split by"><option value="subfamily">version</option><option value="airline">airline</option><option value="service">domestic or international</option></select>,
       over <select id="fam-span" aria-label="Years shown"><option value="flown">years flown</option><option value="all">all years</option></select>.
     </p>
+    <p class="note" id="highlight-line" hidden></p>
     <div id="family-chart" aria-live="polite">Loading chart…</div>
     <p class="note" id="family-note">Each bar is one year. Freight is in short tons (2,000 lb). Versions and families follow BTS's aircraft types, which lump a few variants together (for example "737 NG (incl. MAX 7)"). Airlines that merged are counted together throughout. More on <a href="/about#groupings">how things are grouped</a> and on <a href="/about#freight">freight-only and belly cargo</a>.</p>
     {% include "_footer.html" %}
