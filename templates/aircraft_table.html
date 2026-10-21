@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aircraft table · T-100</title>
+  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-latest-year="{{ latest_year }}">
+  <main>
+    {% include "_nav.html" %}
+    <p class="related"><a href="/aircraft">All aircraft families</a> · <a href="/aircraft/makers">Aircraft by maker</a></p>
+    <h1>Aircraft table</h1>
+    <p class="intro">Every aircraft family, ranked. Open a family to see its types, or search for a type by name.</p>
+    <p class="chart-sentence">
+      Show <select id="at-measure" aria-label="Measure"></select>
+      in <select id="at-year" aria-label="Year"></select>
+      for <select id="at-kind" aria-label="Kind of aircraft"></select>
+      made by <select id="at-maker" aria-label="Maker"><option value="all">any maker</option></select>.
+    </p>
+    <p><label>Search <input id="at-q" type="search" placeholder="Name, such as 737 or Cessna" autocomplete="off"></label></p>
+    <p class="note" id="at-status" aria-live="polite"></p>
+    <div id="aircraft-table">Loading table…</div>
+    <p class="note">Families group BTS's aircraft types (a 737-300 and a 737-800 are both Boeing 737s). A family's maker and kind are those of its busiest type. The share is of the total for the chosen year, kind and maker. Freight is in short tons (2,000 lb), and includes cargo in the holds of passenger aircraft. More on <a href="/about#groupings">how things are grouped</a>.</p>
+  </main>
+  <script type="module" src="/static/charts/aircrafttable.js"></script>
+</body>
+</html>

@@ -25,20 +25,20 @@ test('engine shares are of each year, summed over the chosen distance band', () 
   const rows = [e(1990, '6', 3000, 1), e(1990, '8', 3000, 3), e(1990, '8', 5000, 4), e(1990, '6', 0, 100)];
   const res = buildEngineShares(rows, { measure: 'deps', kind: 'passenger', band: '3000' });
   const share = (s) => res.points.find((p) => p.year === 1990 && p.series === s).share;
-  assert.equal(share('Twin jet'), 1 / 8);
-  assert.equal(share('Quad jet'), 7 / 8);
+  assert.equal(share('Two jet engines'), 1 / 8);
+  assert.equal(share('Four or more jet engines'), 7 / 8);
 });
 
 test('a band of "all" counts every distance, and freight uses the freight measure', () => {
   const rows = [e(2000, '6', 0, 1, { kind: 'freight' }), e(2000, '8', 3000, 1, { kind: 'freight' }), e(2000, '6', 0, 50)];
   const res = buildEngineShares(rows, { measure: 'freight', kind: 'freight', band: 'all' });
-  assert.deepEqual(res.points.map((p) => [p.series, p.share]), [['Twin jet', 0.5], ['Quad jet', 0.5]]);
+  assert.deepEqual(res.points.map((p) => [p.series, p.share]), [['Two jet engines', 0.5], ['Four or more jet engines', 0.5]]);
 });
 
 test('piston, helicopter and unlisted groups share one series; series come in a fixed order', () => {
   const rows = [e(2000, '0', 0, 1), e(2000, '3', 0, 1), e(2000, '4', 0, 1), e(2000, '5', 0, 1), e(2000, '8', 0, 1), e(2000, '6', 0, 1)];
   const res = buildEngineShares(rows, { measure: 'deps', kind: 'passenger', band: 'all' });
-  assert.deepEqual(res.series, ['Twin jet', 'Quad jet', 'Turboprop', 'Piston and helicopter']);
+  assert.deepEqual(res.series, ['Two jet engines', 'Four or more jet engines', 'Turboprop', 'Piston and helicopter']);
   assert.equal(res.points.find((p) => p.series === 'Turboprop').amount, 2);
 });
 
@@ -97,4 +97,20 @@ test('splitting by route type gives domestic and international, and an unsplit s
 test('years with nothing in the selection are left out', () => {
   const res = buildFamilySeries([d(2000, '', 'A', 2), d(2001, '', 'A', 0)], { measure: 'deps', kind: 'all', split: 'airline' });
   assert.deepEqual(res.years, [2000]);
+});
+
+const m = (year, maker, deps, extra = {}) => ({ year, maker, aircraft_kind: 'Jet, twin-engine', service: 'domestic', kind: 'passenger', deps, seats: 0, passengers: 0, freight: 0, ...extra });
+
+test('buildFamilySeries can split by maker, keeping the biggest and folding the rest into Other', () => {
+  const rows = [m(2019, 'Boeing', 50), m(2019, 'Airbus', 30), m(2019, 'Embraer', 5), m(2019, 'Cessna', 1), m(2020, 'Boeing', 40)];
+  const res = buildFamilySeries(rows, { measure: 'deps', split: 'maker', top: 2 });
+  assert.deepEqual(res.series, ['Boeing', 'Airbus', 'Other']);
+  assert.equal(res.points.find((p) => p.year === 2019 && p.series === 'Other').value, 6);
+});
+
+test('buildFamilySeries filters by aircraft kind and still takes the other filters', () => {
+  const rows = [m(2019, 'Boeing', 50), m(2019, 'Pilatus', 7, { aircraft_kind: 'Turboprop, one or two engines' }), m(2019, 'Boeing', 9, { service: 'international' })];
+  const res = buildFamilySeries(rows, { measure: 'deps', split: 'maker', aircraftKind: 'Turboprop' });
+  assert.deepEqual(res.series, ['Pilatus']);
+  assert.deepEqual(buildFamilySeries(rows, { measure: 'deps', split: 'maker', service: 'domestic', aircraftKind: 'Jet' }).points.map((p) => p.value), [50]);
 });

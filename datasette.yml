@@ -240,6 +240,39 @@ databases:
           GROUP BY year, subfamily, group_id, group_name, service, kind
           ORDER BY year
 
+      type_table:
+        sql: |
+          SELECT
+            y.aircraft_type AS type_id,
+            COALESCE(t.name, CASE y.aircraft_type WHEN 'unknown' THEN 'Type not reported' ELSE 'Type ' || y.aircraft_type END) AS name,
+            COALESCE(f.family, 'Unknown') AS family,
+            COALESCE(t.maker, 'Unknown maker') AS maker,
+            COALESCE(t.kind, 'Unknown') AS aircraft_kind,
+            MIN(CASE WHEN y.deps > 0 THEN y.year END) AS first_year,
+            MAX(CASE WHEN y.deps > 0 THEN y.year END) AS last_year,
+            SUM(CASE WHEN y.year = CAST(:year AS INTEGER) THEN y.deps ELSE 0 END) AS deps,
+            SUM(CASE WHEN y.year = CAST(:year AS INTEGER) THEN y.seats ELSE 0 END) AS seats,
+            SUM(CASE WHEN y.year = CAST(:year AS INTEGER) THEN y.passengers ELSE 0 END) AS passengers,
+            SUM(CASE WHEN y.year = CAST(:year AS INTEGER) THEN y.freight ELSE 0 END) AS freight
+          FROM type_year y
+            LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type
+            LEFT JOIN aircraft_family f ON f.aircraft_type = y.aircraft_type
+          GROUP BY y.aircraft_type
+          ORDER BY y.aircraft_type
+
+      maker_by_year:
+        sql: |
+          SELECT
+            y.year,
+            COALESCE(t.maker, 'Unknown maker') AS maker,
+            COALESCE(t.kind, 'Unknown') AS aircraft_kind,
+            CASE WHEN y.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN y.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(y.deps) AS deps, SUM(y.seats) AS seats, SUM(y.passengers) AS passengers, SUM(y.freight) AS freight
+          FROM type_year y LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type
+          GROUP BY y.year, maker, aircraft_kind, service, kind
+          ORDER BY y.year, maker
+
       # what the airline search offers: every group, and each member of a merged group on its own
       airline_list:
         sql: |

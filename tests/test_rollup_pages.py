@@ -107,3 +107,26 @@ def test_a_merged_group_lists_its_members_and_each_member_has_a_page_of_its_own(
     assert 'data-airline="19386"' in member.text and 'data-group="delta"' in member.text and 'id="th-airline"' not in member.text
     assert get(ds, "/airlines/19386/globe").status_code == 200
     assert get(ds, "/airlines/00000").status_code == 404
+
+
+def test_table_and_maker_pages_render_with_their_assets_and_controls(ds):
+    table = get(ds, "/aircraft/table")
+    assert table.status_code == 200
+    for id_ in ["aircraft-table", "at-status", "at-measure", "at-year", "at-kind", "at-maker", "at-q"]:
+        assert f'id="{id_}"' in table.text
+    assert "/static/charts/aircrafttable.js" in table.text
+    assert 'id="aircraft-table" aria-live' not in table.text  # a rebuilt table must not be a live region; the status line is
+    makers = get(ds, "/aircraft/makers")
+    assert makers.status_code == 200
+    for id_ in ["maker-chart", "mk-measure", "mk-kind", "mk-service", "mk-aircraft"]:
+        assert f'id="{id_}"' in makers.text
+    assert "/static/charts/makers.js" in makers.text and "How makers are counted" in makers.text
+
+
+def test_the_new_pages_are_not_mistaken_for_families_and_are_linked_from_aircraft(ds, db_path):
+    put(db_path, "family_year", [fam(2019, "Table", 1, "F", 1)])  # a family slugged "table" must not capture the table page
+    assert 'id="aircraft-table"' in get(ds, "/aircraft/table").text
+    aircraft = get(ds, "/aircraft").text
+    assert 'href="/aircraft/table"' in aircraft and 'href="/aircraft/makers"' in aircraft
+    assert 'aria-current="page">table<' in get(ds, "/aircraft/table").text
+    assert 'aria-current="page">makers<' in get(ds, "/aircraft/makers").text

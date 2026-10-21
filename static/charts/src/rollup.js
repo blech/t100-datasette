@@ -16,7 +16,7 @@ export const ENGINE_BANDS = [
 
 // BTS aircraft groups, in the order they are stacked
 export const ENGINE_SERIES = ['Two jet engines', 'Three jet engines', 'Four or more jet engines', 'Turboprop', 'Piston and helicopter'];
-// One blue hue stepping from the twin jets that won to the quads they replaced; the rest are grey
+// One blue hue stepping from the two-engined jets that won to the four-engined ones they replaced; the rest are grey
 export const ENGINE_COLORS = ['#08519c', '#4292c6', '#9ecae1', '#969696', '#d0d0d0'];
 
 const SERIES_OF = { 6: 'Two jet engines', 7: 'Three jet engines', 8: 'Four or more jet engines', 4: 'Turboprop', 5: 'Turboprop' };
@@ -65,17 +65,19 @@ const SERVICE_LABELS = { domestic: 'Domestic', international: 'International' };
 const SPLIT_LABEL = {
   subfamily: (r) => r.subfamily || 'All variants',
   airline: (r) => r.group_name || 'Unknown carrier',
+  maker: (r) => r.maker || 'Unknown maker',
   service: (r) => SERVICE_LABELS[r.service] || r.service,
 };
 
 // Rows from family_detail -> one aircraft family's value per year, split by subfamily, airline group or route type.
 // Subfamilies run in the order they first flew; airlines and the rest by total, the smaller ones folded into "Other".
-export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', service = 'all', split = 'subfamily', top = 8 } = {}) {
+export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', service = 'all', split = 'subfamily', top = 8, aircraftKind = 'all' } = {}) {
   const label = SPLIT_LABEL[split];
   const cells = new Map(); // `${year}\u0000${series}` -> value
   const totals = new Map();
   const first = new Map();
   for (const r of rows) {
+    if (aircraftKind !== 'all' && !String(r.aircraft_kind || '').startsWith(aircraftKind)) continue;
     if (kind !== 'all' && r.kind !== kind) continue;
     if (service !== 'all' && r.service !== service) continue;
     const v = (Number(r[measure]) || 0) / (measure === 'freight' ? LB_PER_SHORT_TON : 1);
@@ -91,7 +93,7 @@ export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', 
   if (split === 'subfamily') order.sort((a, b) => first.get(a) - first.get(b) || totals.get(b) - totals.get(a));
   else if (split === 'service') order.sort();
   else order.sort((a, b) => totals.get(b) - totals.get(a) || a.localeCompare(b));
-  const folded = split === 'airline' && order.length > top;
+  const folded = (split === 'airline' || split === 'maker') && order.length > top;
   const kept = folded ? order.slice(0, top) : order;
   const keep = new Set(kept);
   const merged = new Map();
