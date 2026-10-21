@@ -25,20 +25,20 @@ test('engine shares are of each year, summed over the chosen distance band', () 
   const rows = [e(1990, '6', 3000, 1), e(1990, '8', 3000, 3), e(1990, '8', 5000, 4), e(1990, '6', 0, 100)];
   const res = buildEngineShares(rows, { measure: 'deps', kind: 'passenger', band: '3000' });
   const share = (s) => res.points.find((p) => p.year === 1990 && p.series === s).share;
-  assert.equal(share('Twin jet'), 1 / 8);
-  assert.equal(share('Quad jet'), 7 / 8);
+  assert.equal(share('Two jet engines'), 1 / 8);
+  assert.equal(share('Four or more jet engines'), 7 / 8);
 });
 
 test('a band of "all" counts every distance, and freight uses the freight measure', () => {
   const rows = [e(2000, '6', 0, 1, { kind: 'freight' }), e(2000, '8', 3000, 1, { kind: 'freight' }), e(2000, '6', 0, 50)];
   const res = buildEngineShares(rows, { measure: 'freight', kind: 'freight', band: 'all' });
-  assert.deepEqual(res.points.map((p) => [p.series, p.share]), [['Twin jet', 0.5], ['Quad jet', 0.5]]);
+  assert.deepEqual(res.points.map((p) => [p.series, p.share]), [['Two jet engines', 0.5], ['Four or more jet engines', 0.5]]);
 });
 
 test('piston, helicopter and unlisted groups share one series; series come in a fixed order', () => {
   const rows = [e(2000, '0', 0, 1), e(2000, '3', 0, 1), e(2000, '4', 0, 1), e(2000, '5', 0, 1), e(2000, '8', 0, 1), e(2000, '6', 0, 1)];
   const res = buildEngineShares(rows, { measure: 'deps', kind: 'passenger', band: 'all' });
-  assert.deepEqual(res.series, ['Twin jet', 'Quad jet', 'Turboprop', 'Piston and helicopter']);
+  assert.deepEqual(res.series, ['Two jet engines', 'Four or more jet engines', 'Turboprop', 'Piston and helicopter']);
   assert.equal(res.points.find((p) => p.series === 'Turboprop').amount, 2);
 });
 

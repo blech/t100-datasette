@@ -16,7 +16,7 @@ export const ENGINE_BANDS = [
 
 // BTS aircraft groups, in the order they are stacked
 export const ENGINE_SERIES = ['Two jet engines', 'Three jet engines', 'Four or more jet engines', 'Turboprop', 'Piston and helicopter'];
-// One blue hue stepping from the twin jets that won to the quads they replaced; the rest are grey
+// One blue hue stepping from the two-engined jets that won to the four-engined ones they replaced; the rest are grey
 export const ENGINE_COLORS = ['#08519c', '#4292c6', '#9ecae1', '#969696', '#d0d0d0'];
 
 const SERIES_OF = { 6: 'Two jet engines', 7: 'Three jet engines', 8: 'Four or more jet engines', 4: 'Turboprop', 5: 'Turboprop' };

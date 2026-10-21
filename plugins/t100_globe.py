@@ -87,7 +87,7 @@ def airport_story(rows):
 
 
 def engine_shares(rows, year):
-    """Shares of passenger departures on flights of 3,000 miles or more by BTS aircraft group (6 twin, 7 tri, 8 quad)."""
+    """Shares of passenger departures on flights of 3,000 miles or more by BTS aircraft group (6 two jet engines, 7 three, 8 four or more)."""
     deps = {}
     for r in rows:
         if r["year"] == year and r["kind"] == "passenger" and r["distance_band"] >= 3000:

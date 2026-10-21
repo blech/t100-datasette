@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Twin jets took over the long haul · T-100</title>
+  <title>Jets with two engines took over the long haul · T-100</title>
   <link rel="stylesheet" href="/static/landing/style.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
@@ -13,12 +13,12 @@
   <main>
     {% include "_nav.html" %}
     <p class="related"><a href="/aircraft">All aircraft families</a></p>
-    <h1>Twin jets took over the long haul</h1>
+    <h1>Jets with two engines took over the long haul</h1>
     <p class="intro">
       In 1990 most flights of 3,000 miles or more were flown by three- and four-engined aircraft: 747s, DC-10s, L-1011s, DC-8s. By 2025 twin-engined jets flew 94% of them.
-      Twin jets had 19% of those departures in 1990, 53% in 2001, and 88% in 2019. Tri-jets, the DC-10, MD-11 and L-1011, were almost gone by 2007, and quad jets fell from 55% to 5.5%.
+      Jets with two engines had 19% of those departures in 1990, 53% in 2001, and 88% in 2019. Jets with three engines, the DC-10, MD-11 and L-1011, were almost gone by 2007, and jets with four or more engines fell from 55% to 5.5%.
     </p>
-    <p class="intro">Freight tells a slower version of the same story: twin jets carried 4% of long-haul freight in 1990 and 60% in 2025, while four-engined freighters, mostly 747s, still carry 55% of what dedicated freighters move.</p>
+    <p class="intro">Freight tells a slower version of the same story: jets with two engines carried 4% of long-haul freight in 1990 and 60% in 2025, while four-engined freighters, mostly 747s, still carry 55% of what dedicated freighters move.</p>
     <p class="chart-sentence">
       Share of <select id="engine-measure" aria-label="Measure"></select>
       on <select id="engine-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
@@ -26,7 +26,7 @@
       by number of engines.
     </p>
     <div id="engine-chart" aria-live="polite">Loading chart…</div>
-    <p class="note">Aircraft groups are BTS's: twin jets include business jets, tri-jets are the DC-10, MD-11 and L-1011 (and the shorter-range 727), quad jets the 747, A340, A380 and older types such as the DC-8 (BTS puts the very few six-engined aircraft in this group too). Distance is the segment's great-circle length. Freight is in short tons (2,000 lb); "freight flights" are flights classed by BTS as cargo, while "all flights" also counts cargo carried in the holds of passenger aircraft (<a href="/about#freight">freight-only and belly cargo</a>). Domestic FedEx and UPS flying is missing before 2001 and 2002 (<a href="/about#breaks">known gaps</a>), which matters little here because long-haul flights are mostly international.</p>
+    <p class="note">Aircraft groups are BTS's: jets with two engines include business jets, jets with three engines are the DC-10, MD-11 and L-1011 (and the shorter-range 727), jets with four or more engines are the 747, A340, A380 and older types such as the DC-8 (BTS puts the very few six-engined aircraft in this group too). Distance is the segment's great-circle length. Freight is in short tons (2,000 lb); "freight flights" are flights classed by BTS as cargo, while "all flights" also counts cargo carried in the holds of passenger aircraft (<a href="/about#freight">freight-only and belly cargo</a>). Domestic FedEx and UPS flying is missing before 2001 and 2002 (<a href="/about#breaks">known gaps</a>), which matters little here because long-haul flights are mostly international.</p>
   </main>
   <script type="module" src="/static/charts/engines.js"></script>
 </body>
