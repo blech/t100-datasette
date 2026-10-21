@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CHANGE_COLOURS, parseStyle, styleParams, colourMode, toggleHide, visibleRoutes, alphaFor, styleRoutes, legendItems,
+  parseStyle, styleParams, colourMode, toggleHide, visibleRoutes, alphaFor, styleRoutes, legendItems,
 } from '../src/routestyle.js';
-import { SERVICE_COLOURS } from '../src/scale.js';
+import { palette } from '../../common/palette.js';
 
 test('parseStyle defaults to no colour choice and nothing hidden', () => {
   assert.deepEqual(parseStyle(''), { colour: null, hide: [] });
@@ -70,9 +70,9 @@ const theme = { ui: { muted: '#777777' } };
 test('styleRoutes colours by service or by change, kept in the theme\'s muted colour', () => {
   const routes = [route('domestic', 'kept'), route('international', 'added'), route('domestic', 'dropped')];
   const byService = styleRoutes(routes, { mode: 'service', theme, widthKey: 'passengers' });
-  assert.deepEqual(byService.map((s) => s.colour), [SERVICE_COLOURS.domestic, SERVICE_COLOURS.international, SERVICE_COLOURS.domestic]);
+  assert.deepEqual(byService.map((s) => s.colour), [palette(false).service.domestic, palette(false).service.international, palette(false).service.domestic]);
   const byChange = styleRoutes(routes, { mode: 'change', theme, widthKey: 'passengers' });
-  assert.deepEqual(byChange.map((s) => s.colour), ['#777777', CHANGE_COLOURS.added, CHANGE_COLOURS.dropped]);
+  assert.deepEqual(byChange.map((s) => s.colour), ['#777777', palette(false).change.added, palette(false).change.dropped]);
 });
 
 test('dropped routes are dashed whichever dimension is coloured', () => {
@@ -86,15 +86,15 @@ test('legendItems lists services always and changes only when comparing, with co
   const routes = [route('domestic', 'kept'), route('domestic', 'added'), route('international', 'dropped')];
   const single = legendItems({ mode: 'service', comparing: false, hide: [], routes });
   assert.deepEqual(single.map((g) => g.name), ['service']);
-  assert.deepEqual(single[0].items.map((i) => [i.key, i.count, i.colour]), [['international', 1, SERVICE_COLOURS.international], ['domestic', 2, SERVICE_COLOURS.domestic]]);
+  assert.deepEqual(single[0].items.map((i) => [i.key, i.count, i.colour]), [['international', 1, palette(false).service.international], ['domestic', 2, palette(false).service.domestic]]);
 
   const both = legendItems({ mode: 'change', comparing: true, hide: ['kept'], routes });
   assert.deepEqual(both.map((g) => g.name), ['service', 'change']);
   assert.deepEqual(both[0].items.map((i) => i.colour), [null, null]);
   assert.deepEqual(both[1].items.map((i) => [i.key, i.count, i.colour, i.dashed, i.hidden]), [
-    ['added', 1, CHANGE_COLOURS.added, false, false],
+    ['added', 1, palette(false).change.added, false, false],
     ['kept', 1, 'var(--muted)', false, true],
-    ['dropped', 1, CHANGE_COLOURS.dropped, true, false],
+    ['dropped', 1, palette(false).change.dropped, true, false],
   ]);
 });
 
@@ -105,4 +105,11 @@ test('colouring by change, kept routes step back and changed ones come forward',
   const byService = styleRoutes(routes, { mode: 'service', theme, widthKey: 'passengers' });
   assert.equal(byService[0].alpha, byService[1].alpha);
   for (const s of styleRoutes(routes, { mode: 'change', theme, widthKey: 'passengers' })) assert.ok(s.alpha >= 0.08 && s.alpha <= 0.9);
+});
+
+test('the legend and styles follow the theme', () => {
+  const routes = [{ service: 'domestic', status: 'added', passengers: 1 }];
+  const dark = { ...theme, dark: true };
+  assert.equal(styleRoutes(routes, { mode: 'service', theme: dark, widthKey: 'passengers' })[0].colour, palette(true).service.domestic);
+  assert.equal(legendItems({ mode: 'service', comparing: false, hide: [], routes, dark: true })[0].items[1].colour, palette(true).service.domestic);
 });

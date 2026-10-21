@@ -65,7 +65,7 @@ function applyTheme(id) {
   if (renderer) renderer.setTheme(THEMES[themeId]);
   dirty = true;
 }
-document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); pushState(); });
+document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); drawLegend(); pushState(); });
 
 function recompute() {
   if (state.year === null) { periodRoutes = []; shown = []; return; }
@@ -165,6 +165,13 @@ async function loadMonths() {
   }
 }
 
+// the legend's chips, coloured for the current theme
+function drawLegend() {
+  const comparing = Boolean(state.compare);
+  const mode = colourMode(state.colour, comparing);
+  renderLegend($('legend-chips'), legendItems({ mode, comparing, hide: state.hide, routes: periodRoutes, dark: THEMES[themeId].dark }), (key) => { state.hide = toggleHide(state.hide, key); refresh(); });
+}
+
 function refresh() {
   hover = -1;
   selected = -1;
@@ -176,7 +183,7 @@ function refresh() {
   const mode = colourMode(state.colour, comparing);
   $('colour').value = mode;
   $('colour').querySelector('option[value="change"]').disabled = !comparing;
-  renderLegend($('legend-chips'), legendItems({ mode, comparing, hide: state.hide, routes: periodRoutes }), (key) => { state.hide = toggleHide(state.hide, key); refresh(); });
+  drawLegend();
   if (years.length) syncRange(range, years, state.year, state.compare);
   updateStats();
   pushState();

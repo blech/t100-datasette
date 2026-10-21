@@ -1,6 +1,7 @@
-export const SERVICE_COLOURS = { international: '#ff5a00', domestic: '#2a9df4' };
+import { palette } from '../../common/palette.js';
 
-export const colourFor = (service) => SERVICE_COLOURS[service] ?? SERVICE_COLOURS.international;
+// a route's colour by service, from the site palette; anything unknown counts as international
+export const colourFor = (service, dark = false) => palette(dark).service[service] ?? palette(dark).service.international;
 
 export function widthFor(value, max, lo = 0.6, hi = 4.5) {
   const v = Number(value);

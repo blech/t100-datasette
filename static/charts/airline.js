@@ -4,6 +4,8 @@ import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
+import { attachHighlight } from '/static/common/highlight.js';
+import { palette, isDark } from '/static/common/palette.js';
 import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
 
 // the tallest stack, which sets the y axis's scale
@@ -32,6 +34,7 @@ const plot = (box, options, popover) => {
     width: Math.min(box.clientWidth || 900, 1100), height: 320, marginLeft: 64,
     style: { background: 'transparent', fontSize: '12px' }, ...options,
   });
+  attachHighlight(chart); // does nothing for a chart without a colour legend (airport pairs)
   box.replaceChildren(...(popover ? attachPopover(chart, popover) : [chart]));
 };
 const yearPopover = { content: (d) => ({ title: d.period, rows: d.rows }), at: (d) => [d.period, d.top] };
@@ -55,7 +58,8 @@ function drawSize() {
   const box = $('size-chart');
   if (!data.length) { box.textContent = `No ${unit(measure)} for this selection.`; return; }
   const series = split === 'kind' ? ['passenger', 'freight'] : ['domestic', 'international'];
-  const range = ['#4292c6', '#08306b'];
+  const p = palette(isDark());
+  const range = split === 'kind' ? [p.kind.passenger, p.kind.freight] : [p.service.domestic, p.service.international];
   plot(box, {
     x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), HEAT_MEASURES[measure]), grid: true },
     color: { domain: series, range, legend: true },
@@ -76,12 +80,12 @@ async function drawPairs() {
   plot(box, {
     x: yearAxis(rows.map((r) => r.year)), y: { label: 'Airport pairs', grid: true },
     marks: [
-      Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6' }),
+      Plot.barY(data, { x: 'year', y: 'pairs', fill: palette(isDark()).single }),
       Plot.ruleY([0]),
       Plot.ruleX(periodRows(data.map((d) => ({ ...d, series: 'Airport pairs', value: d.pairs })), { key: (d) => d.year, format: (v) => exactCount(v) }),
         Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
-  }, { ...yearPopover, keyOf: () => ({ kind: 'square', colour: '#4292c6' }) });
+  }, { ...yearPopover, keyOf: () => ({ kind: 'square', colour: palette(isDark()).single }) });
 }
 
 const place = (code) => places.get(code) || '';
@@ -172,6 +176,7 @@ async function main() {
   for (const id of ['al-a', 'al-b']) $(id).addEventListener('change', loadChanges);
   $('al-status').addEventListener('change', drawTable);
   drawSize();
+  document.addEventListener('t100:theme', () => { drawSize(); drawPairs(); });
   await Promise.all([drawPairs(), loadChanges()]);
 }
 

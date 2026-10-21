@@ -45,7 +45,9 @@ export function attachPopover(plot, { content, at, keyOf = null, link = () => nu
   const key = keyOf || ((label) => (colour ? { kind: 'square', colour: colour.apply(label) } : { kind: 'none' }));
   const idOf = (d) => (d ? String(at(d)) : null);
 
+  let last = null;
   function show(d) {
+    last = d;
     if (!d) { pop.hidden = true; return; }
     const { title, rows } = content(d);
     const extra = rows.some((r) => r.extra !== undefined);
@@ -54,7 +56,8 @@ export function attachPopover(plot, { content, at, keyOf = null, link = () => nu
       const k = key(r.label);
       const swatch = el('span', k.kind === 'none' ? '' : `key key-${k.kind}`);
       if (k.colour) swatch.style.background = k.colour;
-      return [swatch, el('span', '', r.label), el('span', 'num', r.value), ...(extra ? [el('span', 'extra', r.extra ?? '')] : [])];
+      const current = plot.dataset.highlight && r.label === plot.dataset.highlight ? ' current' : '';
+      return [swatch, el('span', current.trim(), r.label), el('span', `num${current}`, r.value), ...(extra ? [el('span', `extra${current}`, r.extra ?? '')] : [])];
     }));
     pop.hidden = false;
     const [xv, yv] = at(d);
@@ -91,6 +94,8 @@ export function attachPopover(plot, { content, at, keyOf = null, link = () => nu
     show(tapped);
   }, true);
   plot.addEventListener('input', () => { if (!touch) show(plot.value); });
+  // a highlighted series (static/common/highlight.js) is bold in the popover, even when the year hasn't changed
+  plot.addEventListener('highlight', () => { if (!pop.hidden) show(last); });
   plot.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') pop.hidden = true; });
   // page-wide: a tap elsewhere hides it, and so does scrolling (it is fixed in place, the chart isn't). These
   // listeners go when the chart does, since every redraw makes a new one

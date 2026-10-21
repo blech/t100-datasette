@@ -1,7 +1,7 @@
-import { SERVICE_COLOURS, colourFor, maxOf } from './scale.js';
+import { colourFor, maxOf } from './scale.js';
+import { palette } from '../../common/palette.js';
 
-// Kept routes take the theme's muted colour, so what changed stands out
-export const CHANGE_COLOURS = { added: '#4dac26', dropped: '#c51b7d' };
+// Coloured by change, kept routes take the theme's muted colour, so what changed stands out
 export const SERVICES = ['domestic', 'international'];
 export const STATUSES = ['added', 'kept', 'dropped'];
 const HIDEABLE = [...SERVICES, ...STATUSES];
@@ -54,7 +54,7 @@ export function styleRoutes(routes, { mode, theme, widthKey }) {
   return routes.map((r) => {
     const a = alphaFor(routes.length, r[widthKey], max) * (mode === 'change' ? CHANGE_EMPHASIS[r.status] ?? 1 : 1);
     return {
-      colour: mode === 'change' ? CHANGE_COLOURS[r.status] ?? theme.ui.muted : colourFor(r.service),
+      colour: mode === 'change' ? palette(theme.dark).change[r.status] ?? theme.ui.muted : colourFor(r.service, theme.dark),
       alpha: Math.min(0.9, Math.max(0.08, a)),
       dashed: r.status === 'dropped',
     };
@@ -63,14 +63,14 @@ export function styleRoutes(routes, { mode, theme, widthKey }) {
 
 // The legend's chips: one group per dimension, the coloured one with swatches. Counts are before hiding,
 // so a hidden chip still says how many routes it would bring back.
-export function legendItems({ mode, comparing, hide, routes }) {
+export function legendItems({ mode, comparing, hide, routes, dark = false }) {
   const item = (key, field, colour) => ({
     key, label: LABELS[key], count: routes.filter((r) => r[field] === key).length,
     colour, dashed: key === 'dropped', hidden: hide.includes(key),
   });
-  const groups = [{ name: 'service', items: ['international', 'domestic'].map((s) => item(s, 'service', mode === 'service' ? SERVICE_COLOURS[s] : null)) }];
+  const groups = [{ name: 'service', items: ['international', 'domestic'].map((s) => item(s, 'service', mode === 'service' ? colourFor(s, dark) : null)) }];
   if (comparing) {
-    groups.push({ name: 'change', items: STATUSES.map((s) => item(s, 'status', mode === 'change' ? CHANGE_COLOURS[s] ?? 'var(--muted)' : null)) });
+    groups.push({ name: 'change', items: STATUSES.map((s) => item(s, 'status', mode === 'change' ? palette(dark).change[s] ?? 'var(--muted)' : null)) });
   }
   return groups;
 }

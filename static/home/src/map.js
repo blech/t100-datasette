@@ -69,7 +69,7 @@ export function drawMap(ctx, { w, h, path, frames, nation, borders, placed, them
     const p = placed[i];
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r + (i === highlight ? 1.5 : 0), 0, Math.PI * 2);
-    ctx.fillStyle = i === highlight ? t.ui.fg : colourFor('international');
+    ctx.fillStyle = i === highlight ? t.ui.fg : colourFor('international', t.dark);
     ctx.globalAlpha = i === highlight ? 1 : 0.75;
     ctx.fill();
     ctx.globalAlpha = 1;
