@@ -9,7 +9,6 @@
     {% if key == section %}<li><strong aria-current="{{ 'page' if request.path.rstrip('/') == '/' ~ key else 'true' }}">{{ label }}</strong></li>{% else %}<li><a href="/{{ key }}">{{ label }}</a></li>{% endif %}
     {%- endfor %}
   </ul></nav>
-  <select id="theme" aria-label="Theme"></select>
 </div>
 {% if views %}<nav class="views" aria-label="Views">
   {%- for v in views %}{% if not loop.first %} · {% endif %}{% if v.current %}<strong aria-current="page">{{ v.label }}</strong>{% else %}<a href="{{ v.href }}"{% if v.id %} id="{{ v.id }}"{% endif %}>{{ v.label }}</a>{% endif %}{% endfor -%}

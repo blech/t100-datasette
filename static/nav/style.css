@@ -4,7 +4,6 @@
 .crumbs a { color:var(--fg); text-decoration:none; }
 .crumbs a:hover, .crumbs a:focus-visible { text-decoration:underline; }
 .crumbs [aria-current] { font-weight:600; }
-.site-header select { font-size:13px; color:var(--muted); padding:2px 8px; }
 .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 /* one popover for every chart, heat-map cell, row label and map: static/common/popover.js */
 .popover { position:fixed; z-index:20; pointer-events:none; display:grid; grid-template-columns:auto auto auto; column-gap:6px; align-items:center;
@@ -29,3 +28,7 @@
 .views a { color:var(--muted); }
 .views strong { color:var(--fg); }
 @media (max-width:600px) { .site-header .sections { order:3; flex-basis:100%; } }
+/* the footer: the theme chooser and where the data comes from */
+.site-footer { border-top:1px solid var(--rule, #8c8c8d); margin:40px 0 0; padding:8px 0 24px; font-size:13px; color:var(--muted); }
+.site-footer a { color:var(--muted); }
+.site-footer select { font-size:13px; color:var(--muted); padding:2px 8px; }
