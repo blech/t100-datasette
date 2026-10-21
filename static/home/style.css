@@ -15,3 +15,6 @@
 .chart-box svg { --plot-background: var(--bg); }
 /* on a dark background the bands need more colour to read as the airlines' */
 [data-scheme="dark"] .airline-band { fill-opacity:.55; }
+/* a 1px rule above each section, its heading directly beneath (the husk.org/labs pattern) */
+.section { border-top:1px solid var(--rule); margin:36px 0 0; padding:4px 0 0; }
+.section > h2 { margin:0 0 8px; }
