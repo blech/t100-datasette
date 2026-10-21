@@ -70,7 +70,14 @@ Questions:
   - `/aircraft/engines` listens for theme switches before its data loads;
   - the colour guard misses double-quoted `scheme:` and 3- or 8-digit hex.
 
-### 6. Page frame
+### 6. Page frame: done (merged, branch `page-frame`)
+
+- **One base stylesheet:** `static/common/base.css` is loaded first everywhere (spec `docs/superpowers/specs/2026-10-21-page-frame-design.md`).
+- **Titles:** 32px on desktop and 26px on phones, on every page.
+- **No sideways scroll on phones.**
+- **Theme fallbacks** are defined once and held to `themes.js`.
+- **What follows** is the original description of the problem:
+
 
 The scrolling pages and the full-window maps have grown separate layout rules. The navigation work lined up their headers; the rest still differs:
 
