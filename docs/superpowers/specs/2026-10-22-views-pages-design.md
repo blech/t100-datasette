@@ -51,7 +51,21 @@ Two pages break the rule today:
 - **Old links ending in `#changes`** reach the Over time page. A fragment never reaches the server, so its script sees `#changes` and replaces the location with `/changes`, keeping the query.
 - **The minimum-flights menu** today drives both the airport-pairs chart and the changes. Each page now gets its own copy, carried between them as `?min=`.
 
-### Unchanged here
+### Aircraft (with `feature/airplane-table-tidy`)
+
+The branch `feature/airplane-table-tidy` (another session's) makes the aircraft table the section's default: `/aircraft` becomes the table, and the families heat map is retired. That already follows the rule, and this sub-project folds it in.
+
+| View | Path | Shows |
+|---|---|---|
+| **Families** (default) | `/aircraft` | the aircraft table: families, ranked, with types inside, an "all years" choice and a top-N or share limit |
+| Makers | `/aircraft/makers` | unchanged |
+| Long-haul engines | `/aircraft/engines` | unchanged |
+
+- **The views line** is **Families · Makers · Long-haul engines**. The table is labelled by what it lists, as the heat map was.
+- **`/aircraft/table` was live from 2026-10-21,** so it gets a 301 to `/aircraft`, keeping the query string.
+- **Merging the branch** keeps `main`'s structure (base stylesheet, views line, footer, no related lines, palette, shared popover and formatter) and the branch's wording and features. Its `makers.js` still imports `SERIES_COLORS`; it takes `main`'s palette version.
+
+
 
 These move in sub-project 3, when their new neighbours exist:
 - the airport page (`/airports/{code}` stays the heat map until the over-time chart arrives, and then becomes `/destinations`);
@@ -60,9 +74,10 @@ These move in sub-project 3, when their new neighbours exist:
 ## Pieces
 
 **`plugins/t100_globe.py`:**
-- new routes:
+- new routes, and the aircraft redirect:
   - `^/airports/{CODE}/{CODE}(?:/{year})?/table$` to `route_table_page`;
   - `^/airlines/{slug}/changes$` to `airline_changes_page`;
+  - `^/aircraft/table$` to a 301 to `/aircraft`;
 - the breadcrumbs gain a final "table" or "changes" step;
 - `views_for` gains the rows above, with the route's direction pair removed and the airline's "Overview" renamed.
 
@@ -87,7 +102,8 @@ These move in sub-project 3, when their new neighbours exist:
 ## Testing
 
 **Python (pytest):**
-- `views_for` for both route paths with and without a year, both table paths, and the airline's three views. The current view is right in each.
+- `views_for` for both route paths with and without a year, both table paths, the airline's three views, and the aircraft's three. The current view is right in each.
+- `/aircraft/table?year=2019` redirects with a 301 to `/aircraft?year=2019`.
 - Each new page renders 200, with:
   - its views line;
   - its breadcrumb's last step;
