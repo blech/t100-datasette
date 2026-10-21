@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { formatCount, formatTons, exactCount, countLabel, millionsAxis, MILLIONS } from '../numbers.js';
 
 const CASES = JSON.parse(readFileSync(new URL('../../../tests/fixtures/number_formats.json', import.meta.url), 'utf8'));
@@ -59,4 +59,12 @@ test('millionsAxis switches to millions at a maximum of a million', () => {
   assert.equal(small.label, 'Departures');
   assert.equal(small.tickFormat(250000), '250,000');
   assert.equal(millionsAxis(0, 'Seats').label, 'Seats');
+});
+
+test('no page formats numbers on its own', () => {
+  const root = new URL('../../', import.meta.url);
+  const offenders = readdirSync(root, { recursive: true })
+    .filter((f) => f.endsWith('.js') && !/(^|\/)(vendor|test)\//.test(f) && f !== 'common/numbers.js')
+    .filter((f) => /toLocaleString\(|tickFormat: '~s'/.test(readFileSync(new URL(f, root), 'utf8')));
+  assert.deepEqual(offenders, []);
 });
