@@ -73,6 +73,11 @@ export function attachPopover(plot, { content, at, keyOf = null, link = () => nu
   // A tap never takes the bar's own link: a bar is a few pixels wide on a phone, so the bar under the finger can be the
   // next year along from the one Plot picked, and the second tap goes to the year the popover shows.
   let touch = false, tapped = null, showing = null, shown = null;
+  const hide = () => { showing = null; shown = null; pop.hidden = true; };
+  // a mouse press would make Plot's pointer sticky, freezing it (and our popover) until a second click: keep it moving
+  plot.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') { touch = false; e.stopImmediatePropagation(); }
+  }, true);
   plot.addEventListener('pointerdown', (e) => { touch = e.pointerType === 'touch'; tapped = plot.value; });
   plot.addEventListener('click', (e) => {
     if (!touch) return;
@@ -80,16 +85,18 @@ export function attachPopover(plot, { content, at, keyOf = null, link = () => nu
     tapped = plot.value ?? tapped;
     const action = tapAction(showing, idOf(tapped), Boolean(tapped && link(tapped)));
     if (action === 'follow') { location.href = link(shown); return; }
-    if (action === 'hide') { showing = null; shown = null; pop.hidden = true; return; }
+    if (action === 'hide') { hide(); return; }
     showing = idOf(tapped);
     shown = tapped;
     show(tapped);
   }, true);
   plot.addEventListener('input', () => { if (!touch) show(plot.value); });
   plot.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') pop.hidden = true; });
-  document.addEventListener('pointerdown', (e) => {
-    if (!plot.isConnected) return;
-    if (!plot.contains(e.target)) { showing = null; pop.hidden = true; }
-  });
+  // page-wide: a tap elsewhere hides it, and so does scrolling (it is fixed in place, the chart isn't). These
+  // listeners go when the chart does, since every redraw makes a new one
+  const gone = new AbortController();
+  const live = () => { if (plot.isConnected) return true; gone.abort(); return false; };
+  document.addEventListener('pointerdown', (e) => { if (live() && !plot.contains(e.target)) hide(); }, { signal: gone.signal });
+  window.addEventListener('scroll', () => { if (live()) hide(); }, { capture: true, passive: true, signal: gone.signal });
   return [plot, pop];
 }
