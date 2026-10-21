@@ -3,6 +3,7 @@ import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { buildFamilySeries, SERIES_COLORS, OTHER_COLOR } from '/static/charts/src/rollup.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { periodRows, attachPopover } from '/static/common/popover.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -43,9 +44,10 @@ function draw() {
   if (!res.points.length) { box.textContent = `No ${unit()} for this selection.`; return; }
   const years = res.years.map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
-  const data = res.points.map((p) => ({ ...p, year: String(p.year), title: `${family}, ${p.year}\n${p.series}: ${formatCount(p.value)} ${unit()}` }));
+  const data = res.points.map((p) => ({ ...p, year: String(p.year) }));
+  const tips = periodRows(data, { key: (p) => p.year, order: res.series, format: (v) => formatCount(v) });
   const colors = { domain: res.series, range: res.series.map((s, i) => (s === 'Other' ? OTHER_COLOR : SERIES_COLORS[i % SERIES_COLORS.length])), legend: true };
-  box.append(Plot.plot({
+  const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100),
     height: 420,
     marginLeft: 64,
@@ -54,10 +56,12 @@ function draw() {
     y: { ...millionsAxis(stackMax(res.points, 'year'), HEAT_MEASURES[state.measure]), grid: true },
     color: colors,
     marks: [
-      Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series, title: 'title', tip: true }),
+      Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series }),
+      Plot.ruleX(tips, Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 })),
       Plot.ruleY([0]),
     ],
-  }));
+  });
+  box.append(...attachPopover(chart, { content: (d) => ({ title: `${family}, ${d.period}`, rows: d.rows }), at: (d) => [d.period, d.top] }));
 }
 
 function chooseSplit() {

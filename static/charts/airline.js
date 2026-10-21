@@ -3,6 +3,7 @@ import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { periodRows, attachPopover } from '/static/common/popover.js';
 import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
 
 // the tallest stack, which sets the y axis's scale
@@ -26,10 +27,14 @@ let routes = [];
 const memberLabel = (name) => shortName(name);
 
 const unit = (m) => HEAT_MEASURES[m].toLowerCase().replace(/ \(.*/, '');
-const plot = (box, options) => box.replaceChildren(Plot.plot({
-  width: Math.min(box.clientWidth || 900, 1100), height: 320, marginLeft: 64,
-  style: { background: 'transparent', fontSize: '12px' }, ...options,
-}));
+const plot = (box, options, popover) => {
+  const chart = Plot.plot({
+    width: Math.min(box.clientWidth || 900, 1100), height: 320, marginLeft: 64,
+    style: { background: 'transparent', fontSize: '12px' }, ...options,
+  });
+  box.replaceChildren(...(popover ? attachPopover(chart, popover) : [chart]));
+};
+const yearPopover = { content: (d) => ({ title: d.period, rows: d.rows }), at: (d) => [d.period, d.top] };
 
 function yearAxis(years) {
   const every = years.length <= 15 ? 1 : 5;
@@ -54,8 +59,12 @@ function drawSize() {
   plot(box, {
     x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), HEAT_MEASURES[measure]), grid: true },
     color: { domain: series, range, legend: true },
-    marks: [Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series, title: (d) => `${d.year}, ${d.series}: ${formatCount(d.value)} ${unit(measure)}`, tip: true }), Plot.ruleY([0])],
-  });
+    marks: [
+      Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series }),
+      Plot.ruleY([0]),
+      Plot.ruleX(periodRows(data, { key: (d) => d.year, order: series, format: (v) => formatCount(v) }), Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 })),
+    ],
+  }, yearPopover);
 }
 
 async function drawPairs() {
@@ -66,8 +75,13 @@ async function drawPairs() {
   const data = rows.map((r) => ({ year: String(r.year), pairs: r.pairs }));
   plot(box, {
     x: yearAxis(rows.map((r) => r.year)), y: { label: 'Airport pairs', grid: true },
-    marks: [Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6', title: (d) => `${d.year}: ${exactCount(d.pairs)} airport pairs`, tip: true }), Plot.ruleY([0])],
-  });
+    marks: [
+      Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6' }),
+      Plot.ruleY([0]),
+      Plot.ruleX(periodRows(data.map((d) => ({ ...d, series: 'Airport pairs', value: d.pairs })), { key: (d) => d.year, format: (v) => exactCount(v) }),
+        Plot.pointerX({ x: 'period', stroke: 'currentColor', strokeOpacity: 0.25 })),
+    ],
+  }, { ...yearPopover, keyOf: () => ({ kind: 'square', colour: '#4292c6' }) });
 }
 
 const place = (code) => places.get(code) || '';
