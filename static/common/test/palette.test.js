@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { PALETTE, palette, seriesColours } from '../palette.js';
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -39,4 +40,16 @@ test('more than eight series reuse the last step rather than running out', () =>
   assert.ok(range.every((c) => HEX.test(c)));
   assert.equal(range[9], PALETTE.light.series[7]);
   assert.equal(range[10], PALETTE.light.other);
+});
+
+test('no page hard-codes a data colour or a Plot scheme outside the palette', () => {
+  const root = new URL('../../', import.meta.url);
+  const allowed = new Set(['common/palette.js', 'globe/src/themes.js', 'home/src/airlines.js']);
+  const offenders = [];
+  for (const f of readdirSync(root, { recursive: true })) {
+    if (!f.endsWith('.js') || /(^|\/)(vendor|test)\//.test(f) || allowed.has(f)) continue;
+    const src = readFileSync(new URL(f, root), 'utf8').replace(/scheme: 'YlOrRd'/g, '');
+    if (/#[0-9a-fA-F]{6}\b|scheme: '/.test(src)) offenders.push(f);
+  }
+  assert.deepEqual(offenders, []);
 });
