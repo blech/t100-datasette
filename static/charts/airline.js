@@ -3,7 +3,7 @@ import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
-import { formatCount, exactCount, countLabel, spokenCount, millionsAxis } from '/static/common/numbers.js';
+import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
 
 // the tallest stack, which sets the y axis's scale
 const stackMax = (points, key, value = (p) => p.value) => {
@@ -96,7 +96,7 @@ function drawTable() {
   tbody.replaceChildren(...shown.map((r) => {
     const tr = document.createElement('tr');
     const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
-    const deps = (n) => { const td = cell('', 'num'); td.title = `${exactCount(n)} departures`; td.append(...spokenCount(formatCount(n), `${countLabel(n)} departures`)); return td; };
+    const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} departures`; return td; };
     tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), deps(r.deps_a), deps(r.deps_b), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
     return tr;
   }));

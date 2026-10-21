@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { shortenField } from '/static/charts/src/names.js';
 import { slugify } from '/static/charts/src/rollup.js';
 import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
-import { formatCount, formatTons, exactCount, countLabel, spokenCount, millionsAxis } from '/static/common/numbers.js';
+import { formatCount, formatTons, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 
 // the tallest stack, which sets the y axis's scale
@@ -87,17 +87,9 @@ function cell(text, className, title) {
   return td;
 }
 
-// a measured count: × 10⁶ for the eye, words for a screen reader, the exact figure on hover
-function countCell(n, noun) {
-  const td = cell('', 'num', `${exactCount(n)} ${noun}`);
-  td.append(...spokenCount(formatCount(n), `${countLabel(n)} ${noun}`));
-  return td;
-}
-function tonsCell(pounds) {
-  const td = cell('', 'num', `${exactCount(pounds)} lb`);
-  td.append(...spokenCount(formatTons(pounds), formatTons(pounds, 'prose')));
-  return td;
-}
+// a measured count, rounded, with the exact figure on hover
+const countCell = (n, noun) => cell(formatCount(n), 'num', `${exactCount(n)} ${noun}`);
+const tonsCell = (pounds) => cell(formatTons(pounds), 'num', `${exactCount(pounds)} lb`);
 
 // a name that opens the airline's or aircraft family's own page, when the data says which it is
 function linkCell(text, href, title) {

@@ -10,7 +10,7 @@ import { shortName } from '/static/charts/src/names.js';
 import { parseStyle, styleParams, colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from '/static/globe/src/routestyle.js';
 import { countStatuses, changeText, moveHandle, playStep } from '/static/globe/src/compare.js';
 import { renderLegend, syncRange } from '/static/globe/src/controls.js';
-import { formatCount as fmt, countLabel, spokenCount } from '/static/common/numbers.js';
+import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from '/static/globe/src/panel.js';
 
 const $ = (id) => document.getElementById(id);
@@ -151,8 +151,7 @@ function showPanel(r) {
   sub.textContent = `${place(r.origin)} – ${place(r.dest)}${r.status ? ` (${r.status})` : ''}`;
   const dl = document.createElement('dl');
   for (const f of routeFigures(r)) {
-    const dd = Object.assign(document.createElement('dd'), { title: f.title });
-    dd.append(...spokenCount(f.shown, f.spoken));
+    const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
     dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
   const a = Object.assign(document.createElement('a'), { href: `/airports/${r.origin}/${r.dest}`, textContent: 'This route over time →' });

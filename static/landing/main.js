@@ -1,7 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { SORTS, topBy, parseState, toSearch, airportHref } from './src/table.js';
-import { formatCount, formatTons, exactCount, countLabel, spokenCount } from '/static/common/numbers.js';
+import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
 
 const ROWS_SHOWN = 20;
 const minYear = Number(document.body.dataset.minYear);
@@ -20,17 +20,9 @@ function cell(text, className, title) {
   return td;
 }
 
-// a measured count: × 10⁶ for the eye, words for a screen reader, the exact figure on hover
-function countCell(n, noun) {
-  const td = cell('', 'num', `${exactCount(n)} ${noun}`);
-  td.append(...spokenCount(formatCount(n), `${countLabel(n)} ${noun}`));
-  return td;
-}
-function tonsCell(pounds) {
-  const td = cell('', 'num', `${exactCount(pounds)} lb`);
-  td.append(...spokenCount(formatTons(pounds), formatTons(pounds, 'prose')));
-  return td;
-}
+// a measured count, rounded, with the exact figure on hover
+const countCell = (n, noun) => cell(formatCount(n), 'num', `${exactCount(n)} ${noun}`);
+const tonsCell = (pounds) => cell(formatTons(pounds), 'num', `${exactCount(pounds)} lb`);
 
 function link(href, text) {
   const a = document.createElement('a');

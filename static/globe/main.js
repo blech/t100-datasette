@@ -11,7 +11,7 @@ import { colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from 
 import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
 import { renderLegend, syncRange } from './src/controls.js';
 import { routesByOrigin, chooserTap } from './src/chooser.js';
-import { formatCount as fmt, countLabel, spokenCount } from '/static/common/numbers.js';
+import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
 
 const $ = (id) => document.getElementById(id);
@@ -128,8 +128,7 @@ function showPanel(r) {
   sub.textContent = `${r.destCity || ''} (${r.service}${r.status ? `, ${r.status}` : ''})`;
   const dl = document.createElement('dl');
   for (const f of routeFigures(r)) {
-    const dd = Object.assign(document.createElement('dd'), { title: f.title });
-    dd.append(...spokenCount(f.shown, f.spoken));
+    const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
     dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
   const a1 = document.createElement('a');

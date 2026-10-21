@@ -4,13 +4,13 @@
 
 Every page prints counts in full: "1,106,009,313 passengers in 2025". That is the exact sum of what airlines reported, but the last five or six digits are far below the noise from reporting gaps and late corrections, and long numbers are hard to compare at a glance. Each page also has its own formatter (about ten copies of the same `toLocaleString` one-liner), so the same number appears differently on different pages.
 
-This change rounds counts to three significant figures everywhere, through one shared formatter, with words in prose and powers of ten everywhere else.
+This change rounds counts to three significant figures everywhere, through one shared formatter, with "million" or "billion" in prose and a single unit, "million", everywhere else.
 
 This is the first of three site-wide visual sub-projects: number precision, then the section navigation, then colour.
 
 ## The rules
 
-**Three significant figures.** Round first, then choose how to write the number, so 999,999 becomes 1.00 × 10⁶, not 1,000 × 10³.
+**Three significant figures.** Round first, then choose how to write the number, so 999,999 becomes 1.00 million, not 1,000 thousand.
 
 **Below a million**, write plain digits with thousands separators, rounded to three figures:
 
@@ -33,18 +33,17 @@ This is the first of three site-wide visual sub-projects: number precision, then
 | 412,318,004 | 412 million |
 | 1,106,009,313 | 1.11 billion |
 
-**Dense** covers table cells, tooltips, chart labels and axes. It always uses one unit, × 10⁶, never 10⁹, so every large number in a column or tooltip compares directly by length. Trailing zeros are kept, so the digits line up.
+**Dense** covers table cells, tooltips, chart labels and axes. It always uses one unit, million, never billion, so every large number in a column or tooltip compares directly by length. Trailing zeros are kept, so the digits line up. (An earlier version used × 10⁶ here; the owner chose words after seeing it in tables.)
 
 | Value | Dense |
 |---|---|
-| 999,999 | 1.00 × 10⁶ |
-| 1,204,550 | 1.20 × 10⁶ |
-| 51,512,883 | 51.5 × 10⁶ |
-| 412,318,004 | 412 × 10⁶ |
-| 1,106,009,313 | 1,110 × 10⁶ |
+| 999,999 | 1.00 million |
+| 1,204,550 | 1.20 million |
+| 51,512,883 | 51.5 million |
+| 412,318,004 | 412 million |
+| 1,106,009,313 | 1,110 million |
 
-- The space before "×" is non-breaking, so "× 10⁶" never wraps onto its own line.
-- Where the number is HTML, its element gets `aria-label` with the prose form ("51.5 million"), so screen readers don't read "10⁶" as "106".
+- The space before "million" is non-breaking, so it never wraps onto its own line.
 
 **Freight** follows the same rules, with " tons" after the number. Pounds are converted to short tons first, as `formatTons` does now.
 
@@ -57,7 +56,7 @@ This is the first of three site-wide visual sub-projects: number precision, then
 
 Plot's `tickFormat: '~s'` is replaced everywhere. It currently writes billions as "G" (for example "1.1G").
 
-- If the domain's maximum is a million or more, the ticks are plain numbers in millions and the axis or legend label gains " (× 10⁶)". For example, the label reads "Passengers (× 10⁶)" and the ticks read 0, 250, 500, 750, 1,000.
+- If the domain's maximum is a million or more, the ticks are plain numbers in millions and the axis or legend label gains " (millions)". For example, the label reads "Passengers (millions)" and the ticks read 0, 250, 500, 750, 1,000.
 - Otherwise the ticks are plain digits with thousands separators, and the label is unchanged.
 - Year axes, percentage axes (`.0%`) and load factor (`d`) are unchanged.
 
@@ -74,7 +73,7 @@ Plot's `tickFormat: '~s'` is replaced everywhere. It currently writes billions a
 - `formatTons(pounds, form)`.
 - `exactCount(n)` returns the full number with separators, for `title` attributes.
 - `millionsAxis(max, label)` returns `{ tickFormat, label }` for a Plot axis or colour legend, following the rule above.
-- `countLabel(n)` returns the prose form, for `aria-label`.
+- `countLabel(n)` returns the prose form.
 
 **`plugins/t100_numbers.py`** is a new module with `prose_count(n)`. It is used by `plugins/t100_globe.py` in place of the front page's ad hoc `f"{n / 1e6:.1f} million"`, and by any other server-rendered prose.
 
@@ -118,6 +117,6 @@ Plot's `tickFormat: '~s'` is replaced everywhere. It currently writes billions a
 - the front page's prose shows "51.5 million"-style figures.
 
 **In a browser:** headless Playwright screenshots of the front page, `/airports`, `/aircraft`, `/aircraft/engines`, a family page, `/airlines`, an airline page, an airport's route heat map, a route page and an airport map, at desktop and phone widths. Check that:
-- no "× 10⁶" wraps onto its own line;
+- no "million" wraps onto its own line;
 - axes aren't crowded;
 - table titles show the exact figure.

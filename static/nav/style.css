@@ -6,5 +6,3 @@
 .crumbs [aria-current] { font-weight:600; }
 .site-header select { font-size:13px; color:var(--muted); padding:2px 8px; }
 .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
-/* keep a cell's hidden words inside the cell, so they never widen a scrolling table's page */
-td:has(> .visually-hidden) { position:relative; }

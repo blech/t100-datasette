@@ -5,13 +5,13 @@
   { "value": 1246, "prose": "1,250", "dense": "1,250" },
   { "value": 48210, "prose": "48,200", "dense": "48,200" },
   { "value": 999499, "prose": "999,000", "dense": "999,000" },
-  { "value": 999500, "prose": "1 million", "dense": "1.00 × 10⁶" },
-  { "value": 999999, "prose": "1 million", "dense": "1.00 × 10⁶" },
-  { "value": 1204550, "prose": "1.2 million", "dense": "1.20 × 10⁶" },
-  { "value": 51512883, "prose": "51.5 million", "dense": "51.5 × 10⁶" },
-  { "value": 412318004, "prose": "412 million", "dense": "412 × 10⁶" },
-  { "value": 999999999, "prose": "1 billion", "dense": "1,000 × 10⁶" },
-  { "value": 1106009313, "prose": "1.11 billion", "dense": "1,110 × 10⁶" },
+  { "value": 999500, "prose": "1 million", "dense": "1.00\u00a0million" },
+  { "value": 999999, "prose": "1 million", "dense": "1.00\u00a0million" },
+  { "value": 1204550, "prose": "1.2 million", "dense": "1.20\u00a0million" },
+  { "value": 51512883, "prose": "51.5 million", "dense": "51.5\u00a0million" },
+  { "value": 412318004, "prose": "412 million", "dense": "412\u00a0million" },
+  { "value": 999999999, "prose": "1 billion", "dense": "1,000\u00a0million" },
+  { "value": 1106009313, "prose": "1.11 billion", "dense": "1,110\u00a0million" },
   { "value": -1500, "prose": "-1,500", "dense": "-1,500" },
-  { "value": -2345678, "prose": "-2.35 million", "dense": "-2.35 × 10⁶" }
+  { "value": -2345678, "prose": "-2.35 million", "dense": "-2.35\u00a0million" }
 ]
