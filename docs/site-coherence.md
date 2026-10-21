@@ -54,6 +54,15 @@ Questions:
 - **Narrowing down, or back to the top?** Should views keep refining, such as `/airports/ATL/JFK?airline=Delta`, a route as one airline flies it? Or do links go back to the top-level page after a point, so a route links to Delta's own page? A filter is easy to build, because the route's rows carry the airline. Delta's "What changed" table already links to its routes but drops the airline on the way. Undecided.
 - **Gaps:** which empty cells in the grid matter? For example, a map for an aircraft family (where it flies), or a table of all airlines.
 
+**Part 1 (one kind of view per page): built on branch `views-pages`**, spec `docs/superpowers/specs/2026-10-22-views-pages-design.md`.
+
+- **Deferred minors from its final review:**
+  - **A JavaScript error on a route's table page:** if the route data fails to load, `static/charts/routepage.js` writes to `#route-chart-plot`, which only the chart page has, and throws. The "could not load" status still shows.
+  - **Links lose their settings on a route with no data, or after a failed load.** `main()` returns before `carryQuery()` runs, so the views-line and reverse-direction links lose the current query. Calling `carryQuery()` at the top of `main()` fixes both.
+  - **On the airline map,** the views line (Over time, Changes) doesn't carry the map's settings. Only `#table-link` does, with `from`, `to` and `min`.
+  - **On an airline's changes page,** the minimum-flights sentence sits above `<h2 id="changes">`, so a `#changes` jump scrolls past it.
+  - **`views_for` accepts any all-digit year** (`/airports/SFO/LHR/20190`). That route 404s, so there's no visible effect.
+
 ### 5. Colour: done (merged, branch `colour`)
 
 - **One palette:** `static/common/palette.js` holds every data colour by role, light and dark (spec `docs/superpowers/specs/2026-10-21-colour-design.md`).
