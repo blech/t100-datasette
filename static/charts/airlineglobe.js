@@ -10,7 +10,8 @@ import { shortName } from '/static/charts/src/names.js';
 import { parseStyle, styleParams, colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from '/static/globe/src/routestyle.js';
 import { countStatuses, changeText, moveHandle, playStep } from '/static/globe/src/compare.js';
 import { renderLegend, syncRange } from '/static/globe/src/controls.js';
-import { formatCount as fmt, formatTons } from '/static/common/numbers.js';
+import { formatCount as fmt, countLabel, spokenCount } from '/static/common/numbers.js';
+import { routeFigures } from '/static/globe/src/panel.js';
 
 const $ = (id) => document.getElementById(id);
 const group = document.body.dataset.group;
@@ -113,7 +114,7 @@ function refresh() {
   const pax = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
   $('stats').textContent = comparing
     ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
-    : `${state.year} · ${shown.length} airport pairs · ${fmt(pax)} passengers`;
+    : `${state.year} · ${shown.length} airport pairs · ${countLabel(pax)} passengers`;
   const mode = colourMode(state.colour, comparing);
   $('colour').value = mode;
   $('colour').querySelector('option[value="change"]').disabled = !comparing;
@@ -149,8 +150,10 @@ function showPanel(r) {
   const sub = document.createElement('div');
   sub.textContent = `${place(r.origin)} – ${place(r.dest)}${r.status ? ` (${r.status})` : ''}`;
   const dl = document.createElement('dl');
-  for (const [k, v] of [['Departures', fmt(r.deps)], ['Seats', fmt(r.seats)], ['Passengers', fmt(r.passengers)], ['Freight', formatTons(r.freight)]]) {
-    dl.append(Object.assign(document.createElement('dt'), { textContent: k }), Object.assign(document.createElement('dd'), { textContent: v }));
+  for (const f of routeFigures(r)) {
+    const dd = Object.assign(document.createElement('dd'), { title: f.title });
+    dd.append(...spokenCount(f.shown, f.spoken));
+    dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
   const a = Object.assign(document.createElement('a'), { href: `/airports/${r.origin}/${r.dest}`, textContent: 'This route over time →' });
   p.append(close, h, sub, dl, a);
