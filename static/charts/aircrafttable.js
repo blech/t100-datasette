@@ -1,5 +1,5 @@
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { groupFamilies, sortFamilies, KIND_OPTIONS } from '/static/charts/src/aircraft.js';
+import { groupFamilies, sortFamilies, kindOptions, makerOptions } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -11,7 +11,7 @@ const years = Array.from({ length: latest - 1990 + 1 }, (_, i) => String(latest 
 const state = {
   measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
   year: pick('year', years, String(latest)),
-  kind: pick('kind', KIND_OPTIONS.map((k) => k.value), 'all'),
+  kind: params.get('kind') || 'all',   // checked against the menus once the data is in
   maker: params.get('maker') || 'all',
   q: params.get('q') || '',
   sort: pick('sort', ['family', 'maker', 'aircraftKind', 'firstYear', 'lastYear', 'value'], 'value'),
@@ -127,21 +127,19 @@ async function load() {
   if (id !== seq) return;
   rows = fetched;
   loading = false;
-  const makers = [...new Set(rows.map((r) => r.maker))].sort((a, b) => a.localeCompare(b));
-  const sel = $('at-maker');
-  sel.replaceChildren(new Option('any maker', 'all'), ...makers.map((m) => new Option(m, m)));
-  if (state.maker !== 'all' && !makers.includes(state.maker)) state.maker = 'all';
-  sel.value = state.maker;
+  for (const [id, field, opts] of [['at-kind', 'kind', kindOptions(rows)], ['at-maker', 'maker', makerOptions(rows)]]) {
+    $(id).replaceChildren(...opts.map((o) => new Option(o.label, o.value)));
+    if (!opts.some((o) => o.value === state[field])) { state[field] = 'all'; pushState(); }
+    $(id).value = state[field];
+  }
   draw();
 }
 
 function main() {
   for (const [k, label] of Object.entries(HEAT_MEASURES)) $('at-measure').append(new Option(label.toLowerCase(), k));
   for (const y of years) $('at-year').append(new Option(y, y));
-  for (const k of KIND_OPTIONS) $('at-kind').append(new Option(k.label, k.value));
   $('at-measure').value = state.measure;
   $('at-year').value = state.year;
-  $('at-kind').value = state.kind;
   $('at-q').value = state.q;
   $('at-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
   $('at-kind').addEventListener('change', (e) => { state.kind = e.target.value; pushState(); draw(); });

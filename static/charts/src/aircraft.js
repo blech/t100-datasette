@@ -2,16 +2,13 @@ import { slugify } from './rollup.js';
 
 const LB_PER_SHORT_TON = 2000;
 
-// The aircraft kinds the pages offer; BTS's kind text starts with one of these words ("Jet, four-engine")
-export const KIND_OPTIONS = [
-  { value: 'all', label: 'all aircraft' },
-  { value: 'Jet', label: 'jets' },
-  { value: 'Turboprop', label: 'turboprops' },
-  { value: 'Piston', label: 'piston aircraft' },
-  { value: 'Helicopter', label: 'helicopters' },
-];
+// Menus built from the data: every kind and every maker, each with the short form used in the URL (jet-twin-engine, boeing)
+const byLabel = (a, b) => a.label.localeCompare(b.label);
+const options = (values, all) => [all, ...[...new Set(values)].filter(Boolean).map((v) => ({ value: slugify(v), label: v })).sort(byLabel)];
+export const kindOptions = (rows) => options(rows.map((r) => r.aircraft_kind), { value: 'all', label: 'all aircraft' });
+export const makerOptions = (rows) => options(rows.map((r) => r.maker), { value: 'all', label: 'any maker' });
 
-export const kindMatches = (aircraftKind, value) => value === 'all' || String(aircraftKind || '').startsWith(value);
+export const kindMatches = (aircraftKind, value) => value === 'all' || slugify(aircraftKind || '') === value;
 
 const amount = (row, measure) => (Number(row[measure]) || 0) / (measure === 'freight' ? LB_PER_SHORT_TON : 1);
 const byValue = (a, b) => b.value - a.value || a.name.localeCompare(b.name);
@@ -25,7 +22,7 @@ export function groupFamilies(rows, { measure = 'passengers', kind = 'all', make
   const byFamily = new Map();
   for (const r of rows) {
     if (!kindMatches(r.aircraft_kind, kind)) continue;
-    if (maker !== 'all' && r.maker !== maker) continue;
+    if (maker !== 'all' && slugify(r.maker || '') !== maker) continue;
     const fam = byFamily.get(r.family) || { family: r.family, slug: slugify(r.family), types: [] };
     byFamily.set(r.family, fam);
     fam.types.push({

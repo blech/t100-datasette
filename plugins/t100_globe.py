@@ -29,7 +29,7 @@ def register_routes():
         (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
         (r"^/about$", about_page),
-        (r"^/aircraft$", rollup_page("aircraft")),
+        (r"^/aircraft$", aircraft_table_page),
         (r"^/airlines$", rollup_page("airlines")),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)$", airline_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
@@ -38,7 +38,6 @@ def register_routes():
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)$", moved("/airlines/{slug}")),
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{slug}/globe")),
         (r"^/aircraft/engines$", engines_page),
-        (r"^/aircraft/table$", aircraft_table_page),
         (r"^/aircraft/makers$", aircraft_makers_page),
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
@@ -233,13 +232,12 @@ async def route_page(datasette, request):
 
 
 ROLLUP_PAGES = {
-    "aircraft": {"title": "Aircraft families", "crumb": "aircraft", "noun": "aircraft families", "query": "family_by_year", "key": "family"},
     "airlines": {"title": "Airlines", "crumb": "airlines", "noun": "airlines", "query": "carrier_group_by_year", "key": "group_name"},
 }
 
 
 def rollup_page(kind):
-    """A heat map of one rollup (aircraft families or merged airline groups) by year, for all US air traffic."""
+    """A heat map of one rollup (merged airline groups) by year, for all US air traffic."""
 
     async def view(datasette, request):
         page = ROLLUP_PAGES[kind]
@@ -273,7 +271,7 @@ def aircraft_view(template, crumb):
             template,
             {
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
-                "crumbs": trail(datasette, ("aircraft", "/aircraft"), (crumb, None)),
+                "crumbs": trail(datasette, ("aircraft", "/aircraft"), (crumb, None)) if crumb else trail(datasette, ("aircraft", None)),
             },
             request=request,
         )
@@ -282,7 +280,7 @@ def aircraft_view(template, crumb):
     return view
 
 
-aircraft_table_page = aircraft_view("aircraft_table.html", "table")
+aircraft_table_page = aircraft_view("aircraft_table.html", None)
 aircraft_makers_page = aircraft_view("aircraft_makers.html", "makers")
 
 

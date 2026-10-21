@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { buildFamilySeries, SERIES_COLORS, OTHER_COLOR } from '/static/charts/src/rollup.js';
-import { KIND_OPTIONS } from '/static/charts/src/aircraft.js';
+import { kindOptions } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -12,7 +12,7 @@ const state = {
   measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
   kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
-  aircraftKind: pick('aircraft', KIND_OPTIONS.map((k) => k.value), 'all'),
+  aircraftKind: params.get('aircraft') || 'all',  // checked against the menu once the data is in
 };
 let rows = [];
 
@@ -54,7 +54,6 @@ function draw() {
 
 async function main() {
   for (const [k, label] of Object.entries(HEAT_MEASURES)) $('mk-measure').append(new Option(label.toLowerCase(), k));
-  for (const k of KIND_OPTIONS) $('mk-aircraft').append(new Option(k.label, k.value));
   try {
     rows = (await fetchRows(queryUrl('maker_by_year'))).rows;
   } catch (err) {
@@ -65,6 +64,9 @@ async function main() {
   $('mk-measure').value = state.measure;
   $('mk-kind').value = state.kind;
   $('mk-service').value = state.service;
+  const kinds = kindOptions(rows);
+  $('mk-aircraft').replaceChildren(...kinds.map((o) => new Option(o.label, o.value)));
+  if (!kinds.some((o) => o.value === state.aircraftKind)) { state.aircraftKind = 'all'; pushState(); }
   $('mk-aircraft').value = state.aircraftKind;
   for (const [id, field] of [['mk-measure', 'measure'], ['mk-kind', 'kind'], ['mk-service', 'service'], ['mk-aircraft', 'aircraftKind']]) {
     $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });

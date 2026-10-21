@@ -80,7 +80,7 @@ export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', 
   const totals = new Map();
   const first = new Map();
   for (const r of rows) {
-    if (aircraftKind !== 'all' && !String(r.aircraft_kind || '').startsWith(aircraftKind)) continue;
+    if (aircraftKind !== 'all' && slugify(r.aircraft_kind || '') !== aircraftKind) continue;
     if (kind !== 'all' && r.kind !== kind) continue;
     if (service !== 'all' && r.service !== service) continue;
     const v = (Number(r[measure]) || 0) / (measure === 'freight' ? LB_PER_SHORT_TON : 1);

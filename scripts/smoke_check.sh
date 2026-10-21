@@ -23,9 +23,8 @@ check 200 /airports/SFO/globe                                       "data-origin
 check 200 /airports/SFO/LHR/2019                                    "route-chart"
 check 200 /-/derived                                              '"ok": true'
 check 200 /about                                                   "Known gaps"
-check 200 /aircraft                                                "heat-kind"
+check 200 /aircraft                                                "aircraft-table"
 check 200 /aircraft/engines                                         "engine-chart"
-check 200 /aircraft/table                                           "aircraft-table"
 check 200 /aircraft/makers                                          "maker-chart"
 check 200 /aircraft/boeing-737                                      "family-chart"
 check 404 /aircraft/no-such-plane

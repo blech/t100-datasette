@@ -110,9 +110,9 @@ test('buildFamilySeries can split by maker, keeping the biggest and folding the 
 
 test('buildFamilySeries filters by aircraft kind and still takes the other filters', () => {
   const rows = [m(2019, 'Boeing', 50), m(2019, 'Pilatus', 7, { aircraft_kind: 'Turboprop, one or two engines' }), m(2019, 'Boeing', 9, { service: 'international' })];
-  const res = buildFamilySeries(rows, { measure: 'deps', split: 'maker', aircraftKind: 'Turboprop' });
+  const res = buildFamilySeries(rows, { measure: 'deps', split: 'maker', aircraftKind: 'turboprop-one-or-two-engines' });
   assert.deepEqual(res.series, ['Pilatus']);
-  assert.deepEqual(buildFamilySeries(rows, { measure: 'deps', split: 'maker', service: 'domestic', aircraftKind: 'Jet' }).points.map((p) => p.value), [50]);
+  assert.deepEqual(buildFamilySeries(rows, { measure: 'deps', split: 'maker', service: 'domestic', aircraftKind: 'jet-twin-engine' }).points.map((p) => p.value), [50]);
 });
 
 test('hasVersions is true only when a family has more than one named version', () => {

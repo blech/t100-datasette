@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { KIND_OPTIONS, kindMatches, groupFamilies, sortFamilies } from '../src/aircraft.js';
+import { kindOptions, makerOptions, kindMatches, groupFamilies, sortFamilies } from '../src/aircraft.js';
 
 const t = (type_id, name, family, maker, aircraft_kind, deps, extra = {}) => ({
   type_id, name, family, maker, aircraft_kind, first_year: 1990, last_year: 2025, deps, seats: deps * 100, passengers: deps * 80, freight: deps * 2000, ...extra,
@@ -41,10 +41,10 @@ test('a family takes the maker and kind of its busiest type', () => {
 });
 
 test('the kind and maker filters narrow the types, and the total follows', () => {
-  const jets = groupFamilies(rows, { measure: 'deps', kind: 'Jet' });
+  const jets = groupFamilies(rows, { measure: 'deps', kind: 'jet-twin-engine' });
   assert.deepEqual(jets.families.map((f) => f.family), ['Airbus A320 family', 'Boeing 737']);
   assert.equal(jets.total, 190);
-  const boeing = groupFamilies(rows, { measure: 'deps', maker: 'Boeing' });
+  const boeing = groupFamilies(rows, { measure: 'deps', maker: 'boeing' });
   assert.deepEqual(boeing.families.map((f) => f.family), ['Boeing 737']);
   assert.equal(boeing.families[0].share, 1);
 });
@@ -68,10 +68,24 @@ test('sortFamilies orders by any key in either direction without changing its in
   assert.deepEqual(families.map((f) => f.family), ['Airbus A320 family', 'Boeing 737', 'Other turboprop']);
 });
 
-test('kindMatches takes the first word of the BTS kind', () => {
-  assert.ok(kindMatches('Jet, four-engine', 'Jet') && kindMatches('Turboprop, four-engine', 'Turboprop') && kindMatches('x', 'all'));
-  assert.ok(!kindMatches('Jet, twin-engine', 'Turboprop'));
-  assert.deepEqual(KIND_OPTIONS.map((k) => k.value), ['all', 'Jet', 'Turboprop', 'Piston', 'Helicopter']);
+test('kinds match exactly, by their URL form, so one kind of jet is not another', () => {
+  assert.ok(kindMatches('Jet, twin-engine', 'jet-twin-engine') && kindMatches('anything', 'all'));
+  assert.ok(!kindMatches('Jet, four-engine', 'jet-twin-engine') && !kindMatches('Jet, twin-engine', 'jet'));
+});
+
+test('the kind menu lists every kind in the data, sorted, after "all aircraft"', () => {
+  assert.deepEqual(kindOptions(rows), [
+    { value: 'all', label: 'all aircraft' },
+    { value: 'jet-twin-engine', label: 'Jet, twin-engine' },
+    { value: 'piston-single-engine', label: 'Piston, single-engine' },
+    { value: 'turboprop-one-or-two-engines', label: 'Turboprop, one or two engines' },
+  ]);
+  assert.deepEqual(kindOptions([]), [{ value: 'all', label: 'all aircraft' }]);
+});
+
+test('the maker menu lists each maker once, sorted, with a URL-friendly value', () => {
+  assert.deepEqual(makerOptions([...rows, ...rows]).map((o) => [o.value, o.label]),
+    [['all', 'any maker'], ['airbus', 'Airbus'], ['boeing', 'Boeing'], ['pilatus', 'Pilatus'], ['unknown-maker', 'Unknown maker']]);
 });
 
 test('names with markup characters come through as plain strings', () => {
