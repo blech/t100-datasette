@@ -5,6 +5,7 @@ import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/sr
 import { formatCount, formatTons, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
+import { attachHighlight } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 
 // the tallest stack, which sets the y axis's scale
@@ -75,6 +76,7 @@ function drawChart() {
     color: { legend: true, ...seriesColours(res.series, isDark()) },
     marks,
   });
+  if (res.stackable) attachHighlight(chart); // load factor's lines aren't a stack
   box.append(...attachPopover(chart, {
     content: (d) => ({ title: monthly ? `${MONTH_NAMES[Number(d.period) - 1]} ${year}` : d.period, rows: d.rows }),
     at: (d) => [d.period, d.top],

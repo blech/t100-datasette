@@ -3,6 +3,7 @@ import { buildEngineShares, ENGINE_BANDS, ENGINE_SERIES } from '/static/charts/s
 import { palette, isDark } from '/static/common/palette.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
+import { attachHighlight } from '/static/common/highlight.js';
 import { formatCount } from '/static/common/numbers.js';
 
 const $ = (id) => document.getElementById(id);
@@ -50,6 +51,7 @@ function draw() {
       Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   });
+  attachHighlight(chart);
   box.append(...attachPopover(chart, { content: (d) => ({ title: String(d.period), rows: d.rows }), at: (d) => [d.period, 1] }));
 }
 

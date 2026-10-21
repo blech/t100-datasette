@@ -5,6 +5,7 @@ import { seriesColours, isDark } from '/static/common/palette.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
+import { attachHighlight } from '/static/common/highlight.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -62,6 +63,7 @@ function draw() {
       Plot.ruleY([0]),
     ],
   });
+  attachHighlight(chart);
   box.append(...attachPopover(chart, { content: (d) => ({ title: `${family}, ${d.period}`, rows: d.rows }), at: (d) => [d.period, d.top] }));
 }
 

@@ -4,6 +4,7 @@ import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
+import { attachHighlight } from '/static/common/highlight.js';
 import { palette, isDark } from '/static/common/palette.js';
 import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
 
@@ -33,6 +34,7 @@ const plot = (box, options, popover) => {
     width: Math.min(box.clientWidth || 900, 1100), height: 320, marginLeft: 64,
     style: { background: 'transparent', fontSize: '12px' }, ...options,
   });
+  attachHighlight(chart); // does nothing for a chart without a colour legend (airport pairs)
   box.replaceChildren(...(popover ? attachPopover(chart, popover) : [chart]));
 };
 const yearPopover = { content: (d) => ({ title: d.period, rows: d.rows }), at: (d) => [d.period, d.top] };

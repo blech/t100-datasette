@@ -9,6 +9,7 @@ import { palette, isDark } from '/static/common/palette.js';
 import { placeOnMap, hitTest, drawMap } from './src/map.js';
 import { airlineLines, spreadLabels, passengerBands, OTHER_AIRLINES, airlineColours } from './src/airlines.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
+import { attachHighlight } from '/static/common/highlight.js';
 
 const $ = (id) => document.getElementById(id);
 const minYear = Number(document.body.dataset.minYear);
@@ -121,6 +122,7 @@ async function showEngines() {
       Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   });
+  attachHighlight(chart);
   box.replaceChildren(...attachPopover(chart, { content: (d) => ({ title: String(d.period), rows: d.rows }), at: (d) => [d.period, 1] }));
 }
 
