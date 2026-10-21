@@ -82,8 +82,11 @@ function drawChart() {
   const highlight = parseHighlight(location.search);
   const byAirline = state.split === 'carrier' || state.split === 'both';
   const wanted = byAirline ? highlightedSeries(viewRows, highlight, (r) => labelFor(r, state.split)) : new Set();
-  highlightLine(highlight, wanted, byAirline);
-  const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year', keep: wanted });
+  // split by carrier the airline is kept as a series of its own; split by carrier and aircraft it may fly a dozen
+  // types, so only its pairings already among the largest are picked out, and the chart keeps its shape
+  const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year', keep: state.split === 'carrier' ? wanted : new Set() });
+  const pinned = new Set([...wanted].filter((l) => res.series.includes(l)));
+  highlightLine(highlight, pinned, byAirline);
   const box = $('route-chart-plot');
   box.replaceChildren();
   if (!res.points.length) { box.textContent = 'No data to chart for this selection.'; return; }
@@ -114,7 +117,7 @@ function drawChart() {
     color: { legend: true, ...seriesColours(res.series, isDark()) },
     marks,
   });
-  if (res.stackable) attachHighlight(chart, { pinned: wanted }); // load factor's lines aren't a stack
+  if (res.stackable) attachHighlight(chart, { pinned }); // load factor's lines aren't a stack
   box.append(...attachPopover(chart, {
     content: (d) => ({ title: monthly ? `${MONTH_NAMES[Number(d.period) - 1]} ${year}` : d.period, rows: d.rows }),
     at: (d) => [d.period, d.top],

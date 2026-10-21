@@ -47,8 +47,10 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
   }
 
   const ranked = [...overall.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([l]) => l);
-  // the top series, and any asked for by name (a highlighted airline is never folded into Other)
-  const kept = new Set([...ranked.slice(0, top), ...ranked.filter((l) => keep.has(l))]);
+  // the top series; one asked for by name from further down (a highlighted airline) takes the last places instead,
+  // so there are never more than `top` named series and each keeps a colour of its own
+  const extra = ranked.slice(top).filter((l) => keep.has(l));
+  const kept = new Set([...ranked.slice(0, Math.max(0, top - extra.length)), ...extra]);
   const folded = ranked.length > kept.size;
 
   // merge folded series into "Other" before taking the measure (so load factor stays a ratio)

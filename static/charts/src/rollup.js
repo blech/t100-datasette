@@ -92,8 +92,10 @@ export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', 
   else if (split === 'service') order.sort();
   else order.sort((a, b) => totals.get(b) - totals.get(a) || a.localeCompare(b));
   const folded = (split === 'airline' || split === 'maker') && order.length > top;
-  // the top series, and any asked for by name (a highlighted airline is never folded into Other)
-  const kept = folded ? [...order.slice(0, top), ...order.slice(top).filter((s) => keep.has(s))] : order;
+  // the top series; one asked for by name from further down (a highlighted airline) takes the last places instead,
+  // so there are never more than `top` named series and each keeps a colour of its own
+  const extra = order.slice(top).filter((s) => keep.has(s));
+  const kept = folded ? [...order.slice(0, Math.max(0, top - extra.length)), ...extra] : order;
   const shown = new Set(kept);
   const merged = new Map();
   for (const [key, value] of cells) {
