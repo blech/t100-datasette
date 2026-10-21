@@ -19,42 +19,58 @@ export function seriesByFill({ domain, range }) {
   return (fill) => byColour.get(rgb(fill)) ?? null;
 }
 
-// attach to a plot (a <figure> with a swatch legend, or a bare <svg>); returns the plot
-export function attachHighlight(plot) {
+const pinnedFor = new WeakMap(); // plot -> { pinned, show }
+
+// attach to a plot (a <figure> with a swatch legend, or a bare <svg>); returns the plot. `pinned` is a set of series
+// shown highlighted from the start (a ?highlight= from the link that led here), and returned to when the pointer leaves
+export function attachHighlight(plot, { pinned = new Set() } = {}) {
   const scale = plot.scale('color');
   if (!scale?.domain || !scale.range) return plot;
   const lookup = seriesByFill(scale);
   const colourOf = new Map(scale.domain.map((s, i) => [s, rgb(scale.range[i])]));
   const svg = plot.tagName.toLowerCase() === 'svg' ? plot : [...plot.querySelectorAll('svg')].at(-1);
   const marks = () => svg.querySelectorAll('g[aria-label="bar"] rect[fill], g[aria-label="area"] path[fill]');
-  let active = null;
-
-  function set(series) {
-    if (series === active) return;
-    active = series;
-    const keep = series === null ? null : colourOf.get(series);
-    for (const el of marks()) el.classList.toggle('faded', keep !== null && rgb(el.getAttribute('fill')) !== keep);
-    for (const sw of legend()) sw.classList.toggle('faded', series !== null && sw.textContent.trim() !== series);
-    plot.dataset.highlight = series ?? '';
-    plot.dispatchEvent(new CustomEvent('highlight', { detail: series }));
-  }
   // matched anywhere in the class: a faded entry's class no longer ends in -swatch
   const legend = () => (plot === svg ? [] : plot.querySelectorAll('[class*="-swatch"]:not([class*="-swatches"])'));
+  const state = { pinned: new Set(pinned), active: '' };
 
-  // only a segment changes the highlight, so crossing the gaps between bars doesn't flicker; leaving the chart clears it
+  function show(set) {
+    const key = [...set].sort().join('\n');
+    if (key === state.active) return;
+    state.active = key;
+    const colours = new Set([...set].map((s) => colourOf.get(s)));
+    for (const el of marks()) el.classList.toggle('faded', set.size > 0 && !colours.has(rgb(el.getAttribute('fill'))));
+    for (const sw of legend()) sw.classList.toggle('faded', set.size > 0 && !set.has(sw.textContent.trim()));
+    plot.dataset.highlight = [...set].join('\n');
+    plot.dispatchEvent(new CustomEvent('highlight', { detail: [...set] }));
+  }
+  state.show = show;
+  pinnedFor.set(plot, state);
+
+  // only a segment changes the highlight, so crossing the gaps between bars doesn't flicker; leaving returns to the pin
   svg.addEventListener('pointerover', (e) => {
     if (e.pointerType === 'touch') return;
     const series = lookup(e.target.getAttribute?.('fill'));
-    if (series !== null) set(series);
+    if (series !== null) show(new Set([series]));
   });
-  svg.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') set(null); });
+  svg.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') show(state.pinned); });
   for (const sw of legend()) {
     const series = sw.textContent.trim();
-    sw.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') set(series); });
-    sw.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') set(null); });
-    sw.addEventListener('click', () => set(active === series ? null : series)); // touch: a tap toggles it
+    sw.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') show(new Set([series])); });
+    sw.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') show(state.pinned); });
+    // touch: a tap toggles it
+    sw.addEventListener('click', () => show(state.active === series ? state.pinned : new Set([series])));
   }
+  show(state.pinned);
   return plot;
+}
+
+// change what a chart returns to (for "clear": an empty set)
+export function setPinned(plot, set) {
+  const state = pinnedFor.get(plot);
+  if (!state) return;
+  state.pinned = new Set(set);
+  state.show(state.pinned);
 }
 
 // ?highlight=airline:{group id}: a series to pick out on arrival, named by id because labels differ between pages

@@ -56,7 +56,7 @@ export function attachPopover(plot, { content, at, keyOf = null, link = () => nu
       const k = key(r.label);
       const swatch = el('span', k.kind === 'none' ? '' : `key key-${k.kind}`);
       if (k.colour) swatch.style.background = k.colour;
-      const current = plot.dataset.highlight && r.label === plot.dataset.highlight ? ' current' : '';
+      const current = (plot.dataset.highlight || '').split('\n').includes(r.label) ? ' current' : '';
       return [swatch, el('span', current.trim(), r.label), el('span', `num${current}`, r.value), ...(extra ? [el('span', `extra${current}`, r.extra ?? '')] : [])];
     }));
     pop.hidden = false;
