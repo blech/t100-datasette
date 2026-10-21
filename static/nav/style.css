@@ -1,4 +1,5 @@
-.site-header { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:0 0 12px; }
+/* sizes fixed here rather than inherited, so the header is identical on the scrolling pages (15px base) and the maps (14px) */
+.site-header { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:0 0 12px; font-size:15px; line-height:1.5; }
 .crumbs ol { display:flex; flex-wrap:wrap; list-style:none; margin:0; padding:0; font-size:18px; }
 .crumbs li + li::before { content:"/"; margin:0 .4em; color:var(--muted); }
 .crumbs a { color:var(--fg); text-decoration:none; }
@@ -24,7 +25,7 @@
 .sections a { color:var(--muted); text-decoration:none; }
 .sections a:hover, .sections a:focus-visible { color:var(--fg); text-decoration:underline; }
 .sections strong { color:var(--fg); }
-.views { border-top:1px solid var(--rule, #8c8c8d); padding-top:6px; margin:0 0 16px; font-size:14px; color:var(--muted); }
+.views { border-top:1px solid var(--rule, #8c8c8d); padding-top:6px; margin:0 0 16px; font-size:14px; line-height:1.5; color:var(--muted); }
 .views a { color:var(--muted); }
 .views strong { color:var(--fg); }
 @media (max-width:600px) { .site-header .sections { order:3; flex-basis:100%; } }
