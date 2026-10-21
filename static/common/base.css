@@ -1,8 +1,8 @@
 /* What every page shares, the scrolling pages and the maps alike; each page's own stylesheet comes after.
    The colours are fallbacks for before static/nav/main.js paints the chosen theme from static/globe/src/themes.js,
    and a test keeps them equal (static/common/test/base.test.js). */
-:root { --bg:#ffffff; --fg:#09090b; --muted:#71717a; --line:#d4d4d4; --rule:#8c8c8d; --panel:rgba(255,255,255,.85); --accent:#e36d2a; }
-@media (prefers-color-scheme: dark) { :root { --bg:#09090b; --fg:#fafafa; --muted:#a1a1aa; --line:#343435; --rule:#767677; --panel:rgba(9,9,11,.8); --accent:#ec863f; } }
+:root { --bg:#ffffff; --fg:#09090b; --muted:#71717a; --line:#d3d3d3; --rule:#909091; --panel:rgba(255,255,255,.85); --accent:#e36d2a; }
+@media (prefers-color-scheme: dark) { :root { --bg:#09090b; --fg:#fafafa; --muted:#a1a1aa; --line:#343436; --rule:#757577; --panel:rgba(9,9,11,.8); --accent:#ec863f; } }
 
 * { box-sizing:border-box; }
 [hidden] { display:none !important; }

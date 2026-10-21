@@ -25,3 +25,16 @@ test('both themes define every token', () => {
   assert.deepEqual(Object.keys(light).sort(), [...all].sort());
   assert.deepEqual(Object.keys(dark).sort(), [...all].sort());
 });
+
+// the theme script mixes --line and --rule from the text and background colours (static/nav/main.js); the flat
+// fallbacks must be that same mix
+const mix = (fg, bg, p) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(fg.slice(i, i + 2), 16) * p + parseInt(bg.slice(i, i + 2), 16) * (1 - p))
+  .toString(16).padStart(2, '0')).join('');
+
+test('the line and rule fallbacks are the theme script\'s mixes', () => {
+  for (const [name, values] of [['light', light], ['dark', dark]]) {
+    const t = THEMES[name];
+    assert.equal(values.line, mix(t.ui.fg, t.bg, 0.18), `${name} --line`);
+    assert.equal(values.rule, mix(t.ui.fg, t.bg, 0.45), `${name} --rule`);
+  }
+});
