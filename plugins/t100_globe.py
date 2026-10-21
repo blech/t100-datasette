@@ -58,6 +58,58 @@ def trail(datasette, *steps):
     return [{"label": label, "href": href} for label, href in items[:-1]] + [{"label": items[-1][0], "href": None}]
 
 
+SECTIONS = ("airports", "aircraft", "airlines", "about")
+AIRPORT_CODE = re.compile(r"^[A-Za-z0-9]{3}$")
+
+
+def section_of(path):
+    """The site section a path belongs to, from its first segment; None for the front page and Datasette's own pages."""
+    first = path.strip("/").split("/")[0]
+    return first if first in SECTIONS else None
+
+
+def views_for(path):
+    """The other views of the subject a page shows, for the views line under the breadcrumb: [{label, href, current, id}].
+    Empty when the subject has only one view (or the path is not one of the site's pages)."""
+    parts = [p for p in path.strip("/").split("/") if p]
+
+    def make(*items, current):
+        return [{"label": label, "href": href, "current": i == current, "id": id_} for i, (label, href, id_) in enumerate(items)]
+
+    match parts:
+        case ["airports"]:
+            return make(("Busiest airports", "/airports", None), ("Map", "/airports/globe", None), current=0)
+        case ["airports", "globe"]:
+            return make(("Busiest airports", "/airports", None), ("Map", "/airports/globe", None), current=1)
+        case ["airports", code] if AIRPORT_CODE.match(code):
+            c = code.upper()
+            return make(("Routes over time", f"/airports/{c}", None), ("Map", f"/airports/{c}/globe", None), current=0)
+        case ["airports", code, "globe"] if AIRPORT_CODE.match(code):
+            c = code.upper()
+            return make(("Routes over time", f"/airports/{c}", None), ("Map", f"/airports/{c}/globe", None), current=1)
+        case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and len(rest) <= 1 and b.lower() != "globe":
+            a, b = a.upper(), b.upper()
+            year = f"/{rest[0]}" if rest else ""
+            return make((f"{a} → {b}", f"/airports/{a}/{b}{year}", None), (f"{b} → {a}", f"/airports/{b}/{a}{year}", None), current=0)
+        case ["aircraft"]:
+            return make(("Families", "/aircraft", None), ("Long-haul engines", "/aircraft/engines", None), current=0)
+        case ["aircraft", "engines"]:
+            return make(("Families", "/aircraft", None), ("Long-haul engines", "/aircraft/engines", None), current=1)
+        case ["airlines", slug]:
+            return make(("Overview", f"/airlines/{slug}", None), ("Map", f"/airlines/{slug}/globe", "map-link"), current=0)
+        case ["airlines", slug, "globe"]:
+            return make(("Overview", f"/airlines/{slug}", None), ("Map", f"/airlines/{slug}/globe", None), current=1)
+    return []
+
+
+@hookimpl
+def extra_template_vars(request):
+    """The header's current section and the page's views, for every template rendered with a request."""
+    if request is None:
+        return {}
+    return {"section": section_of(request.path), "views": views_for(request.path)}
+
+
 async def is_foreign(datasette, code):
     """True if BTS places the airport outside the US and its territories (its WAC is outside 1-93).
 
