@@ -28,6 +28,7 @@ def register_routes():
         (rf"^/airports/(?P<origin>{CODE})$", routes_page),
         (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
+        (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?/table$", route_table_page),
         (r"^/about$", about_page),
         (r"^/aircraft$", aircraft_table_page),
         (r"^/airlines$", rollup_page("airlines")),
@@ -89,10 +90,12 @@ def views_for(path):
         case ["airports", code, "globe"] if AIRPORT_CODE.match(code):
             c = code.upper()
             return make(("Routes over time", f"/airports/{c}", None), ("Map", f"/airports/{c}/globe", None), current=1)
-        case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and len(rest) <= 1 and b.lower() != "globe":
+        case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and b.lower() != "globe" and (
+                rest in ([], ["table"]) or (rest and rest[0].isdigit() and rest[1:] in ([], ["table"]))):
             a, b = a.upper(), b.upper()
-            year = f"/{rest[0]}" if rest else ""
-            return make((f"{a} → {b}", f"/airports/{a}/{b}{year}", None), (f"{b} → {a}", f"/airports/{b}/{a}{year}", None), current=0)
+            year = f"/{rest[0]}" if rest and rest[0].isdigit() else ""
+            base = f"/airports/{a}/{b}{year}"
+            return make(("Over time", base, None), ("Table", f"{base}/table", None), current=1 if rest and rest[-1] == "table" else 0)
         case ["aircraft", *rest] if rest in ([], ["makers"], ["engines"]):
             aircraft = [("Families", "/aircraft", None), ("Makers", "/aircraft/makers", None), ("Long-haul engines", "/aircraft/engines", None)]
             return make(*aircraft, current=[[], ["makers"], ["engines"]].index(rest))
@@ -285,18 +288,31 @@ async def routes_page(datasette, request):
     return Response.html(html)
 
 
-async def route_page(datasette, request):
-    origin = request.url_vars["origin"].upper()
-    dest = request.url_vars["dest"].upper()
-    year = request.url_vars.get("year") or ""
-    steps = [("airports", "/airports"), (origin, f"/airports/{origin}")]
-    steps += [(dest, f"/airports/{origin}/{dest}"), (year, None)] if year else [(dest, None)]
-    html = await datasette.render_template(
-        "route.html",
-        {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, *steps)},
-        request=request,
-    )
-    return Response.html(html)
+def route_view(template, table):
+    """A route's page, in one of its views: over time (the chart) or the table, for all years or one."""
+
+    async def view(datasette, request):
+        origin = request.url_vars["origin"].upper()
+        dest = request.url_vars["dest"].upper()
+        year = request.url_vars.get("year") or ""
+        here = f"/airports/{origin}/{dest}{f'/{year}' if year else ''}"
+        steps = [("airports", "/airports"), (origin, f"/airports/{origin}")]
+        steps += [(dest, f"/airports/{origin}/{dest}"), (year, here if table else None)] if year else [(dest, here if table else None)]
+        if table:
+            steps.append(("table", None))
+        html = await datasette.render_template(
+            template,
+            {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
+             "view": "table" if table else "", "crumbs": trail(datasette, *steps)},
+            request=request,
+        )
+        return Response.html(html)
+
+    return view
+
+
+route_page = route_view("route.html", table=False)
+route_table_page = route_view("route_table.html", table=True)
 
 
 ROLLUP_PAGES = {

@@ -31,9 +31,10 @@ def test_an_airports_views_use_upper_case_codes():
     assert views("/airports/SFO/globe") == [("Routes over time", "/airports/SFO", False), ("Map", "/airports/SFO/globe", True)]
 
 
-def test_a_route_offers_its_other_direction_keeping_the_year():
-    assert views("/airports/SFO/LHR") == [("SFO → LHR", "/airports/SFO/LHR", True), ("LHR → SFO", "/airports/LHR/SFO", False)]
-    assert views("/airports/atl/lax/2024") == [("ATL → LAX", "/airports/ATL/LAX/2024", True), ("LAX → ATL", "/airports/LAX/ATL/2024", False)]
+def test_a_route_has_over_time_and_table_views_keeping_the_year():
+    assert views("/airports/SFO/LHR") == [("Over time", "/airports/SFO/LHR", True), ("Table", "/airports/SFO/LHR/table", False)]
+    assert views("/airports/atl/lax/2024/table") == [("Over time", "/airports/ATL/LAX/2024", False), ("Table", "/airports/ATL/LAX/2024/table", True)]
+    assert views_for("/airports/SFO/LHR/2019/x") == [] and views_for("/airports/SFO/LHR/table/2019") == []
 
 
 def test_aircraft_and_airline_views():
@@ -65,7 +66,8 @@ PAGES = {
     "/airports/globe": ("airports", ["Busiest airports", "Map"]),
     "/airports/ATL": ("airports", ["Routes over time", "Map"]),
     "/airports/ATL/globe": ("airports", ["Routes over time", "Map"]),
-    "/airports/ATL/LAX": ("airports", ["ATL → LAX", "LAX → ATL"]),
+    "/airports/ATL/LAX": ("airports", ["Over time", "Table"]),
+    "/airports/ATL/LAX/table": ("airports", ["Over time", "Table"]),
     "/aircraft": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
     "/aircraft/engines": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
     "/aircraft/makers": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
