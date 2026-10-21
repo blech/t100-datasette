@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { shortenField } from '/static/charts/src/names.js';
 import { slugify } from '/static/charts/src/rollup.js';
 import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
-import { formatCount, formatTons } from '/static/landing/src/table.js';
+import { formatCount, formatTons, exactCount, countLabel, spokenCount } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 
 const { origin, dest, year: yearText } = document.body.dataset;
@@ -78,6 +78,18 @@ function cell(text, className, title) {
   return td;
 }
 
+// a measured count: × 10⁶ for the eye, words for a screen reader, the exact figure on hover
+function countCell(n, noun) {
+  const td = cell('', 'num', `${exactCount(n)} ${noun}`);
+  td.append(...spokenCount(formatCount(n), `${countLabel(n)} ${noun}`));
+  return td;
+}
+function tonsCell(pounds) {
+  const td = cell('', 'num', `${exactCount(pounds)} lb`);
+  td.append(...spokenCount(formatTons(pounds), formatTons(pounds, 'prose')));
+  return td;
+}
+
 // a name that opens the airline's or aircraft family's own page, when the data says which it is
 function linkCell(text, href, title) {
   const td = cell('', 'left');
@@ -98,11 +110,11 @@ function drawTable() {
     tr.append(
       linkCell(t.carrier, t.groupId && `/airlines/${t.groupId}`, `${fullNames.get(t.carrier) || t.carrier}: all of this airline's flying`),
       linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}`, `${t.family}, all versions`),
-      cell(formatCount(t.deps), 'num', t.deps.toLocaleString('en-US')),
-      cell(formatCount(t.seats), 'num', t.seats.toLocaleString('en-US')),
-      cell(formatCount(t.passengers), 'num', t.passengers.toLocaleString('en-US')),
+      countCell(t.deps, 'departures'),
+      countCell(t.seats, 'seats'),
+      countCell(t.passengers, 'passengers'),
       cell(t.loadFactor === null ? '–' : `${t.loadFactor.toFixed(1)}%`, 'num'),
-      cell(formatTons(t.freight * 2000), 'num', `${Math.round(t.freight * 2000).toLocaleString('en-US')} lb`),
+      tonsCell(t.freight * 2000),
     );
     body.append(tr);
   }

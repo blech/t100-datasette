@@ -1,6 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { SORTS, formatCount, formatTons, topBy, parseState, toSearch, airportHref } from './src/table.js';
+import { SORTS, topBy, parseState, toSearch, airportHref } from './src/table.js';
+import { formatCount, formatTons, exactCount, countLabel, spokenCount } from '/static/common/numbers.js';
 
 const ROWS_SHOWN = 20;
 const minYear = Number(document.body.dataset.minYear);
@@ -16,6 +17,18 @@ function cell(text, className, title) {
   td.textContent = text;
   if (className) td.className = className;
   if (title !== undefined) td.title = title;
+  return td;
+}
+
+// a measured count: × 10⁶ for the eye, words for a screen reader, the exact figure on hover
+function countCell(n, noun) {
+  const td = cell('', 'num', `${exactCount(n)} ${noun}`);
+  td.append(...spokenCount(formatCount(n), `${countLabel(n)} ${noun}`));
+  return td;
+}
+function tonsCell(pounds) {
+  const td = cell('', 'num', `${exactCount(pounds)} lb`);
+  td.append(...spokenCount(formatTons(pounds), formatTons(pounds, 'prose')));
   return td;
 }
 
@@ -43,10 +56,10 @@ function render() {
     tr.append(
       code,
       cell(r.origin_city_name || '', 'city'),
-      cell(formatCount(r.passengers), 'num', Number(r.passengers).toLocaleString('en-US')),
-      cell(formatCount(r.deps), 'num', Number(r.deps).toLocaleString('en-US')),
-      cell(formatCount(r.seats), 'num', Number(r.seats).toLocaleString('en-US')),
-      cell(formatTons(r.freight), 'num', `${Number(r.freight).toLocaleString('en-US')} lb`),
+      countCell(r.passengers, 'passengers'),
+      countCell(r.deps, 'departures'),
+      countCell(r.seats, 'seats'),
+      tonsCell(r.freight),
       more,
     );
     body.append(tr);

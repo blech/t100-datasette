@@ -3,6 +3,7 @@ import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { formatCount, exactCount, countLabel, spokenCount } from '/static/common/numbers.js';
 
 const group = document.body.dataset.group;
 const airline = document.body.dataset.airline; // '' for a whole group, else one member of a merged group
@@ -89,7 +90,8 @@ function drawTable() {
   tbody.replaceChildren(...shown.map((r) => {
     const tr = document.createElement('tr');
     const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
-    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), cell(fmt(r.deps_a), 'num'), cell(fmt(r.deps_b), 'num'), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
+    const deps = (n) => { const td = cell('', 'num'); td.title = `${exactCount(n)} departures`; td.append(...spokenCount(formatCount(n), `${countLabel(n)} departures`)); return td; };
+    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), deps(r.deps_a), deps(r.deps_b), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
     return tr;
   }));
   if (!shown.length) tbody.innerHTML = `<tr><td class="left" colspan="${isGroup ? 5 : 4}">None.</td></tr>`;
@@ -103,7 +105,7 @@ async function loadChanges() {
   const c = summariseRoutes(routes);
   const total = c.kept + c.dropped;
   $('change-summary').textContent = total
-    ? `In ${a} this airline flew ${fmt(total)} airport pairs at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${fmt(c.kept)} of them were still flown, ${fmt(c.dropped)} were dropped, and ${fmt(c.added)} new ones had been added.`
+    ? `In ${a} this airline flew ${exactCount(total)} airport pairs at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${exactCount(c.kept)} of them were still flown, ${exactCount(c.dropped)} were dropped, and ${exactCount(c.added)} new ones had been added.`
     : `No airport pairs reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`;
   drawTable();
 }
