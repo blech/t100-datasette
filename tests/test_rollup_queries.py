@@ -132,3 +132,11 @@ def test_maker_by_year_labels_service_and_kind_and_names_unknown_makers(ds, db_p
     got = {(r["maker"], r["service"], r["kind"]): r["deps"] for r in rows}
     assert got == {("Boeing", "domestic", "passenger"): 15, ("Boeing", "international", "freight"): 2, ("Unknown maker", "domestic", "passenger"): 1}
     assert {r["aircraft_kind"] for r in rows} == {"Jet, twin-engine", "Piston, single-engine"}
+
+
+def test_type_table_can_add_up_every_year(ds, db_path):
+    put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800", maker="Boeing", kind="Jet, twin-engine")])
+    put(db_path, "type_year", [ty(2001, "614", 1, "F", 4), ty(2019, "614", 1, "F", 10), ty(2019, "614", 0, "G", 2)])
+    row = get_json(ds, "/t100/type_table.json?_shape=objects&year=all")["rows"][0]
+    assert (row["deps"], row["first_year"], row["last_year"]) == (16, 2001, 2019)
+    assert get_json(ds, "/t100/type_table.json?_shape=objects&year=2001")["rows"][0]["deps"] == 4

@@ -6,7 +6,7 @@ from tests.helpers import get, get_json
 from tests.test_rollup_queries import fam, put
 
 
-@pytest.mark.parametrize("path, kind", [("/aircraft", "aircraft"), ("/airlines", "airlines")])
+@pytest.mark.parametrize("path, kind", [("/airlines", "airlines")])
 def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     r = get(ds, path)
     assert r.status_code == 200
@@ -15,7 +15,7 @@ def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     assert 'id="heatmap"' in r.text and 'id="label-tip"' in r.text
 
 
-@pytest.mark.parametrize("path", ["/aircraft", "/airlines"])
+@pytest.mark.parametrize("path", ["/airlines"])
 def test_settings_read_as_one_sentence(ds, path):
     html = get(ds, path).text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
@@ -109,13 +109,14 @@ def test_a_merged_group_lists_its_members_and_each_member_has_a_page_of_its_own(
     assert get(ds, "/airlines/00000").status_code == 404
 
 
-def test_table_and_maker_pages_render_with_their_assets_and_controls(ds):
-    table = get(ds, "/aircraft/table")
+def test_aircraft_is_the_table_and_the_maker_chart_is_beside_it(ds):
+    table = get(ds, "/aircraft")
     assert table.status_code == 200
     for id_ in ["aircraft-table", "at-status", "at-measure", "at-year", "at-kind", "at-maker", "at-q"]:
         assert f'id="{id_}"' in table.text
     assert "/static/charts/aircrafttable.js" in table.text
     assert 'id="aircraft-table" aria-live' not in table.text  # a rebuilt table must not be a live region; the status line is
+    assert "heat-kind" not in table.text and 'id="heatmap"' not in table.text
     makers = get(ds, "/aircraft/makers")
     assert makers.status_code == 200
     for id_ in ["maker-chart", "mk-measure", "mk-kind", "mk-service", "mk-aircraft"]:
@@ -123,13 +124,18 @@ def test_table_and_maker_pages_render_with_their_assets_and_controls(ds):
     assert "/static/charts/makers.js" in makers.text and "How makers are counted" in makers.text
 
 
-def test_the_new_pages_are_not_mistaken_for_families_and_are_linked_from_aircraft(ds, db_path):
-    put(db_path, "family_year", [fam(2019, "Table", 1, "F", 1)])  # a family slugged "table" must not capture the table page
-    assert 'id="aircraft-table"' in get(ds, "/aircraft/table").text
+def test_the_aircraft_pages_link_to_each_other(ds):
     aircraft = get(ds, "/aircraft").text
-    assert 'href="/aircraft/table"' in aircraft and 'href="/aircraft/makers"' in aircraft
-    assert 'aria-current="page">table<' in get(ds, "/aircraft/table").text
+    assert 'href="/aircraft/makers"' in aircraft and 'href="/aircraft/engines"' in aircraft and 'href="/aircraft/table"' not in aircraft
+    assert 'aria-current="page">aircraft<' in aircraft
     assert 'aria-current="page">makers<' in get(ds, "/aircraft/makers").text
+    assert 'href="/aircraft"' in get(ds, "/aircraft/makers").text
+
+
+def test_the_old_table_address_redirects_to_the_table(ds):
+    # it was live as the aircraft table from 2026-10-21; the redirect keeps old links working (no family is called "Table")
+    r = get(ds, "/aircraft/table?year=2019")
+    assert r.status_code == 301 and r.headers["location"] == "/aircraft?year=2019"
 
 
 def test_chart_pages_offer_a_year_span_and_know_the_full_range(ds, db_path):
@@ -141,3 +147,8 @@ def test_chart_pages_offer_a_year_span_and_know_the_full_range(ds, db_path):
         assert f'id="{select}"' in html, path
         assert 'data-min-year="1990"' in html and 'data-max-year="2025"' in html, path
         assert 'value="flown"' in html and 'value="all"' in html, path
+
+
+def test_the_aircraft_table_offers_a_limit_and_an_all_years_choice(ds):
+    html = get(ds, "/aircraft").text
+    assert 'id="at-limit"' in html
