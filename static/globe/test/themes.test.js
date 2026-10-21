@@ -7,8 +7,7 @@ test('two themes, light and dark, with the fields the renderer needs', () => {
   for (const id of THEME_ORDER) {
     const t = THEMES[id];
     assert.equal(t.id, id);
-    for (const k of ['label', 'bg', 'ocean', 'land', 'coast', 'trail', 'dot']) assert.ok(t[k], `${id}.${k}`);
-    assert.match(t.trail, /^\d+,\d+,\d+$/);
+    for (const k of ['label', 'bg', 'ocean', 'land', 'coast', 'dot']) assert.ok(t[k], `${id}.${k}`);
     assert.ok(t.settledAlpha > 0 && t.settledAlpha < 1);
     assert.ok(t.activeAlpha > t.settledAlpha && t.activeAlpha <= 1);
     for (const k of ['fg', 'muted', 'panel', 'accent']) assert.ok(t.ui[k], `${id}.ui.${k}`);
@@ -40,4 +39,10 @@ test('themeChoice is an explicit theme from the query or storage, or auto', () =
   assert.equal(themeChoice('', 'light'), 'light');
   assert.equal(themeChoice('?theme=night', 'paper'), 'auto');
   assert.equal(themeChoice('', null), 'auto');
+});
+
+test('the accent is the palette\'s', async () => {
+  const { palette } = await import('../../common/palette.js');
+  assert.equal(THEMES.light.ui.accent, palette(false).accent);
+  assert.equal(THEMES.dark.ui.accent, palette(true).accent);
 });

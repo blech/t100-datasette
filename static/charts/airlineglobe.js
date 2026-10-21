@@ -64,7 +64,7 @@ function applyTheme(id) {
   if (renderer) renderer.setTheme(THEMES[themeId]);
   dirty = true;
 }
-document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); pushState(); });
+document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); drawLegend(); pushState(); });
 
 function pushState() {
   const q = new URLSearchParams();
@@ -101,6 +101,13 @@ async function load() {
   refresh();
 }
 
+// the legend's chips, coloured for the current theme
+function drawLegend() {
+  const comparing = Boolean(state.compare);
+  const mode = colourMode(state.colour, comparing);
+  renderLegend($('legend-chips'), legendItems({ mode, comparing, hide: state.hide, routes: routes, dark: THEMES[themeId].dark }), (key) => { state.hide = toggleHide(state.hide, key); refresh(); });
+}
+
 function refresh() {
   hover = -1;
   selected = -1;
@@ -118,7 +125,7 @@ function refresh() {
   const mode = colourMode(state.colour, comparing);
   $('colour').value = mode;
   $('colour').querySelector('option[value="change"]').disabled = !comparing;
-  renderLegend($('legend-chips'), legendItems({ mode, comparing, hide: state.hide, routes }), (key) => { state.hide = toggleHide(state.hide, key); refresh(); });
+  drawLegend();
   $('footnote').textContent = skipped.length ? `${skipped.length} airport${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}` : '';
   if (!routes.length && !$('status').textContent) setStatus('No routes at this level in this year.');
   else if (routes.length && !shown.length) setStatus('Every route here is hidden: click a legend entry to show it again.');

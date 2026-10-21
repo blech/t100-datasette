@@ -1,6 +1,6 @@
-:root { --bg:#ffffff; --fg:#09090b; --muted:#71717a; --panel:rgba(255,255,255,.85); --accent:#3b82f6; }
+:root { --bg:#ffffff; --fg:#09090b; --muted:#71717a; --panel:rgba(255,255,255,.85); --accent:#e36d2a; }
 /* until the header script paints the chosen theme */
-@media (prefers-color-scheme: dark) { :root { --bg:#09090b; --fg:#fafafa; --muted:#a1a1aa; --panel:rgba(9,9,11,.8); } }
+@media (prefers-color-scheme: dark) { :root { --accent:#ec863f; --bg:#09090b; --fg:#fafafa; --muted:#a1a1aa; --panel:rgba(9,9,11,.8); } }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); overflow:hidden;

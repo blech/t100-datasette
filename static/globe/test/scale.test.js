@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { colourFor, widthFor, maxOf, dashFor, SERVICE_COLOURS } from '../src/scale.js';
+import { colourFor, widthFor, maxOf, dashFor } from '../src/scale.js';
 
 test('colours', () => {
-  assert.equal(colourFor('domestic'), '#2a9df4');
-  assert.equal(colourFor('international'), '#ff5a00');
-  assert.equal(colourFor('weird'), SERVICE_COLOURS.international);
+  assert.equal(colourFor('domestic'), '#0d9488');
+  assert.equal(colourFor('international'), '#e36d2a');
+  assert.equal(colourFor('domestic', true), '#2bb39a');
+  assert.equal(colourFor('weird'), colourFor('international'));
 });
 test('widthFor is bounded and never NaN', () => {
   assert.equal(widthFor(0, 100), 0.6);
