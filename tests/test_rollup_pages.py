@@ -101,7 +101,7 @@ def test_a_merged_group_lists_its_members_and_each_member_has_a_page_of_its_own(
     put(db_path, "carrier_group_year", [year("19790", 50, 2019), year("19386", 20, 2008)])
     group = get(ds, "/airlines/delta").text
     assert 'data-members="2"' in group and 'href="/airlines/19790"' in group and 'href="/airlines/19386"' in group
-    assert 'id="th-airline"' in group
+    assert 'id="th-airline"' in get(ds, "/airlines/delta/changes").text  # a merged group's changes say which member flew each route
     member = get(ds, "/airlines/19386")
     assert member.status_code == 200 and "Northwest Airlines Inc." in member.text and 'href="/airlines/delta"' in member.text
     assert 'data-airline="19386"' in member.text and 'data-group="delta"' in member.text and 'id="th-airline"' not in member.text

@@ -130,7 +130,7 @@ function refresh() {
   if (!routes.length && !$('status').textContent) setStatus('No routes at this level in this year.');
   else if (routes.length && !shown.length) setStatus('Every route here is hidden: click a legend entry to show it again.');
   else if (routes.length && $('status').className !== 'warn') setStatus('');
-  $('table-link').href = `/airlines/${own}${state.compare ? `?from=${state.compare}&to=${state.year}` : ''}#changes`;
+  $('table-link').href = `/airlines/${own}/changes${state.compare ? `?from=${state.compare}&to=${state.year}` : ''}`;
   pushState();
   dirty = true;
 }

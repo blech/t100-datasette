@@ -41,12 +41,13 @@ def test_aircraft_and_airline_views():
     AIRCRAFT = [("Families", "/aircraft"), ("Makers", "/aircraft/makers"), ("Long-haul engines", "/aircraft/engines")]
     for i, (_, path) in enumerate(AIRCRAFT):
         assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(AIRCRAFT)], path
-    assert views("/airlines/delta") == [("Overview", "/airlines/delta", True), ("Map", "/airlines/delta/globe", False)]
-    assert views("/airlines/delta/globe") == [("Overview", "/airlines/delta", False), ("Map", "/airlines/delta/globe", True)]
+    A = [("Over time", "/airlines/delta"), ("Changes", "/airlines/delta/changes"), ("Map", "/airlines/delta/globe")]
+    for i, (_, path) in enumerate(A):
+        assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(A)], path
 
 
 def test_the_airline_pages_map_view_keeps_the_id_its_script_rewrites():
-    assert [v["id"] for v in views_for("/airlines/delta")] == [None, "map-link"]
+    assert [v["id"] for v in views_for("/airlines/delta")] == [None, None, "map-link"]
 
 
 @pytest.mark.parametrize("path", ["/", "/airlines", "/aircraft/boeing-737", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
@@ -113,8 +114,8 @@ def test_no_page_keeps_a_hand_written_related_line(ds, db_path):
 def test_an_airlines_page_and_map_have_overview_and_map_views(ds, db_path):
     seed_family_and_airline(db_path)
     page = get(ds, "/airlines/delta").text
-    assert re.search(r'<strong aria-current="page">Overview</strong> · <a href="/airlines/delta/globe" id="map-link">Map</a>', page)
-    assert re.search(r'<a href="/airlines/delta">Overview</a> · <strong aria-current="page">Map</strong>', get(ds, "/airlines/delta/globe").text)
+    assert re.search(r'<strong aria-current="page">Over time</strong> · <a href="/airlines/delta/changes">Changes</a> · <a href="/airlines/delta/globe" id="map-link">Map</a>', page)
+    assert re.search(r'<a href="/airlines/delta">Over time</a> · <a href="/airlines/delta/changes">Changes</a> · <strong aria-current="page">Map</strong>', get(ds, "/airlines/delta/globe").text)
 
 
 def test_a_route_links_to_more_from_its_origin(ds):
