@@ -17,10 +17,13 @@ The aim is to make the site feel like one piece, in how it looks and in how it w
   - The guard test only catches `tickFormat: '~s'` spelled exactly that way.
   - The JS and Python formatters differ above a trillion and for tiny fractions.
 
-### 2. Popovers: next
+### 2. Popovers and chart conventions: next
 
-- **One tooltip for every chart:** move them all to the HTML tooltip the front page's airline chart uses (`attachYearTip`). Numbers are right-aligned, rows follow the stack order, and each row has a colour key.
-- **Stacked bars show the whole:** hovering anywhere on a stack, including the empty space above it, should give the stack's total as well as the segment. Today a pointer above a bar picks the topmost segment, often an invisible sliver like "Other: 964", which reads as if it were the total.
+- **One tooltip for every chart:** move them all to the HTML tooltip the front page's airline chart uses (`attachYearTip`). Numbers are right-aligned, rows follow the stack order, and each row has a colour key. Listing the whole stack also makes segments too thin to see harmless: they show up as rows instead of catching the pointer on their own.
+- **No totals needed.** The apparent "total" on a route chart was the topmost segment, an invisible "Other" sliver.
+- **Stack order matches the legend (bug):** on the route page, "Other" moves between bottom and top from year to year (e.g. `/airports/ATL/JFK`). The legend is ordered by size, but the bars stack in data order, which `buildSeries` sorts alphabetically. The family chart passes `order: res.series`, and the route page should too. A site-wide convention: biggest at the bottom, "Other" on top, everywhere.
+- **Segments too thin to see:** keep charting them, since they're real data and hiding them would change the totals. The stack-wide popover is the fix.
+- **The table under a route's chart** is always airlines × aircraft, whatever "split by" says. It should probably follow the split, so the chart and the table show the same breakdown.
 
 ### 3. Navigation
 
@@ -48,6 +51,7 @@ What exists now:
 Questions:
 - **Cross-links:** which links between views should exist? For example, map → map for the same year and service, table → table, heat map cell → the route or the airline.
 - **Heat maps:** how do they fit in? They're part table, part chart. Should they be the standard "over time" view for any list of things (airports, aircraft, airlines, routes), with a shared look and the same row-ranking and colour-scale controls? And should an airline or a family get a heat map of its routes or versions too?
+- **Narrowing down, or back to the top?** Should views keep refining, such as `/airports/ATL/JFK?airline=Delta`, a route as one airline flies it? Or do links go back to the top-level page after a point, so a route links to Delta's own page? A filter is easy to build, because the route's rows carry the airline. Delta's "What changed" table already links to its routes but drops the airline on the way. Undecided.
 - **Gaps:** which empty cells in the grid matter? For example, a map for an aircraft family (where it flies), or a table of all airlines.
 
 ### 5. Colour
