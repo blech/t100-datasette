@@ -2,6 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { buildHeatmap, buildCityHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
 const origin = document.body.dataset.origin;
@@ -59,7 +60,7 @@ function drawAirports() {
   const data = res.cells.map((c) => ({
     ...c,
     year: String(c.year),
-    label: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}\n${withShare(c, `${c.year}: ${Math.round(c.value).toLocaleString('en-US')} ${unit()}`)}`,
+    label: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}\n${withShare(c, `${c.year}: ${formatCount(c.value)} ${unit()}`)}`,
     href: routeYearHref(c.dest, c.year),
   }));
   box.append(Plot.plot({
@@ -71,7 +72,7 @@ function drawAirports() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.dests, axis: null },
-    color: colourScale(),
+    color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), title: 'label', href: 'href', tip: true }),
       Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: airportHref(d) })), {
@@ -87,16 +88,15 @@ const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination` });
-const colourScale = () => (relative()
+const colourScale = (max) => (relative()
   ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
-  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' });
+  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(max, HEAT_MEASURES[state.measure]) });
 const withShare = (c, text) => ({
   absolute: text,
   year: `${text} (${fmtPct(c.share)} of the year)`,
   busiest: `${text} (${fmtPct(c.peak)} of the year's top)`,
 }[state.scale]);
 const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
-const fmtValue = (v) => Math.round(v).toLocaleString('en-US');
 
 function toggle(key) {
   state.open = state.open.includes(key) ? state.open.filter((k) => k !== key) : [...state.open, key];
@@ -117,11 +117,11 @@ function drawCities() {
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.cells.map((c) => {
     const row = byKey.get(c.row);
-    const lines = c.parts ? c.parts.slice(0, 5).map((p) => `${p.dest}  ${fmtValue(p.value)}`) : [];
+    const lines = c.parts ? c.parts.slice(0, 5).map((p) => `${p.dest}  ${formatCount(p.value)}`) : [];
     const more = c.parts && c.parts.length > 5 ? [`+${c.parts.length - 5} more`] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
     const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.expandable ? `#toggle:${row.key}` : routeYearHref(row.codes[0], c.year);
-    return { ...c, year: String(c.year), href, title: [head, withShare(c, `${c.year}: ${fmtValue(c.value)} ${unit()}`), ...lines, ...more].join('\n') };
+    return { ...c, year: String(c.year), href, title: [head, withShare(c, `${c.year}: ${formatCount(c.value)} ${unit()}`), ...lines, ...more].join('\n') };
   });
   const labels = res.rows.map((r) => ({
     ...r,
@@ -138,7 +138,7 @@ function drawCities() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.rows.map((r) => r.key), axis: null },
-    color: colourScale(),
+    color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), title: 'title', href: 'href', tip: true }),
       Plot.text(labels, {

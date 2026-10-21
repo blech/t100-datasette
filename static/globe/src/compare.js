@@ -1,4 +1,4 @@
-const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+import { formatCount as fmt } from '../../common/numbers.js';
 
 // Year B's routes set against year A's, matched by `keyOf`: each route once, marked kept, added or dropped,
 // with its departures in both years. A dropped route keeps its year-A numbers so it can still be drawn.

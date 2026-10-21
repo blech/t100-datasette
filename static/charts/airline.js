@@ -3,6 +3,14 @@ import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
+
+// the tallest stack, which sets the y axis's scale
+const stackMax = (points, key, value = (p) => p.value) => {
+  const sums = new Map();
+  for (const p of points) sums.set(p[key], (sums.get(p[key]) || 0) + value(p));
+  return Math.max(0, ...sums.values());
+};
 
 const group = document.body.dataset.group;
 const airline = document.body.dataset.airline; // '' for a whole group, else one member of a merged group
@@ -10,7 +18,6 @@ const isGroup = Number(document.body.dataset.members) > 0; // a merged group: sh
 const firstYear = Number(document.body.dataset.firstYear);
 const lastYear = Number(document.body.dataset.lastYear);
 const $ = (id) => document.getElementById(id);
-const fmt = (v) => Math.round(v).toLocaleString('en-US');
 const LB_PER_SHORT_TON = 2000;
 
 let detail = [];
@@ -45,9 +52,9 @@ function drawSize() {
   const series = split === 'kind' ? ['passenger', 'freight'] : ['domestic', 'international'];
   const range = ['#4292c6', '#08306b'];
   plot(box, {
-    x: yearAxis(years), y: { label: HEAT_MEASURES[measure], tickFormat: '~s', grid: true },
+    x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), HEAT_MEASURES[measure]), grid: true },
     color: { domain: series, range, legend: true },
-    marks: [Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series, title: (d) => `${d.year}, ${d.series}: ${fmt(d.value)} ${unit(measure)}`, tip: true }), Plot.ruleY([0])],
+    marks: [Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series, title: (d) => `${d.year}, ${d.series}: ${formatCount(d.value)} ${unit(measure)}`, tip: true }), Plot.ruleY([0])],
   });
 }
 
@@ -59,7 +66,7 @@ async function drawPairs() {
   const data = rows.map((r) => ({ year: String(r.year), pairs: r.pairs }));
   plot(box, {
     x: yearAxis(rows.map((r) => r.year)), y: { label: 'Airport pairs', grid: true },
-    marks: [Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6', title: (d) => `${d.year}: ${fmt(d.pairs)} airport pairs`, tip: true }), Plot.ruleY([0])],
+    marks: [Plot.barY(data, { x: 'year', y: 'pairs', fill: '#4292c6', title: (d) => `${d.year}: ${exactCount(d.pairs)} airport pairs`, tip: true }), Plot.ruleY([0])],
   });
 }
 
@@ -89,7 +96,8 @@ function drawTable() {
   tbody.replaceChildren(...shown.map((r) => {
     const tr = document.createElement('tr');
     const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
-    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), cell(fmt(r.deps_a), 'num'), cell(fmt(r.deps_b), 'num'), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
+    const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} departures`; return td; };
+    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), deps(r.deps_a), deps(r.deps_b), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
     return tr;
   }));
   if (!shown.length) tbody.innerHTML = `<tr><td class="left" colspan="${isGroup ? 5 : 4}">None.</td></tr>`;
@@ -103,7 +111,7 @@ async function loadChanges() {
   const c = summariseRoutes(routes);
   const total = c.kept + c.dropped;
   $('change-summary').textContent = total
-    ? `In ${a} this airline flew ${fmt(total)} airport pairs at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${fmt(c.kept)} of them were still flown, ${fmt(c.dropped)} were dropped, and ${fmt(c.added)} new ones had been added.`
+    ? `In ${a} this airline flew ${exactCount(total)} airport pairs at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${exactCount(c.kept)} of them were still flown, ${exactCount(c.dropped)} were dropped, and ${exactCount(c.added)} new ones had been added.`
     : `No airport pairs reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`;
   drawTable();
 }

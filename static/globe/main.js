@@ -11,6 +11,8 @@ import { colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from 
 import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
 import { renderLegend, syncRange } from './src/controls.js';
 import { routesByOrigin, chooserTap } from './src/chooser.js';
+import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
+import { routeFigures } from './src/panel.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -19,7 +21,6 @@ const state = parseState(location.search);
 new ResizeObserver(() => {
   document.documentElement.style.setProperty('--below-header', `${Math.ceil($('header').getBoundingClientRect().bottom) + 8}px`);
 }).observe($('header'));
-const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
 let airports = new Map();
 let yearRoutes = [];     // placed routes, all years
@@ -87,7 +88,7 @@ function updateStats() {
   const c = countStatuses(periodRoutes);
   $('stats').textContent = comparing
     ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
-    : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${fmt(deps)} departures · ${fmt(pax)} passengers`;
+    : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${countLabel(deps)} departures · ${countLabel(pax)} passengers`;
   $('year-label').textContent = label;
   const periodRows = state.month !== null
     ? monthRaw.filter((r) => r.month === state.month)
@@ -126,10 +127,9 @@ function showPanel(r) {
   const sub = document.createElement('div');
   sub.textContent = `${r.destCity || ''} (${r.service}${r.status ? `, ${r.status}` : ''})`;
   const dl = document.createElement('dl');
-  for (const [k, v] of [['Departures', fmt(r.deps)], ['Seats', fmt(r.seats)], ['Passengers', fmt(r.passengers)], ['Freight (lb)', fmt(r.freight)]]) {
-    const dt = document.createElement('dt'); dt.textContent = k;
-    const dd = document.createElement('dd'); dd.textContent = v;
-    dl.append(dt, dd);
+  for (const f of routeFigures(r)) {
+    const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
+    dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
   const a1 = document.createElement('a');
   a1.href = routePath;

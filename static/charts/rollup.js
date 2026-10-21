@@ -3,6 +3,7 @@ import { buildHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { rollupRows, slugify } from '/static/charts/src/rollup.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
 const KINDS = {
@@ -28,7 +29,6 @@ let rows = [];
 const ROW_PX = 20;
 const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
-const fmtValue = (v) => Math.round(v).toLocaleString('en-US');
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const relative = () => state.scale !== 'absolute';
 const rankYear = () => (state.rank === 'latest' ? latestFullYear : null);
@@ -89,7 +89,7 @@ function draw() {
   const data = res.cells.map((c) => ({
     ...c,
     year: String(c.year),
-    title: `${c.dest}\n${withShare(c, `${c.year}: ${fmtValue(c.value)} ${unit()}`)}`,
+    title: `${c.dest}\n${withShare(c, `${c.year}: ${formatCount(c.value)} ${unit()}`)}`,
   }));
   box.append(Plot.plot({
     width: Math.min(box.clientWidth || 900, 1200),
@@ -102,7 +102,7 @@ function draw() {
     y: { type: 'band', domain: res.dests, axis: null },
     color: relative()
       ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
-      : { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' },
+      : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), HEAT_MEASURES[state.measure]) },
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), title: 'title', tip: true }),
       Plot.text(res.dests.map((d) => ({ dest: d, label: labelOf(d), href: familyHref(d) })), { y: 'dest', text: 'label', title: 'dest', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8, fill: 'currentColor' }),

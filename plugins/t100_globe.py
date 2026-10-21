@@ -72,6 +72,21 @@ async def is_foreign(datasette, code):
 
 # --- front page stories: rows from the canned queries -> the numbers the prose quotes, or None without data
 
+def prose_count(n):
+    """A count for a sentence, to three significant figures: 48,200 / 51.5 million / 1.11 billion.
+    The same rules as static/common/numbers.js; tests/fixtures/number_formats.json holds both to them."""
+    if n is None or n != n:
+        return "–"
+    v = float(n)
+    sign = "-" if v < 0 else ""
+    r = float(f"{abs(v):.3g}")  # round first, so 999,999 is a million
+    if r >= 1e9:
+        return f"{sign}{r / 1e9:.3g} billion"
+    if r >= 1e6:
+        return f"{sign}{r / 1e6:.3g} million"
+    return f"{sign}{r:,.0f}" if r == int(r) else f"{sign}{r:,}"
+
+
 def percent(fraction, places=0):
     return f"{fraction * 100:.{places}f}%"
 
@@ -80,7 +95,7 @@ def airport_story(rows):
     """busiest_airports rows (busiest first) -> the top three airports."""
     if len(rows) < 3:
         return None
-    return {"airports": [{"code": r["origin"], "city": r["origin_city_name"], "passengers": f"{r['total_passengers'] / 1e6:.1f} million"}
+    return {"airports": [{"code": r["origin"], "city": r["origin_city_name"], "passengers": prose_count(r["total_passengers"])}
                          for r in rows[:3]]}
 
 

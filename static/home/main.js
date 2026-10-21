@@ -1,4 +1,5 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { indexAirports, placePoints } from '/static/globe/src/adapter.js';
 import { THEMES, resolveTheme } from '/static/globe/src/themes.js';
 import { geoAlbersUsaTerritories } from '/static/globe/src/usamap.js';
@@ -10,7 +11,6 @@ import { airlineLines, spreadLabels, passengerBands, OTHER_AIRLINES, tipRows, ai
 const $ = (id) => document.getElementById(id);
 const minYear = Number(document.body.dataset.minYear);
 const maxYear = Number(document.body.dataset.maxYear);
-const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 // charts leave room on screen for the next section to show
 const chartHeight = () => Math.round(Math.min(380, window.innerHeight * 0.66));
 
@@ -76,7 +76,7 @@ async function showMap() {
     canvas.classList.toggle('pointing', i >= 0);
     if (i >= 0) {
       const p = placed[i];
-      tip.textContent = `${p.code} · ${p.city} · ${fmt(p.passengers)} passengers`;
+      tip.textContent = `${p.code} · ${p.city} · ${formatCount(p.passengers)} passengers`;
       tip.style.left = `${Math.min(p.x + p.r + 6, w - 220)}px`;
       tip.style.top = `${Math.max(0, p.y - 30)}px`;
     }
@@ -121,7 +121,6 @@ async function showEngines() {
 }
 
 const ALL_AIRLINES = 'All airlines';
-const millions = (n) => `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0)}M`;
 
 // labels at the bands' right-hand ends, nudged apart where they crowd
 function bandLabels(bands, names, height, yMax) {
@@ -205,11 +204,11 @@ function passengerChart(box, { series, bands, colourOf }) {
   const totalByYear = new Map(bands.filter((d) => d.series === OTHER_AIRLINES).map((d) => [d.year, d.y2]));
   const order = [ALL_AIRLINES, OTHER_AIRLINES, ...[...series].reverse()];
   const tips = yearTips([...bands, ...[...totalByYear].map(([year, y2]) => ({ year, series: ALL_AIRLINES, passengers: y2, y2 }))],
-    order, (d) => d.passengers, millions, (d) => d.y2);
+    order, (d) => d.passengers, (n) => formatCount(n), (d) => d.y2);
   const others = bands.filter((d) => d.series === OTHER_AIRLINES);
   return Plot.plot({
     ...plotFrame(box, height),
-    y: { label: 'Passengers', tickFormat: (n) => (n >= 1e9 ? `${n / 1e9}bn` : n ? `${n / 1e6}M` : '0'), domain: [0, yMax], grid: true, nice: true, ticks: 6 },
+    y: { ...millionsAxis(yMax, 'Passengers'), domain: [0, yMax], grid: true, nice: true, ticks: 6 },
     marks: [
       ...airlineBands(bands.filter((d) => d.series !== OTHER_AIRLINES), colourOf),
       // everyone else: a faint tint of the text colour, its top edge (the whole market) dashed

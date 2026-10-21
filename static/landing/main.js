@@ -1,6 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { SORTS, formatCount, formatTons, topBy, parseState, toSearch, airportHref } from './src/table.js';
+import { SORTS, topBy, parseState, toSearch, airportHref } from './src/table.js';
+import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
 
 const ROWS_SHOWN = 20;
 const minYear = Number(document.body.dataset.minYear);
@@ -18,6 +19,10 @@ function cell(text, className, title) {
   if (title !== undefined) td.title = title;
   return td;
 }
+
+// a measured count, rounded, with the exact figure on hover
+const countCell = (n, noun) => cell(formatCount(n), 'num', `${exactCount(n)} ${noun}`);
+const tonsCell = (pounds) => cell(formatTons(pounds), 'num', `${exactCount(pounds)} lb`);
 
 function link(href, text) {
   const a = document.createElement('a');
@@ -43,10 +48,10 @@ function render() {
     tr.append(
       code,
       cell(r.origin_city_name || '', 'city'),
-      cell(formatCount(r.passengers), 'num', Number(r.passengers).toLocaleString('en-US')),
-      cell(formatCount(r.deps), 'num', Number(r.deps).toLocaleString('en-US')),
-      cell(formatCount(r.seats), 'num', Number(r.seats).toLocaleString('en-US')),
-      cell(formatTons(r.freight), 'num', `${Number(r.freight).toLocaleString('en-US')} lb`),
+      countCell(r.passengers, 'passengers'),
+      countCell(r.deps, 'departures'),
+      countCell(r.seats, 'seats'),
+      tonsCell(r.freight),
       more,
     );
     body.append(tr);
