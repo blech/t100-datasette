@@ -29,3 +29,64 @@ export function tapAction(showing, tapped, hasLink) {
   if (tapped !== showing) return 'show';
   return hasLink ? 'follow' : 'show';
 }
+
+// the chart's own <svg>: a plot with a legend is a <figure>, and a ramp legend is an <svg> too, so take the last
+export const chartSvg = (plot) => (plot.tagName.toLowerCase() === 'svg' ? plot : [...plot.querySelectorAll('svg')].at(-1));
+
+const el = (tag, className, textContent = '') => Object.assign(document.createElement(tag), { className, textContent });
+
+// Show `content(plot.value)` beside the point `at(plot.value)` whenever Plot's pointer moves. The chart needs a
+// pointer mark (Plot.pointerX for years, Plot.pointer for cells) whose data are the records content() reads.
+export function attachPopover(plot, { content, at, keyOf = null, link = () => null }) {
+  const pop = el('div', 'popover');
+  pop.hidden = true;
+  pop.setAttribute('role', 'tooltip');
+  const colour = plot.scale('color');
+  const key = keyOf || ((label) => (colour ? { kind: 'square', colour: colour.apply(label) } : { kind: 'none' }));
+  const idOf = (d) => (d ? String(at(d)) : null);
+
+  function show(d) {
+    if (!d) { pop.hidden = true; return; }
+    const { title, rows } = content(d);
+    const extra = rows.some((r) => r.extra !== undefined);
+    pop.className = `popover${extra ? ' with-extra' : ''}`;
+    pop.replaceChildren(el('div', 'popover-title', title), ...rows.flatMap((r) => {
+      const k = key(r.label);
+      const swatch = el('span', k.kind === 'none' ? '' : `key key-${k.kind}`);
+      if (k.colour) swatch.style.background = k.colour;
+      return [swatch, el('span', '', r.label), el('span', 'num', r.value), ...(extra ? [el('span', 'extra', r.extra ?? '')] : [])];
+    }));
+    pop.hidden = false;
+    const [xv, yv] = at(d);
+    const sx = plot.scale('x'), sy = plot.scale('y');
+    const box = chartSvg(plot).getBoundingClientRect();
+    const x = box.left + sx.apply(xv) + (sx.bandwidth ? sx.bandwidth / 2 : 0);
+    const y = box.top + sy.apply(yv) + (sy.bandwidth ? sy.bandwidth / 2 : 0);
+    const fitsRight = x + 12 + pop.offsetWidth <= window.innerWidth - 4;
+    pop.style.left = `${fitsRight ? x + 12 : Math.max(4, x - 12 - pop.offsetWidth)}px`;
+    pop.style.top = `${Math.max(4, Math.min(y - 10, window.innerHeight - pop.offsetHeight - 4))}px`;
+  }
+
+  // touch: the first tap shows, a second on the same target follows its link. When the plot is a bare <svg> our
+  // pointerdown can run before Plot's own has moved the pointer, so read the target again at the click, by when Plot
+  // has (a click also makes Plot's pointer sticky, so it survives the pointerleave touch fires after every tap)
+  let touch = false, tapped = null, showing = null;
+  plot.addEventListener('pointerdown', (e) => { touch = e.pointerType === 'touch'; tapped = plot.value; });
+  plot.addEventListener('click', (e) => {
+    if (!touch) return;
+    tapped = plot.value ?? tapped;
+    const action = tapAction(showing, idOf(tapped), Boolean(tapped && link(tapped)));
+    if (action === 'follow') { location.href = link(tapped); return; }
+    e.preventDefault();
+    if (action === 'hide') { showing = null; pop.hidden = true; return; }
+    showing = idOf(tapped);
+    show(tapped);
+  }, true);
+  plot.addEventListener('input', () => { if (!touch) show(plot.value); });
+  plot.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') pop.hidden = true; });
+  document.addEventListener('pointerdown', (e) => {
+    if (!plot.isConnected) return;
+    if (!plot.contains(e.target)) { showing = null; pop.hidden = true; }
+  });
+  return [plot, pop];
+}

@@ -9,20 +9,9 @@
 #usa-map.pointing { cursor:pointer; }
 .graphic-status { color:var(--muted); font-size:13px; margin:0; }
 .map-box .graphic-status { position:absolute; left:0; top:0; }
-.map-tip { position:absolute; pointer-events:none; z-index:2; padding:4px 8px; border-radius:6px; font-size:12px; white-space:nowrap;
-  background:var(--bg); color:var(--fg); border:1px solid var(--line); box-shadow:0 2px 8px rgba(0,0,0,.2); }
+.map-tip.popover { position:absolute; pointer-events:none; z-index:2; }
 .map-tip[hidden] { display:none; }
 .chart-box figure { margin:0; }
 .chart-box svg { --plot-background: var(--bg); }
-/* the airline charts' tooltip: names, then numbers right-aligned in their own column */
-.chart-tip { position:absolute; pointer-events:none; z-index:2; display:grid; grid-template-columns:auto auto auto; column-gap:6px; align-items:center;
-  padding:6px 9px; border-radius:6px; font-size:12px; line-height:1.4; white-space:nowrap;
-  background:var(--bg); color:var(--fg); border:1px solid var(--line); box-shadow:0 2px 8px rgba(0,0,0,.2); }
-.chart-tip[hidden] { display:none; }
-.chart-tip-year { grid-column:1 / -1; font-weight:600; }
-.chart-tip .num { text-align:right; font-variant-numeric:tabular-nums; padding-left:8px; }
-.chart-tip .key { width:10px; height:10px; border-radius:2px; }
-.chart-tip .key-line { height:2px; background:currentColor; }
-.chart-tip .key-other { background:currentColor; opacity:.25; }
 /* on a dark background the bands need more colour to read as the airlines' */
 [data-scheme="dark"] .airline-band { fill-opacity:.55; }
