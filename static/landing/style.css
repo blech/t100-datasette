@@ -1,8 +1,4 @@
-/* the busiest-airports table: sortable headers, the airport and city columns, the controls above */
+/* the busiest-airports table: the airport and city columns, the controls above */
 .bar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:24px 0 8px; }
-th button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
-th button:hover { color:var(--fg); }
-th[aria-sort] { color:var(--fg); font-weight:600; }
-th[aria-sort] button::after { content:" ▾"; }
 td.code a { font-weight:600; }
 td.city { white-space:normal; }

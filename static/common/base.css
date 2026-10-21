@@ -26,5 +26,10 @@ table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums;
 th, td { padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
 th.num, td.num { text-align:right; }
 th { color:var(--muted); font-weight:500; }
+/* sortable column headers (the busiest-airports and aircraft tables) */
+th button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
+th button:hover { color:var(--fg); }
+th[aria-sort] { color:var(--fg); font-weight:600; }
+th[aria-sort] button::after { content:" ▾"; }
 
 .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }

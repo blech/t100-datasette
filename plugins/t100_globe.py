@@ -38,6 +38,8 @@ def register_routes():
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)$", moved("/airlines/{slug}")),
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{slug}/globe")),
         (r"^/aircraft/engines$", engines_page),
+        (r"^/aircraft/table$", aircraft_table_page),
+        (r"^/aircraft/makers$", aircraft_makers_page),
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
         (r"^/globe$", moved("/airports/globe")),
@@ -91,10 +93,10 @@ def views_for(path):
             a, b = a.upper(), b.upper()
             year = f"/{rest[0]}" if rest else ""
             return make((f"{a} → {b}", f"/airports/{a}/{b}{year}", None), (f"{b} → {a}", f"/airports/{b}/{a}{year}", None), current=0)
-        case ["aircraft"]:
-            return make(("Families", "/aircraft", None), ("Long-haul engines", "/aircraft/engines", None), current=0)
-        case ["aircraft", "engines"]:
-            return make(("Families", "/aircraft", None), ("Long-haul engines", "/aircraft/engines", None), current=1)
+        case ["aircraft", *rest] if rest in ([], ["table"], ["makers"], ["engines"]):
+            aircraft = [("Families", "/aircraft", None), ("Table", "/aircraft/table", None), ("Makers", "/aircraft/makers", None),
+                        ("Long-haul engines", "/aircraft/engines", None)]
+            return make(*aircraft, current=[[], ["table"], ["makers"], ["engines"]].index(rest))
         case ["airlines", slug]:
             return make(("Overview", f"/airlines/{slug}", None), ("Map", f"/airlines/{slug}/globe", "map-link"), current=0)
         case ["airlines", slug, "globe"]:
@@ -153,7 +155,7 @@ def airport_story(rows):
 
 
 def engine_shares(rows, year):
-    """Shares of passenger departures on flights of 3,000 miles or more by BTS aircraft group (6 twin, 7 tri, 8 quad)."""
+    """Shares of passenger departures on flights of 3,000 miles or more by BTS aircraft group (6 two jet engines, 7 three, 8 four or more)."""
     deps = {}
     for r in rows:
         if r["year"] == year and r["kind"] == "passenger" and r["distance_band"] >= 3000:
@@ -292,7 +294,7 @@ async def route_page(datasette, request):
     steps += [(dest, f"/airports/{origin}/{dest}"), (year, None)] if year else [(dest, None)]
     html = await datasette.render_template(
         "route.html",
-        {"origin": origin, "dest": dest, "year": year, "crumbs": trail(datasette, *steps)},
+        {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, *steps)},
         request=request,
     )
     return Response.html(html)
@@ -333,6 +335,25 @@ async def engines_page(datasette, request):
     return Response.html(html)
 
 
+def aircraft_view(template, crumb):
+    async def view(datasette, request):
+        html = await datasette.render_template(
+            template,
+            {
+                "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+                "crumbs": trail(datasette, ("aircraft", "/aircraft"), (crumb, None)),
+            },
+            request=request,
+        )
+        return Response.html(html)
+
+    return view
+
+
+aircraft_table_page = aircraft_view("aircraft_table.html", "table")
+aircraft_makers_page = aircraft_view("aircraft_makers.html", "makers")
+
+
 def slugify(name):
     """"DC-9 / MD-80 / MD-90" -> "dc-9-md-80-md-90". The page's JavaScript uses the same rule."""
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
@@ -346,7 +367,7 @@ async def family_page(datasette, request):
         raise NotFound(f"No aircraft family {slug}")
     html = await datasette.render_template(
         "family.html",
-        {"family": family, "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
+        {"family": family, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
         request=request,
     )
     return Response.html(html)
@@ -413,7 +434,7 @@ async def airline_page(datasette, request):
         "airline.html",
         {
             **info, "own": info["airline"] or info["group"],
-            "max_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+            "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
             "crumbs": airline_crumbs(datasette, info),
         },
         request=request,

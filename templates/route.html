@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-origin="{{ origin }}" data-dest="{{ dest }}" data-year="{{ year }}">
+<body data-origin="{{ origin }}" data-dest="{{ dest }}" data-year="{{ year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
     {% include "_nav.html" %}
     <h1 id="title">{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %}</h1>
@@ -21,6 +21,7 @@
       <div class="chart-controls">
         <label>Show <select id="chart-measure" aria-label="Measure"></select></label>
         <label>Split by <select id="chart-split" aria-label="Split by"></select></label>
+        <label id="chart-span-label">Years <select id="chart-span" aria-label="Years shown"><option value="flown">years flown</option><option value="all">all years</option></select></label>
       </div>
       <div id="route-chart-plot" aria-live="polite">Loading chart…</div>
       <p class="note" id="chart-note"></p>

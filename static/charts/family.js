@@ -1,8 +1,9 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { buildFamilySeries } from '/static/charts/src/rollup.js';
+import { buildFamilySeries, hasVersions } from '/static/charts/src/rollup.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { shortNames } from '/static/charts/src/names.js';
+import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight } from '/static/common/highlight.js';
@@ -25,7 +26,9 @@ const state = {
   kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   split: pick('split', ['subfamily', 'airline', 'service'], null),
+  span: parseSpan(params.get('span')),
 };
+const bounds = { min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) };
 let rows = [];
 
 const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
@@ -36,7 +39,8 @@ function pushState() {
   if (state.kind !== 'passenger') q.set('flights', state.kind);
   if (state.service !== 'all') q.set('service', state.service);
   q.set('split', state.split);
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'split'], `?${q}`)}`);
+  if (state.span !== 'flown') q.set('span', state.span);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'split', 'span'], `?${q}`)}`);
 }
 
 function draw() {
@@ -44,7 +48,7 @@ function draw() {
   box.replaceChildren();
   const res = buildFamilySeries(rows, state);
   if (!res.points.length) { box.textContent = `No ${unit()} for this selection.`; return; }
-  const years = res.years.map(String);
+  const years = yearDomain(res.years, { span: state.span, ...bounds }).map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.points.map((p) => ({ ...p, year: String(p.year) }));
   const tips = periodRows(data, { key: (p) => p.year, order: res.series, format: (v) => formatCount(v) });
@@ -68,10 +72,11 @@ function draw() {
 }
 
 function chooseSplit() {
-  // a family with several versions is most interesting split by version; otherwise by airline
-  if (state.split) return;
-  const versions = new Set(rows.map((r) => r.subfamily).filter(Boolean));
-  state.split = versions.size > 1 ? 'subfamily' : 'airline';
+  // a family with several versions is most interesting split by version; otherwise by airline.
+  // A family with one version has nothing to split, so the option is not offered and an old link falls back to airline.
+  const versions = hasVersions(rows);
+  if (!versions) $('fam-split').querySelector('option[value="subfamily"]')?.remove();
+  if (!state.split || (state.split === 'subfamily' && !versions)) state.split = versions ? 'subfamily' : 'airline';
 }
 
 async function main() {
@@ -91,7 +96,8 @@ async function main() {
   $('fam-kind').value = state.kind;
   $('fam-service').value = state.service;
   $('fam-split').value = state.split;
-  for (const [id, field] of [['fam-measure', 'measure'], ['fam-kind', 'kind'], ['fam-service', 'service'], ['fam-split', 'split']]) {
+  $('fam-span').value = state.span;
+  for (const [id, field] of [['fam-measure', 'measure'], ['fam-kind', 'kind'], ['fam-service', 'service'], ['fam-split', 'split'], ['fam-span', 'span']]) {
     $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });
   }
   document.addEventListener('t100:theme', () => draw());

@@ -1,6 +1,6 @@
 import sqlite3
 
-from build_database import rebuild_derived_tables, rebuild_aircraft_family, rebuild_aircraft_type_labels, rebuild_carrier_groups
+from build_database import rebuild_derived_tables, rebuild_aircraft_family, rebuild_aircraft_type_labels, rebuild_carrier_groups, rebuild_type_year
 from tests.helpers import add_segments
 from tests.test_routes_by_year import seg
 
@@ -201,3 +201,38 @@ def test_adding_the_label_columns_to_an_older_aircraft_types_table(db_path):
                        "INSERT INTO aircraft_types VALUES ('614', '6', 'Boeing 737-800');")
     rebuild_aircraft_type_labels(conn)
     assert conn.execute("SELECT maker, kind FROM aircraft_types").fetchall() == [("Boeing", "Jet, twin-engine")]
+
+
+def test_type_year_adds_up_to_the_segments_and_keeps_unknown_types(db_path):
+    add_types(db_path, ("614", "6", "Boeing 737-800"))
+    add_segments(db_path, "t100_domestic", [
+        flight(aircraft_type="614", **{"class": "F"}, deps=10, pax=800, seats=1000),
+        flight(aircraft_type="614", **{"class": "F"}, deps=5, pax=400, seats=500, month=2),
+        flight(aircraft_type="999", **{"class": "F"}, deps=3),   # a type id BTS never defined
+        flight(aircraft_type=None, **{"class": "G"}, deps=2, freight=4000),  # no type at all
+    ])
+    add_segments(db_path, "t100_international", [flight(aircraft_type="614", **{"class": "F"}, deps=1)])
+    rows = query(db_path, "SELECT aircraft_type, domestic, service_class, deps, freight FROM type_year ORDER BY aircraft_type, domestic",
+                 rebuild=rebuild_type_year)
+    assert rows == [("614", 0, "F", 1, 0), ("614", 1, "F", 15, 0), ("999", 1, "F", 3, 0), ("unknown", 1, "G", 2, 4000)]
+    total = query(db_path, "SELECT SUM(deps) FROM type_year", rebuild=rebuild_type_year)[0][0]
+    assert total == 21
+
+
+def test_type_year_is_part_of_the_full_rebuild(db_path):
+    add_types(db_path, *TYPES)
+    add_segments(db_path, "t100_domestic", [flight(aircraft_type="614", **{"class": "F"})])
+    conn = sqlite3.connect(db_path)
+    assert rebuild_derived_tables(conn)["type_year"] == 1
+
+def test_big_families_split_into_the_versions_people_know(db_path):
+    add_types(db_path, ("871", "8", "Airbus Industrie A340-300"), ("874", "8", "Airbus Industrie A340-600"), ("697", "8", "Airbus Industrie A340"),
+              ("819", "8", "Boeing 747-400"), ("821", "8", "Boeing B747-8"), ("840", "8", "McDonnell Douglas DC-8-10"), ("856", "8", "McDonnell Douglas DC-8-63"),
+              ("678", "6", "Embraer 190"), ("405", "4", "Beech 1900 A/B/C/D"), ("143", "1", "Convair CV-340/440"), ("459", "4", "SaAB-Fairchild 340/A"))
+    got = {r[0]: r[1:3] for r in query(db_path, "SELECT aircraft_type, family, subfamily FROM aircraft_family", rebuild_aircraft_family)}
+    assert [got[t] for t in ("871", "874", "697")] == [("Airbus A340", "A340-300"), ("Airbus A340", "A340-600"), ("Airbus A340", "A340 (model not given)")]
+    assert got["819"] == ("Boeing 747", "747-400") and got["821"] == ("Boeing 747", "747-8")
+    assert got["840"][1] == "DC-8 Series 10-50" and got["856"][1] == "DC-8 Series 60"
+    # a version rule must not pull a type into another family: these stay where the family rules put them
+    assert got["678"][0] == "Embraer E-Jet" and got["405"][0] == "Beech turboprops"
+    assert got["143"] == ("Convair", "Convair 240/340/440") and got["459"] == ("Saab 340 / 2000", "Saab 340")

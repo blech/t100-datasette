@@ -141,6 +141,12 @@ CREATE TABLE "t100_international" (
    [wac] INTEGER
 );
 
+CREATE TABLE "type_year" (
+   [year] INTEGER, [aircraft_type] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [aircraft_type], [domestic], [service_class])
+) WITHOUT ROWID;
+
 CREATE INDEX idx_aircraft_types_ac_typeid ON aircraft_types (ac_typeid);
 
 CREATE INDEX idx_carriers_carrier_entity ON carriers (carrier_entity);

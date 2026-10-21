@@ -37,8 +37,9 @@ def test_a_route_offers_its_other_direction_keeping_the_year():
 
 
 def test_aircraft_and_airline_views():
-    assert views("/aircraft") == [("Families", "/aircraft", True), ("Long-haul engines", "/aircraft/engines", False)]
-    assert views("/aircraft/engines") == [("Families", "/aircraft", False), ("Long-haul engines", "/aircraft/engines", True)]
+    AIRCRAFT = [("Families", "/aircraft"), ("Table", "/aircraft/table"), ("Makers", "/aircraft/makers"), ("Long-haul engines", "/aircraft/engines")]
+    for i, (_, path) in enumerate(AIRCRAFT):
+        assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(AIRCRAFT)], path
     assert views("/airlines/delta") == [("Overview", "/airlines/delta", True), ("Map", "/airlines/delta/globe", False)]
     assert views("/airlines/delta/globe") == [("Overview", "/airlines/delta", False), ("Map", "/airlines/delta/globe", True)]
 
@@ -65,8 +66,10 @@ PAGES = {
     "/airports/ATL": ("airports", ["Routes over time", "Map"]),
     "/airports/ATL/globe": ("airports", ["Routes over time", "Map"]),
     "/airports/ATL/LAX": ("airports", ["ATL → LAX", "LAX → ATL"]),
-    "/aircraft": ("aircraft", ["Families", "Long-haul engines"]),
-    "/aircraft/engines": ("aircraft", ["Families", "Long-haul engines"]),
+    "/aircraft": ("aircraft", ["Families", "Table", "Makers", "Long-haul engines"]),
+    "/aircraft/engines": ("aircraft", ["Families", "Table", "Makers", "Long-haul engines"]),
+    "/aircraft/table": ("aircraft", ["Families", "Table", "Makers", "Long-haul engines"]),
+    "/aircraft/makers": ("aircraft", ["Families", "Table", "Makers", "Long-haul engines"]),
     "/airlines": ("airlines", []),
     "/about": ("about", []),
 }

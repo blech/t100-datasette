@@ -4,6 +4,7 @@ import { slugify } from '/static/charts/src/rollup.js';
 import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
 import { formatCount, formatTons, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
@@ -22,7 +23,9 @@ const params = new URLSearchParams(location.search);
 const state = {
   measure: Object.hasOwn(MEASURES, params.get('measure')) ? params.get('measure') : 'passengers',
   split: Object.hasOwn(SPLITS, params.get('split')) ? params.get('split') : 'carrier',
+  span: parseSpan(params.get('span')),
 };
+const bounds = { min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) };
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const routePath = (y) => `/airports/${origin}/${dest}${y ? `/${y}` : ''}`;
@@ -35,6 +38,7 @@ function pushState() {
   const q = new URLSearchParams(location.search);
   q.set('measure', state.measure);
   q.set('split', state.split);
+  if (state.span === 'flown') q.delete('span'); else q.set('span', state.span);
   history.replaceState(null, '', `${location.pathname}?${q}`);
 }
 
@@ -49,7 +53,7 @@ function drawChart() {
   const box = $('route-chart-plot');
   box.replaceChildren();
   if (!res.points.length) { box.textContent = 'No data to chart for this selection.'; return; }
-  const domain = monthly ? MONTHS.map((_, i) => String(i + 1)) : res.periods.map(String);
+  const domain = monthly ? MONTHS.map((_, i) => String(i + 1)) : yearDomain(res.periods, { span: state.span, ...bounds }).map(String);
   const labelEvery = monthly || domain.length <= 15 ? 1 : 5;
   const data = res.points.map((p) => ({ ...p, x: String(p.period), href: monthly ? null : routePath(p.period) }));
   const x = {
@@ -202,6 +206,9 @@ async function main() {
   $('chart-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); drawChart(); });
   document.addEventListener('t100:theme', () => drawChart());
   $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); drawChart(); drawTable(); });
+  $('chart-span').value = state.span;
+  $('chart-span').addEventListener('change', (e) => { state.span = e.target.value; pushState(); drawChart(); });
+  $('chart-span-label').hidden = year !== null;  // a single year is shown by month; there is no span to choose
   $('route-chart').hidden = false;
   $('route-table').hidden = false;
   drawChart();

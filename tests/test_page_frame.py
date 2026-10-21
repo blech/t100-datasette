@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-TEMPLATES = ["home", "airports", "rollup", "engines", "family", "airline", "routes", "route", "about", "globe", "airline_globe"]
+TEMPLATES = ["home", "airports", "rollup", "engines", "family", "airline", "routes", "route", "about", "globe", "airline_globe", "aircraft_table", "aircraft_makers"]
 
 
 def stylesheets(name):
