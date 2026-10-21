@@ -65,3 +65,14 @@ There are six palettes, each chosen where it's used:
 - **The maps:** orange for international, blue for domestic.
 
 The theme accent is a third blue, #3b82f6. Should they be unified, and how far?
+
+### 6. Page frame
+
+The scrolling pages and the full-window maps have grown separate layout rules. The navigation work lined up their headers; the rest still differs:
+
+- **Titles:** 32px on the scrolling pages, 28px on the maps, and 22px on a phone map.
+- **The map's header block** (title, stats, picker) floats over the globe with its own spacing.
+- **Two pages scroll sideways on phones** because of wide tables: `/airports` (637px at 390) and an airline's "What changed" table (849px).
+- **The theme colours are defined twice:** fallbacks in `static/landing/style.css` and `static/globe/style.css` before the script runs, and `static/nav/main.js` for every page after.
+
+A shared set of base styles for both kinds of page could hold the column, the type sizes and the colour fallbacks in one place.
