@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { shortAirlineName, airlineLines, spreadLabels, stackShares, passengerBands, OTHER_AIRLINES, tipRows, airlineColours } from '../src/airlines.js';
+import { shortAirlineName, airlineLines, spreadLabels, stackShares, passengerBands, OTHER_AIRLINES, airlineColours } from '../src/airlines.js';
 
 test('shortAirlineName drops the legal ending, as the server does', () => {
   assert.equal(shortAirlineName('Southwest Airlines Co.'), 'Southwest Airlines');
@@ -60,11 +60,6 @@ test('passengerBands gives each airline its passengers and the rest of the marke
     [1990, 'Beta', 30, 0, 30], [1990, 'Alpha', 10, 30, 40], [1990, OTHER_AIRLINES, 60, 40, 100],
     [2025, 'Beta', 60, 0, 60], [2025, OTHER_AIRLINES, 60, 60, 120],
   ]);
-});
-
-test('tipRows lists the lines in the order given (top of the chart first), whatever their size', () => {
-  const rows = tipRows([{ series: 'A', n: 1 }, { series: 'B', n: 3 }, { series: 'C', n: 2 }], ['C', 'A', 'B'], (d) => d.n, (v) => `${v}M`);
-  assert.deepEqual(rows, [{ label: 'C', value: '2M' }, { label: 'A', value: '1M' }, { label: 'B', value: '3M' }]);
 });
 
 test('airlineColours gives each big airline its livery colour, and others a fallback in turn', () => {

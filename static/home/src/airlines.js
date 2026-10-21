@@ -80,12 +80,6 @@ export function passengerBands(rows, series) {
   return stackShares(points, (d) => order.indexOf(d.series), (d) => d.passengers);
 }
 
-// a year's lines or bands -> tooltip rows, in the order given (the chart's top first), values ready to right-align
-export function tipRows(data, order, valueOf, format) {
-  const rank = (d) => (order.includes(d.series) ? order.indexOf(d.series) : order.length);
-  return [...data].sort((a, b) => rank(a) - rank(b)).map((d) => ({ label: d.series, value: format(valueOf(d)) }));
-}
-
 // livery colours for the airlines that have been in the top four, and distinct fallbacks for any newcomer
 const LIVERY = { Southwest: '#D99A00', Delta: '#C8102E', American: '#7A8A96', United: '#1F5FD1', 'US Airways': '#2E8B57' };
 const FALLBACK = ['#8E5BB5', '#2A9D8F', '#D9763A', '#5C6BC0'];

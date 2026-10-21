@@ -6,7 +6,8 @@ import { geoAlbersUsaTerritories } from '/static/globe/src/usamap.js';
 import * as Plot from '/static/charts/vendor/plot.js';
 import { buildEngineShares, ENGINE_SERIES, ENGINE_COLORS } from '/static/charts/src/rollup.js';
 import { placeOnMap, hitTest, drawMap } from './src/map.js';
-import { airlineLines, spreadLabels, passengerBands, OTHER_AIRLINES, tipRows, airlineColours } from './src/airlines.js';
+import { airlineLines, spreadLabels, passengerBands, OTHER_AIRLINES, airlineColours } from './src/airlines.js';
+import { periodRows, attachPopover } from '/static/common/popover.js';
 
 const $ = (id) => document.getElementById(id);
 const minYear = Number(document.body.dataset.minYear);
@@ -104,8 +105,8 @@ async function showEngines() {
   const rows = (await fetchRows(queryUrl('engines_by_year'))).rows;
   const res = buildEngineShares(rows, ENGINE_STATE);
   if (!res.points.length) { box.replaceChildren(); return; }
-  const data = res.points.map((p) => ({ ...p, title: `${p.series}, ${p.year}\n${pct(p.share)} of long-haul flights` }));
-  box.replaceChildren(Plot.plot({
+  const tips = periodRows(res.points, { key: (p) => p.year, order: ENGINE_SERIES, value: (p) => p.share, format: pct, top: () => 1 });
+  const chart = Plot.plot({
     width: width(box),
     height: chartHeight(),
     marginLeft: 48,
@@ -114,10 +115,12 @@ async function showEngines() {
     y: { label: 'Share of flights of 3,000 miles or more', tickFormat: '.0%', domain: [0, 1] },
     color: { domain: ENGINE_SERIES, range: ENGINE_COLORS, legend: true },
     marks: [
-      Plot.areaY(data, { x: 'year', y: 'share', fill: 'series', order: ENGINE_SERIES, title: 'title', tip: true }),
+      Plot.areaY(res.points, { x: 'year', y: 'share', fill: 'series', order: ENGINE_SERIES }),
       Plot.ruleY([0]),
+      Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
-  }));
+  });
+  box.replaceChildren(...attachPopover(chart, { content: (d) => ({ title: String(d.period), rows: d.rows }), at: (d) => [d.period, 1] }));
 }
 
 const ALL_AIRLINES = 'All airlines';
@@ -148,37 +151,6 @@ function keyOf(series, colourOf) {
   return { kind: 'square', colour: colourOf(series) };
 }
 
-// one tooltip per year, its rows in the chart's top-to-bottom order
-function yearTips(data, order, valueOf, format, topOf) {
-  const byYear = new Map();
-  for (const d of data) byYear.set(d.year, [...(byYear.get(d.year) || []), d]);
-  return [...byYear].map(([year, ds]) => ({ year, top: Math.max(...ds.map(topOf)), rows: tipRows(ds, order, valueOf, format) }));
-}
-
-// an HTML tooltip beside the pointed year: key, name, and the numbers in a right-aligned column
-function attachYearTip(box, plot, colourOf) {
-  const tip = Object.assign(document.createElement('div'), { className: 'chart-tip', hidden: true });
-  const el = (tag, className, textContent = '') => Object.assign(document.createElement(tag), { className, textContent });
-  plot.addEventListener('input', () => {
-    const d = plot.value;
-    if (!d) { tip.hidden = true; return; }
-    tip.replaceChildren(el('div', 'chart-tip-year', String(d.year)), ...d.rows.flatMap((r) => {
-      const key = keyOf(r.label, colourOf);
-      const swatch = el('span', `key key-${key.kind}`);
-      if (key.colour) swatch.style.background = key.colour;
-      return [swatch, el('span', '', r.label), el('span', 'num', r.value)];
-    }));
-    tip.hidden = false;
-    const x = plot.scale('x').apply(d.year);
-    const y = plot.scale('y').apply(d.top);
-    const right = x + 12 + tip.offsetWidth <= box.clientWidth;
-    tip.style.left = `${right ? x + 12 : Math.max(0, x - 12 - tip.offsetWidth)}px`;
-    tip.style.top = `${Math.max(0, Math.min(y - 10, box.clientHeight - tip.offsetHeight))}px`;
-  });
-  plot.addEventListener('pointerleave', () => { tip.hidden = true; });
-  return [plot, tip];
-}
-
 const plotFrame = (box, height) => ({
   width: width(box),
   height,
@@ -202,9 +174,10 @@ function passengerChart(box, { series, bands, colourOf }) {
   const yMax = Math.max(...bands.map((d) => d.y2));
   const labels = bandLabels(bands, [...series, OTHER_AIRLINES], height, yMax);
   const totalByYear = new Map(bands.filter((d) => d.series === OTHER_AIRLINES).map((d) => [d.year, d.y2]));
-  const order = [ALL_AIRLINES, OTHER_AIRLINES, ...[...series].reverse()];
-  const tips = yearTips([...bands, ...[...totalByYear].map(([year, y2]) => ({ year, series: ALL_AIRLINES, passengers: y2, y2 }))],
-    order, (d) => d.passengers, (n) => formatCount(n), (d) => d.y2);
+  const tips = periodRows([...bands, ...[...totalByYear].map(([year, y2]) => ({ year, series: ALL_AIRLINES, passengers: y2, y2 }))], {
+    key: (d) => d.year, order: [...series, OTHER_AIRLINES, ALL_AIRLINES], value: (d) => d.passengers,
+    format: (n) => formatCount(n), top: (ds) => Math.max(...ds.map((d) => d.y2)),
+  });
   const others = bands.filter((d) => d.series === OTHER_AIRLINES);
   return Plot.plot({
     ...plotFrame(box, height),
@@ -216,7 +189,7 @@ function passengerChart(box, { series, bands, colourOf }) {
       Plot.lineY(others, { x: 'year', y: 'y2', stroke: 'currentColor', strokeOpacity: 0.6, strokeWidth: 1.5, strokeDasharray: '4 3' }),
       Plot.ruleY([0]),
       ...labelMarks(labels, colourOf),
-      Plot.ruleX(tips, Plot.pointerX({ x: 'year', stroke: 'currentColor', strokeOpacity: 0.25 })),
+      Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   });
 }
@@ -228,7 +201,10 @@ async function showAirlines() {
   if (!series.length) { box.replaceChildren(); return; }
   const colours = new Map(series.map((name, i) => [name, airlineColours(series)[i]]));
   const colourOf = (name) => colours.get(name);
-  box.replaceChildren(...attachYearTip(box, passengerChart(box, { series, bands: passengerBands(rows, series), colourOf }), colourOf));
+  const chart = passengerChart(box, { series, bands: passengerBands(rows, series), colourOf });
+  box.replaceChildren(...attachPopover(chart, {
+    content: (d) => ({ title: String(d.period), rows: d.rows }), at: (d) => [d.period, d.top], keyOf: (label) => keyOf(label, colourOf),
+  }));
 }
 
 async function drawCharts() {

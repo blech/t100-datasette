@@ -2,6 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { buildHeatmap, buildCityHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { attachPopover } from '/static/common/popover.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -60,10 +61,11 @@ function drawAirports() {
   const data = res.cells.map((c) => ({
     ...c,
     year: String(c.year),
-    label: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}\n${withShare(c, `${c.year}: ${formatCount(c.value)} ${unit()}`)}`,
+    head: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}`,
+    rows: cellRows(c),
     href: routeYearHref(c.dest, c.year),
   }));
-  box.append(Plot.plot({
+  const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100),
     height: res.dests.length * ROW_PX + 90,
     marginLeft: 48,
@@ -74,12 +76,14 @@ function drawAirports() {
     y: { type: 'band', domain: res.dests, axis: null },
     color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
-      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), title: 'label', href: 'href', tip: true }),
+      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
       Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: airportHref(d) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
     ],
-  }));
+  });
+  box.append(...attachPopover(chart, cellPopover('dest')));
 }
 
 const routeYearHref = (dest, year) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}`;
@@ -91,11 +95,12 @@ const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `%
 const colourScale = (max) => (relative()
   ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
   : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(max, HEAT_MEASURES[state.measure]) });
-const withShare = (c, text) => ({
-  absolute: text,
-  year: `${text} (${fmtPct(c.share)} of the year)`,
-  busiest: `${text} (${fmtPct(c.peak)} of the year's top)`,
-}[state.scale]);
+// a heat-map cell's popover rows: the amount, and the share the colour shows when it shows one
+const cellRows = (c) => [
+  { label: HEAT_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
+  ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
+  ...(state.scale === 'busiest' ? [{ label: "Of the year's top", value: fmtPct(c.peak) }] : []),
+];
 const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 
 function toggle(key) {
@@ -117,11 +122,11 @@ function drawCities() {
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.cells.map((c) => {
     const row = byKey.get(c.row);
-    const lines = c.parts ? c.parts.slice(0, 5).map((p) => `${p.dest}  ${formatCount(p.value)}`) : [];
-    const more = c.parts && c.parts.length > 5 ? [`+${c.parts.length - 5} more`] : [];
+    const parts = c.parts ? c.parts.slice(0, 5).map((p) => ({ label: p.dest, value: formatCount(p.value) })) : [];
+    const more = c.parts && c.parts.length > 5 ? [{ label: `+${c.parts.length - 5} more`, value: '' }] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
     const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.expandable ? `#toggle:${row.key}` : routeYearHref(row.codes[0], c.year);
-    return { ...c, year: String(c.year), href, title: [head, withShare(c, `${c.year}: ${formatCount(c.value)} ${unit()}`), ...lines, ...more].join('\n') };
+    return { ...c, year: String(c.year), href, head, rows: [...cellRows(c), ...parts, ...more] };
   });
   const labels = res.rows.map((r) => ({
     ...r,
@@ -129,7 +134,7 @@ function drawCities() {
     href: r.kind === 'airport' ? airportHref(r.code) : r.expandable ? `#toggle:${r.key}` : airportHref(r.codes[0]),
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
-  box.append(Plot.plot({
+  const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1200),
     height: res.rows.length * ROW_PX + 90,
     marginLeft: 280,
@@ -140,14 +145,24 @@ function drawCities() {
     y: { type: 'band', domain: res.rows.map((r) => r.key), axis: null },
     color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
-      Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), title: 'title', href: 'href', tip: true }),
+      Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), href: 'href' }),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
       Plot.text(labels, {
         y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
       }),
     ],
-  }));
+  });
+  box.append(...attachPopover(chart, cellPopover('row')));
 }
+
+// a cell's popover: its row and year, its rows, and its link (a city group's toggle isn't a link to follow)
+const cellPopover = (y) => ({
+  content: (d) => ({ title: `${d.head} · ${d.year}`, rows: d.rows }),
+  at: (d) => [d.year, d[y]],
+  keyOf: () => ({ kind: 'none' }),
+  link: (d) => (d.href && !d.href.startsWith('#') ? d.href : null),
+});
 
 // Row labels carry their hover text in an SVG <title>; move it into our own tooltip so it shows at once
 // and the same way in every browser.
@@ -181,14 +196,13 @@ function draw() {
 const labelTip = $('label-tip');
 $('heatmap').addEventListener('mousemove', (e) => {
   const text = e.target.closest && e.target.closest('text[data-tip]');
-  $('heatmap').classList.toggle('over-label', Boolean(text));
   if (!text) { labelTip.hidden = true; return; }
   labelTip.textContent = text.dataset.tip;
   labelTip.style.left = `${Math.min(e.clientX + 14, window.innerWidth - 320)}px`;
   labelTip.style.top = `${e.clientY + 14}px`;
   labelTip.hidden = false;
 });
-$('heatmap').addEventListener('mouseleave', () => { labelTip.hidden = true; $('heatmap').classList.remove('over-label'); });
+$('heatmap').addEventListener('mouseleave', () => { labelTip.hidden = true; });
 
 $('heatmap').addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('a');

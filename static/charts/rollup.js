@@ -3,6 +3,7 @@ import { buildHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { rollupRows, slugify } from '/static/charts/src/rollup.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { attachPopover } from '/static/common/popover.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -45,11 +46,12 @@ function pushState() {
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'n', 'rank', 'scale'], s ? `?${s}` : '')}`);
 }
 
-const withShare = (c, text) => ({
-  absolute: text,
-  year: `${text} (${fmtPct(c.share)} of the year)`,
-  busiest: `${text} (${fmtPct(c.peak)} of the year's biggest)`,
-}[state.scale]);
+// a heat-map cell's popover rows: the amount, and the share the colour shows when it shows one
+const cellRows = (c) => [
+  { label: HEAT_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
+  ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
+  ...(state.scale === 'busiest' ? [{ label: "Of the year's biggest", value: fmtPct(c.peak) }] : []),
+];
 
 // airlines are named by their legal entity, which is long: label rows with the short name (the full one is the hover text)
 let shorts = new Map();
@@ -86,12 +88,8 @@ function draw() {
   if (!res.cells.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const years = res.years.map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
-  const data = res.cells.map((c) => ({
-    ...c,
-    year: String(c.year),
-    title: `${c.dest}\n${withShare(c, `${c.year}: ${formatCount(c.value)} ${unit()}`)}`,
-  }));
-  box.append(Plot.plot({
+  const data = res.cells.map((c) => ({ ...c, year: String(c.year) }));
+  const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1200),
     height: res.dests.length * ROW_PX + 90,
     marginLeft: 190,
@@ -104,9 +102,13 @@ function draw() {
       ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
       : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), HEAT_MEASURES[state.measure]) },
     marks: [
-      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), title: 'title', tip: true }),
+      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField() }),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
       Plot.text(res.dests.map((d) => ({ dest: d, label: labelOf(d), href: familyHref(d) })), { y: 'dest', text: 'label', title: 'dest', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8, fill: 'currentColor' }),
     ],
+  });
+  box.append(...attachPopover(chart, {
+    content: (d) => ({ title: `${d.dest} · ${d.year}`, rows: cellRows(d) }), at: (d) => [d.year, d.dest], keyOf: () => ({ kind: 'none' }),
   }));
 }
 

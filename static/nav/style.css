@@ -6,3 +6,16 @@
 .crumbs [aria-current] { font-weight:600; }
 .site-header select { font-size:13px; color:var(--muted); padding:2px 8px; }
 .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+/* one popover for every chart, heat-map cell, row label and map: static/common/popover.js */
+.popover { position:fixed; z-index:20; pointer-events:none; display:grid; grid-template-columns:auto auto auto; column-gap:6px; align-items:center;
+  padding:6px 9px; border-radius:6px; font-size:12px; line-height:1.4; white-space:nowrap;
+  background:var(--bg); color:var(--fg); border:1px solid var(--line); box-shadow:0 2px 8px rgba(0,0,0,.2); }
+.popover[hidden] { display:none; }
+.popover.with-extra { grid-template-columns:auto auto auto auto; }
+.popover.text { display:block; white-space:pre-line; max-width:320px; }
+.popover-title { grid-column:1 / -1; font-weight:600; }
+.popover .num { text-align:right; font-variant-numeric:tabular-nums; padding-left:8px; }
+.popover .extra { text-align:right; font-variant-numeric:tabular-nums; padding-left:8px; color:var(--muted); }
+.popover .key { width:10px; height:10px; border-radius:2px; }
+.popover .key-line { height:2px; background:currentColor; }
+.popover .key-other { background:currentColor; opacity:.25; }
