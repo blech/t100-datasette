@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { buildFamilySeries, SERIES_COLORS, OTHER_COLOR } from '/static/charts/src/rollup.js';
+import { buildFamilySeries } from '/static/charts/src/rollup.js';
+import { seriesColours, isDark } from '/static/common/palette.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
@@ -46,7 +47,7 @@ function draw() {
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.points.map((p) => ({ ...p, year: String(p.year) }));
   const tips = periodRows(data, { key: (p) => p.year, order: res.series, format: (v) => formatCount(v) });
-  const colors = { domain: res.series, range: res.series.map((s, i) => (s === 'Other' ? OTHER_COLOR : SERIES_COLORS[i % SERIES_COLORS.length])), legend: true };
+  const colors = { ...seriesColours(res.series, isDark()), legend: true };
   const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100),
     height: 420,
@@ -91,6 +92,7 @@ async function main() {
   for (const [id, field] of [['fam-measure', 'measure'], ['fam-kind', 'kind'], ['fam-service', 'service'], ['fam-split', 'split']]) {
     $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });
   }
+  document.addEventListener('t100:theme', () => draw());
   draw();
 }
 

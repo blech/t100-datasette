@@ -52,8 +52,10 @@ test('the bands offered cover every distance once', () => {
 });
 
 test('every series has a colour', async () => {
-  const { ENGINE_COLORS, ENGINE_SERIES } = await import('../src/rollup.js');
-  assert.equal(ENGINE_COLORS.length, ENGINE_SERIES.length);
+  const { ENGINE_SERIES } = await import('../src/rollup.js');
+  const { palette } = await import('../../common/palette.js');
+  assert.equal(palette(false).engines.length, ENGINE_SERIES.length);
+  assert.equal(palette(true).engines.length, ENGINE_SERIES.length);
 });
 
 import { slugify, buildFamilySeries } from '../src/rollup.js';

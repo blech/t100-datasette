@@ -4,7 +4,8 @@ import { indexAirports, placePoints } from '/static/globe/src/adapter.js';
 import { THEMES, resolveTheme } from '/static/globe/src/themes.js';
 import { geoAlbersUsaTerritories } from '/static/globe/src/usamap.js';
 import * as Plot from '/static/charts/vendor/plot.js';
-import { buildEngineShares, ENGINE_SERIES, ENGINE_COLORS } from '/static/charts/src/rollup.js';
+import { buildEngineShares, ENGINE_SERIES } from '/static/charts/src/rollup.js';
+import { palette, isDark } from '/static/common/palette.js';
 import { placeOnMap, hitTest, drawMap } from './src/map.js';
 import { airlineLines, spreadLabels, passengerBands, OTHER_AIRLINES, airlineColours } from './src/airlines.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
@@ -113,7 +114,7 @@ async function showEngines() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { label: null, tickFormat: 'd', domain: [minYear, maxYear] },
     y: { label: 'Share of flights of 3,000 miles or more', tickFormat: '.0%', domain: [0, 1] },
-    color: { domain: ENGINE_SERIES, range: ENGINE_COLORS, legend: true },
+    color: { domain: ENGINE_SERIES, range: palette(isDark()).engines, legend: true },
     marks: [
       Plot.areaY(res.points, { x: 'year', y: 'share', fill: 'series', order: ENGINE_SERIES }),
       Plot.ruleY([0]),
@@ -214,3 +215,5 @@ async function drawCharts() {
 
 showMap().catch((err) => failed($('map-box'), 'map', err));
 drawCharts();
+// the charts' colours follow the theme (the map listens for itself)
+document.addEventListener('t100:theme', () => drawCharts());

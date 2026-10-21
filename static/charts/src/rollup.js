@@ -16,8 +16,6 @@ export const ENGINE_BANDS = [
 
 // BTS aircraft groups, in the order they are stacked
 export const ENGINE_SERIES = ['Twin jet', 'Tri-jet', 'Quad jet', 'Turboprop', 'Piston and helicopter'];
-// One blue hue stepping from the twin jets that won to the quads they replaced; the rest are grey
-export const ENGINE_COLORS = ['#08519c', '#4292c6', '#9ecae1', '#969696', '#d0d0d0'];
 
 const SERIES_OF = { 6: 'Twin jet', 7: 'Tri-jet', 8: 'Quad jet', 4: 'Turboprop', 5: 'Turboprop' };
 const seriesOf = (group) => SERIES_OF[Number(group)] || 'Piston and helicopter';
@@ -57,9 +55,6 @@ export function buildEngineShares(rows, { measure = 'deps', kind = 'passenger', 
 // "DC-9 / MD-80 / MD-90" -> "dc-9-md-80-md-90": the family's address on /aircraft/<slug>. Plugin and page share this rule.
 export const slugify = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
-// Plot's tableau10 palette, with the folded-together "Other" in grey
-export const SERIES_COLORS = ['#4e79a7', '#f28e2c', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab'];
-export const OTHER_COLOR = '#bdbdbd';
 
 const SERVICE_LABELS = { domestic: 'Domestic', international: 'International' };
 const SPLIT_LABEL = {

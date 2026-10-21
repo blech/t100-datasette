@@ -1,5 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { buildEngineShares, ENGINE_BANDS, ENGINE_COLORS, ENGINE_SERIES } from '/static/charts/src/rollup.js';
+import { buildEngineShares, ENGINE_BANDS, ENGINE_SERIES } from '/static/charts/src/rollup.js';
+import { palette, isDark } from '/static/common/palette.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { formatCount } from '/static/common/numbers.js';
@@ -42,7 +43,7 @@ function draw() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { label: null, tickFormat: 'd' },
     y: { label: `Share of ${unit}`, tickFormat: '.0%', domain: [0, 1] },
-    color: { domain: ENGINE_SERIES, range: ENGINE_COLORS, legend: true },
+    color: { domain: ENGINE_SERIES, range: palette(isDark()).engines, legend: true },
     marks: [
       Plot.areaY(res.points, { x: 'year', y: 'share', fill: 'series', order: ENGINE_SERIES }),
       Plot.ruleY([0]),
@@ -62,6 +63,7 @@ async function main() {
   for (const [id, field] of [['engine-measure', 'measure'], ['engine-kind', 'kind'], ['engine-band', 'band']]) {
     $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });
   }
+  document.addEventListener('t100:theme', () => draw());
   try {
     rows = (await fetchRows(queryUrl('engines_by_year'))).rows;
   } catch (err) {

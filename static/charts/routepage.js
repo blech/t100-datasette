@@ -5,6 +5,7 @@ import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/sr
 import { formatCount, formatTons, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
+import { seriesColours, isDark } from '/static/common/palette.js';
 
 // the tallest stack, which sets the y axis's scale
 const stackMax = (points, key, value = (p) => p.value) => {
@@ -71,7 +72,7 @@ function drawChart() {
     y: state.measure === 'load_factor'
       ? { grid: true, label: MEASURES.load_factor, tickFormat: 'd', domain: [0, 100] }
       : { grid: true, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), MEASURES[state.measure]) },
-    color: { legend: true, domain: res.series, scheme: 'tableau10' },
+    color: { legend: true, ...seriesColours(res.series, isDark()) },
     marks,
   });
   box.append(...attachPopover(chart, {
@@ -197,6 +198,7 @@ async function main() {
   fillSelect($('chart-measure'), MEASURES, state.measure);
   fillSelect($('chart-split'), SPLITS, state.split);
   $('chart-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); drawChart(); });
+  document.addEventListener('t100:theme', () => drawChart());
   $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); drawChart(); drawTable(); });
   $('route-chart').hidden = false;
   $('route-table').hidden = false;
