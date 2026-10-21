@@ -52,8 +52,10 @@ def test_pages_with_one_view_have_none(path):
     assert views_for(path) == []
 
 
-def test_datasettes_own_pages_still_render(ds):
-    assert get(ds, "/t100").status_code == 200
+def test_datasettes_own_pages_still_render_with_their_own_views_list(ds):
+    r = get(ds, "/t100")
+    assert r.status_code == 200
+    assert 'id="views"' in r.text, "the database page's list of SQL views must not be overridden by the navigation's"
 
 
 PAGES = {

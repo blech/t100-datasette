@@ -104,10 +104,11 @@ def views_for(path):
 
 @hookimpl
 def extra_template_vars(request):
-    """The header's current section and the page's views, for every template rendered with a request."""
+    """The header's current section and the page's views, for every template rendered with a request. Prefixed, because
+    these are merged over every page's own context, Datasette's included: its database page has a `views` of its own."""
     if request is None:
         return {}
-    return {"section": section_of(request.path), "views": views_for(request.path)}
+    return {"nav_section": section_of(request.path), "nav_views": views_for(request.path)}
 
 
 async def is_foreign(datasette, code):
