@@ -20,7 +20,7 @@
     </p>
 
     <section class="section" aria-labelledby="airports-heading">
-      <h2 id="airports-heading">Airports</h2>
+      <h2 id="airports-heading"><a href="/airports">Airports</a></h2>
       {% if airports %}{% set a = airports.airports %}
       <p class="story">The busiest airport in {{ max_year }} was {{ a[0].city }} ({{ a[0].code }}), where {{ a[0].passengers }} passengers boarded,
         ahead of {{ a[1].city }} ({{ a[1].code }}) and {{ a[2].city }} ({{ a[2].code }}).</p>
@@ -34,7 +34,7 @@
     </section>
 
     <section class="section" aria-labelledby="aircraft-heading">
-      <h2 id="aircraft-heading">Aircraft</h2>
+      <h2 id="aircraft-heading"><a href="/aircraft">Aircraft</a></h2>
       {% if engines %}
       <p class="story">In {{ engines.first_year }}, {{ engines.first_tri_quad }} of flights of 3,000 miles or more were flown by jets with three or four engines:
         747s, DC-10s, TriStars. In {{ engines.last_year }} twin-engined jets flew {{ engines.last_twin }} of them.</p>
@@ -44,7 +44,7 @@
     </section>
 
     <section class="section" aria-labelledby="airlines-heading">
-      <h2 id="airlines-heading">Airlines</h2>
+      <h2 id="airlines-heading"><a href="/airlines">Airlines</a></h2>
       {% if concentration %}{% set c = concentration %}
       <p class="story">In {{ c.first_year }} the four biggest airlines carried {{ c.first }} of all passengers.
         {% if c.low_year %}As Southwest and other low-cost airlines grew, that fell to {{ c.low }} by {{ c.low_year }}; after a run of mergers it was {{ c.last }} in {{ c.last_year }}.
