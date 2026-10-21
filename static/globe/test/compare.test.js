@@ -34,6 +34,7 @@ test('changeText describes a change', () => {
   assert.equal(changeText({ status: 'kept', depsThen: 10, depsNow: 1500 }, 2019), '10 → 1,500 departures');
   assert.equal(changeText({ status: 'added', depsThen: 0, depsNow: 52 }, 2019), '0 → 52 departures');
   assert.equal(changeText({ status: null }, 2019), '');
+  assert.equal(changeText({ status: 'kept', depsThen: 12345, depsNow: 2345678 }, 2019), '12,300 → 2.35\u00a0×\u00a010⁶ departures');
 });
 
 const years = [2019, 2020, 2021, 2022];

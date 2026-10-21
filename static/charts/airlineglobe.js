@@ -10,12 +10,12 @@ import { shortName } from '/static/charts/src/names.js';
 import { parseStyle, styleParams, colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from '/static/globe/src/routestyle.js';
 import { countStatuses, changeText, moveHandle, playStep } from '/static/globe/src/compare.js';
 import { renderLegend, syncRange } from '/static/globe/src/controls.js';
+import { formatCount as fmt, formatTons } from '/static/common/numbers.js';
 
 const $ = (id) => document.getElementById(id);
 const group = document.body.dataset.group;
 const airline = document.body.dataset.airline; // '' for a whole group, else one member of a merged group
 const own = airline || group;
-const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 const params = new URLSearchParams(location.search);
 const MINS = ['1', '12', '52'];
 const state = {
@@ -149,7 +149,7 @@ function showPanel(r) {
   const sub = document.createElement('div');
   sub.textContent = `${place(r.origin)} – ${place(r.dest)}${r.status ? ` (${r.status})` : ''}`;
   const dl = document.createElement('dl');
-  for (const [k, v] of [['Departures', fmt(r.deps)], ['Seats', fmt(r.seats)], ['Passengers', fmt(r.passengers)], ['Freight (lb)', fmt(r.freight)]]) {
+  for (const [k, v] of [['Departures', fmt(r.deps)], ['Seats', fmt(r.seats)], ['Passengers', fmt(r.passengers)], ['Freight', formatTons(r.freight)]]) {
     dl.append(Object.assign(document.createElement('dt'), { textContent: k }), Object.assign(document.createElement('dd'), { textContent: v }));
   }
   const a = Object.assign(document.createElement('a'), { href: `/airports/${r.origin}/${r.dest}`, textContent: 'This route over time →' });

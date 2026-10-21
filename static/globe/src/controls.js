@@ -1,3 +1,5 @@
+import { exactCount } from '../../common/numbers.js';
+
 // The legend's chips, one button per category, pressed while its routes are shown
 export function renderLegend(el, groups, onToggle) {
   // the chips are rebuilt on every change, so hand keyboard focus on to the new copy of the one that had it
@@ -13,7 +15,7 @@ export function renderLegend(el, groups, onToggle) {
       const sw = Object.assign(document.createElement('span'), { className: 'swatch' });
       if (it.colour) sw.style.setProperty('--swatch', it.colour); else sw.classList.add('plain');
       if (it.dashed) sw.classList.add('dashed');
-      const count = Object.assign(document.createElement('span'), { className: 'count', textContent: it.count.toLocaleString('en-US') });
+      const count = Object.assign(document.createElement('span'), { className: 'count', textContent: exactCount(it.count) });
       b.append(sw, `${it.label} `, count);
       b.addEventListener('click', () => onToggle(it.key));
       group.append(b);

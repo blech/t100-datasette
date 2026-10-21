@@ -11,6 +11,7 @@ import { colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from 
 import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
 import { renderLegend, syncRange } from './src/controls.js';
 import { routesByOrigin, chooserTap } from './src/chooser.js';
+import { formatCount as fmt, formatTons } from '/static/common/numbers.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -19,7 +20,6 @@ const state = parseState(location.search);
 new ResizeObserver(() => {
   document.documentElement.style.setProperty('--below-header', `${Math.ceil($('header').getBoundingClientRect().bottom) + 8}px`);
 }).observe($('header'));
-const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
 let airports = new Map();
 let yearRoutes = [];     // placed routes, all years
@@ -126,7 +126,7 @@ function showPanel(r) {
   const sub = document.createElement('div');
   sub.textContent = `${r.destCity || ''} (${r.service}${r.status ? `, ${r.status}` : ''})`;
   const dl = document.createElement('dl');
-  for (const [k, v] of [['Departures', fmt(r.deps)], ['Seats', fmt(r.seats)], ['Passengers', fmt(r.passengers)], ['Freight (lb)', fmt(r.freight)]]) {
+  for (const [k, v] of [['Departures', fmt(r.deps)], ['Seats', fmt(r.seats)], ['Passengers', fmt(r.passengers)], ['Freight', formatTons(r.freight)]]) {
     const dt = document.createElement('dt'); dt.textContent = k;
     const dd = document.createElement('dd'); dd.textContent = v;
     dl.append(dt, dd);
