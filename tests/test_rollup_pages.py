@@ -130,3 +130,14 @@ def test_the_new_pages_are_not_mistaken_for_families_and_are_linked_from_aircraf
     assert 'href="/aircraft/table"' in aircraft and 'href="/aircraft/makers"' in aircraft
     assert 'aria-current="page">table<' in get(ds, "/aircraft/table").text
     assert 'aria-current="page">makers<' in get(ds, "/aircraft/makers").text
+
+
+def test_chart_pages_offer_a_year_span_and_know_the_full_range(ds, db_path):
+    put(db_path, "family_year", [fam(2019, "Boeing 737", 1, "F", 1)])
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F",
+                                             deps=4, seats=400, passengers=300, freight=0)])
+    for path, select in [("/aircraft/boeing-737", "fam-span"), ("/airports/SFO/LHR", "chart-span"), ("/airlines/delta", "al-span")]:
+        html = get(ds, path).text
+        assert f'id="{select}"' in html, path
+        assert 'data-min-year="1990"' in html and 'data-max-year="2025"' in html, path
+        assert 'value="flown"' in html and 'value="all"' in html, path

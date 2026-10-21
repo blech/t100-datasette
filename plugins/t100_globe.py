@@ -226,7 +226,7 @@ async def route_page(datasette, request):
     steps += [(dest, f"/airports/{origin}/{dest}"), (year, None)] if year else [(dest, None)]
     html = await datasette.render_template(
         "route.html",
-        {"origin": origin, "dest": dest, "year": year, "crumbs": trail(datasette, *steps)},
+        {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, *steps)},
         request=request,
     )
     return Response.html(html)
@@ -299,7 +299,7 @@ async def family_page(datasette, request):
         raise NotFound(f"No aircraft family {slug}")
     html = await datasette.render_template(
         "family.html",
-        {"family": family, "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
+        {"family": family, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
         request=request,
     )
     return Response.html(html)
@@ -366,7 +366,7 @@ async def airline_page(datasette, request):
         "airline.html",
         {
             **info, "own": info["airline"] or info["group"],
-            "max_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+            "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
             "crumbs": airline_crumbs(datasette, info),
         },
         request=request,
