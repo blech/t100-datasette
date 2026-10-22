@@ -57,11 +57,9 @@ export class NetworkRenderer {
 
   centre() { return [this.w / 2, this.mode === 'globe' ? this.h * 0.46 : this.h * 0.5]; }
 
-  // the view that frames `points` inside `box` on the map as it is now (see fitView)
+  // the globe view that frames `points` inside `box` (see fitView)
   fit(points, box) {
-    const d3 = window.d3;
-    const projection = this.mode === 'globe' ? d3.geoOrthographic() : d3.geoEqualEarth();
-    return fitView(points, projection, { flat: this.mode === 'flat', centre: this.centre(), baseScale: this.baseScale, box });
+    return fitView(points, window.d3.geoOrthographic(), { centre: this.centre(), baseScale: this.baseScale, box });
   }
 
   visible(lon, lat) {

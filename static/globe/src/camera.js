@@ -64,10 +64,10 @@ function facing([lon, lat], rot) {
   return Math.sin(la) * Math.sin(clat) + Math.cos(la) * Math.cos(clat) * Math.cos(lo - clon) > 0;
 }
 
-// The rotation and zoom that put every [lon, lat] in `points` inside `box` ({ left, right, top, bottom }, in pixels),
-// as close as the zoom limits allow, north up. `projection` is a d3 projection of the kind on screen, whose centre
-// lands at `centre` on the canvas at `baseScale` times the zoom; on the flat map only the longitude turns.
-export function fitView(points, projection, { flat = false, centre, baseScale, box }) {
+// The globe's rotation and zoom that put every [lon, lat] in `points` inside `box` ({ left, right, top, bottom }, in
+// pixels), as close as the zoom limits allow, north up. `projection` is an orthographic d3 projection, whose centre
+// lands at `centre` on the canvas at `baseScale` times the zoom.
+export function fitView(points, projection, { centre, baseScale, box }) {
   const n = points.length;
   if (!n) return null;
   // start from the points' mean direction, then nudge until their extent sits in the middle of the box
@@ -77,13 +77,12 @@ export function fitView(points, projection, { flat = false, centre, baseScale, b
     x += Math.cos(la) * Math.cos(lo); y += Math.cos(la) * Math.sin(lo); z += Math.sin(la);
   }
   const rot = rotationFor(Math.atan2(y, x) * DEG, Math.atan2(z, Math.hypot(x, y)) * DEG);
-  if (flat) rot[1] = 0;
   const [cx, cy] = centre;
   let k = baseScale;
   for (let i = 0; i < 8; i++) {
     projection.rotate(rot).scale(1).translate([0, 0]);
     // on the globe, a point round the back can't be framed: show the whole hemisphere instead
-    if (!flat && points.some((p) => !facing(p, rot))) return { rot, zoom: 1 };
+    if (points.some((p) => !facing(p, rot))) return { rot, zoom: 1 };
     const xy = points.map((p) => projection(p));
     k = Infinity;
     for (const [px, py] of xy) {
@@ -96,10 +95,10 @@ export function fitView(points, projection, { flat = false, centre, baseScale, b
     const my = (Math.min(...xy.map((p) => p[1])) + Math.max(...xy.map((p) => p[1]))) / 2;
     const ex = (box.left + box.right) / 2 - (cx + k * mx);
     const ey = (box.top + box.bottom) / 2 - (cy + k * my);
-    if (i === 7 || (Math.abs(ex) < 0.5 && (flat || Math.abs(ey) < 0.5))) break;
+    if (i === 7 || (Math.abs(ex) < 0.5 && Math.abs(ey) < 0.5)) break;
     // the same turn a drag of that many pixels makes
     rot[0] += (ex / k) * DEG;
-    if (!flat) rot[1] = clamp(rot[1] - (ey / k) * DEG, -90, 90);
+    rot[1] = clamp(rot[1] - (ey / k) * DEG, -90, 90);
   }
   return { rot, zoom: k / baseScale };
 }

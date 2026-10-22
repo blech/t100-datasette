@@ -254,6 +254,7 @@ function bindControls() {
   proj.addEventListener('change', () => {
     state.proj = proj.value === 'flat' ? 'flat' : 'globe';
     renderer.setMode(state.proj);
+    $('fit').hidden = state.proj === 'flat';
     pushState();
     dirty = true;
   });
@@ -263,6 +264,8 @@ function bindControls() {
   $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
   const a = airports.get(origin);
   $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: rotationFor(a.lon, a.lat), zoom: view.zoom }; });
+  // the flat map only turns east-west, so it can't frame routes north of its middle: fitting is for the globe
+  $('fit').hidden = state.proj === 'flat';
   $('fit').addEventListener('click', () => {
     const points = [[a.lon, a.lat], ...shown.map((r) => r.to)];
     // the clear area between the header and the controls, with room for the labels

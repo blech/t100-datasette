@@ -114,9 +114,3 @@ test('fitView stops at the zoom limit for a tight cluster, and shows the hemisph
   assert.equal(fitView([[-87.9, 41.98], [151.2, -33.9], [28.2, -26.1]], d3.geoOrthographic(), opts).zoom, 1);
   assert.equal(fitView([], d3.geoOrthographic(), opts), null);
 });
-
-test('fitView on the flat map only turns the longitude', () => {
-  const fit = fitView([[-87.9, 41.98], [-70.3, 43.6]], d3.geoEqualEarth(), { flat: true, centre: [500, 400], baseScale: 160, box: { left: 0, right: 1000, top: 0, bottom: 800 } });
-  assert.equal(fit.rot[1], 0);
-  assert.ok(fit.zoom >= ZMIN && fit.zoom <= ZMAX);
-});
