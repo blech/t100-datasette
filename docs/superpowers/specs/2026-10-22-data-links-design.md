@@ -109,7 +109,7 @@ Under "Source", a short paragraph:
 - Changing a setting updates the link:
   - the year on `/airlines`;
   - the years on an airport's Changes;
-  - the year on an airport's map.
+  - the year on an airline's map (an airport's map links `routes_by_year`, which takes no year).
 - `/airports/SFO/JFK?split=carrier&highlight=airline:united` links to `route` with `group=united`, and that page's rows are all United's.
 - The front page and the about page show no data link.
 - There are no page errors.

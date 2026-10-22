@@ -55,6 +55,13 @@ Questions:
   - A link between subjects opens the other subject's own page, with what you came from highlighted when that page can show it, and with the settings the two pages share.
   - Every page links, as "This page's data" in its footer (or "This map's data" in a map's controls), to the canned query behind it, with its settings filled in. That's where to narrow: five queries take an optional airline `group` (a route, a route in a year, an aircraft family, and an airport's size and changes), and a highlighted airline fills it in.
   - Still to come: **carrying the year** from the airlines and aircraft tables, and from an airport's Changes rows, to the pages they link to.
+  - **Fixed from the data links' final review:** clearing a highlight on a route or family page left its data link narrowed to that airline.
+  - **Deferred minors from the data links' final review:**
+    - **A route with no flights in the year** (or no data, or a failed load) shows no data link: the page returns before setting it, like the deferred `carryQuery()` minor above.
+    - **An airport's map in months mode** draws `routes_by_month` for the year, but links `routes_by_year`.
+    - **An airline's map while comparing** links only the later year, not the one compared with.
+    - **The all-airports map's link** sits inside the chooser's collapsed list, styled like one of its airport codes.
+    - **Big data pages** are heavy on a phone: American's routes are 29,534 rows, 16 MB of HTML, as canned query pages render up to `max_returned_rows` (50,000).
 - **Gaps:** which empty cells in the grid matter? For example, a map for an aircraft family (where it flies), or a table of all airlines.
 
 **Part 1 (one kind of view per page): built on branch `views-pages`**, spec `docs/superpowers/specs/2026-10-22-views-pages-design.md`.

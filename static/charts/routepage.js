@@ -58,6 +58,13 @@ function fillSelect(select, options, value) {
 }
 
 // "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
+// the data behind the page, narrowed to the airline it's highlighting, if any
+function dataLink() {
+  const group = parseHighlight(location.search)?.id ?? '';
+  if (year === null) setDataLink('route', { origin, dest, group });
+  else setDataLink('route_year', { origin, dest, year, group });
+}
+
 function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
   if (!line) return;
@@ -72,6 +79,7 @@ function highlightLine(highlight, wanted, byAirline) {
     q.delete('highlight');
     history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}`);
     carryQuery();
+    dataLink();
     drawChart();
   });
   // the other way, with the highlight: the reverse-direction link in the sentence below carries the query
@@ -248,10 +256,7 @@ async function main() {
   }
   const mapLink = $('map-link');
   if (mapLink) mapLink.href = `/airports/${origin}/globe${year !== null ? `?year=${year}` : ''}`;
-  // the data behind the page, narrowed to the airline the page arrived highlighting
-  const group = parseHighlight(location.search)?.id ?? '';
-  if (year === null) setDataLink('route', { origin, dest, group });
-  else setDataLink('route_year', { origin, dest, year, group });
+  dataLink();
   fillSelect($('chart-split'), SPLITS, state.split);
   $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); if (onTable) drawTable(); else drawChart(); });
   if (onTable) {

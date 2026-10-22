@@ -45,6 +45,9 @@ function pushState() {
 }
 
 // "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
+// the data behind the page, narrowed to the airline it's highlighting, if any
+const dataLink = () => setDataLink('family_detail', { family, group: parseHighlight(location.search)?.id ?? '' });
+
 function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
   const name = highlight && rows.find((r) => r.group_id === highlight.id)?.group_name;
@@ -59,6 +62,7 @@ function highlightLine(highlight, wanted, byAirline) {
     const q = new URLSearchParams(location.search);
     q.delete('highlight');
     history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}`);
+    dataLink();
     draw();
   });
   line.replaceChildren(`${text} · `, clear);
@@ -106,7 +110,7 @@ function chooseSplit() {
 }
 
 async function main() {
-  setDataLink('family_detail', { family, group: parseHighlight(location.search)?.id ?? '' }); // narrowed to a highlighted airline
+  dataLink();
   const measure = $('fam-measure');
   for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
   try {
