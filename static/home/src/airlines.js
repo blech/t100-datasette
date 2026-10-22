@@ -26,28 +26,6 @@ export function airlineLines(rows) {
   return { series, points };
 }
 
-// line-end label positions, at least `gap` apart: crowded labels form a block centred on their lines' mean
-export function spreadLabels(values, gap) {
-  const order = values.map((v, i) => i).sort((a, b) => values[b] - values[a]);
-  let blocks = order.map((i) => ({ members: [i], centre: values[i] }));
-  const top = (b) => b.centre + (gap * (b.members.length - 1)) / 2;
-  const bottom = (b) => b.centre - (gap * (b.members.length - 1)) / 2;
-  for (let merged = true; merged;) {
-    merged = false;
-    for (let k = 0; k + 1 < blocks.length; k++) {
-      const [a, b] = [blocks[k], blocks[k + 1]];
-      if (bottom(a) - top(b) >= gap - 1e-9) continue;
-      const members = [...a.members, ...b.members];
-      blocks.splice(k, 2, { members, centre: members.reduce((s, i) => s + values[i], 0) / members.length });
-      merged = true;
-      break;
-    }
-  }
-  const out = new Array(values.length);
-  for (const b of blocks) b.members.forEach((i, n) => { out[i] = top(b) - n * gap; });
-  return out;
-}
-
 // each year's points stacked from zero in orderOf order: y1 is a point's base, y2 its top
 export function stackShares(points, orderOf, valueOf = (d) => d.share) {
   const byYear = new Map();
