@@ -105,6 +105,13 @@ Questions:
   - `/airports/{code}/changes` compares two years: destinations or airlines dropped, added or kept.
   - The views line is Over time · Destinations · Changes · Map. Links to the charts carry only `measure`; links to the matrix carry the matrix's settings.
   - Every count is of departures from the airport, unlike the airline pages' airport pairs.
+  - **Fixed from its final review:** the matrix's heading went back to "routes over time" once its data loaded; a route page's "routes over time" link opened the charts. The route note now reads "More from SFO: over time · destinations · map".
+  - **Deferred minors from its final review:**
+    - **An airport with no flights** (`/airports/ZZZ`) says so, but still shows its empty controls ("Show [ ] for…", "Compare [ ] with [ ]").
+    - **"First flown here"** for an added airline counts over every year, so it can be decades before the years compared (Condor at SFO: 1990), as on an airline's Changes page. It could be the first month after the earlier year, or be labelled "first ever".
+    - **Reversed years** (from after to) give a summary that reads backwards.
+    - **Legend links match by short name,** so two top-8 groups that shorten alike would share one link.
+    - **The new pages' titles don't name the place,** unlike the matrix's "SFO (San Francisco, CA)".
 - **Still to come:** a family map.
 
 ### 5. Colour: done (merged, branch `colour`)
