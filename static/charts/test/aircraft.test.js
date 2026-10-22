@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { kindOptions, makerOptions, kindMatches, groupFamilies, sortFamilies, limitFamilies } from '../src/aircraft.js';
+import { kindOptions, makerOptions, kindMatches, groupFamilies, sortFamilies, limitFamilies, LIMIT_OPTIONS } from '../src/aircraft.js';
 
 const t = (type_id, name, family, maker, aircraft_kind, deps, extra = {}) => ({
   type_id, name, family, maker, aircraft_kind, first_year: 1990, last_year: 2025, deps, seats: deps * 100, passengers: deps * 80, freight: deps * 2000, ...extra,
@@ -131,4 +131,9 @@ test('limitFamilies reads any top N and falls back to showing everything for a l
 test('limitFamilies ranks by value even when the families come in another order', () => {
   const shuffled = [ranked[3], ranked[0], ranked[4], ranked[1], ranked[2]];
   assert.deepEqual(limitFamilies(shuffled, 'top2').shown.map((f) => f.family), ['A', 'B']);
+});
+
+test('the aircraft limit menu keeps its wording', () => {
+  assert.deepEqual(LIMIT_OPTIONS.map((o) => o.label),
+    ['the top 15 families', 'the top 20 families', 'the top 50 families', 'every family', 'families with at least 1%', 'families with at least 0.1%']);
 });
