@@ -1,4 +1,5 @@
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { groupFamilies, sortFamilies, limitFamilies, LIMIT_OPTIONS, DEFAULT_LIMIT, kindOptions, makerOptions } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { formatCount, countLabel } from '/static/common/numbers.js';
@@ -116,6 +117,7 @@ function draw() {
 }
 
 async function load() {
+  setDataLink('type_table', { year: state.year });
   const id = ++seq;
   loading = true;
   $('aircraft-table').textContent = 'Loading table…';

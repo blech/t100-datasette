@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { buildFamilySeries, hasVersions, SPLIT_LABEL } from '/static/charts/src/rollup.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
@@ -105,6 +106,7 @@ function chooseSplit() {
 }
 
 async function main() {
+  setDataLink('family_detail', { family, group: parseHighlight(location.search)?.id ?? '' }); // narrowed to a highlighted airline
   const measure = $('fam-measure');
   for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
   try {

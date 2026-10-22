@@ -1,4 +1,5 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { SORTS, topBy, parseState, toSearch, airportHref, loadFactor } from './src/table.js';
 import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
@@ -65,6 +66,7 @@ function pushState() {
 }
 
 async function load() {
+  setDataLink('top_airports', { year: state.year });
   const id = ++loadSeq;
   $('status').textContent = 'Loading…';
   try {

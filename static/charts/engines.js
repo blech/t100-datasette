@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { buildEngineShares, ENGINE_BANDS, ENGINE_SERIES } from '/static/charts/src/rollup.js';
 import { palette, isDark } from '/static/common/palette.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -56,6 +57,7 @@ function draw() {
 }
 
 async function main() {
+  setDataLink('engines_by_year', {});
   const measure = $('engine-measure');
   for (const [k, label] of Object.entries(MEASURES)) measure.append(new Option(label, k));
   for (const b of ENGINE_BANDS) $('engine-band').append(new Option(b.label, b.value));

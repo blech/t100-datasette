@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { buildFamilySeries } from '/static/charts/src/rollup.js';
 import { kindOptions } from '/static/charts/src/aircraft.js';
@@ -67,6 +68,7 @@ function draw() {
 }
 
 async function main() {
+  setDataLink('maker_by_year', {});
   for (const [k, label] of Object.entries(MATRIX_MEASURES)) $('mk-measure').append(new Option(label.toLowerCase(), k));
   try {
     rows = (await fetchRows(queryUrl('maker_by_year'))).rows;

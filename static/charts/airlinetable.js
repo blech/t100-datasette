@@ -1,4 +1,5 @@
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { groupAirlines, sortAirlines, sharedQuery, matchesElsewhere } from '/static/charts/src/airlines.js';
 import { limitFamilies, limitOptions, DEFAULT_LIMIT } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -140,6 +141,7 @@ function draw() {
 }
 
 async function load() {
+  setDataLink('airline_table', { year: state.year });
   const id = ++seq;
   loading = true;
   $('airline-table').textContent = 'Loading table…';

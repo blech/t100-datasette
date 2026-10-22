@@ -51,7 +51,10 @@ What exists now:
 Questions:
 - **Cross-links:** which links between views should exist? For example, map → map for the same year and service, table → table, matrix cell → the route or the airline.
 - **Matrices:** how do they fit in? They're part table, part chart. Should they be the standard "over time" view for any list of things (airports, aircraft, airlines, routes), with a shared look and the same row-ranking and colour-scale controls? And should an airline or a family get a matrix of its routes or versions too?
-- **Narrowing down, or back to the top?** Should views keep refining, such as `/airports/ATL/JFK?airline=Delta`, a route as one airline flies it? Or do links go back to the top-level page after a point, so a route links to Delta's own page? A filter is easy to build, because the route's rows carry the airline. Delta's "What changed" table already links to its routes but drops the airline on the way. Undecided.
+- **Narrowing down, or back to the top? Settled: pages cross, with highlights; data links narrow** (spec `docs/superpowers/specs/2026-10-22-data-links-design.md`).
+  - A link between subjects opens the other subject's own page, with what you came from highlighted when that page can show it, and with the settings the two pages share.
+  - Every page links, as "This page's data" in its footer (or "This map's data" in a map's controls), to the canned query behind it, with its settings filled in. That's where to narrow: five queries take an optional airline `group` (a route, a route in a year, an aircraft family, and an airport's size and changes), and a highlighted airline fills it in.
+  - Still to come: **carrying the year** from the airlines and aircraft tables, and from an airport's Changes rows, to the pages they link to.
 - **Gaps:** which empty cells in the grid matter? For example, a map for an aircraft family (where it flies), or a table of all airlines.
 
 **Part 1 (one kind of view per page): built on branch `views-pages`**, spec `docs/superpowers/specs/2026-10-22-views-pages-design.md`.
