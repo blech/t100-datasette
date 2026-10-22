@@ -65,7 +65,7 @@ databases:
 
       top_airports:
         title: "Busiest US airports in a year"
-        description: "One row per airport in the year: departures from it, seats, passengers, freight, load factor and destinations flown to at least 12 times."
+        description: "One row per airport in the year: departures from it, seats, passengers, freight, load factor and destinations flown to at least 12 times. Give a year."
         sql: |
           -- dests: destinations with at least 12 departures that year, the cut-off the maps and matrices use
           WITH dests AS (
@@ -304,7 +304,7 @@ databases:
 
       type_table:
         title: "Aircraft types and families, in a year or all years"
-        description: "One row per aircraft type, service and kind, with its family and the first and last years it flew."
+        description: "One row per aircraft type, with its family and maker, the first and last years it flew, and its departures, seats, passengers and freight in the year. Leave year empty for all years."
         sql: |
           SELECT
             y.aircraft_type AS type_id,
@@ -314,10 +314,10 @@ databases:
             COALESCE(t.kind, 'Unknown') AS aircraft_kind,
             MIN(CASE WHEN y.deps > 0 THEN y.year END) AS first_year,
             MAX(CASE WHEN y.deps > 0 THEN y.year END) AS last_year,
-            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.deps ELSE 0 END) AS deps,
-            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.seats ELSE 0 END) AS seats,
-            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.passengers ELSE 0 END) AS passengers,
-            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.freight ELSE 0 END) AS freight
+            SUM(CASE WHEN (:year IN ('', 'all') OR y.year = CAST(:year AS INTEGER)) THEN y.deps ELSE 0 END) AS deps,
+            SUM(CASE WHEN (:year IN ('', 'all') OR y.year = CAST(:year AS INTEGER)) THEN y.seats ELSE 0 END) AS seats,
+            SUM(CASE WHEN (:year IN ('', 'all') OR y.year = CAST(:year AS INTEGER)) THEN y.passengers ELSE 0 END) AS passengers,
+            SUM(CASE WHEN (:year IN ('', 'all') OR y.year = CAST(:year AS INTEGER)) THEN y.freight ELSE 0 END) AS freight
           FROM type_year y
             LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type
             LEFT JOIN aircraft_family f ON f.aircraft_type = y.aircraft_type
@@ -327,7 +327,7 @@ databases:
       # the airlines table: each member airline's chosen year (or every year) by service and kind, with the years it flew
       airline_table:
         title: "Airline groups and their airlines, in a year or all years"
-        description: "One row per airline, service and kind, with its group and the first and last years it flew."
+        description: "One row per airline, service and kind, with its group and the first and last years it flew. Leave year empty for all years."
         sql: |
           SELECT
             d.group_id,
@@ -338,14 +338,14 @@ databases:
             CASE WHEN d.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
             MIN(CASE WHEN d.deps > 0 THEN d.year END) AS first_year,
             MAX(CASE WHEN d.deps > 0 THEN d.year END) AS last_year,
-            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) AS deps,
-            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.seats ELSE 0 END) AS seats,
-            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.passengers ELSE 0 END) AS passengers,
-            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.freight ELSE 0 END) AS freight
+            SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) AS deps,
+            SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.seats ELSE 0 END) AS seats,
+            SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.passengers ELSE 0 END) AS passengers,
+            SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.freight ELSE 0 END) AS freight
           FROM carrier_group_year d
             LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
           GROUP BY d.group_id, d.group_name, d.airline_id, airline_name, service, kind
-          HAVING SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) > 0
+          HAVING SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) > 0
           ORDER BY d.group_id, d.airline_id
 
       maker_by_year:
@@ -407,7 +407,7 @@ databases:
 
       carrier_routes_year:
         title: "An airline's airport pairs in one year"
-        description: "One row per airport pair (both directions together) flown in the year. Leave airline empty for the whole group."
+        description: "One row per airport pair (both directions together) flown in the year. Leave airline empty for the whole group. Give a year."
         sql: |
           SELECT r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, r.origin, r.dest, r.deps, r.seats, r.passengers, r.freight, r.domestic_deps
           FROM carrier_route_year r
@@ -544,7 +544,7 @@ databases:
 
       route_year:
         title: "Every carrier and aircraft on a route, by month, in one year"
-        description: "One row per month, carrier and aircraft, for departures from the origin to the destination in the year. Leave group empty for every airline."
+        description: "One row per month, carrier and aircraft, for departures from the origin to the destination in the year. Leave group empty for every airline. Give a year."
         sql: >
           WITH cn AS (
             -- BTS lists an airline's entity once per name and start date, and often repeats a row, so joining on the entity

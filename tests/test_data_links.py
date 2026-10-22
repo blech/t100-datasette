@@ -111,3 +111,23 @@ def test_datasettes_own_pages_have_no_theme_menu_or_data_link_in_their_footer(ds
         assert 'id="theme"' not in f and 'id="data-link"' not in f, path
         assert "About the data" in f and "· ·" not in " ".join(re.sub(r"<[^>]+>", " ", f).split()), path
     assert 'id="theme"' in footer(get(ds, "/airports").text)
+
+
+@pytest.mark.parametrize("query, table, row", [
+    ("type_table", "type_year", dict(year=2019, aircraft_type="622", domestic=1, service_class="F", deps=10, seats=1500, passengers=1000, freight=0)),
+    ("airline_table", "carrier_group_year", dict(year=2019, group_id="delta", group_name="Delta (incl. Northwest)", airline_id="19790", domestic=1,
+                                                 service_class="F", deps=10, seats=1500, passengers=1000, freight=0)),
+])
+def test_an_empty_year_means_all_years_as_all_does(ds, db_path, query, table, row):
+    put(db_path, table, [row, {**row, "year": 2020, "deps": 5}])
+    empty, everything = rows(ds, f"/t100/{query}.json?year="), rows(ds, f"/t100/{query}.json?year=all")
+    assert empty == everything and sum(r["deps"] for r in empty) == 15
+
+
+def test_the_descriptions_say_what_an_empty_year_does():
+    queries = yaml.safe_load(open("datasette.yml"))["databases"]["t100"]["queries"]
+    for name in ("type_table", "airline_table"):
+        assert "Leave year empty for all years." in queries[name]["description"], name
+    for name in ("top_airports", "route_year", "carrier_routes_year"):
+        assert "Give a year." in queries[name]["description"], name
+    assert queries["type_table"]["description"].startswith("One row per aircraft type,")
