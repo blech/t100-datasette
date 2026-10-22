@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { buildHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
 import { rollupRows } from '/static/charts/src/rollup.js';
+import { sharedQuery } from '/static/charts/src/airlines.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -43,7 +44,11 @@ function pushState() {
   if (state.scale !== 'year') q.set('scale', state.scale);
   const s = q.toString();
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'n', 'rank', 'scale'], s ? `?${s}` : '')}`);
+  carry();
 }
+
+// the views line takes the settings the airlines table reads too
+const carry = () => { for (const a of document.querySelectorAll('nav.views a')) a.search = sharedQuery(location.search); };
 
 // a heat-map cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
@@ -124,6 +129,7 @@ function fillControls() {
 
 async function main() {
   fillControls();
+  carry();
   try {
     const res = await fetchRows(queryUrl(page.query));
     rows = res.rows;
