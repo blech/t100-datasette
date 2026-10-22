@@ -41,13 +41,13 @@ def test_aircraft_and_airline_views():
     AIRCRAFT = [("Families", "/aircraft"), ("Makers", "/aircraft/makers"), ("Long-haul engines", "/aircraft/engines")]
     for i, (_, path) in enumerate(AIRCRAFT):
         assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(AIRCRAFT)], path
-    A = [("Over time", "/airlines/delta"), ("Changes", "/airlines/delta/changes"), ("Map", "/airlines/delta/globe")]
+    A = [("Over time", "/airlines/delta"), ("Routes", "/airlines/delta/routes"), ("Changes", "/airlines/delta/changes"), ("Map", "/airlines/delta/globe")]
     for i, (_, path) in enumerate(A):
         assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(A)], path
 
 
 def test_the_airline_pages_map_view_keeps_the_id_its_script_rewrites():
-    assert [v["id"] for v in views_for("/airlines/delta")] == [None, None, "map-link"]
+    assert [v["id"] for v in views_for("/airlines/delta")] == [None, None, None, "map-link"]
 
 
 @pytest.mark.parametrize("path", ["/", "/aircraft/boeing-737", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
@@ -115,8 +115,8 @@ def test_no_page_keeps_a_hand_written_related_line(ds, db_path):
 def test_an_airlines_page_and_map_have_overview_and_map_views(ds, db_path):
     seed_family_and_airline(db_path)
     page = get(ds, "/airlines/delta").text
-    assert re.search(r'<strong aria-current="page">Over time</strong> · <a href="/airlines/delta/changes">Changes</a> · <a href="/airlines/delta/globe" id="map-link">Map</a>', page)
-    assert re.search(r'<a href="/airlines/delta">Over time</a> · <a href="/airlines/delta/changes">Changes</a> · <strong aria-current="page">Map</strong>', get(ds, "/airlines/delta/globe").text)
+    assert re.search(r'<strong aria-current="page">Over time</strong> · <a href="/airlines/delta/routes">Routes</a> · <a href="/airlines/delta/changes">Changes</a> · <a href="/airlines/delta/globe" id="map-link">Map</a>', page)
+    assert re.search(r'<a href="/airlines/delta">Over time</a> · <a href="/airlines/delta/routes">Routes</a> · <a href="/airlines/delta/changes">Changes</a> · <strong aria-current="page">Map</strong>', get(ds, "/airlines/delta/globe").text)
 
 
 def test_a_route_links_to_more_from_its_origin(ds):
@@ -128,4 +128,4 @@ def test_the_airlines_table_and_heat_map_are_two_views_of_the_section():
     assert [(v["label"], v["href"], v["current"]) for v in views_for("/airlines")] == [
         ("Airlines", "/airlines", True), ("Over time", "/airlines/over-time", False)]
     assert [v["current"] for v in views_for("/airlines/over-time")] == [False, True]
-    assert [v["label"] for v in views_for("/airlines/delta")] == ["Over time", "Changes", "Map"]  # an airline is still its own subject
+    assert [v["label"] for v in views_for("/airlines/delta")] == ["Over time", "Routes", "Changes", "Map"]  # an airline is still its own subject

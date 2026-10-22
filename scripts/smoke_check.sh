@@ -35,6 +35,7 @@ check 200 /airlines                                                 "airline-tab
 check 200 /airlines/over-time                                       "heat-kind"
 check 301 "/airlines?scale=busiest"
 check 200 /airlines/delta                                          "size-chart"
+check 200 /airlines/delta/routes                                   "heatmap"
 check 200 /airlines/delta/globe                                    'id="globe"'
 check 404 /airlines/no-such-airline
 check 301 /carriers
