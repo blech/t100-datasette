@@ -103,3 +103,11 @@ def test_the_front_and_about_pages_have_no_stray_separator(ds):
     for path in ("/", "/about"):
         text = " ".join(re.sub(r"<[^>]+>", " ", footer(get(ds, path).text)).split())
         assert "· ·" not in text, path
+
+
+def test_datasettes_own_pages_have_no_theme_menu_or_data_link_in_their_footer(ds):
+    for path in ("/t100", "/t100/t100", "/t100/route?origin=SFO&dest=JFK&group="):
+        f = footer(get(ds, path).text)
+        assert 'id="theme"' not in f and 'id="data-link"' not in f, path
+        assert "About the data" in f and "· ·" not in " ".join(re.sub(r"<[^>]+>", " ", f).split()), path
+    assert 'id="theme"' in footer(get(ds, "/airports").text)
