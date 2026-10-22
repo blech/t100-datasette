@@ -87,7 +87,7 @@ function drawAirports() {
 }
 
 const routeYearHref = (dest, year) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}`;
-const airportHref = (code) => `/airports/${encodeURIComponent(code)}`;
+const airportHref = (code) => `/airports/${encodeURIComponent(code)}/destinations`; // matrices lead to matrices
 const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;

@@ -27,8 +27,9 @@ def test_airports_views():
 
 
 def test_an_airports_views_use_upper_case_codes():
-    assert views("/airports/sfo") == [("Routes over time", "/airports/SFO", True), ("Map", "/airports/SFO/globe", False)]
-    assert views("/airports/SFO/globe") == [("Routes over time", "/airports/SFO", False), ("Map", "/airports/SFO/globe", True)]
+    A = [("Over time", "/airports/SFO"), ("Destinations", "/airports/SFO/destinations"), ("Changes", "/airports/SFO/changes"), ("Map", "/airports/SFO/globe")]
+    for i, path in enumerate(["/airports/sfo", "/airports/sfo/destinations", "/airports/SFO/changes", "/airports/SFO/globe"]):
+        assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(A)], path
 
 
 def test_a_route_has_over_time_and_table_views_keeping_the_year():
@@ -65,8 +66,10 @@ PAGES = {
     "/": (None, []),
     "/airports": ("airports", ["Busiest airports", "Map"]),
     "/airports/globe": ("airports", ["Busiest airports", "Map"]),
-    "/airports/ATL": ("airports", ["Routes over time", "Map"]),
-    "/airports/ATL/globe": ("airports", ["Routes over time", "Map"]),
+    "/airports/ATL": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
+    "/airports/ATL/destinations": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
+    "/airports/ATL/changes": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
+    "/airports/ATL/globe": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
     "/airports/ATL/LAX": ("airports", ["Over time", "Table"]),
     "/airports/ATL/LAX/table": ("airports", ["Over time", "Table"]),
     "/aircraft": ("aircraft", ["Families", "Makers", "Long-haul engines"]),

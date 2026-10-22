@@ -23,6 +23,7 @@ OLD = [
     ("/airlines?n=10", "/airlines/over-time?n=10"),
     ("/airlines?rank=latest&measure=deps", "/airlines/over-time?rank=latest&measure=deps"),
     ("/airlines?scale=absolute", "/airlines/over-time?scale=absolute"),
+    ("/airports/ATL?n=10", "/airports/ATL/destinations?n=10"),
 ]
 
 

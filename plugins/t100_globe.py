@@ -25,7 +25,9 @@ def register_routes():
         (r"^/$", home_page),
         (r"^/airports$", airports_index),
         (r"^/airports/globe$", globe_page),
-        (rf"^/airports/(?P<origin>{CODE})$", routes_page),
+        (rf"^/airports/(?P<origin>{CODE})$", airport_page),
+        (rf"^/airports/(?P<origin>{CODE})/destinations$", routes_page),
+        (rf"^/airports/(?P<origin>{CODE})/changes$", airport_changes_page),
         (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?/table$", route_table_page),
@@ -87,12 +89,11 @@ def views_for(path):
             return make(("Busiest airports", "/airports", None), ("Map", "/airports/globe", None), current=0)
         case ["airports", "globe"]:
             return make(("Busiest airports", "/airports", None), ("Map", "/airports/globe", None), current=1)
-        case ["airports", code] if AIRPORT_CODE.match(code):
+        case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
             c = code.upper()
-            return make(("Routes over time", f"/airports/{c}", None), ("Map", f"/airports/{c}/globe", None), current=0)
-        case ["airports", code, "globe"] if AIRPORT_CODE.match(code):
-            c = code.upper()
-            return make(("Routes over time", f"/airports/{c}", None), ("Map", f"/airports/{c}/globe", None), current=1)
+            return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
+                        ("Changes", f"/airports/{c}/changes", None), ("Map", f"/airports/{c}/globe", None),
+                        current=[[], ["destinations"], ["changes"], ["globe"]].index(rest))
         case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and b.lower() != "globe" and (
                 rest in ([], ["table"]) or (rest and rest[0].isdigit() and rest[1:] in ([], ["table"]))):
             a, b = a.upper(), b.upper()
@@ -278,19 +279,46 @@ async def home_page(datasette, request):
     return Response.html(html)
 
 
-async def routes_page(datasette, request):
-    origin = request.url_vars["origin"].upper()
-    html = await datasette.render_template(
-        "routes.html",
-        {
-            "origin": origin,
-            "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
-            "crumbs": trail(datasette, ("airports", "/airports"), (origin, None)),
-            "foreign": await is_foreign(datasette, origin),
-        },
-        request=request,
-    )
-    return Response.html(html)
+MATRIX_SETTINGS = ("n", "group", "rank", "scale", "open")  # the destinations matrix's settings, which mean nothing to the charts that took its address
+
+
+async def airport_years(datasette, code):
+    """The first and last years with departures from the airport, or (None, None) when it has none."""
+    result = await datasette.get_database("t100").execute(
+        "SELECT MIN(year), MAX(year) FROM airport_year_totals WHERE origin = ? AND deps > 0", [code])
+    first, last = result.first()
+    return first, last
+
+
+def airport_view(template, crumb):
+    """One of an airport's views: its charts over time (no crumb of its own), its destinations matrix, or what changed."""
+
+    async def view(datasette, request):
+        origin = request.url_vars["origin"].upper()
+        if template == "airport.html" and any(k in request.args for k in MATRIX_SETTINGS):
+            return Response.redirect(f"/airports/{origin}/destinations?{request.query_string}", status=301)
+        first, last = await airport_years(datasette, origin)
+        steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), (crumb, None)] if crumb else [("airports", "/airports"), (origin, None)]
+        html = await datasette.render_template(
+            template,
+            {
+                "origin": origin,
+                "first_year": first,
+                "last_year": last,
+                "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+                "crumbs": trail(datasette, *steps),
+                "foreign": await is_foreign(datasette, origin),
+            },
+            request=request,
+        )
+        return Response.html(html)
+
+    return view
+
+
+airport_page = airport_view("airport.html", None)
+routes_page = airport_view("routes.html", "destinations")
+airport_changes_page = airport_view("airport_changes.html", "changes")
 
 
 def route_view(template, table):
