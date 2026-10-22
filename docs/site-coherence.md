@@ -127,6 +127,13 @@ Questions:
   - Its codes open each airport's destinations matrix; the measure and the table's sort carry each way for passengers, departures and freight.
   - No passenger/freight or domestic/international choice: `airport_year_totals` doesn't split either way.
 - **Next: city grouping** for the busiest-airports table and the airports matrix (New York as JFK + LGA + EWR), which needs a lookup of each airport's BTS city market and a production load.
+  - City rows show the market's name only ("Los Angeles, CA"); every city row opens, a one-airport market too, and the airports inside are the links. The name and its ▸ open and close the row.
+  - The destinations matrix's city view takes the same labels: no codes beside the name (they're on hover and in the opened rows), and a label column sized to its longest label.
+- **Backlog: city pages.** A page for a BTS city market, so a city's name can link somewhere: what an airport has (over time, destinations, changes, map), added up across its airports.
+  - Address: `/airports/cities/{market}` (e.g. `/airports/cities/new-york-ny`, keeping it in the Airports section) or a section of its own at `/cities/{market}`.
+  - The queries filter by `origin` and can take a market's list of codes instead.
+  - Once they exist, a city's name links to its page and the ▸ alone opens the row, as the aircraft table separates a family's name from its disclosure.
+  - Further on: city pairs for routes (New York–Miami across LGA, JFK, EWR and MIA, FLL), as `explore/12_market_routes.sql` on the `explore/sql-scripts` branch tried.
 - **Still to come:** a family map.
 
 ### 5. Colour: done (merged, branch `colour`)
