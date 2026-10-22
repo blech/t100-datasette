@@ -48,7 +48,7 @@ function headerCell(key, label, cls) {
   b.textContent = label + (state.sort === key ? (state.dir === 'asc' ? ' ▲' : ' ▼') : '');
   b.addEventListener('click', () => {
     state.dir = state.sort === key && state.dir === 'desc' ? 'asc' : 'desc';
-    if (state.sort !== key) state.dir = key === 'value' || key === 'lastYear' ? 'desc' : 'asc';
+    if (state.sort !== key) state.dir = key === 'value' || key === 'firstYear' ? 'desc' : 'asc';
     state.sort = key;
     focusKey = `sort:${key}`;
     pushState(); draw();
@@ -77,7 +77,7 @@ function draw() {
   const table = document.createElement('table');
   const head = document.createElement('tr');
   head.append(headerCell('family', 'Family', 'left'), headerCell('maker', 'Maker', 'left'), headerCell('aircraftKind', 'Kind', 'left'),
-    headerCell('lastYear', 'Flew'), headerCell('value', HEAT_MEASURES[state.measure]), document.createElement('th'));
+    headerCell('firstYear', 'Flew'), headerCell('value', HEAT_MEASURES[state.measure]), document.createElement('th'));
   head.lastChild.textContent = 'Share';
   const thead = document.createElement('thead');
   thead.append(head);
