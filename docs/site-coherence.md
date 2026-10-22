@@ -38,7 +38,7 @@ Each subject has some of the same few kinds of view. A view should link to the s
 
 What exists now:
 
-| Subject | Table | Map | Chart over time | Heat map |
+| Subject | Table | Map | Chart over time | Matrix |
 |---|---|---|---|---|
 | All airports | `/airports` (busiest) | `/airports/globe` | | |
 | One airport | | `/airports/SFO/globe` | | `/airports/SFO` (destinations × years) |
@@ -49,8 +49,8 @@ What exists now:
 | One airline | `/airlines/delta` ("What changed" routes) | `/airlines/delta/globe` | `/airlines/delta` (size, airport pairs) | |
 
 Questions:
-- **Cross-links:** which links between views should exist? For example, map → map for the same year and service, table → table, heat map cell → the route or the airline.
-- **Heat maps:** how do they fit in? They're part table, part chart. Should they be the standard "over time" view for any list of things (airports, aircraft, airlines, routes), with a shared look and the same row-ranking and colour-scale controls? And should an airline or a family get a heat map of its routes or versions too?
+- **Cross-links:** which links between views should exist? For example, map → map for the same year and service, table → table, matrix cell → the route or the airline.
+- **Matrices:** how do they fit in? They're part table, part chart. Should they be the standard "over time" view for any list of things (airports, aircraft, airlines, routes), with a shared look and the same row-ranking and colour-scale controls? And should an airline or a family get a matrix of its routes or versions too?
 - **Narrowing down, or back to the top?** Should views keep refining, such as `/airports/ATL/JFK?airline=Delta`, a route as one airline flies it? Or do links go back to the top-level page after a point, so a route links to Delta's own page? A filter is easy to build, because the route's rows carry the airline. Delta's "What changed" table already links to its routes but drops the airline on the way. Undecided.
 - **Gaps:** which empty cells in the grid matter? For example, a map for an aircraft family (where it flies), or a table of all airlines.
 
@@ -76,16 +76,16 @@ Questions:
 
 - **A table of all airlines: built**, spec `docs/superpowers/specs/2026-10-22-airlines-table-design.md`.
   - `/airlines` is the table: groups that open to their members, sortable, with year, flights, routes, limit and search.
-  - The heat map moved to `/airlines/over-time`. The views line is "Airlines · Over time", and it carries `measure`, `flights` and `service` both ways.
-  - Old `/airlines` links with `n`, `rank` or `scale` get a 301 to the heat map.
+  - The matrix moved to `/airlines/over-time`. The views line is "Airlines · Over time", and it carries `measure`, `flights` and `service` both ways.
+  - Old `/airlines` links with `n`, `rank` or `scale` get a 301 to the matrix.
   - **Deferred minors from its final review:**
     - **A disclosure opened by a search can't be closed** while the search matches through a member: the ▾ toggles `open`, but `matched` keeps the group open. The aircraft table has the same pattern.
-    - **Freight reads "freight (short tons)" mid-sentence** in the status line and the empty message. The heat map strips the parenthetical; the aircraft table doesn't either.
+    - **Freight reads "freight (short tons)" mid-sentence** in the status line and the empty message. The matrix strips the parenthetical; the aircraft table doesn't either.
     - **"Flew" can depend on the chosen year:** the query's `HAVING` drops a member's (service, kind) rows that didn't fly that year, along with their years. One group in 2000 (Air Transport International, 1994–2016 against 1994–2021), none in 2010 or 2025.
     - **The status during a search** pairs the match count with everyone's total ("2 airlines, 900 million passengers"). Inherited from the aircraft table.
-    - **The heat map's "airlines" breadcrumb** doesn't carry `measure`, `flights` and `service`, unlike the views line.
+    - **The matrix's "airlines" breadcrumb** doesn't carry `measure`, `flights` and `service`, unlike the views line.
     - **The group "Federal Express Corporation"** isn't found by "FedEx".
-- **An airline's routes: built as a heat map**, spec `docs/superpowers/specs/2026-10-22-airline-routes-design.md`.
+- **An airline's routes: built as a matrix**, spec `docs/superpowers/specs/2026-10-22-airline-routes-design.md`.
   - `/airlines/{airline}/routes` shows airport pairs (both directions together) by year, with route-years of at least 12 departures, and labels that open the route with the airline highlighted.
   - The views line is Over time · Routes · Changes · Map.
   - A table version was considered and dropped.
@@ -97,10 +97,10 @@ Questions:
     - **American's routes are 4.2 MB, uncompressed:** worth turning on gzip (datasette-gzip, or at the proxy).
     - **The cell popover** shows codes only ("ATL – LGA · 2019"); the label's hover has the places.
     - **Same-airport pairs** (GCN – GCN, sightseeing) appear as rows.
-    - **At phone width** the year labels crowd together, as on the airlines heat map.
+    - **At phone width** the year labels crowd together, as on the airlines matrix.
     - **A made-up highlight** (`?highlight=airline:nope`) now says "This airline doesn't fly this way" rather than nothing.
 - **Still to come:**
-  - an airport over time (its heat map moving to `/destinations`);
+  - an airport over time (its matrix moving to `/destinations`);
   - a family map.
 
 ### 5. Colour: done (merged, branch `colour`)
@@ -111,7 +111,7 @@ Questions:
   - teal and ember for domestic and international;
   - Ember jets in the engine charts;
   - ember for the accent.
-- **Kept as they were:** heat maps on YlOrRd, and the front page's liveries.
+- **Kept as they were:** matrices on YlOrRd, and the front page's liveries.
 - **Pointing at a series** fades the others.
 - **Open:** teal or slate for domestic, to judge on the real site; it's one row in the palette.
 - **Deferred minors:**

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rollupRows, routeRows, buildEngineShares, ENGINE_BANDS } from '../src/rollup.js';
-import { buildHeatmap } from '../src/heatmap.js';
+import { buildMatrix } from '../src/matrix.js';
 
 const f = (year, family, deps, extra = {}) => ({ year, family, deps, seats: deps * 100, passengers: deps * 80, freight: 0, service: 'domestic', kind: 'passenger', ...extra });
 
@@ -12,9 +12,9 @@ test('rollupRows names the row after the chosen field and drops the other kind o
   assert.equal(rollupRows(rows, { key: 'family', kind: 'all' }).length, 2);
 });
 
-test('rolled-up rows feed the heat map, merging passenger and freight rows of a family', () => {
+test('rolled-up rows feed the matrix, merging passenger and freight rows of a family', () => {
   const rows = [f(2019, 'A', 5), f(2019, 'A', 3, { kind: 'freight' }), f(2019, 'B', 1)];
-  const res = buildHeatmap(rollupRows(rows, { key: 'family', kind: 'all' }), { measure: 'deps', n: 5 });
+  const res = buildMatrix(rollupRows(rows, { key: 'family', kind: 'all' }), { measure: 'deps', n: 5 });
   assert.deepEqual(res.dests, ['A', 'B']);
   assert.equal(res.cells.find((c) => c.dest === 'A').value, 8);
 });
@@ -140,6 +140,6 @@ test('rollupRows keeps rows that have no kind of flight, whatever kind is asked 
 test('routeRows names each airport pair and keeps its measures and service', () => {
   const out = routeRows([{ origin: 'ATL', dest: 'LGA', year: 2019, deps: 30, seats: 3000, passengers: 2400, freight: 30000, service: 'domestic' }]);
   assert.deepEqual(out, [{ route: 'ATL – LGA', origin: 'ATL', dest: 'LGA', year: 2019, service: 'domestic', deps: 30, seats: 3000, passengers: 2400, freight: 30000 }]);
-  const res = buildHeatmap(rollupRows(out, { key: 'route', kind: 'passenger' }), { measure: 'deps', n: 5 });
+  const res = buildMatrix(rollupRows(out, { key: 'route', kind: 'passenger' }), { measure: 'deps', n: 5 });
   assert.deepEqual(res.dests, ['ATL – LGA']);
 });

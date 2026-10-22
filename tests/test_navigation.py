@@ -124,7 +124,7 @@ def test_a_route_links_to_more_from_its_origin(ds):
     assert 'href="/airports/ATL"' in html and 'id="map-link"' in html
 
 
-def test_the_airlines_table_and_heat_map_are_two_views_of_the_section():
+def test_the_airlines_table_and_matrix_are_two_views_of_the_section():
     assert [(v["label"], v["href"], v["current"]) for v in views_for("/airlines")] == [
         ("Airlines", "/airlines", True), ("Over time", "/airlines/over-time", False)]
     assert [v["current"] for v in views_for("/airlines/over-time")] == [False, True]

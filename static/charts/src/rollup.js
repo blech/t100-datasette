@@ -1,5 +1,5 @@
-// Rows from the family_by_year / carrier_group_by_year queries -> the shape the heat map reads
-// (one row per "dest" and year), so the /aircraft and /airlines pages reuse buildHeatmap as it is.
+// Rows from the family_by_year / carrier_group_by_year queries -> the shape the matrix reads
+// (one row per "dest" and year), so the /aircraft and /airlines pages reuse buildMatrix as it is.
 export function rollupRows(rows, { key, kind = 'all' }) {
   return rows
     .filter((r) => kind === 'all' || !r.kind || r.kind === kind) // rows with no kind (an airline's routes) can't be split by it

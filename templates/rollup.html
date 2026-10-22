@@ -18,20 +18,20 @@
       Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.
     </p>
     <p class="chart-sentence">
-      Show <select id="heat-measure" aria-label="Measure"></select>
-      for <select id="heat-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
-      on <select id="heat-service" aria-label="Flights"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>
-      for the top <select id="heat-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
-      {{ page.noun }}, ranked by <select id="heat-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
+      Show <select id="matrix-measure" aria-label="Measure"></select>
+      for <select id="matrix-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
+      on <select id="matrix-service" aria-label="Flights"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>
+      for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
+      {{ page.noun }}, ranked by <select id="matrix-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
     </p>
-    <fieldset id="heat-scale" class="scale-choice">
+    <fieldset id="matrix-scale" class="scale-choice">
       <legend>Colour</legend>
       <label><input type="radio" name="scale" value="absolute"> Amount</label>
       <label><input type="radio" name="scale" value="year" checked> Share of each year</label>
       <label><input type="radio" name="scale" value="busiest"> Compared to the biggest</label>
     </fieldset>
     <p class="note" id="scale-note" hidden></p>
-    <div id="heatmap" aria-live="polite">Loading chart…</div>
+    <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note" id="rank-note"></p>
     <p class="note" id="about-note">
       How airlines are <a href="/about#groupings">grouped</a>.

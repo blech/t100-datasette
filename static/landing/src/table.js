@@ -28,6 +28,6 @@ export function toSearch(state, maxYear) {
   return s ? `?${s}` : '';
 }
 
-// the sort column carries over as the airport page's heat map measure (the keys are the same); destinations has no heat map
+// the sort column carries over as the airport page's matrix measure (the keys are the same); destinations has no matrix
 export const airportHref = (code, sort) =>
   `/airports/${encodeURIComponent(code)}${sort === 'passengers' || sort === 'dests' ? '' : `?measure=${sort}`}`;

@@ -1,5 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { buildHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { buildMatrix, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows } from '/static/charts/src/rollup.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
 import { shortNames } from '/static/charts/src/names.js';
@@ -21,7 +21,7 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
-  measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
+  measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   flights: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '50')),
@@ -31,7 +31,7 @@ const state = {
 let rows = [];
 
 const ROW_PX = 20;
-const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const relative = () => state.scale !== 'absolute';
@@ -50,13 +50,13 @@ function pushState() {
   carry();
 }
 
-// the views line: an airline's views pass their whole query, as its other pages do; the airlines heat map passes the
+// the views line: an airline's views pass their whole query, as its other pages do; the airlines matrix passes the
 // settings the airlines table reads too
 const carry = () => { for (const a of document.querySelectorAll('nav.views a')) a.search = kind === 'routes' ? location.search : sharedQuery(location.search); };
 
-// a heat-map cell's popover rows: the amount, and the share the colour shows when it shows one
+// a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
-  { label: HEAT_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
+  { label: MATRIX_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
   ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
   ...(state.scale === 'busiest' ? [{ label: "Of the year's biggest", value: fmtPct(c.peak) }] : []),
 ];
@@ -83,12 +83,12 @@ function draw() {
     year: `Colour shows each ${page.noun}'s share of all ${unit()} that year, counting every ${page.noun} (not just those listed), not the amount itself. Hover over a cell for both.`,
     busiest: `Colour compares each cell with the year's biggest ${page.noun}: the biggest is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own. Hover over a cell for both.`,
   }[state.scale];
-  $('heat-rank').options[1].textContent = `${latestFullYear} only`;
+  $('matrix-rank').options[1].textContent = `${latestFullYear} only`;
   $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}${kind === 'routes' ? ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 12 times (12 departures). A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}`;
 
-  const box = $('heatmap');
+  const box = $('matrix');
   box.replaceChildren();
-  const res = buildHeatmap(rollupRows(rows, { key: page.key, kind: kind === 'routes' ? 'all' : state.flights }), { ...state, rankYear: rankYear() });
+  const res = buildMatrix(rollupRows(rows, { key: page.key, kind: kind === 'routes' ? 'all' : state.flights }), { ...state, rankYear: rankYear() });
   if (!res.cells.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const years = res.years.map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
@@ -104,7 +104,7 @@ function draw() {
     y: { type: 'band', domain: res.dests, axis: null },
     color: relative()
       ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
-      : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), HEAT_MEASURES[state.measure]) },
+      : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) },
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField() }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
@@ -117,23 +117,23 @@ function draw() {
 }
 
 function fillControls() {
-  const measure = $('heat-measure');
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
+  const measure = $('matrix-measure');
+  for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
   measure.value = state.measure;
-  if ($('heat-kind')) $('heat-kind').value = state.flights;
-  $('heat-service').value = state.service;
-  $('heat-n').value = String(state.n);
-  $('heat-rank').value = state.rank;
+  if ($('matrix-kind')) $('matrix-kind').value = state.flights;
+  $('matrix-service').value = state.service;
+  $('matrix-n').value = String(state.n);
+  $('matrix-rank').value = state.rank;
   for (const radio of document.querySelectorAll('input[name="scale"]')) {
     radio.checked = radio.value === state.scale;
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
   }
   const bind = (id, field, convert = String) => $(id).addEventListener('change', (e) => { state[field] = convert(e.target.value); pushState(); draw(); });
-  bind('heat-measure', 'measure');
-  if ($('heat-kind')) bind('heat-kind', 'flights');
-  bind('heat-service', 'service');
-  bind('heat-n', 'n', Number);
-  bind('heat-rank', 'rank');
+  bind('matrix-measure', 'measure');
+  if ($('matrix-kind')) bind('matrix-kind', 'flights');
+  bind('matrix-service', 'service');
+  bind('matrix-n', 'n', Number);
+  bind('matrix-rank', 'rank');
 }
 
 async function main() {
@@ -150,7 +150,7 @@ async function main() {
     if (res.truncated) $('rank-note').textContent = 'Too many rows: some are missing from this chart.';
   } catch (err) {
     console.error(err);
-    $('heatmap').textContent = 'Could not load the chart data.';
+    $('matrix').textContent = 'Could not load the chart data.';
     return;
   }
   draw();

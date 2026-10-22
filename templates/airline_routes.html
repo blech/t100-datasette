@@ -20,19 +20,19 @@
       {% if members %}Counts {{ members|map(attribute="name")|join(", ") }} together for every year.{% endif %}
     </p>
     <p class="chart-sentence">
-      Show <select id="heat-measure" aria-label="Measure"></select>
-      on <select id="heat-service" aria-label="Routes"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>
-      for the top <select id="heat-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
-      routes, ranked by <select id="heat-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ last_year }} only</option></select>.
+      Show <select id="matrix-measure" aria-label="Measure"></select>
+      on <select id="matrix-service" aria-label="Routes"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>
+      for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
+      routes, ranked by <select id="matrix-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ last_year }} only</option></select>.
     </p>
-    <fieldset id="heat-scale" class="scale-choice">
+    <fieldset id="matrix-scale" class="scale-choice">
       <legend>Colour</legend>
       <label><input type="radio" name="scale" value="absolute"> Amount</label>
       <label><input type="radio" name="scale" value="year" checked> Share of each year</label>
       <label><input type="radio" name="scale" value="busiest"> Compared to the biggest</label>
     </fieldset>
     <p class="note" id="scale-note" hidden></p>
-    <div id="heatmap" aria-live="polite">Loading chart…</div>
+    <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note" id="rank-note"></p>
     <p class="note" id="about-note">
       Flying done for the airline by a regional partner, such as SkyWest for Alaska or United, is reported under the regional's own name and is not included. How airlines are <a href="/about#groupings">grouped</a>.

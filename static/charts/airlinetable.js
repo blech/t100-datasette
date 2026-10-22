@@ -1,4 +1,4 @@
-import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { groupAirlines, sortAirlines, sharedQuery, matchesElsewhere } from '/static/charts/src/airlines.js';
 import { limitFamilies, limitOptions, DEFAULT_LIMIT } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -13,7 +13,7 @@ const years = ['all', ...Array.from({ length: latest - 1990 + 1 }, (_, i) => Str
 const LIMITS = limitOptions('airlines', 'airline');
 const DEFAULTS = { measure: 'passengers', year: String(latest), flights: 'passenger', service: 'all', limit: DEFAULT_LIMIT, q: '', sort: 'value', dir: 'desc' };
 const state = {
-  measure: pick('measure', Object.keys(HEAT_MEASURES), DEFAULTS.measure),
+  measure: pick('measure', Object.keys(MATRIX_MEASURES), DEFAULTS.measure),
   year: pick('year', years, DEFAULTS.year),
   flights: pick('flights', ['passenger', 'freight', 'all'], DEFAULTS.flights),
   service: pick('service', ['all', 'domestic', 'international'], DEFAULTS.service),
@@ -30,9 +30,9 @@ let focusKey = null;  // the sort header or toggle just used, so keyboard focus 
 
 const pct = (v) => `${(v * 100).toFixed(v > 0 && v < 0.001 ? 2 : 1)}%`;
 const span = (a, b) => (a ? (a === b ? String(a) : `${a}–${b}`) : '');
-const unit = () => HEAT_MEASURES[state.measure].toLowerCase();
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
-// the views line takes the settings the heat map reads too
+// the views line takes the settings the matrix reads too
 const carry = () => { for (const a of document.querySelectorAll('nav.views a')) a.search = sharedQuery(location.search); };
 
 function pushState() {
@@ -101,7 +101,7 @@ function draw() {
   const sorted = sortAirlines(shown, state.sort, state.dir);
   const table = document.createElement('table');
   const head = document.createElement('tr');
-  head.append(headerCell('name', 'Airline', 'left'), headerCell('firstYear', 'Flew'), headerCell('value', HEAT_MEASURES[state.measure]), document.createElement('th'));
+  head.append(headerCell('name', 'Airline', 'left'), headerCell('firstYear', 'Flew'), headerCell('value', MATRIX_MEASURES[state.measure]), document.createElement('th'));
   head.lastChild.textContent = 'Share';
   const thead = document.createElement('thead');
   thead.append(head);
@@ -160,7 +160,7 @@ async function load() {
 }
 
 function main() {
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) $('airline-measure').append(new Option(label.toLowerCase(), k));
+  for (const [k, label] of Object.entries(MATRIX_MEASURES)) $('airline-measure').append(new Option(label.toLowerCase(), k));
   for (const y of years) $('airline-year').append(new Option(y === 'all' ? 'all years' : y, y));
   for (const o of LIMITS) $('airline-limit').append(new Option(o.label, o.value));
   for (const [id, field] of [['airline-measure', 'measure'], ['airline-year', 'year'], ['airline-flights', 'flights'], ['airline-service', 'service'], ['airline-limit', 'limit']]) {

@@ -12,15 +12,15 @@ def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     assert r.status_code == 200
     assert f'data-kind="{kind}"' in r.text
     assert "/static/charts/rollup.js" in r.text
-    assert 'id="heatmap"' in r.text and 'id="label-tip"' in r.text
+    assert 'id="matrix"' in r.text and 'id="label-tip"' in r.text
 
 
 @pytest.mark.parametrize("path", ["/airlines/over-time"])
 def test_settings_read_as_one_sentence(ds, path):
     html = get(ds, path).text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
-    assert re.findall(r'<select id="([^"]+)"', sentence) == ["heat-measure", "heat-kind", "heat-service", "heat-n", "heat-rank"]
-    assert 'id="heat-scale"' in html
+    assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-kind", "matrix-service", "matrix-n", "matrix-rank"]
+    assert 'id="matrix-scale"' in html
 
 
 def test_engine_story_has_its_own_page_and_the_aircraft_page_links_to_it(ds):
@@ -117,7 +117,7 @@ def test_aircraft_is_the_table_and_the_maker_chart_is_beside_it(ds):
         assert f'id="{id_}"' in table.text
     assert "/static/charts/aircrafttable.js" in table.text
     assert 'id="aircraft-table" aria-live' not in table.text  # a rebuilt table must not be a live region; the status line is
-    assert "heat-kind" not in table.text and 'id="heatmap"' not in table.text
+    assert "matrix-kind" not in table.text and 'id="matrix"' not in table.text
     makers = get(ds, "/aircraft/makers")
     assert makers.status_code == 200
     for id_ in ["maker-chart", "mk-measure", "mk-kind", "mk-service", "mk-aircraft"]:
@@ -165,6 +165,6 @@ def test_the_airlines_table_page_has_its_controls_breadcrumb_and_script(ds):
     assert 'aria-current="page">airlines<' in html
 
 
-def test_the_heat_map_breadcrumb_goes_back_to_the_table(ds):
+def test_the_matrix_breadcrumb_goes_back_to_the_table(ds):
     html = get(ds, "/airlines/over-time").text
     assert '<a href="/airlines">airlines</a>' in html and 'aria-current="page">over time<' in html

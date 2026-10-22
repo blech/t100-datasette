@@ -63,7 +63,7 @@ export function sortAirlines(groups, key, dir = 'desc') {
   return [...groups].sort(by).map((g) => ({ ...g, members: [...g.members].sort(by) }));
 }
 
-// The settings the airlines table and the airlines heat map both read, to carry between them
+// The settings the airlines table and the airlines matrix both read, to carry between them
 const SHARED = ['measure', 'flights', 'service'];
 export function sharedQuery(search) {
   const from = new URLSearchParams(search || '');

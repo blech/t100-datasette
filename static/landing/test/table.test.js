@@ -31,11 +31,11 @@ test('toSearch omits defaults', () => {
   assert.deepEqual(Object.keys(SORTS), ['passengers', 'deps', 'dests', 'freight']);
 });
 
-test('airportHref carries the sort to the airport page as its heat map measure', () => {
+test('airportHref carries the sort to the airport page as its matrix measure', () => {
   assert.equal(airportHref('ATL', 'passengers'), '/airports/ATL');
   assert.equal(airportHref('ATL', 'freight'), '/airports/ATL?measure=freight');
   assert.equal(airportHref('ATL', 'deps'), '/airports/ATL?measure=deps');
-  assert.equal(airportHref('ATL', 'dests'), '/airports/ATL');  // no destinations heat map
+  assert.equal(airportHref('ATL', 'dests'), '/airports/ATL');  // no destinations matrix
 });
 
 test('seats is no longer a sort', () => {

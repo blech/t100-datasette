@@ -53,8 +53,8 @@ def test_an_airlines_routes_have_their_own_page(ds, db_path):
     delta(db_path)
     r = get(ds, "/airlines/delta/routes")
     assert r.status_code == 200
-    assert 'id="heatmap"' in r.text and 'data-kind="routes"' in r.text and "/static/charts/rollup.js" in r.text
-    assert 'id="heat-kind"' not in r.text and 'id="heat-service"' in r.text and 'name="scale"' in r.text
+    assert 'id="matrix"' in r.text and 'data-kind="routes"' in r.text and "/static/charts/rollup.js" in r.text
+    assert 'id="matrix-kind"' not in r.text and 'id="matrix-service"' in r.text and 'name="scale"' in r.text
     assert 'data-group="delta"' in r.text and 'data-airline=""' in r.text and 'data-latest-year="2019"' in r.text
     assert re.search(r'<li aria-current="page">routes</li>', r.text)
     assert re.search(r'<a href="/airlines/delta">Over time</a> · <strong aria-current="page">Routes</strong>', r.text)

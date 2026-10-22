@@ -2,7 +2,7 @@ import { THEMES } from '../../globe/src/themes.js';
 
 // Settings that follow a visitor from page to page, and which pages they mean something to.
 const SERVICES = ['domestic', 'international'];
-const HEAT_MEASURES = ['passengers', 'deps', 'seats', 'freight'];
+const MATRIX_MEASURES = ['passengers', 'deps', 'seats', 'freight'];
 const WIDTHS = ['passengers', 'deps', 'freight'];
 
 export function targetOf(href) {
@@ -35,7 +35,7 @@ export function carryParams(search, target) {
     if (WIDTHS.includes(measure) && measure !== 'passengers') out.width = measure;
     return out;
   }
-  const allowed = target === 'route' ? [...HEAT_MEASURES, 'load_factor'] : HEAT_MEASURES;
+  const allowed = target === 'route' ? [...MATRIX_MEASURES, 'load_factor'] : MATRIX_MEASURES;
   if (allowed.includes(measure) && measure !== 'passengers') out.measure = measure;
   if (SERVICES.includes(service)) out.service = service;
   if (q.get('group') === 'city') out.group = 'city';

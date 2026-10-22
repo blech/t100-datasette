@@ -326,7 +326,7 @@ ROLLUP_PAGES = {
 
 
 def rollup_page(kind):
-    """A heat map of one rollup (merged airline groups) by year, for all US air traffic."""
+    """A matrix of one rollup (merged airline groups) by year, for all US air traffic."""
 
     async def view(datasette, request):
         page = ROLLUP_PAGES[kind]
@@ -345,12 +345,12 @@ def rollup_page(kind):
     return view
 
 
-HEAT_MAP_ONLY = ("n", "rank", "scale")  # the airlines heat map's settings that mean nothing to the table that took its address
+MATRIX_ONLY = ("n", "rank", "scale")  # the airlines matrix's settings that mean nothing to the table that took its address
 
 
 async def airline_table_page(datasette, request):
-    """Every airline group, ranked, with its members inside; old links to the heat map that had /airlines go on to it."""
-    if any(k in request.args for k in HEAT_MAP_ONLY):
+    """Every airline group, ranked, with its members inside; old links to the matrix that had /airlines go on to it."""
+    if any(k in request.args for k in MATRIX_ONLY):
         return Response.redirect(f"/airlines/over-time?{request.query_string}", status=301)
     html = await datasette.render_template(
         "airline_table.html",

@@ -28,7 +28,7 @@ test('default values and unknown or retired themes are not carried', () => {
   assert.deepEqual(carryParams('?theme=bogus&service=bogus&measure=bogus&group=bogus&n=7', 'routes'), {});
 });
 
-test('routes pages carry the heat map settings', () => {
+test('routes pages carry the matrix settings', () => {
   assert.deepEqual(
     carryParams('?measure=deps&service=domestic&group=city&n=50&open=ATL&year=2020', 'routes'),
     { measure: 'deps', service: 'domestic', group: 'city', n: '50' },
@@ -51,7 +51,7 @@ test('colouring by year follows the routes pages like the ranking does', () => {
   assert.deepEqual(carryParams('?scale=absolute&scale=bogus', 'routes'), {});
 });
 
-test('route pages pass the heat map settings through and accept load factor', () => {
+test('route pages pass the matrix settings through and accept load factor', () => {
   assert.deepEqual(carryParams('?measure=load_factor&split=aircraft&group=city', 'route'), { measure: 'load_factor', group: 'city' });
   assert.deepEqual(carryParams('?measure=load_factor', 'routes'), {});
 });

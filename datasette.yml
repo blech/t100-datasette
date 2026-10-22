@@ -63,7 +63,7 @@ databases:
 
       top_airports:
         sql: |
-          -- dests: destinations with at least 12 departures that year, the cut-off the maps and heat maps use
+          -- dests: destinations with at least 12 departures that year, the cut-off the maps and matrices use
           WITH dests AS (
             SELECT origin, COUNT(*) AS dests
             FROM route_year_totals
@@ -351,7 +351,7 @@ databases:
           WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline) AND r.year = :year
           ORDER BY r.passengers DESC
 
-      # an airline's routes heat map: each airport pair (both directions together) by year, flown at least 12 times
+      # an airline's routes matrix: each airport pair (both directions together) by year, flown at least 12 times
       carrier_route_by_year:
         sql: |
           SELECT

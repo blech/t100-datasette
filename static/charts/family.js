@@ -1,5 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { buildFamilySeries, hasVersions, SPLIT_LABEL } from '/static/charts/src/rollup.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { shortNames } from '/static/charts/src/names.js';
@@ -22,7 +22,7 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
-  measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
+  measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   split: pick('split', ['subfamily', 'airline', 'service'], null),
@@ -31,7 +31,7 @@ const state = {
 const bounds = { min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) };
 let rows = [];
 
-const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 
 function pushState() {
   const q = new URLSearchParams();
@@ -84,7 +84,7 @@ function draw() {
     marginLeft: 64,
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
-    y: { ...millionsAxis(stackMax(res.points, 'year'), HEAT_MEASURES[state.measure]), grid: true },
+    y: { ...millionsAxis(stackMax(res.points, 'year'), MATRIX_MEASURES[state.measure]), grid: true },
     color: colors,
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series }),
@@ -106,7 +106,7 @@ function chooseSplit() {
 
 async function main() {
   const measure = $('fam-measure');
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
+  for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
   try {
     rows = (await fetchRows(queryUrl('family_detail', { family }))).rows;
     const shorts = shortNames(rows.map((r) => r.group_name));
