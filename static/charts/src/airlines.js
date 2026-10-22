@@ -42,6 +42,13 @@ export function groupAirlines(rows, { measure = 'passengers', flights = 'passeng
   return { groups, total };
 }
 
+// How many groups a search finds once the flight and route filters are widened to everything: a freight airline searched
+// for among passenger flights is in the data, just not in this selection
+export function matchesElsewhere(rows, opts = {}) {
+  if (!String(opts.q || '').trim()) return 0;
+  return groupAirlines(rows, { ...opts, flights: 'all', service: 'all' }).groups.length;
+}
+
 function compare(key, dir) {
   const sign = dir === 'asc' ? 1 : -1;
   return (a, b) => {

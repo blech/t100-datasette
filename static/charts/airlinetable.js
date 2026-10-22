@@ -1,5 +1,5 @@
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { groupAirlines, sortAirlines, sharedQuery } from '/static/charts/src/airlines.js';
+import { groupAirlines, sortAirlines, sharedQuery, matchesElsewhere } from '/static/charts/src/airlines.js';
 import { limitFamilies, limitOptions, DEFAULT_LIMIT } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { formatCount, countLabel } from '/static/common/numbers.js';
@@ -80,7 +80,23 @@ function draw() {
   const { groups, total } = groupAirlines(rows, state);
   box.replaceChildren();
   status.textContent = '';
-  if (!groups.length) { box.textContent = state.q ? `Nothing matches "${state.q}".` : `No ${unit()} for this selection.`; return; }
+  if (!groups.length) {
+    box.textContent = state.q ? `Nothing matches "${state.q}"` : `No ${unit()} for this selection.`;
+    if (state.q && matchesElsewhere(rows, state)) {
+      // the airline is in the data, only not among these flights or routes (a freight airline among passenger flights)
+      const widen = document.createElement('button');
+      widen.type = 'button';
+      widen.className = 'link';
+      widen.textContent = 'show all flights and routes';
+      widen.addEventListener('click', () => {
+        state.flights = 'all'; state.service = 'all';
+        $('airline-flights').value = 'all'; $('airline-service').value = 'all';
+        pushState(); draw();
+      });
+      box.append(` among ${$('airline-flights').selectedOptions[0].text} on ${$('airline-service').selectedOptions[0].text}: `, widen, '.');
+    } else if (state.q) box.append('.');
+    return;
+  }
   const { shown, hidden, shownShare } = limitFamilies(groups, state.limit, { searching: Boolean(state.q.trim()) });
   const sorted = sortAirlines(shown, state.sort, state.dir);
   const table = document.createElement('table');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupAirlines, sortAirlines, sharedQuery } from '../src/airlines.js';
+import { groupAirlines, sortAirlines, sharedQuery, matchesElsewhere } from '../src/airlines.js';
 import { limitFamilies, limitOptions } from '../src/aircraft.js';
 
 const r = (group_id, group_name, airline_id, airline_name, deps, extra = {}) => ({
@@ -75,4 +75,12 @@ test('the limit works on airline groups and names them in its menu', () => {
   assert.deepEqual(limitFamilies(groups, 'top2').shown.map((g) => g.id), ['delta', 'southwest']);
   assert.deepEqual(limitOptions('airlines', 'airline').map((o) => o.label),
     ['the top 15 airlines', 'the top 20 airlines', 'the top 50 airlines', 'every airline', 'airlines with at least 1%', 'airlines with at least 0.1%']);
+});
+
+test('a search the flight and route filters hide is found when they are widened', () => {
+  const state = { measure: 'deps', q: 'federal' };
+  assert.deepEqual(groupAirlines(rows, state).groups, []);
+  assert.equal(matchesElsewhere(rows, state), 1);
+  assert.equal(matchesElsewhere(rows, { measure: 'deps', q: 'nothing like it' }), 0);
+  assert.equal(matchesElsewhere(rows, { measure: 'deps', q: '' }), 0);
 });

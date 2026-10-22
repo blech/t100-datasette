@@ -78,6 +78,13 @@ Questions:
   - `/airlines` is the table: groups that open to their members, sortable, with year, flights, routes, limit and search.
   - The heat map moved to `/airlines/over-time`. The views line is "Airlines · Over time", and it carries `measure`, `flights` and `service` both ways.
   - Old `/airlines` links with `n`, `rank` or `scale` get a 301 to the heat map.
+  - **Deferred minors from its final review:**
+    - **A disclosure opened by a search can't be closed** while the search matches through a member: the ▾ toggles `open`, but `matched` keeps the group open. The aircraft table has the same pattern.
+    - **Freight reads "freight (short tons)" mid-sentence** in the status line and the empty message. The heat map strips the parenthetical; the aircraft table doesn't either.
+    - **"Flew" can depend on the chosen year:** the query's `HAVING` drops a member's (service, kind) rows that didn't fly that year, along with their years. One group in 2000 (Air Transport International, 1994–2016 against 1994–2021), none in 2010 or 2025.
+    - **The status during a search** pairs the match count with everyone's total ("2 airlines, 900 million passengers"). Inherited from the aircraft table.
+    - **The heat map's "airlines" breadcrumb** doesn't carry `measure`, `flights` and `service`, unlike the views line.
+    - **The group "Federal Express Corporation"** isn't found by "FedEx".
 - **Still to come:**
   - an airline's routes heat map;
   - an airport over time (its heat map moving to `/destinations`);

@@ -28,5 +28,7 @@
 :is(#aircraft-table, #airline-table) button.twist { all: unset; cursor: pointer; display: inline-block; width: 1.2em; color: var(--muted, #777); }
 :is(#aircraft-table, #airline-table) tr.type-row td { color: var(--muted, #777); font-size: 14px; }
 :is(#aircraft-table, #airline-table) td.type-name { padding-left: 2em; }
+#airline-table button.link { all: unset; cursor: pointer; text-decoration: underline; }
+#airline-table button.link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 #at-q, #airline-q { min-width: 16em; }
 details.note summary { cursor: pointer; }
