@@ -1,5 +1,5 @@
 // The popover every chart over time shares: the whole year (or month) under the pointer, top of the stack first,
-// with colour keys and right-aligned numbers; heat-map cells use the same box. The design:
+// with colour keys and right-aligned numbers; matrix cells use the same box. The design:
 // docs/superpowers/specs/2026-10-21-popovers-design.md
 
 // points -> one record per period, its rows ordered as the chart draws them, top first.

@@ -1,5 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { buildHeatmap, buildCityHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { buildMatrix, buildCityMatrix, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -11,7 +11,7 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
-  measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
+  measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '25')),
   group: pick('group', ['airport', 'city'], 'airport'),
@@ -49,9 +49,9 @@ function pushState() {
 }
 
 function drawAirports() {
-  const box = $('heatmap');
+  const box = $('matrix');
   box.replaceChildren();
-  const res = buildHeatmap(rows, { ...state, rankYear: rankYear() });
+  const res = buildMatrix(rows, { ...state, rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
     return;
@@ -87,21 +87,21 @@ function drawAirports() {
 }
 
 const routeYearHref = (dest, year) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}`;
-const airportHref = (code) => `/airports/${encodeURIComponent(code)}`;
+const airportHref = (code) => `/airports/${encodeURIComponent(code)}/destinations`; // matrices lead to matrices
 const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination` });
 const colourScale = (max) => (relative()
   ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
-  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(max, HEAT_MEASURES[state.measure]) });
-// a heat-map cell's popover rows: the amount, and the share the colour shows when it shows one
+  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(max, MATRIX_MEASURES[state.measure]) });
+// a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
-  { label: HEAT_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
+  { label: MATRIX_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
   ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
   ...(state.scale === 'busiest' ? [{ label: "Of the year's top", value: fmtPct(c.peak) }] : []),
 ];
-const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 
 function toggle(key) {
   state.open = state.open.includes(key) ? state.open.filter((k) => k !== key) : [...state.open, key];
@@ -110,9 +110,9 @@ function toggle(key) {
 }
 
 function drawCities() {
-  const box = $('heatmap');
+  const box = $('matrix');
   box.replaceChildren();
-  const res = buildCityHeatmap(rows, { ...state, rankYear: rankYear() });
+  const res = buildCityMatrix(rows, { ...state, rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
     return;
@@ -167,7 +167,7 @@ const cellPopover = (y) => ({
 // Row labels carry their hover text in an SVG <title>; move it into our own tooltip so it shows at once
 // and the same way in every browser.
 function useLabelTips() {
-  for (const text of $('heatmap').querySelectorAll('svg text')) {
+  for (const text of $('matrix').querySelectorAll('svg text')) {
     const title = text.querySelector(':scope > title');
     if (!title) continue;
     text.dataset.tip = title.textContent;
@@ -184,7 +184,7 @@ function draw() {
     busiest: `Colour compares each cell with ${origin}'s top ${state.group === 'city' ? 'city' : 'destination'} that year, the one with the most ${unit()}: the top one is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own, so colours show how a destination ranked then, not how much it carried. Hover over a cell for both.`,
   }[state.scale];
   const year = latestYear();
-  if (year !== null) $('heat-rank').options[1].textContent = `${year} only`;
+  if (year !== null) $('matrix-rank').options[1].textContent = `${year} only`;
   $('rank-note').textContent = rankYear() === null
     ? 'Destinations are ranked by the measure summed over all years.'
     : `Destinations are ranked by the measure in ${rankYear()} alone, so ones that did not fly then are not shown.`;
@@ -194,7 +194,7 @@ function draw() {
 }
 
 const labelTip = $('label-tip');
-$('heatmap').addEventListener('mousemove', (e) => {
+$('matrix').addEventListener('mousemove', (e) => {
   const text = e.target.closest && e.target.closest('text[data-tip]');
   if (!text) { labelTip.hidden = true; return; }
   labelTip.textContent = text.dataset.tip;
@@ -202,9 +202,9 @@ $('heatmap').addEventListener('mousemove', (e) => {
   labelTip.style.top = `${e.clientY + 14}px`;
   labelTip.hidden = false;
 });
-$('heatmap').addEventListener('mouseleave', () => { labelTip.hidden = true; });
+$('matrix').addEventListener('mouseleave', () => { labelTip.hidden = true; });
 
-$('heatmap').addEventListener('click', (e) => {
+$('matrix').addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('a');
   const href = a && (a.getAttribute('href') || a.getAttribute('xlink:href'));
   if (href && href.startsWith('#toggle:')) {
@@ -224,34 +224,34 @@ async function main() {
     cities = new Map(airports.rows.map((a) => [a.code, a.place]));
     airportInfo = new Map(airports.rows.map((a) => [a.code, a]));
     const here = airports.rows.find((a) => a.code === origin);
-    if (here) $('title').textContent = `${origin} (${here.place}): routes over time`;
+    if (here) $('title').textContent = `${origin} (${here.place}): destinations over time`;
     if (byYear.truncated) $('subtitle').textContent = 'Too many rows: some routes are missing from this chart.';
   } catch (err) {
     console.error(err);
-    $('heatmap').textContent = 'Could not load the chart data.';
+    $('matrix').textContent = 'Could not load the chart data.';
     return;
   }
-  if (!rows.length) { $('heatmap').textContent = `No flights from ${origin} in the data.`; return; }
+  if (!rows.length) { $('matrix').textContent = `No flights from ${origin} in the data.`; return; }
   draw();
 }
 
 function fillControls() {
-  const measure = $('heat-measure');
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label.toLowerCase(), k)); // reads mid-sentence
+  const measure = $('matrix-measure');
+  for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k)); // reads mid-sentence
   measure.value = state.measure;
-  $('heat-service').value = state.service;
-  $('heat-n').value = String(state.n);
-  $('heat-group').value = state.group;
-  $('heat-rank').value = state.rank;
+  $('matrix-service').value = state.service;
+  $('matrix-n').value = String(state.n);
+  $('matrix-group').value = state.group;
+  $('matrix-rank').value = state.rank;
   for (const radio of document.querySelectorAll('input[name="scale"]')) {
     radio.checked = radio.value === state.scale;
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
   }
-  $('heat-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
-  $('heat-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
+  $('matrix-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
+  $('matrix-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
   measure.addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
-  $('heat-service').addEventListener('change', (e) => { state.service = e.target.value; pushState(); draw(); });
-  $('heat-n').addEventListener('change', (e) => { state.n = Number(e.target.value); pushState(); draw(); });
+  $('matrix-service').addEventListener('change', (e) => { state.service = e.target.value; pushState(); draw(); });
+  $('matrix-n').addEventListener('change', (e) => { state.n = Number(e.target.value); pushState(); draw(); });
 }
 
 main();

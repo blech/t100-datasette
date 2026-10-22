@@ -1,5 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { buildFamilySeries } from '/static/charts/src/rollup.js';
 import { kindOptions } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -20,14 +20,14 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
-  measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
+  measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   aircraftKind: params.get('aircraft') || 'all',  // checked against the menu once the data is in
 };
 let rows = [];
 
-const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 
 function pushState() {
   const q = new URLSearchParams();
@@ -54,7 +54,7 @@ function draw() {
     marginLeft: 64,
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
-    y: { ...millionsAxis(stackMax(data, 'year'), HEAT_MEASURES[state.measure]), grid: true },
+    y: { ...millionsAxis(stackMax(data, 'year'), MATRIX_MEASURES[state.measure]), grid: true },
     color: colors,
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series }),
@@ -67,7 +67,7 @@ function draw() {
 }
 
 async function main() {
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) $('mk-measure').append(new Option(label.toLowerCase(), k));
+  for (const [k, label] of Object.entries(MATRIX_MEASURES)) $('mk-measure').append(new Option(label.toLowerCase(), k));
   try {
     rows = (await fetchRows(queryUrl('maker_by_year'))).rows;
   } catch (err) {

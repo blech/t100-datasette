@@ -7,7 +7,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { buildEngineShares, ENGINE_SERIES } from '/static/charts/src/rollup.js';
 import { palette, isDark } from '/static/common/palette.js';
 import { placeOnMap, hitTest, drawMap } from './src/map.js';
-import { airlineLines, spreadLabels, passengerBands, OTHER_AIRLINES, airlineColours } from './src/airlines.js';
+import { airlineLines, passengerBands, OTHER_AIRLINES, airlineColours } from './src/airlines.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight } from '/static/common/highlight.js';
 
@@ -128,26 +128,6 @@ async function showEngines() {
 
 const ALL_AIRLINES = 'All airlines';
 
-// labels at the bands' right-hand ends, nudged apart where they crowd
-function bandLabels(bands, names, height, yMax) {
-  const ends = names.map((s) => bands.filter((d) => d.series === s).at(-1)).filter(Boolean);
-  const y = spreadLabels(ends.map((d) => (d.y1 + d.y2) / 2), (14 * yMax) / (height - 62));
-  return ends.map((d, i) => ({ ...d, labelY: y[i] }));
-}
-
-// a key mark before each label, then the name in the text colour (gold text on cream would be unreadable):
-// a square in the band's colour for an airline, a pale square for everyone else
-function labelMarks(labels, colourOf) {
-  const at = { x: 'year', y: 'labelY', textAnchor: 'start' };
-  const keyed = (kind) => labels.filter((d) => keyOf(d.series, colourOf).kind === kind);
-  return [
-    Plot.text(keyed('square'), { ...at, text: () => '■', dx: 6, fill: (d) => colourOf(d.series), fontSize: 14 }),
-    Plot.text(keyed('other'), { ...at, text: () => '■', dx: 6, fill: 'currentColor', fillOpacity: 0.25, fontSize: 14 }),
-    Plot.text(keyed('line'), { ...at, text: () => '—', dx: 5, fill: 'currentColor', fontWeight: 700 }),
-    Plot.text(labels, { ...at, text: 'series', dx: 20, fill: 'currentColor' }),
-  ];
-}
-
 function keyOf(series, colourOf) {
   if (series === OTHER_AIRLINES) return { kind: 'other' };
   if (series === ALL_AIRLINES) return { kind: 'line' };
@@ -160,22 +140,33 @@ const plotFrame = (box, height) => ({
   marginTop: 32,
   marginBottom: 30,
   marginLeft: 48,
-  marginRight: 140,
+  marginRight: 20,
   style: { background: 'transparent', fontSize: '12px' },
   x: { label: null, tickFormat: 'd', domain: [minYear, maxYear] },
 });
 
-// each airline's band and its top edge, in its livery colour
+// each airline's band (filled through the colour scale, so the legend and highlight know it) and its top edge
 const airlineBands = (bands, colourOf) => [
-  Plot.areaY(bands, { x: 'year', y1: 'y1', y2: 'y2', z: 'series', fill: (d) => colourOf(d.series), fillOpacity: 0.35, className: 'airline-band' }),
-  Plot.lineY(bands, { x: 'year', y: 'y2', z: 'series', stroke: (d) => colourOf(d.series), strokeWidth: 1.5 }),
+  Plot.areaY(bands, { x: 'year', y1: 'y1', y2: 'y2', fill: 'series', fillOpacity: 0.35, className: 'airline-band' }),
+  Plot.lineY(bands, { x: 'year', y: 'y2', z: 'series', stroke: (d) => colourOf(d.series), strokeWidth: 1.5, className: 'band-edge' }),
 ];
+
+// the highlight fades bands; fade the other bands' top edges with them (everyone else's dashed edge too)
+function fadeEdges(plot, colourOf) {
+  const svg = [...plot.querySelectorAll('svg')].at(-1);
+  const hex = (c) => String(c).toLowerCase();
+  plot.addEventListener('highlight', (e) => {
+    const on = e.detail.length > 0;
+    const keep = new Set(e.detail.map((s) => hex(colourOf(s))));
+    for (const path of svg.querySelectorAll('.band-edge path')) path.classList.toggle('faded', on && !keep.has(hex(path.getAttribute('stroke'))));
+    for (const path of svg.querySelectorAll('.others-edge path')) path.classList.toggle('faded', on && !e.detail.includes(OTHER_AIRLINES));
+  });
+}
 
 // passengers carried: today's four biggest airlines, then everyone else, stacked to the whole market
 function passengerChart(box, { series, bands, colourOf }) {
   const height = chartHeight();
   const yMax = Math.max(...bands.map((d) => d.y2));
-  const labels = bandLabels(bands, [...series, OTHER_AIRLINES], height, yMax);
   const totalByYear = new Map(bands.filter((d) => d.series === OTHER_AIRLINES).map((d) => [d.year, d.y2]));
   const tips = periodRows([...bands, ...[...totalByYear].map(([year, y2]) => ({ year, series: ALL_AIRLINES, passengers: y2, y2 }))], {
     key: (d) => d.year, order: [...series, OTHER_AIRLINES, ALL_AIRLINES], value: (d) => d.passengers,
@@ -185,13 +176,13 @@ function passengerChart(box, { series, bands, colourOf }) {
   return Plot.plot({
     ...plotFrame(box, height),
     y: { ...millionsAxis(yMax, 'Passengers'), domain: [0, yMax], grid: true, nice: true, ticks: 6 },
+    color: { domain: [...series, OTHER_AIRLINES], range: [...series, OTHER_AIRLINES].map(colourOf), legend: true },
     marks: [
       ...airlineBands(bands.filter((d) => d.series !== OTHER_AIRLINES), colourOf),
-      // everyone else: a faint tint of the text colour, its top edge (the whole market) dashed
-      Plot.areaY(others, { x: 'year', y1: 'y1', y2: 'y2', fill: 'currentColor', fillOpacity: 0.07 }),
-      Plot.lineY(others, { x: 'year', y: 'y2', stroke: 'currentColor', strokeOpacity: 0.6, strokeWidth: 1.5, strokeDasharray: '4 3' }),
+      // everyone else: a faint grey, its top edge (the whole market) dashed in the text colour
+      Plot.areaY(others, { x: 'year', y1: 'y1', y2: 'y2', fill: 'series', fillOpacity: 0.2 }),
+      Plot.lineY(others, { x: 'year', y: 'y2', stroke: 'currentColor', strokeOpacity: 0.6, strokeWidth: 1.5, strokeDasharray: '4 3', className: 'others-edge' }),
       Plot.ruleY([0]),
-      ...labelMarks(labels, colourOf),
       Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   });
@@ -203,8 +194,11 @@ async function showAirlines() {
   const { series } = airlineLines(rows);
   if (!series.length) { box.replaceChildren(); return; }
   const colours = new Map(series.map((name, i) => [name, airlineColours(series)[i]]));
+  colours.set(OTHER_AIRLINES, palette(isDark()).other);
   const colourOf = (name) => colours.get(name);
   const chart = passengerChart(box, { series, bands: passengerBands(rows, series), colourOf });
+  attachHighlight(chart);
+  fadeEdges(chart, colourOf);
   box.replaceChildren(...attachPopover(chart, {
     content: (d) => ({ title: String(d.period), rows: d.rows }), at: (d) => [d.period, d.top], keyOf: (label) => keyOf(label, colourOf),
   }));

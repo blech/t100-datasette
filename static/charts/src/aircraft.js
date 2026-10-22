@@ -66,21 +66,24 @@ export function sortFamilies(families, key, dir = 'desc') {
   });
 }
 
-export const LIMIT_OPTIONS = [
-  { value: 'top15', label: 'the top 15 families' },
-  { value: 'top20', label: 'the top 20 families' },
-  { value: 'top50', label: 'the top 50 families' },
-  { value: 'all', label: 'every family' },
-  { value: 'min1', label: 'families with at least 1%' },
-  { value: 'min0.1', label: 'families with at least 0.1%' },
+// The limit menu, worded for what the table lists
+export const limitOptions = (plural, singular) => [
+  { value: 'top15', label: `the top 15 ${plural}` },
+  { value: 'top20', label: `the top 20 ${plural}` },
+  { value: 'top50', label: `the top 50 ${plural}` },
+  { value: 'all', label: `every ${singular}` },
+  { value: 'min1', label: `${plural} with at least 1%` },
+  { value: 'min0.1', label: `${plural} with at least 0.1%` },
 ];
+export const LIMIT_OPTIONS = limitOptions('families', 'family');
 export const DEFAULT_LIMIT = 'top20';
 
 // The families to list: the top N by value, or those whose share is at least a percentage. Applied to the ranking by
 // value whatever column the table is sorted by, and not at all while searching. Also returns how many were left out
 // and the share of the total that the listed ones make up.
 export function limitFamilies(families, limit, { searching = false } = {}) {
-  const ranked = [...families].sort((a, b) => b.value - a.value || a.family.localeCompare(b.family));
+  const nameOf = (x) => x.family ?? x.name;  // an aircraft family or an airline group
+  const ranked = [...families].sort((a, b) => b.value - a.value || nameOf(a).localeCompare(nameOf(b)));
   let shown = ranked;
   if (!searching) {
     const top = /^top(\d+)$/.exec(limit);

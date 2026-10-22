@@ -38,10 +38,10 @@ Each subject has some of the same few kinds of view. A view should link to the s
 
 What exists now:
 
-| Subject | Table | Map | Chart over time | Heat map |
+| Subject | Table | Map | Chart over time | Matrix |
 |---|---|---|---|---|
 | All airports | `/airports` (busiest) | `/airports/globe` | | |
-| One airport | | `/airports/SFO/globe` | | `/airports/SFO` (destinations × years) |
+| One airport | `/airports/SFO/changes` (destinations and airlines gained and lost) | `/airports/SFO/globe` | `/airports/SFO` (size, destinations) | `/airports/SFO/destinations` (destinations × years) |
 | One route | `/airports/SFO/LHR` (airlines × aircraft) | only as a line on the airport and airline maps | `/airports/SFO/LHR` (stacked bars; one year by month) | |
 | All aircraft | | | `/aircraft/engines` | `/aircraft` (families × years) |
 | One aircraft family | | | `/aircraft/boeing-737` | |
@@ -49,8 +49,8 @@ What exists now:
 | One airline | `/airlines/delta` ("What changed" routes) | `/airlines/delta/globe` | `/airlines/delta` (size, airport pairs) | |
 
 Questions:
-- **Cross-links:** which links between views should exist? For example, map → map for the same year and service, table → table, heat map cell → the route or the airline.
-- **Heat maps:** how do they fit in? They're part table, part chart. Should they be the standard "over time" view for any list of things (airports, aircraft, airlines, routes), with a shared look and the same row-ranking and colour-scale controls? And should an airline or a family get a heat map of its routes or versions too?
+- **Cross-links:** which links between views should exist? For example, map → map for the same year and service, table → table, matrix cell → the route or the airline.
+- **Matrices:** how do they fit in? They're part table, part chart. Should they be the standard "over time" view for any list of things (airports, aircraft, airlines, routes), with a shared look and the same row-ranking and colour-scale controls? And should an airline or a family get a matrix of its routes or versions too?
 - **Narrowing down, or back to the top?** Should views keep refining, such as `/airports/ATL/JFK?airline=Delta`, a route as one airline flies it? Or do links go back to the top-level page after a point, so a route links to Delta's own page? A filter is easy to build, because the route's rows carry the airline. Delta's "What changed" table already links to its routes but drops the airline on the way. Undecided.
 - **Gaps:** which empty cells in the grid matter? For example, a map for an aircraft family (where it flies), or a table of all airlines.
 
@@ -72,6 +72,48 @@ Questions:
   - **`setPinned` and its WeakMap in `static/common/highlight.js` are unused,** because "clear" redraws instead.
   - **Tests:** the family `keep` test checks "Other"'s total but re-imports `buildFamilySeries`, which is already imported.
 
+**Part 3 (four new views): on branch `new-views`**, one spec and plan each.
+
+- **A table of all airlines: built**, spec `docs/superpowers/specs/2026-10-22-airlines-table-design.md`.
+  - `/airlines` is the table: groups that open to their members, sortable, with year, flights, routes, limit and search.
+  - The matrix moved to `/airlines/over-time`. The views line is "Airlines · Over time", and it carries `measure`, `flights` and `service` both ways.
+  - Old `/airlines` links with `n`, `rank` or `scale` get a 301 to the matrix.
+  - **Deferred minors from its final review:**
+    - **A disclosure opened by a search can't be closed** while the search matches through a member: the ▾ toggles `open`, but `matched` keeps the group open. The aircraft table has the same pattern.
+    - **Freight reads "freight (short tons)" mid-sentence** in the status line and the empty message. The matrix strips the parenthetical; the aircraft table doesn't either.
+    - **"Flew" can depend on the chosen year:** the query's `HAVING` drops a member's (service, kind) rows that didn't fly that year, along with their years. One group in 2000 (Air Transport International, 1994–2016 against 1994–2021), none in 2010 or 2025.
+    - **The status during a search** pairs the match count with everyone's total ("2 airlines, 900 million passengers"). Inherited from the aircraft table.
+    - **The matrix's "airlines" breadcrumb** doesn't carry `measure`, `flights` and `service`, unlike the views line.
+    - **The group "Federal Express Corporation"** isn't found by "FedEx".
+- **An airline's routes: built as a matrix**, spec `docs/superpowers/specs/2026-10-22-airline-routes-design.md`.
+  - `/airlines/{airline}/routes` shows airport pairs (both directions together) by year, with route-years of at least 12 departures, and labels that open the route with the airline highlighted.
+  - The views line is Over time · Routes · Changes · Map.
+  - A table version was considered and dropped.
+  - **Fixed from its final review:** a pair's link opens its alphabetical direction, which the airline may never have flown (57 of FedEx's pairs in 2019). The route page now says "This airline doesn't fly this way; try the other way, …" (or offers the other way under "No flights"), keeping the highlight.
+  - **Deferred minors from its final review:**
+    - **An airline that never flew a pair 12 times in a year** (94 of 841 groups) gets "Nothing to chart for this selection.", which suggests a setting would help. It could name the reason.
+    - **The truncation warning** is set on `#rank-note` before `draw()` rewrites it, so it's never seen. Older than this branch; it affects `/airlines/over-time` too, and doesn't trigger today.
+    - **The chart waits for the airports query** (1.3 MB) that only supplies hover text. It could draw first and add places after, or use a slimmer query.
+    - **American's routes are 4.2 MB, uncompressed:** worth turning on gzip (datasette-gzip, or at the proxy).
+    - **The cell popover** shows codes only ("ATL – LGA · 2019"); the label's hover has the places.
+    - **Same-airport pairs** (GCN – GCN, sightseeing) appear as rows.
+    - **At phone width** the year labels crowd together, as on the airlines matrix.
+    - **A made-up highlight** (`?highlight=airline:nope`) now says "This airline doesn't fly this way" rather than nothing.
+- **An airport's views: built**, spec `docs/superpowers/specs/2026-10-22-airport-views-design.md`.
+  - `/airports/{code}` is now Over time: how big (split by domestic or international, passenger or freight, or the top 8 airline groups, each linking to its page) and how many destinations each year.
+  - The matrix moved to `/airports/{code}/destinations`; old links with `n`, `group`, `rank`, `scale` or `open` get a 301 to it. Its row codes open each airport's matrix.
+  - `/airports/{code}/changes` compares two years: destinations or airlines dropped, added or kept.
+  - The views line is Over time · Destinations · Changes · Map. Links to the charts carry only `measure`; links to the matrix carry the matrix's settings.
+  - Every count is of departures from the airport, unlike the airline pages' airport pairs.
+  - **Fixed from its final review:** the matrix's heading went back to "routes over time" once its data loaded; a route page's "routes over time" link opened the charts. The route note now reads "More from SFO: over time · destinations · map".
+  - **Deferred minors from its final review:**
+    - **An airport with no flights** (`/airports/ZZZ`) says so, but still shows its empty controls ("Show [ ] for…", "Compare [ ] with [ ]").
+    - **"First flown here"** for an added airline counts over every year, so it can be decades before the years compared (Condor at SFO: 1990), as on an airline's Changes page. It could be the first month after the earlier year, or be labelled "first ever".
+    - **Reversed years** (from after to) give a summary that reads backwards.
+    - **Legend links match by short name,** so two top-8 groups that shorten alike would share one link.
+    - **The new pages' titles don't name the place,** unlike the matrix's "SFO (San Francisco, CA)".
+- **Still to come:** a family map.
+
 ### 5. Colour: done (merged, branch `colour`)
 
 - **One palette:** `static/common/palette.js` holds every data colour by role, light and dark (spec `docs/superpowers/specs/2026-10-21-colour-design.md`).
@@ -80,7 +122,7 @@ Questions:
   - teal and ember for domestic and international;
   - Ember jets in the engine charts;
   - ember for the accent.
-- **Kept as they were:** heat maps on YlOrRd, and the front page's liveries.
+- **Kept as they were:** matrices on YlOrRd, and the front page's liveries.
 - **Pointing at a series** fades the others.
 - **Open:** teal or slate for domestic, to judge on the real site; it's one row in the palette.
 - **Deferred minors:**

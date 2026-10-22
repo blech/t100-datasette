@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildHeatmap, HEAT_MEASURES } from '../src/heatmap.js';
+import { buildMatrix, MATRIX_MEASURES } from '../src/matrix.js';
 
 const r = (dest, year, passengers, extra = {}) => ({ dest, year, passengers, deps: passengers / 10, seats: passengers * 2, freight: 4000, service: 'international', ...extra });
 
@@ -12,55 +12,55 @@ const rows = [
 ];
 
 test('destinations are ranked by the measure summed over all years, biggest first', () => {
-  const res = buildHeatmap(rows, { measure: 'passengers', service: 'all', n: 10 });
+  const res = buildMatrix(rows, { measure: 'passengers', service: 'all', n: 10 });
   assert.deepEqual(res.dests, ['LAX', 'LHR', 'CDG', 'ZZZ']);
 });
 
 test('only the top n destinations are kept', () => {
-  const res = buildHeatmap(rows, { measure: 'passengers', service: 'all', n: 2 });
+  const res = buildMatrix(rows, { measure: 'passengers', service: 'all', n: 2 });
   assert.deepEqual(res.dests, ['LAX', 'LHR']);
   assert.ok(res.cells.every((c) => ['LAX', 'LHR'].includes(c.dest)));
 });
 
 test('years span every year in the data, even those a kept destination skipped', () => {
-  const res = buildHeatmap(rows, { measure: 'passengers', service: 'all', n: 1 });
+  const res = buildMatrix(rows, { measure: 'passengers', service: 'all', n: 1 });
   assert.deepEqual(res.years, [2018, 2019]);
   assert.equal(res.cells.length, 1); // LAX only flew in 2019
 });
 
 test('service filter keeps only that service, and decides the ranking', () => {
-  const dom = buildHeatmap(rows, { measure: 'passengers', service: 'domestic', n: 10 });
+  const dom = buildMatrix(rows, { measure: 'passengers', service: 'domestic', n: 10 });
   assert.deepEqual(dom.dests, ['LAX']);
-  const intl = buildHeatmap(rows, { measure: 'passengers', service: 'international', n: 10 });
+  const intl = buildMatrix(rows, { measure: 'passengers', service: 'international', n: 10 });
   assert.deepEqual(intl.dests, ['LHR', 'CDG', 'ZZZ']);
 });
 
 test('freight is shown in short tons', () => {
-  const res = buildHeatmap([r('LHR', 2019, 1)], { measure: 'freight', service: 'all', n: 5 });
+  const res = buildMatrix([r('LHR', 2019, 1)], { measure: 'freight', service: 'all', n: 5 });
   assert.equal(res.cells[0].value, 2);
 });
 
 test('a destination in both tables for a year appears once per year', () => {
-  const res = buildHeatmap([r('LHR', 2019, 10), r('LHR', 2019, 5, { service: 'domestic' })], { measure: 'passengers', service: 'all', n: 5 });
+  const res = buildMatrix([r('LHR', 2019, 10), r('LHR', 2019, 5, { service: 'domestic' })], { measure: 'passengers', service: 'all', n: 5 });
   assert.equal(res.cells.length, 1);
   assert.equal(res.cells[0].value, 15);
 });
 
 test('cells with a zero value are dropped, and ties rank by code', () => {
-  const res = buildHeatmap([r('BBB', 2019, 7), r('AAA', 2019, 7), r('CCC', 2019, 0)], { measure: 'passengers', service: 'all', n: 5 });
+  const res = buildMatrix([r('BBB', 2019, 7), r('AAA', 2019, 7), r('CCC', 2019, 0)], { measure: 'passengers', service: 'all', n: 5 });
   assert.deepEqual(res.dests, ['AAA', 'BBB']);
 });
 
 test('empty input is empty output', () => {
-  assert.deepEqual(buildHeatmap([], { measure: 'deps', service: 'all', n: 5 }), { dests: [], years: [], cells: [], yearTotals: {}, yearMax: {} });
+  assert.deepEqual(buildMatrix([], { measure: 'deps', service: 'all', n: 5 }), { dests: [], years: [], cells: [], yearTotals: {}, yearMax: {} });
 });
 
 test('menu of measures', () => {
-  assert.deepEqual(Object.keys(HEAT_MEASURES), ['passengers', 'deps', 'seats', 'freight']);
+  assert.deepEqual(Object.keys(MATRIX_MEASURES), ['passengers', 'deps', 'seats', 'freight']);
 });
 
 // ---- grouping by BTS market ----
-import { buildCityHeatmap } from '../src/heatmap.js';
+import { buildCityMatrix } from '../src/matrix.js';
 
 const c = (dest, year, passengers, market, city, extra = {}) =>
   ({ dest, year, passengers, deps: 1, seats: 1, freight: 0, service: 'international', market_id: market, city, ...extra });
@@ -74,32 +74,32 @@ const london = [
 const group = { measure: 'passengers', service: 'all', n: 10, open: [] };
 
 test('airports in one market become one row, ranked by the market total', () => {
-  const res = buildCityHeatmap(london, group);
+  const res = buildCityMatrix(london, group);
   assert.deepEqual(res.rows.map((r) => r.label.split(' · ')[0]), ['Paris, France', 'London, United Kingdom', 'Dublin, Ireland']);
   const lon = res.cells.filter((x) => x.row === res.rows[1].key);
   assert.deepEqual(lon.map((x) => [x.year, x.value]), [[2018, 800], [2019, 1250]]);
 });
 
 test('a group row is labelled with its busiest airports in volume order, and says how many more', () => {
-  const res = buildCityHeatmap(london, group);
+  const res = buildCityMatrix(london, group);
   assert.equal(res.rows[1].label, 'London, United Kingdom · LHR, LGW, STN');
   const many = ['A', 'B', 'C', 'D', 'E'].map((d, i) => c(d, 2019, 100 - i, '1', 'Big City'));
-  assert.equal(buildCityHeatmap(many, group).rows[0].label, 'Big City · A, B, C +2');
+  assert.equal(buildCityMatrix(many, group).rows[0].label, 'Big City · A, B, C +2');
 });
 
 test('the city name comes from the busiest airport, not from the first or alphabetical row', () => {
   const rows = [c('EWR', 2019, 100, '31703', 'Newark, NJ'), c('JFK', 2019, 900, '31703', 'New York, NY'), c('HPN', 2019, 5, '31703', 'White Plains, NY')];
-  assert.match(buildCityHeatmap(rows, group).rows[0].label, /^New York, NY · JFK, EWR/);
+  assert.match(buildCityMatrix(rows, group).rows[0].label, /^New York, NY · JFK, EWR/);
 });
 
 test('multi-airport groups can be expanded, single-airport ones cannot', () => {
-  const res = buildCityHeatmap(london, group);
+  const res = buildCityMatrix(london, group);
   assert.deepEqual(res.rows.map((r) => r.expandable), [true, true, false]);
   assert.ok(res.rows.every((r) => r.kind === 'group' && r.open === false));
 });
 
 test('an open group is followed by its airports, biggest first, with their own cells', () => {
-  const res = buildCityHeatmap(london, { ...group, open: ['30730'] });
+  const res = buildCityMatrix(london, { ...group, open: ['30730'] });
   assert.deepEqual(res.rows.map((r) => r.kind + ':' + (r.code || r.key)), ['group:30920', 'group:30730', 'airport:LHR', 'airport:LGW', 'airport:STN', 'group:31000']);
   assert.equal(res.rows[1].open, true);
   const lgw = res.rows.find((r) => r.code === 'LGW');
@@ -107,7 +107,7 @@ test('an open group is followed by its airports, biggest first, with their own c
 });
 
 test('top n counts groups, not the airports shown under an open group', () => {
-  const res = buildCityHeatmap(london, { ...group, n: 1, open: ['30920'] });
+  const res = buildCityMatrix(london, { ...group, n: 1, open: ['30920'] });
   assert.deepEqual(res.rows.map((r) => r.kind + ':' + (r.code || r.key)), ['group:30920', 'airport:CDG', 'airport:ORY']);
 });
 
@@ -117,25 +117,25 @@ test('airports without a market id stand alone, and a reused code in two markets
     c('SAW', 2019, 200, '32395', 'Istanbul, Turkey'),
     c('SAW', 2005, 1, '33459', 'Marquette, MI'),
   ];
-  const res = buildCityHeatmap(rows, group);
+  const res = buildCityMatrix(rows, group);
   assert.equal(res.rows.length, 3);
   assert.ok(res.rows.every((r) => !r.expandable));
 });
 
 test('cells keep a per-airport breakdown for the tooltip, biggest first', () => {
-  const res = buildCityHeatmap(london, group);
+  const res = buildCityMatrix(london, group);
   const cell = res.cells.find((x) => x.row === res.rows[1].key && x.year === 2019);
   assert.deepEqual(cell.parts, [{ dest: 'LHR', value: 900 }, { dest: 'LGW', value: 300 }, { dest: 'STN', value: 50 }]);
 });
 
 test('service filter and freight conversion apply in city mode too', () => {
   const rows = [c('LHR', 2019, 1, '1', 'London', { service: 'domestic', freight: 4000 }), c('LGW', 2019, 1, '1', 'London', { freight: 8000 })];
-  const res = buildCityHeatmap(rows, { measure: 'freight', service: 'international', n: 5, open: [] });
+  const res = buildCityMatrix(rows, { measure: 'freight', service: 'international', n: 5, open: [] });
   assert.equal(res.cells[0].value, 4);
 });
 
 test('empty input', () => {
-  assert.deepEqual(buildCityHeatmap([], group), { rows: [], years: [], cells: [], yearTotals: {}, yearMax: {} });
+  assert.deepEqual(buildCityMatrix([], group), { rows: [], years: [], cells: [], yearTotals: {}, yearMax: {} });
 });
 
 // ---- ranking by one year ----
@@ -146,12 +146,12 @@ const shifted = [
 ];
 
 test('ranking by all years is the default', () => {
-  assert.deepEqual(buildHeatmap(shifted, { n: 10 }).dests, ['AAA', 'CCC', 'BBB']);
-  assert.deepEqual(buildHeatmap(shifted, { n: 10, rankYear: null }).dests, ['AAA', 'CCC', 'BBB']);
+  assert.deepEqual(buildMatrix(shifted, { n: 10 }).dests, ['AAA', 'CCC', 'BBB']);
+  assert.deepEqual(buildMatrix(shifted, { n: 10, rankYear: null }).dests, ['AAA', 'CCC', 'BBB']);
 });
 
 test('ranking by a year uses that year alone, and drops destinations that did not fly then', () => {
-  const res = buildHeatmap(shifted, { n: 10, rankYear: 2019 });
+  const res = buildMatrix(shifted, { n: 10, rankYear: 2019 });
   assert.deepEqual(res.dests, ['BBB', 'AAA']);
   assert.deepEqual(res.years, [2018, 2019]);
   assert.ok(res.cells.every((x) => x.dest !== 'CCC'));
@@ -159,11 +159,11 @@ test('ranking by a year uses that year alone, and drops destinations that did no
 });
 
 test('top n applies to the ranked year', () => {
-  assert.deepEqual(buildHeatmap(shifted, { n: 1, rankYear: 2019 }).dests, ['BBB']);
+  assert.deepEqual(buildMatrix(shifted, { n: 1, rankYear: 2019 }).dests, ['BBB']);
 });
 
 test('a ranking year with no flights gives an empty chart', () => {
-  assert.deepEqual(buildHeatmap(shifted, { n: 10, rankYear: 2030 }).dests, []);
+  assert.deepEqual(buildMatrix(shifted, { n: 10, rankYear: 2030 }).dests, []);
 });
 
 const markets = [
@@ -173,14 +173,14 @@ const markets = [
 ];
 
 test('city view ranks markets by the chosen year and drops those not served then', () => {
-  assert.deepEqual(buildCityHeatmap(markets, { n: 10 }).rows.map((x) => x.key), ['M2', 'M1', 'M3']);
-  const res = buildCityHeatmap(markets, { n: 10, rankYear: 2019 });
+  assert.deepEqual(buildCityMatrix(markets, { n: 10 }).rows.map((x) => x.key), ['M2', 'M1', 'M3']);
+  const res = buildCityMatrix(markets, { n: 10, rankYear: 2019 });
   assert.deepEqual(res.rows.map((x) => x.key), ['M1', 'M3']);
   assert.deepEqual(res.years, [2018, 2019]);
 });
 
 test('airports inside a group follow the chosen year too', () => {
-  const codes = (opts) => buildCityHeatmap(markets, { n: 10, open: ['M1'], ...opts }).rows.filter((x) => x.kind === 'airport').map((x) => x.code);
+  const codes = (opts) => buildCityMatrix(markets, { n: 10, open: ['M1'], ...opts }).rows.filter((x) => x.kind === 'airport').map((x) => x.code);
   assert.deepEqual(codes({}), ['XXX', 'YYY']);
   assert.deepEqual(codes({ rankYear: 2019 }), ['YYY', 'XXX']);
 });
@@ -192,14 +192,14 @@ const yearly = [
 ];
 
 test('every cell carries its share of the year\'s total, over all destinations and not just the ones kept', () => {
-  const res = buildHeatmap(yearly, { n: 1 });
+  const res = buildMatrix(yearly, { n: 1 });
   assert.deepEqual(res.dests, ['CCC']);
   assert.deepEqual(res.yearTotals, { 2018: 1000, 2019: 1000 });
   assert.deepEqual(res.cells.map((c) => [c.year, c.share]), [[2018, 0.1], [2019, 0.8]]);
 });
 
 test('shares follow the service filter, and each year sums to one over every destination', () => {
-  const res = buildHeatmap(yearly, { n: 10, service: 'international' });
+  const res = buildMatrix(yearly, { n: 10, service: 'international' });
   assert.deepEqual(res.yearTotals, { 2018: 1000, 2019: 900 });
   for (const y of [2018, 2019]) {
     const sum = res.cells.filter((c) => c.year === y).reduce((s, c) => s + c.share, 0);
@@ -208,13 +208,13 @@ test('shares follow the service filter, and each year sums to one over every des
 });
 
 test('shares use the chosen measure and its units', () => {
-  const res = buildHeatmap(yearly, { n: 10, measure: 'freight' });
+  const res = buildMatrix(yearly, { n: 10, measure: 'freight' });
   assert.deepEqual(res.yearTotals, { 2018: 6, 2019: 6 });
   assert.ok(res.cells.every((c) => Math.abs(c.share - 1 / 3) < 1e-9));
 });
 
 test('city view cells carry shares too, for groups and for the airports opened beneath them', () => {
-  const res = buildCityHeatmap(markets, { n: 10, open: ['M1'] });
+  const res = buildCityMatrix(markets, { n: 10, open: ['M1'] });
   assert.deepEqual(res.yearTotals, { 2018: 1400, 2019: 405 });
   const share = (row, year) => res.cells.find((c) => c.row === row && c.year === year).share;
   assert.ok(Math.abs(share('M1', 2019) - 305 / 405) < 1e-9);
@@ -223,27 +223,27 @@ test('city view cells carry shares too, for groups and for the airports opened b
 });
 
 test('an empty selection has no totals', () => {
-  assert.deepEqual(buildHeatmap([], {}).yearTotals, {});
+  assert.deepEqual(buildMatrix([], {}).yearTotals, {});
 });
 
 // ---- compared with the year's busiest destination ----
 test('every cell carries its value relative to the busiest destination that year, whether or not that one is kept', () => {
-  const res = buildHeatmap(yearly, { n: 1 });
+  const res = buildMatrix(yearly, { n: 1 });
   assert.deepEqual(res.dests, ['CCC']);
   assert.deepEqual(res.yearMax, { 2018: 600, 2019: 800 });
   assert.deepEqual(res.cells.map((c) => [c.year, c.peak]), [[2018, 100 / 600], [2019, 1]]);
 });
 
 test('the busiest destination of each year is exactly 1, and the service filter decides who that is', () => {
-  const all = buildHeatmap(yearly, { n: 10 });
+  const all = buildMatrix(yearly, { n: 10 });
   for (const y of [2018, 2019]) assert.equal(Math.max(...all.cells.filter((c) => c.year === y).map((c) => c.peak)), 1);
-  const dom = buildHeatmap(yearly, { n: 10, service: 'domestic' });
+  const dom = buildMatrix(yearly, { n: 10, service: 'domestic' });
   assert.deepEqual(dom.yearMax, { 2019: 100 });
   assert.deepEqual(dom.cells.map((c) => c.peak), [1]);
 });
 
 test('city view compares markets with the busiest market, and opened airports with it too', () => {
-  const res = buildCityHeatmap(markets, { n: 10, open: ['M1'] });
+  const res = buildCityMatrix(markets, { n: 10, open: ['M1'] });
   assert.deepEqual(res.yearMax, { 2018: 900, 2019: 305 });
   const peak = (row, year) => res.cells.find((c) => c.row === row && c.year === year).peak;
   assert.equal(peak('M2', 2018), 1);
@@ -253,5 +253,5 @@ test('city view compares markets with the busiest market, and opened airports wi
 });
 
 test('an empty selection has no maxima', () => {
-  assert.deepEqual(buildHeatmap([], {}).yearMax, {});
+  assert.deepEqual(buildMatrix([], {}).yearMax, {});
 });

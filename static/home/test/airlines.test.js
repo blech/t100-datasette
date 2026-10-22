@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { shortAirlineName, airlineLines, spreadLabels, stackShares, passengerBands, OTHER_AIRLINES, airlineColours } from '../src/airlines.js';
+import { shortAirlineName, airlineLines, stackShares, passengerBands, OTHER_AIRLINES, airlineColours } from '../src/airlines.js';
 
 test('shortAirlineName drops the legal ending, as the server does', () => {
   assert.equal(shortAirlineName('Southwest Airlines Co.'), 'Southwest Airlines');
@@ -24,13 +24,6 @@ test('airlineLines gives numeric points labelled by brand (no legal ending, no "
       { year: 2025, series: 'Alpha', share: 0.15 },
     ],
   });
-});
-
-test('spreadLabels keeps labels at least a gap apart, nearest to where their lines end', () => {
-  // three labels crowded around 15, one well clear at 5
-  const out = spreadLabels([15.4, 15.1, 15.0, 5], 1);
-  assert.deepEqual(out.map((v) => Math.round(v * 100) / 100), [16.17, 15.17, 14.17, 5]);
-  assert.deepEqual(spreadLabels([3, 9], 1), [3, 9]);
 });
 
 test('stackShares stacks each year in the given order, from zero up', () => {

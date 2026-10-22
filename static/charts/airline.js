@@ -1,5 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
@@ -29,7 +29,7 @@ let places = new Map();
 let routes = [];
 const memberLabel = (name) => shortName(name);
 
-const unit = (m) => HEAT_MEASURES[m].toLowerCase().replace(/ \(.*/, '');
+const unit = (m) => MATRIX_MEASURES[m].toLowerCase().replace(/ \(.*/, '');
 const plot = (box, options, popover) => {
   const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100), height: 320, marginLeft: 64,
@@ -63,7 +63,7 @@ function drawSize() {
   const p = palette(isDark());
   const range = split === 'kind' ? [p.kind.passenger, p.kind.freight] : [p.service.domestic, p.service.international];
   plot(box, {
-    x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), HEAT_MEASURES[measure]), grid: true },
+    x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), MATRIX_MEASURES[measure]), grid: true },
     color: { domain: series, range, legend: true },
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series }),
@@ -179,7 +179,7 @@ async function main() {
   const qs = new URLSearchParams(location.search);
   if ([...$('al-min').options].some((o) => o.value === qs.get('min'))) $('al-min').value = qs.get('min');
   if (hasSize) {
-    for (const [k, label] of Object.entries(HEAT_MEASURES)) $('al-measure').append(new Option(label.toLowerCase(), k));
+    for (const [k, label] of Object.entries(MATRIX_MEASURES)) $('al-measure').append(new Option(label.toLowerCase(), k));
     $('al-span').value = parseSpan(qs.get('span'));
   }
   if (hasChanges) {

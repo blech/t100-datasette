@@ -63,19 +63,27 @@ databases:
 
       top_airports:
         sql: |
-          WITH ranked AS (
-            SELECT origin, origin_city_name, deps, seats, passengers, freight,
+          -- dests: destinations with at least 12 departures that year, the cut-off the maps and matrices use
+          WITH dests AS (
+            SELECT origin, COUNT(*) AS dests
+            FROM route_year_totals
+            WHERE year = CAST(:year AS integer) AND deps >= 12
+            GROUP BY origin
+          ),
+          ranked AS (
+            SELECT a.origin, origin_city_name, deps, seats, passengers, freight, COALESCE(d.dests, 0) AS dests,
               RANK() OVER (ORDER BY passengers DESC) AS by_passengers,
               RANK() OVER (ORDER BY deps DESC) AS by_deps,
-              RANK() OVER (ORDER BY seats DESC) AS by_seats,
+              RANK() OVER (ORDER BY COALESCE(d.dests, 0) DESC) AS by_dests,
               RANK() OVER (ORDER BY freight DESC) AS by_freight
-            FROM airport_year_totals
+            FROM airport_year_totals AS a
+            LEFT JOIN dests AS d ON d.origin = a.origin
             WHERE year = CAST(:year AS integer)
               AND origin_wac BETWEEN 1 AND 93
           )
-          SELECT origin, origin_city_name, deps, seats, passengers, freight
+          SELECT origin, origin_city_name, deps, seats, passengers, freight, dests
           FROM ranked
-          WHERE by_passengers <= 20 OR by_deps <= 20 OR by_seats <= 20 OR by_freight <= 20
+          WHERE by_passengers <= 20 OR by_deps <= 20 OR by_dests <= 20 OR by_freight <= 20
           ORDER BY passengers DESC, origin
 
       # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
@@ -195,6 +203,44 @@ databases:
             AND (SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0)
           ORDER BY year, dest
 
+      # an airport's departures by year, airline group, service and kind, for its charts; groups found as carrier_group_year finds them
+      airport_size:
+        sql: |
+          SELECT
+            t.year,
+            COALESCE(g.group_id, 'unknown') AS group_id,
+            COALESCE(g.group_name, 'Unknown carrier') AS group_name,
+            CASE WHEN t.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN t.class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(t.departures_performed) AS deps, SUM(t.seats) AS seats, SUM(t.passengers) AS passengers, SUM(t.freight) AS freight
+          FROM t100 t
+          LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+          LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+          WHERE t.origin = :origin AND t.year IS NOT NULL
+          GROUP BY t.year, 2, 3, service, kind
+          ORDER BY t.year
+
+      # each destination and airline group from an airport in two years, with the first and last month flown, for what changed
+      airport_changes:
+        sql: |
+          SELECT
+            t.dest,
+            MAX(t.dest_city_name) AS city,
+            COALESCE(g.group_id, 'unknown') AS group_id,
+            COALESCE(g.group_name, 'Unknown carrier') AS group_name,
+            SUM(CASE WHEN t.year = CAST(:a AS integer) THEN t.departures_performed ELSE 0 END) AS deps_a,
+            SUM(CASE WHEN t.year = CAST(:b AS integer) THEN t.departures_performed ELSE 0 END) AS deps_b,
+            SUM(CASE WHEN t.year = CAST(:a AS integer) THEN t.passengers ELSE 0 END) AS pax_a,
+            MIN(CASE WHEN t.departures_performed > 0 THEN t.year * 100 + t.month END) AS first_ym,
+            MAX(CASE WHEN t.departures_performed > 0 THEN t.year * 100 + t.month END) AS last_ym
+          FROM t100 t
+          LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+          LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+          WHERE t.origin = :origin
+          GROUP BY t.dest, 3, 4
+          HAVING deps_a > 0 OR deps_b > 0
+          ORDER BY deps_a DESC, deps_b DESC
+
       # every domestic route in one year, for hovering an airport on the all-airports map: the same routes, with the same
       # rule for domestic and the same 12-departure cut-off, as routes_by_year gives one airport with international hidden
       domestic_routes:
@@ -260,6 +306,28 @@ databases:
           GROUP BY y.aircraft_type
           ORDER BY y.aircraft_type
 
+      # the airlines table: each member airline's chosen year (or every year) by service and kind, with the years it flew
+      airline_table:
+        sql: |
+          SELECT
+            d.group_id,
+            d.group_name,
+            d.airline_id,
+            COALESCE(g.airline_name, d.group_name) AS airline_name,
+            CASE WHEN d.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN d.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            MIN(CASE WHEN d.deps > 0 THEN d.year END) AS first_year,
+            MAX(CASE WHEN d.deps > 0 THEN d.year END) AS last_year,
+            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) AS deps,
+            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.seats ELSE 0 END) AS seats,
+            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.passengers ELSE 0 END) AS passengers,
+            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.freight ELSE 0 END) AS freight
+          FROM carrier_group_year d
+            LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
+          GROUP BY d.group_id, d.group_name, d.airline_id, airline_name, service, kind
+          HAVING SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) > 0
+          ORDER BY d.group_id, d.airline_id
+
       maker_by_year:
         sql: |
           SELECT
@@ -320,6 +388,19 @@ databases:
           LEFT JOIN carrier_group g ON g.airline_id = r.airline_id
           WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline) AND r.year = :year
           ORDER BY r.passengers DESC
+
+      # an airline's routes matrix: each airport pair (both directions together) by year, flown at least 12 times
+      carrier_route_by_year:
+        sql: |
+          SELECT
+            r.origin, r.dest, r.year,
+            SUM(r.deps) AS deps, SUM(r.seats) AS seats, SUM(r.passengers) AS passengers, SUM(r.freight) AS freight,
+            CASE WHEN SUM(r.domestic_deps) * 2 > SUM(r.deps) THEN 'domestic' ELSE 'international' END AS service
+          FROM carrier_route_year r
+          WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline)
+          GROUP BY r.origin, r.dest, r.year
+          HAVING SUM(r.deps) >= 12
+          ORDER BY r.year, r.origin, r.dest
 
       carrier_route_changes:
         sql: |

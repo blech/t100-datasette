@@ -46,7 +46,7 @@ def test_current_page_is_marked_and_the_trail_is_labelled(ds):
     assert re.search(r'<li aria-current="page">ATL</li>', html)
 
 
-SCROLLING = ["/", "/airports", "/aircraft", "/aircraft/engines", "/airlines", "/airports/ATL", "/airports/ATL/LAX", "/about"]
+SCROLLING = ["/", "/airports", "/aircraft", "/aircraft/engines", "/airlines", "/airlines/over-time", "/airports/ATL", "/airports/ATL/destinations", "/airports/ATL/changes", "/airports/ATL/LAX", "/about"]
 MAPS = ["/airports/globe", "/airports/ATL/globe"]
 
 

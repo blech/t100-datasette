@@ -5,7 +5,7 @@
 .crumbs a { color:var(--fg); text-decoration:none; }
 .crumbs a:hover, .crumbs a:focus-visible { text-decoration:underline; }
 .crumbs [aria-current] { font-weight:600; }
-/* one popover for every chart, heat-map cell, row label and map: static/common/popover.js */
+/* one popover for every chart, matrix cell, row label and map: static/common/popover.js */
 .popover { position:fixed; z-index:20; pointer-events:none; display:grid; grid-template-columns:auto auto auto; column-gap:6px; align-items:center;
   padding:6px 9px; border-radius:6px; font-size:12px; line-height:1.4; white-space:nowrap;
   background:var(--bg); color:var(--fg); border:1px solid var(--line); box-shadow:0 2px 8px rgba(0,0,0,.2); }

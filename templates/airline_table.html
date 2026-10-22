@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Airlines · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-latest-year="{{ latest_year }}">
+  <main>
+    {% include "_nav.html" %}
+    <h1>Airlines</h1>
+    <p class="intro">Every US and foreign airline in the data, with airlines that merged counted together (Delta includes Northwest, American includes US Airways and TWA, and so on). Open a merged airline to see the airlines it's made of, search for one by name, or open an airline's own page for it over time.</p>
+    <p class="chart-sentence">
+      Show <select id="airline-measure" aria-label="Measure"></select>
+      in <select id="airline-year" aria-label="Year"></select>
+      for <select id="airline-flights" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
+      on <select id="airline-service" aria-label="Routes"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>,
+      showing <select id="airline-limit" aria-label="How many airlines"></select>.
+    </p>
+    <p><label>Search <input id="airline-q" type="search" placeholder="Name, such as Delta or Northwest" autocomplete="off"></label></p>
+    <p class="note" id="airline-status" aria-live="polite"></p>
+    <div id="airline-table">Loading table…</div>
+    <p class="note">Airlines that merged are counted together for every year, and a merged airline opens to show the airlines it's made of. Regional airlines flying under a major's name are listed on their own. The share is of the total for the chosen year, flights and routes. Freight is in short tons (2,000 lb). More on <a href="/about#groupings">how things are grouped</a>. Freight before 2003 leaves out most domestic FedEx and UPS flying, so freight figures jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.</p>
+    {% include "_footer.html" %}
+  </main>
+  <script type="module" src="/static/charts/airlinetable.js"></script>
+</body>
+</html>

@@ -18,7 +18,10 @@ check() {  # check <expected status> <path> [text the body must contain]
 check 200 /                                                         "usa-map"
 check 200 /airports                                                 "Busiest"
 check 200 /airports/globe                                           "data-origin"
-check 200 /airports/SFO                                             "heatmap"
+check 200 /airports/SFO                                             "size-chart"
+check 200 /airports/SFO/destinations                                "matrix"
+check 200 /airports/SFO/changes                                     "change-table"
+check 301 "/airports/SFO?n=50"
 check 200 /airports/SFO/globe                                       "data-origin"
 check 200 /airports/SFO/LHR/2019                                    "route-chart"
 check 200 /airports/SFO/LHR/2019/table                              "route-table"
@@ -31,8 +34,11 @@ check 200 /aircraft/engines                                         "engine-char
 check 200 /aircraft/makers                                          "maker-chart"
 check 200 /aircraft/boeing-737                                      "family-chart"
 check 404 /aircraft/no-such-plane
-check 200 /airlines                                                 "heat-kind"
+check 200 /airlines                                                 "airline-table"
+check 200 /airlines/over-time                                       "matrix-kind"
+check 301 "/airlines?scale=busiest"
 check 200 /airlines/delta                                          "size-chart"
+check 200 /airlines/delta/routes                                   "matrix"
 check 200 /airlines/delta/globe                                    'id="globe"'
 check 404 /airlines/no-such-airline
 check 301 /carriers

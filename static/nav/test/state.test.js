@@ -8,7 +8,9 @@ test('targetOf recognises the site pages and nothing else', () => {
   assert.equal(targetOf('/airports/ATL/globe'), 'globe');
   assert.equal(targetOf('/airports/globe'), 'globe');
   assert.equal(targetOf('/airports'), 'home');
-  assert.equal(targetOf('/airports/ATL'), 'routes');
+  assert.equal(targetOf('/airports/ATL'), 'airport');
+  assert.equal(targetOf('/airports/ATL/destinations'), 'routes');
+  assert.equal(targetOf('/airports/ATL/changes'), 'changes');
   assert.equal(targetOf('/airports/ATL/LAX'), 'route');
   assert.equal(targetOf('/airports/ATL/LAX/2024'), 'route');
   for (const p of ['/t100', '/-/', '/static/x.js', '#toggle:a', 'https://example.com/airports/ATL', '', '/globe/ATL', '/routes/ATL', '/route/ATL/LAX', '/airports/ATL/LAX/2024/01']) assert.equal(targetOf(p), null, p);
@@ -28,7 +30,7 @@ test('default values and unknown or retired themes are not carried', () => {
   assert.deepEqual(carryParams('?theme=bogus&service=bogus&measure=bogus&group=bogus&n=7', 'routes'), {});
 });
 
-test('routes pages carry the heat map settings', () => {
+test('routes pages carry the matrix settings', () => {
   assert.deepEqual(
     carryParams('?measure=deps&service=domestic&group=city&n=50&open=ATL&year=2020', 'routes'),
     { measure: 'deps', service: 'domestic', group: 'city', n: '50' },
@@ -51,7 +53,7 @@ test('colouring by year follows the routes pages like the ranking does', () => {
   assert.deepEqual(carryParams('?scale=absolute&scale=bogus', 'routes'), {});
 });
 
-test('route pages pass the heat map settings through and accept load factor', () => {
+test('route pages pass the matrix settings through and accept load factor', () => {
   assert.deepEqual(carryParams('?measure=load_factor&split=aircraft&group=city', 'route'), { measure: 'load_factor', group: 'city' });
   assert.deepEqual(carryParams('?measure=load_factor', 'routes'), {});
 });
@@ -64,7 +66,13 @@ test('globe takes service and width, and width and measure translate', () => {
 });
 
 test('decorate adds carried settings to a path', () => {
-  assert.deepEqual(decorate('/airports/MCO', '?measure=deps&service=domestic'), { href: '/airports/MCO?measure=deps&service=domestic', keys: ['measure', 'service'] });
+  assert.deepEqual(decorate('/airports/MCO/destinations', '?measure=deps&service=domestic'), { href: '/airports/MCO/destinations?measure=deps&service=domestic', keys: ['measure', 'service'] });
+});
+
+test('an airport\'s charts take the measure only, and its changes only the theme', () => {
+  assert.deepEqual(decorate('/airports/MCO', '?measure=deps&service=domestic&n=50&scale=year'), { href: '/airports/MCO?measure=deps', keys: ['measure'] });
+  assert.deepEqual(carryParams('?measure=passengers&group=city&rank=latest', 'airport'), {});
+  assert.equal(decorate('/airports/MCO/changes', '?measure=deps&theme=dark').href, '/airports/MCO/changes?theme=dark');
 });
 
 test('decorate keeps a link\'s own parameters and never overrides them', () => {

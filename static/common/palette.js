@@ -1,5 +1,5 @@
 // Every data colour on the site, by role, for the light and dark themes. Ember (deep red to sand) is the family;
-// the choices and why: docs/superpowers/specs/2026-10-21-colour-design.md. Heat maps (YlOrRd) and the front page's
+// the choices and why: docs/superpowers/specs/2026-10-21-colour-design.md. Matrices (YlOrRd) and the front page's
 // airline liveries are deliberately outside it.
 
 export const PALETTE = {

@@ -1,4 +1,4 @@
-import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { groupFamilies, sortFamilies, limitFamilies, LIMIT_OPTIONS, DEFAULT_LIMIT, kindOptions, makerOptions } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { formatCount, countLabel } from '/static/common/numbers.js';
@@ -10,7 +10,7 @@ const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const years = ['all', ...Array.from({ length: latest - 1990 + 1 }, (_, i) => String(latest - i))];
 const state = {
-  measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
+  measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   year: pick('year', years, String(latest)),
   kind: params.get('kind') || 'all',   // checked against the menus once the data is in
   maker: params.get('maker') || 'all',
@@ -27,7 +27,7 @@ let focusKey = null;  // the sort header or toggle just used, so keyboard focus 
 
 const pct = (v) => `${(v * 100).toFixed(v > 0 && v < 0.001 ? 2 : 1)}%`;
 const span = (a, b) => (a ? (a === b ? String(a) : `${a}–${b}`) : '');
-const unit = () => HEAT_MEASURES[state.measure].toLowerCase();
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
 function pushState() {
   const q = new URLSearchParams();
@@ -48,7 +48,7 @@ function headerCell(key, label, cls) {
   b.textContent = label + (state.sort === key ? (state.dir === 'asc' ? ' ▲' : ' ▼') : '');
   b.addEventListener('click', () => {
     state.dir = state.sort === key && state.dir === 'desc' ? 'asc' : 'desc';
-    if (state.sort !== key) state.dir = key === 'value' || key === 'lastYear' ? 'desc' : 'asc';
+    if (state.sort !== key) state.dir = key === 'value' || key === 'firstYear' ? 'desc' : 'asc';
     state.sort = key;
     focusKey = `sort:${key}`;
     pushState(); draw();
@@ -77,7 +77,7 @@ function draw() {
   const table = document.createElement('table');
   const head = document.createElement('tr');
   head.append(headerCell('family', 'Family', 'left'), headerCell('maker', 'Maker', 'left'), headerCell('aircraftKind', 'Kind', 'left'),
-    headerCell('lastYear', 'Flew'), headerCell('value', HEAT_MEASURES[state.measure]), document.createElement('th'));
+    headerCell('firstYear', 'Flew'), headerCell('value', MATRIX_MEASURES[state.measure]), document.createElement('th'));
   head.lastChild.textContent = 'Share';
   const thead = document.createElement('thead');
   thead.append(head);
@@ -141,7 +141,7 @@ async function load() {
 }
 
 function main() {
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) $('at-measure').append(new Option(label.toLowerCase(), k));
+  for (const [k, label] of Object.entries(MATRIX_MEASURES)) $('at-measure').append(new Option(label.toLowerCase(), k));
   for (const y of years) $('at-year').append(new Option(y === 'all' ? 'all years' : y, y));
   $('at-measure').value = state.measure;
   $('at-year').value = state.year;

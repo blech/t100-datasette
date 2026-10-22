@@ -1,5 +1,6 @@
 import { distPointSegment } from './geo.js';
 import { colourFor, widthFor, dashFor } from './scale.js';
+import { fitView } from './camera.js';
 
 const ARC_SAMPLES = 24;
 
@@ -55,6 +56,11 @@ export class NetworkRenderer {
   degPerPx() { return 57.2958 / Math.max(1, this.R); }
 
   centre() { return [this.w / 2, this.mode === 'globe' ? this.h * 0.46 : this.h * 0.5]; }
+
+  // the globe view that frames `points` inside `box` (see fitView)
+  fit(points, box) {
+    return fitView(points, window.d3.geoOrthographic(), { centre: this.centre(), baseScale: this.baseScale, box });
+  }
 
   visible(lon, lat) {
     if (this.mode === 'flat') return true;

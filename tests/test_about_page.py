@@ -37,6 +37,8 @@ def test_landing_page_links_to_about_in_its_prose(ds):
 @pytest.mark.parametrize("path, anchor", [
     ("/airports", "measures"),
     ("/airports/ATL", "direction"),
+    ("/airports/ATL/destinations", "direction"),
+    ("/airports/ATL/changes", "direction"),
     ("/airports/ATL/LAX", "direction"),
     ("/airports/ATL/globe", "direction"),
     ("/aircraft", "groupings"),

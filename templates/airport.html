@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ origin }} over time · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}"{% if foreign %} data-foreign="1"{% endif %}>
+  <main>
+    {% include "_nav.html" %}
+    <h1 id="title">{{ origin }}: over time</h1>
+    <p class="intro" id="subtitle"></p>
+    {% include "_foreign_note.html" %}
+    <h2>How big</h2>
+    <p class="chart-sentence">
+      Show <select id="ap-measure" aria-label="Measure"></select>
+      for <select id="ap-flights" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>,
+      split by <select id="ap-split" aria-label="Split by"><option value="service">domestic or international</option><option value="kind">passenger or freight</option><option value="airline">airline</option></select>.
+    </p>
+    <div id="size-chart" aria-live="polite">Loading chart…</div>
+    <h2>How many places</h2>
+    <p class="chart-sentence">
+      Destinations flown to at least <select id="ap-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> each year.
+    </p>
+    <div id="places-chart" aria-live="polite">Loading chart…</div>
+    <p class="note">Every count is of flights departing <em>from</em> {{ origin }}: <a href="/about#direction">routes are one-way</a>. Airlines are counted as groups, so a merged airline's flying is shown together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
+    {% include "_footer.html" %}
+  </main>
+  <script type="module" src="/static/charts/airport.js"></script>
+</body>
+</html>

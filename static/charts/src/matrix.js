@@ -1,4 +1,4 @@
-export const HEAT_MEASURES = { passengers: 'Passengers', deps: 'Departures', seats: 'Seats', freight: 'Freight (short tons)' };
+export const MATRIX_MEASURES = { passengers: 'Passengers', deps: 'Departures', seats: 'Seats', freight: 'Freight (short tons)' };
 
 const LB_PER_SHORT_TON = 2000;
 const valueOf = (row, measure) => {
@@ -9,7 +9,7 @@ const valueOf = (row, measure) => {
 // Rows from routes_by_year (one per destination, year and service) -> a destination-by-year grid.
 // Destinations are ranked by the measure summed over all years, or in `rankYear` alone (which drops
 // destinations that did not fly then); only the top `n` are kept, and their whole history is shown.
-export function buildHeatmap(rows, { measure = 'passengers', service = 'all', n = 25, rankYear = null } = {}) {
+export function buildMatrix(rows, { measure = 'passengers', service = 'all', n = 25, rankYear = null } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const cellMap = new Map(); // `${dest}\u0000${year}` -> value
   const totals = new Map(); // what ranks a destination
@@ -47,7 +47,7 @@ const CODES_IN_LABEL = 3;
 
 // Same grid, but airports in one BTS city market are one row. Groups with several airports can be
 // opened (`open` lists market ids), which puts their airports on rows directly beneath.
-export function buildCityHeatmap(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null } = {}) {
+export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const openSet = new Set(open.map(String));
   const groups = new Map(); // key -> { rank, airports: Map(dest -> {rank, name, nameYear, byYear}), byYear: Map(year -> {value, parts: Map}) }

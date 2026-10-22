@@ -19,6 +19,11 @@ OLD = [
     ("/routes", "/airports"),
     ("/routes?theme=night", "/airports?theme=night"),
     ("/aircraft/table?year=2019", "/aircraft?year=2019"),
+    ("/airlines?scale=busiest&n=25", "/airlines/over-time?scale=busiest&n=25"),
+    ("/airlines?n=10", "/airlines/over-time?n=10"),
+    ("/airlines?rank=latest&measure=deps", "/airlines/over-time?rank=latest&measure=deps"),
+    ("/airlines?scale=absolute", "/airlines/over-time?scale=absolute"),
+    ("/airports/ATL?n=10", "/airports/ATL/destinations?n=10"),
 ]
 
 
@@ -41,3 +46,9 @@ def test_the_all_airports_globe_lives_under_airports(ds):
 def test_datasette_own_pages_are_not_shadowed(ds):
     assert get(ds, "/t100").status_code == 200
     assert get(ds, "/t100/routes_by_year.json?origin=ATL").status_code == 200
+
+
+@pytest.mark.parametrize("path", ["/airlines", "/airlines?measure=seats&year=2019", "/airlines?flights=freight&service=domestic"])
+def test_the_airlines_table_keeps_the_settings_it_reads(ds, path):
+    r = get(ds, path)
+    assert r.status_code == 200 and 'id="airline-table"' in r.text

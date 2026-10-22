@@ -2,7 +2,7 @@ import { THEMES } from '../../globe/src/themes.js';
 
 // Settings that follow a visitor from page to page, and which pages they mean something to.
 const SERVICES = ['domestic', 'international'];
-const HEAT_MEASURES = ['passengers', 'deps', 'seats', 'freight'];
+const MATRIX_MEASURES = ['passengers', 'deps', 'seats', 'freight'];
 const WIDTHS = ['passengers', 'deps', 'freight'];
 
 export function targetOf(href) {
@@ -10,7 +10,9 @@ export function targetOf(href) {
   const path = href.split(/[?#]/)[0];
   if (path === '/' || path === '/airports') return 'home';
   if (path === '/globe' || path === '/airports/globe' || /^\/airports\/[^/]+\/globe$/.test(path)) return 'globe';
-  if (/^\/airports\/[^/]+$/.test(path)) return 'routes';
+  if (/^\/airports\/[^/]+$/.test(path)) return 'airport';
+  if (/^\/airports\/[^/]+\/destinations$/.test(path)) return 'routes';
+  if (/^\/airports\/[^/]+\/changes$/.test(path)) return 'changes';
   if (/^\/airports\/[^/]+\/[^/]+(\/\d{4})?$/.test(path)) return 'route';
   return null;
 }
@@ -27,7 +29,7 @@ export function carryParams(search, target) {
   const out = {};
   const theme = q.get('theme');
   if (Object.hasOwn(THEMES, theme)) out.theme = theme;
-  if (target === 'home') return out;
+  if (target === 'home' || target === 'changes') return out;
   const service = q.get('service') ?? serviceFromHide(q.get('hide'));
   const measure = q.get('measure') ?? q.get('width');
   if (target === 'globe') {
@@ -35,7 +37,11 @@ export function carryParams(search, target) {
     if (WIDTHS.includes(measure) && measure !== 'passengers') out.width = measure;
     return out;
   }
-  const allowed = target === 'route' ? [...HEAT_MEASURES, 'load_factor'] : HEAT_MEASURES;
+  if (target === 'airport') {
+    if (MATRIX_MEASURES.includes(measure) && measure !== 'passengers') out.measure = measure;
+    return out;
+  }
+  const allowed = target === 'route' ? [...MATRIX_MEASURES, 'load_factor'] : MATRIX_MEASURES;
   if (allowed.includes(measure) && measure !== 'passengers') out.measure = measure;
   if (SERVICES.includes(service)) out.service = service;
   if (q.get('group') === 'city') out.group = 'city';

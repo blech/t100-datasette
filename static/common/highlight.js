@@ -86,3 +86,13 @@ export function highlightedSeries(rows, highlight, labelOf) {
   for (const r of rows) if (r.group_id === highlight.id) out.add(labelOf(r));
   return out;
 }
+
+// What the highlight line says, or null for no line. An airline's pages link airport pairs (both directions counted
+// together), so a link can land on the direction the airline never flew: then the airline isn't in the rows at all,
+// its name is unknown, and the line offers the other way.
+export function highlightMessage({ highlight, name, byAirline, splitLabel, shown }) {
+  if (!highlight) return null;
+  if (!name) return { text: "This airline doesn't fly this way", reverse: true };
+  if (!byAirline) return { text: `${name} isn't shown when split by ${splitLabel}`, reverse: false };
+  return { text: shown ? `Highlighting ${name}` : `${name} doesn't appear here`, reverse: false };
+}

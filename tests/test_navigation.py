@@ -27,8 +27,9 @@ def test_airports_views():
 
 
 def test_an_airports_views_use_upper_case_codes():
-    assert views("/airports/sfo") == [("Routes over time", "/airports/SFO", True), ("Map", "/airports/SFO/globe", False)]
-    assert views("/airports/SFO/globe") == [("Routes over time", "/airports/SFO", False), ("Map", "/airports/SFO/globe", True)]
+    A = [("Over time", "/airports/SFO"), ("Destinations", "/airports/SFO/destinations"), ("Changes", "/airports/SFO/changes"), ("Map", "/airports/SFO/globe")]
+    for i, path in enumerate(["/airports/sfo", "/airports/sfo/destinations", "/airports/SFO/changes", "/airports/SFO/globe"]):
+        assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(A)], path
 
 
 def test_a_route_has_over_time_and_table_views_keeping_the_year():
@@ -41,16 +42,16 @@ def test_aircraft_and_airline_views():
     AIRCRAFT = [("Families", "/aircraft"), ("Makers", "/aircraft/makers"), ("Long-haul engines", "/aircraft/engines")]
     for i, (_, path) in enumerate(AIRCRAFT):
         assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(AIRCRAFT)], path
-    A = [("Over time", "/airlines/delta"), ("Changes", "/airlines/delta/changes"), ("Map", "/airlines/delta/globe")]
+    A = [("Over time", "/airlines/delta"), ("Routes", "/airlines/delta/routes"), ("Changes", "/airlines/delta/changes"), ("Map", "/airlines/delta/globe")]
     for i, (_, path) in enumerate(A):
         assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(A)], path
 
 
 def test_the_airline_pages_map_view_keeps_the_id_its_script_rewrites():
-    assert [v["id"] for v in views_for("/airlines/delta")] == [None, None, "map-link"]
+    assert [v["id"] for v in views_for("/airlines/delta")] == [None, None, None, "map-link"]
 
 
-@pytest.mark.parametrize("path", ["/", "/airlines", "/aircraft/boeing-737", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
+@pytest.mark.parametrize("path", ["/", "/aircraft/boeing-737", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
 def test_pages_with_one_view_have_none(path):
     assert views_for(path) == []
 
@@ -65,14 +66,17 @@ PAGES = {
     "/": (None, []),
     "/airports": ("airports", ["Busiest airports", "Map"]),
     "/airports/globe": ("airports", ["Busiest airports", "Map"]),
-    "/airports/ATL": ("airports", ["Routes over time", "Map"]),
-    "/airports/ATL/globe": ("airports", ["Routes over time", "Map"]),
+    "/airports/ATL": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
+    "/airports/ATL/destinations": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
+    "/airports/ATL/changes": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
+    "/airports/ATL/globe": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
     "/airports/ATL/LAX": ("airports", ["Over time", "Table"]),
     "/airports/ATL/LAX/table": ("airports", ["Over time", "Table"]),
     "/aircraft": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
     "/aircraft/engines": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
     "/aircraft/makers": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
-    "/airlines": ("airlines", []),
+    "/airlines": ("airlines", ["Airlines", "Over time"]),
+    "/airlines/over-time": ("airlines", ["Airlines", "Over time"]),
     "/about": ("about", []),
 }
 
@@ -114,10 +118,17 @@ def test_no_page_keeps_a_hand_written_related_line(ds, db_path):
 def test_an_airlines_page_and_map_have_overview_and_map_views(ds, db_path):
     seed_family_and_airline(db_path)
     page = get(ds, "/airlines/delta").text
-    assert re.search(r'<strong aria-current="page">Over time</strong> · <a href="/airlines/delta/changes">Changes</a> · <a href="/airlines/delta/globe" id="map-link">Map</a>', page)
-    assert re.search(r'<a href="/airlines/delta">Over time</a> · <a href="/airlines/delta/changes">Changes</a> · <strong aria-current="page">Map</strong>', get(ds, "/airlines/delta/globe").text)
+    assert re.search(r'<strong aria-current="page">Over time</strong> · <a href="/airlines/delta/routes">Routes</a> · <a href="/airlines/delta/changes">Changes</a> · <a href="/airlines/delta/globe" id="map-link">Map</a>', page)
+    assert re.search(r'<a href="/airlines/delta">Over time</a> · <a href="/airlines/delta/routes">Routes</a> · <a href="/airlines/delta/changes">Changes</a> · <strong aria-current="page">Map</strong>', get(ds, "/airlines/delta/globe").text)
 
 
 def test_a_route_links_to_more_from_its_origin(ds):
     html = get(ds, "/airports/ATL/LAX").text
     assert 'href="/airports/ATL"' in html and 'id="map-link"' in html
+
+
+def test_the_airlines_table_and_matrix_are_two_views_of_the_section():
+    assert [(v["label"], v["href"], v["current"]) for v in views_for("/airlines")] == [
+        ("Airlines", "/airlines", True), ("Over time", "/airlines/over-time", False)]
+    assert [v["current"] for v in views_for("/airlines/over-time")] == [False, True]
+    assert [v["label"] for v in views_for("/airlines/delta")] == ["Over time", "Routes", "Changes", "Map"]  # an airline is still its own subject

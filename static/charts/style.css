@@ -5,9 +5,9 @@
 #route-chart-plot figure { margin: 0; }
 #route-chart-plot [class*="-swatches"] { font-size: 13px; gap: 4px 0; }
 #route-chart-plot [class*="-swatch"]:not([class*="-swatches"]) { margin-right: 1.5em; white-space: nowrap; }
-#heatmap { overflow-x: auto; }
-#heatmap figure { margin: 0; }
-#heatmap a { cursor: pointer; }
+#matrix { overflow-x: auto; }
+#matrix figure { margin: 0; }
+#matrix a { cursor: pointer; }
 .related { color: var(--muted); font-size: 14px; }
 #years { display: flex; gap: 16px; margin: 0 0 16px; }
 #years a[aria-current] { font-weight: 600; }
@@ -21,12 +21,14 @@
 #change-table { margin-top: 8px; }
 #size-chart svg, #pairs-chart svg { --plot-background: var(--bg); }
 .airline-search { margin: 0 0 12px; } .airline-search input { margin-left: 4px; min-width: 16em; max-width: 90%; }
-#aircraft-table { overflow-x: auto; }
-#aircraft-table td.left, #aircraft-table th.left { text-align: left; }
-#aircraft-table button.sort { all: unset; cursor: pointer; font-weight: 600; }
-#aircraft-table button.sort:focus-visible, #aircraft-table button.twist:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
-#aircraft-table button.twist { all: unset; cursor: pointer; display: inline-block; width: 1.2em; color: var(--muted, #777); }
-#aircraft-table tr.type-row td { color: var(--muted, #777); font-size: 14px; }
-#aircraft-table td.type-name { padding-left: 2em; }
-#at-q { min-width: 16em; }
+:is(#aircraft-table, #airline-table) { overflow-x: auto; }
+:is(#aircraft-table, #airline-table) :is(td, th).left { text-align: left; }
+:is(#aircraft-table, #airline-table) button.sort { all: unset; cursor: pointer; font-weight: 600; }
+:is(#aircraft-table, #airline-table) :is(button.sort, button.twist):focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+:is(#aircraft-table, #airline-table) button.twist { all: unset; cursor: pointer; display: inline-block; width: 1.2em; color: var(--muted, #777); }
+:is(#aircraft-table, #airline-table) tr.type-row td { color: var(--muted, #777); font-size: 14px; }
+:is(#aircraft-table, #airline-table) td.type-name { padding-left: 2em; }
+#airline-table button.link { all: unset; cursor: pointer; text-decoration: underline; }
+#airline-table button.link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+#at-q, #airline-q { min-width: 16em; }
 details.note summary { cursor: pointer; }

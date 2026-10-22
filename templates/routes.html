@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ origin }} routes over time · T-100</title>
+  <title>{{ origin }} destinations over time · T-100</title>
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
@@ -12,24 +12,24 @@
 <body data-origin="{{ origin }}" data-latest-year="{{ latest_year }}"{% if foreign %} data-foreign="1"{% endif %}>
   <main>
     {% include "_nav.html" %}
-    <h1 id="title">{{ origin }}: routes over time</h1>
+    <h1 id="title">{{ origin }}: destinations over time</h1>
     <p class="intro" id="subtitle"></p>
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">
-      Show <select id="heat-measure" aria-label="Measure"></select>
-      on <select id="heat-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>
-      for the top <select id="heat-n" aria-label="Number of destinations"><option>10</option><option selected>25</option><option>50</option></select>
-      <select id="heat-group" aria-label="Group rows by"><option value="airport">airports</option><option value="city">cities (BTS markets)</option></select>,
-      ranked by <select id="heat-rank" aria-label="Year used to rank destinations"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
+      Show <select id="matrix-measure" aria-label="Measure"></select>
+      on <select id="matrix-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>
+      for the top <select id="matrix-n" aria-label="Number of destinations"><option>10</option><option selected>25</option><option>50</option></select>
+      <select id="matrix-group" aria-label="Group rows by"><option value="airport">airports</option><option value="city">cities (BTS markets)</option></select>,
+      ranked by <select id="matrix-rank" aria-label="Year used to rank destinations"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
     </p>
-    <fieldset id="heat-scale" class="scale-choice">
+    <fieldset id="matrix-scale" class="scale-choice">
       <legend>Colour</legend>
       <label><input type="radio" name="scale" value="absolute" checked> Amount</label>
       <label><input type="radio" name="scale" value="year"> Share of each year</label>
       <label><input type="radio" name="scale" value="busiest"> Compared to top destination</label>
     </fieldset>
     <p class="note" id="scale-note" hidden></p>
-    <div id="heatmap" aria-live="polite">Loading chart…</div>
+    <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> Each cell is one destination in one year; click a cell to see that route in that year, or a row's code to see where it flies. In city view, click a row to open it into its airports. Routes with fewer than 12 departures a year are hidden. Each destination counts flights <em>from</em> {{ origin }} only: <a href="/about#direction">routes are one-way</a>.</p>
     {% include "_footer.html" %}
   </main>
