@@ -41,7 +41,7 @@ What exists now:
 | Subject | Table | Map | Chart over time | Matrix |
 |---|---|---|---|---|
 | All airports | `/airports` (busiest) | `/airports/globe` | | |
-| One airport | | `/airports/SFO/globe` | | `/airports/SFO` (destinations × years) |
+| One airport | `/airports/SFO/changes` (destinations and airlines gained and lost) | `/airports/SFO/globe` | `/airports/SFO` (size, destinations) | `/airports/SFO/destinations` (destinations × years) |
 | One route | `/airports/SFO/LHR` (airlines × aircraft) | only as a line on the airport and airline maps | `/airports/SFO/LHR` (stacked bars; one year by month) | |
 | All aircraft | | | `/aircraft/engines` | `/aircraft` (families × years) |
 | One aircraft family | | | `/aircraft/boeing-737` | |
@@ -99,9 +99,13 @@ Questions:
     - **Same-airport pairs** (GCN – GCN, sightseeing) appear as rows.
     - **At phone width** the year labels crowd together, as on the airlines matrix.
     - **A made-up highlight** (`?highlight=airline:nope`) now says "This airline doesn't fly this way" rather than nothing.
-- **Still to come:**
-  - an airport over time (its matrix moving to `/destinations`);
-  - a family map.
+- **An airport's views: built**, spec `docs/superpowers/specs/2026-10-22-airport-views-design.md`.
+  - `/airports/{code}` is now Over time: how big (split by domestic or international, passenger or freight, or the top 8 airline groups, each linking to its page) and how many destinations each year.
+  - The matrix moved to `/airports/{code}/destinations`; old links with `n`, `group`, `rank`, `scale` or `open` get a 301 to it. Its row codes open each airport's matrix.
+  - `/airports/{code}/changes` compares two years: destinations or airlines dropped, added or kept.
+  - The views line is Over time · Destinations · Changes · Map. Links to the charts carry only `measure`; links to the matrix carry the matrix's settings.
+  - Every count is of departures from the airport, unlike the airline pages' airport pairs.
+- **Still to come:** a family map.
 
 ### 5. Colour: done (merged, branch `colour`)
 
