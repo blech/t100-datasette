@@ -15,7 +15,7 @@
     <h1 id="title">{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %}</h1>
     <p class="intro" id="subtitle"></p>
     <nav id="years" aria-label="Years"></nav>
-    <p class="note">Each direction is a route of its own; the other way is <a href="/airports/{{ dest }}/{{ origin }}{% if year %}/{{ year }}{% endif %}{% if view %}/{{ view }}{% endif %}" id="reverse-link">{{ dest }} → {{ origin }}</a>. More from {{ origin }}: <a href="/airports/{{ origin }}">routes over time</a> · <a href="/airports/{{ origin }}/globe" id="map-link">map</a>.</p>
+    <p class="note">Each direction is a route of its own; the other way is <a href="/airports/{{ dest }}/{{ origin }}{% if year %}/{{ year }}{% endif %}{% if view %}/{{ view }}{% endif %}" id="reverse-link">{{ dest }} → {{ origin }}</a>. More from {{ origin }}: <a href="/airports/{{ origin }}">over time</a> · <a href="/airports/{{ origin }}/destinations">destinations</a> · <a href="/airports/{{ origin }}/globe" id="map-link">map</a>.</p>
 
 
     <section id="route-table" hidden>

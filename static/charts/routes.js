@@ -224,7 +224,7 @@ async function main() {
     cities = new Map(airports.rows.map((a) => [a.code, a.place]));
     airportInfo = new Map(airports.rows.map((a) => [a.code, a]));
     const here = airports.rows.find((a) => a.code === origin);
-    if (here) $('title').textContent = `${origin} (${here.place}): routes over time`;
+    if (here) $('title').textContent = `${origin} (${here.place}): destinations over time`;
     if (byYear.truncated) $('subtitle').textContent = 'Too many rows: some routes are missing from this chart.';
   } catch (err) {
     console.error(err);
