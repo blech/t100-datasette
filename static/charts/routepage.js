@@ -29,6 +29,14 @@ const bounds = { min: Number(document.body.dataset.minYear), max: Number(documen
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const routePath = (y) => `/airports/${origin}/${dest}${y ? `/${y}` : ''}`;
+// the route's two views share this script: over time (the chart) and the table
+const onTable = !document.getElementById('route-chart');
+const viewPath = (y) => `${routePath(y)}${onTable ? '/table' : ''}`;
+
+// links to the route's other views, years and reverse direction keep the current settings (measure, split, span)
+function carryQuery() {
+  for (const a of document.querySelectorAll('nav.views a, #years a, #reverse-link')) a.search = location.search;
+}
 
 let allRows = [];   // the route, every year
 let viewRows = [];  // the rows behind the chart and table: all years, or one year by month
@@ -40,6 +48,7 @@ function pushState() {
   q.set('split', state.split);
   if (state.span === 'flown') q.delete('span'); else q.set('span', state.span);
   history.replaceState(null, '', `${location.pathname}?${q}`);
+  carryQuery();
 }
 
 function fillSelect(select, options, value) {
@@ -162,12 +171,13 @@ function drawYears(years) {
   };
   if (year !== null) {
     const i = years.indexOf(year);
-    if (i > 0) add(routePath(years[i - 1]), `‹ ${years[i - 1]}`);
-    add(routePath(null), 'All years');
-    if (i >= 0 && i < years.length - 1) add(routePath(years[i + 1]), `${years[i + 1]} ›`);
+    if (i > 0) add(viewPath(years[i - 1]), `‹ ${years[i - 1]}`);
+    add(viewPath(null), 'All years');
+    if (i >= 0 && i < years.length - 1) add(viewPath(years[i + 1]), `${years[i + 1]} ›`);
   } else if (years.length) {
-    add(routePath(years.at(-1)), `Latest: ${years.at(-1)}`);
+    add(viewPath(years.at(-1)), `Latest: ${years.at(-1)}`);
   }
+  carryQuery();
 }
 
 async function main() {
@@ -201,18 +211,21 @@ async function main() {
   $('raw-link').href = year === null
     ? `/t100/route?origin=${origin}&dest=${dest}&_hide_sql=1`
     : `/t100/route_year?origin=${origin}&dest=${dest}&year=${year}&_hide_sql=1`;
-  fillSelect($('chart-measure'), MEASURES, state.measure);
   fillSelect($('chart-split'), SPLITS, state.split);
+  $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); if (onTable) drawTable(); else drawChart(); });
+  if (onTable) {
+    $('route-table').hidden = false;
+    drawTable();
+    return;
+  }
+  fillSelect($('chart-measure'), MEASURES, state.measure);
   $('chart-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); drawChart(); });
   document.addEventListener('t100:theme', () => drawChart());
-  $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); drawChart(); drawTable(); });
   $('chart-span').value = state.span;
   $('chart-span').addEventListener('change', (e) => { state.span = e.target.value; pushState(); drawChart(); });
   $('chart-span-label').hidden = year !== null;  // a single year is shown by month; there is no span to choose
   $('route-chart').hidden = false;
-  $('route-table').hidden = false;
   drawChart();
-  drawTable();
 }
 
 main();

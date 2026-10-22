@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %} · table · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-origin="{{ origin }}" data-dest="{{ dest }}" data-year="{{ year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
+  <main>
+    {% include "_nav.html" %}
+    <h1 id="title">{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %}</h1>
+    <p class="intro" id="subtitle"></p>
+    <nav id="years" aria-label="Years"></nav>
+    <p class="note">Each direction is a route of its own; the other way is <a href="/airports/{{ dest }}/{{ origin }}{% if year %}/{{ year }}{% endif %}{% if view %}/{{ view }}{% endif %}" id="reverse-link">{{ dest }} → {{ origin }}</a>. More from {{ origin }}: <a href="/airports/{{ origin }}">routes over time</a> · <a href="/airports/{{ origin }}/globe" id="map-link">map</a>.</p>
+
+
+    <section id="route-table" hidden>
+      <div class="chart-controls">
+        <label>Split by <select id="chart-split" aria-label="Split by"></select></label>
+      </div>
+      <h2 id="table-heading">Carriers and aircraft</h2>
+      <div class="scroll">
+        <table>
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="note">Freight is in short tons (2,000 lb). Hover over a number for the exact figure. This is one direction only: <a href="/about#direction">what a route means</a>.
+        <a id="raw-link" href="/t100/route?origin={{ origin }}&dest={{ dest }}&_hide_sql=1">Raw data table</a></p>
+    </section>
+    <p id="status" role="status"></p>
+    {% include "_footer.html" %}
+  </main>
+  <script type="module" src="/static/charts/routepage.js"></script>
+</body>
+</html>

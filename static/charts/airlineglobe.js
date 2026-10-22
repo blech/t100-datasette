@@ -108,6 +108,14 @@ function drawLegend() {
   renderLegend($('legend-chips'), legendItems({ mode, comparing, hide: state.hide, routes: routes, dark: THEMES[themeId].dark }), (key) => { state.hide = toggleHide(state.hide, key); refresh(); });
 }
 
+// the changes page counts at the same minimum as the map, between the same two years
+function tableQuery() {
+  const q = new URLSearchParams();
+  if (state.compare) { q.set('from', state.compare); q.set('to', state.year); }
+  if (state.min !== '12') q.set('min', state.min);
+  return q.size ? `?${q}` : '';
+}
+
 function refresh() {
   hover = -1;
   selected = -1;
@@ -130,7 +138,7 @@ function refresh() {
   if (!routes.length && !$('status').textContent) setStatus('No routes at this level in this year.');
   else if (routes.length && !shown.length) setStatus('Every route here is hidden: click a legend entry to show it again.');
   else if (routes.length && $('status').className !== 'warn') setStatus('');
-  $('table-link').href = `/airlines/${own}${state.compare ? `?from=${state.compare}&to=${state.year}` : ''}#changes`;
+  $('table-link').href = `/airlines/${own}/changes${tableQuery()}`;
   pushState();
   dirty = true;
 }

@@ -15,11 +15,7 @@
     <h1>{{ page.title }} over time</h1>
     {% if kind == "airlines" %}{% include "_airline_search.html" %}{% endif %}
     <p class="intro">
-      {% if kind == "aircraft" %}
-      Every aircraft type BTS reports, gathered into families (a 737-300 and a 737-800 are both Boeing 737s) so that one type's decline and the next one's rise read as one story.
-      {% else %}
       Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.
-      {% endif %}
     </p>
     <p class="chart-sentence">
       Show <select id="heat-measure" aria-label="Measure"></select>
@@ -38,7 +34,7 @@
     <div id="heatmap" aria-live="polite">Loading chart…</div>
     <p class="note" id="rank-note"></p>
     <p class="note" id="about-note">
-      {% if kind == "aircraft" %}How aircraft are <a href="/about#groupings">grouped into families</a>.{% else %}How airlines are <a href="/about#groupings">grouped</a>.{% endif %}
+      How airlines are <a href="/about#groupings">grouped</a>.
       Freight before 2003 leaves out most domestic FedEx and UPS flying, so shares of freight jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.
     </p>
     {% include "_footer.html" %}

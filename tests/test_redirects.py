@@ -18,6 +18,7 @@ OLD = [
     ("/globe?year=2020&theme=night", "/airports/globe?year=2020&theme=night"),
     ("/routes", "/airports"),
     ("/routes?theme=night", "/airports?theme=night"),
+    ("/aircraft/table?year=2019", "/aircraft?year=2019"),
 ]
 
 

@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { buildHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { rollupRows, slugify } from '/static/charts/src/rollup.js';
+import { rollupRows } from '/static/charts/src/rollup.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -8,7 +8,6 @@ import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
 const KINDS = {
-  aircraft: { query: 'family_by_year', key: 'family', noun: 'aircraft family' },
   airlines: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
 };
 const kind = document.body.dataset.kind;
@@ -57,19 +56,10 @@ const cellRows = (c) => [
 let shorts = new Map();
 const labelOf = (name) => shorts.get(name) || name;
 
-// an aircraft family's label opens its own page, carrying over the measure and filters chosen here
+// an airline's label opens its own page
 function familyHref(name) {
-  if (kind === 'airlines') {
-    const id = rows.find((r) => r.group_name === name)?.group_id;
-    return id ? `/airlines/${id}` : undefined;
-  }
-  if (kind !== 'aircraft') return undefined;
-  const q = new URLSearchParams();
-  if (state.measure !== 'passengers') q.set('measure', state.measure);
-  if (state.flights !== 'passenger') q.set('flights', state.flights);
-  if (state.service !== 'all') q.set('service', state.service);
-  const s = q.toString();
-  return `/aircraft/${slugify(name)}${s ? `?${s}` : ''}`;
+  const id = rows.find((r) => r.group_name === name)?.group_id;
+  return id ? `/airlines/${id}` : undefined;
 }
 
 function draw() {

@@ -28,9 +28,11 @@ def register_routes():
         (rf"^/airports/(?P<origin>{CODE})$", routes_page),
         (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
+        (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?/table$", route_table_page),
         (r"^/about$", about_page),
-        (r"^/aircraft$", rollup_page("aircraft")),
+        (r"^/aircraft$", aircraft_table_page),
         (r"^/airlines$", rollup_page("airlines")),
+        (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/changes$", airline_changes_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)$", airline_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
         # the paths airlines had before the URL used the word the pages do
@@ -38,8 +40,8 @@ def register_routes():
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)$", moved("/airlines/{slug}")),
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{slug}/globe")),
         (r"^/aircraft/engines$", engines_page),
-        (r"^/aircraft/table$", aircraft_table_page),
         (r"^/aircraft/makers$", aircraft_makers_page),
+        (r"^/aircraft/table$", moved("/aircraft")),  # the table's address before it became /aircraft
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
         # the paths the site used before airports came first
         (r"^/globe$", moved("/airports/globe")),
@@ -89,18 +91,18 @@ def views_for(path):
         case ["airports", code, "globe"] if AIRPORT_CODE.match(code):
             c = code.upper()
             return make(("Routes over time", f"/airports/{c}", None), ("Map", f"/airports/{c}/globe", None), current=1)
-        case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and len(rest) <= 1 and b.lower() != "globe":
+        case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and b.lower() != "globe" and (
+                rest in ([], ["table"]) or (rest and rest[0].isdigit() and rest[1:] in ([], ["table"]))):
             a, b = a.upper(), b.upper()
-            year = f"/{rest[0]}" if rest else ""
-            return make((f"{a} → {b}", f"/airports/{a}/{b}{year}", None), (f"{b} → {a}", f"/airports/{b}/{a}{year}", None), current=0)
-        case ["aircraft", *rest] if rest in ([], ["table"], ["makers"], ["engines"]):
-            aircraft = [("Families", "/aircraft", None), ("Table", "/aircraft/table", None), ("Makers", "/aircraft/makers", None),
-                        ("Long-haul engines", "/aircraft/engines", None)]
-            return make(*aircraft, current=[[], ["table"], ["makers"], ["engines"]].index(rest))
-        case ["airlines", slug]:
-            return make(("Overview", f"/airlines/{slug}", None), ("Map", f"/airlines/{slug}/globe", "map-link"), current=0)
-        case ["airlines", slug, "globe"]:
-            return make(("Overview", f"/airlines/{slug}", None), ("Map", f"/airlines/{slug}/globe", None), current=1)
+            year = f"/{rest[0]}" if rest and rest[0].isdigit() else ""
+            base = f"/airports/{a}/{b}{year}"
+            return make(("Over time", base, None), ("Table", f"{base}/table", None), current=1 if rest and rest[-1] == "table" else 0)
+        case ["aircraft", *rest] if rest in ([], ["makers"], ["engines"]):
+            aircraft = [("Families", "/aircraft", None), ("Makers", "/aircraft/makers", None), ("Long-haul engines", "/aircraft/engines", None)]
+            return make(*aircraft, current=[[], ["makers"], ["engines"]].index(rest))
+        case ["airlines", slug, *rest] if rest in ([], ["changes"], ["globe"]):
+            return make(("Over time", f"/airlines/{slug}", None), ("Changes", f"/airlines/{slug}/changes", None),
+                        ("Map", f"/airlines/{slug}/globe", "map-link"), current=[[], ["changes"], ["globe"]].index(rest))
     return []
 
 
@@ -286,28 +288,40 @@ async def routes_page(datasette, request):
     return Response.html(html)
 
 
-async def route_page(datasette, request):
-    origin = request.url_vars["origin"].upper()
-    dest = request.url_vars["dest"].upper()
-    year = request.url_vars.get("year") or ""
-    steps = [("airports", "/airports"), (origin, f"/airports/{origin}")]
-    steps += [(dest, f"/airports/{origin}/{dest}"), (year, None)] if year else [(dest, None)]
-    html = await datasette.render_template(
-        "route.html",
-        {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, *steps)},
-        request=request,
-    )
-    return Response.html(html)
+def route_view(template, table):
+    """A route's page, in one of its views: over time (the chart) or the table, for all years or one."""
+
+    async def view(datasette, request):
+        origin = request.url_vars["origin"].upper()
+        dest = request.url_vars["dest"].upper()
+        year = request.url_vars.get("year") or ""
+        here = f"/airports/{origin}/{dest}{f'/{year}' if year else ''}"
+        steps = [("airports", "/airports"), (origin, f"/airports/{origin}")]
+        steps += [(dest, f"/airports/{origin}/{dest}"), (year, here if table else None)] if year else [(dest, here if table else None)]
+        if table:
+            steps.append(("table", None))
+        html = await datasette.render_template(
+            template,
+            {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
+             "view": "table" if table else "", "crumbs": trail(datasette, *steps)},
+            request=request,
+        )
+        return Response.html(html)
+
+    return view
+
+
+route_page = route_view("route.html", table=False)
+route_table_page = route_view("route_table.html", table=True)
 
 
 ROLLUP_PAGES = {
-    "aircraft": {"title": "Aircraft families", "crumb": "aircraft", "noun": "aircraft families", "query": "family_by_year", "key": "family"},
     "airlines": {"title": "Airlines", "crumb": "airlines", "noun": "airlines", "query": "carrier_group_by_year", "key": "group_name"},
 }
 
 
 def rollup_page(kind):
-    """A heat map of one rollup (aircraft families or merged airline groups) by year, for all US air traffic."""
+    """A heat map of one rollup (merged airline groups) by year, for all US air traffic."""
 
     async def view(datasette, request):
         page = ROLLUP_PAGES[kind]
@@ -341,7 +355,7 @@ def aircraft_view(template, crumb):
             template,
             {
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
-                "crumbs": trail(datasette, ("aircraft", "/aircraft"), (crumb, None)),
+                "crumbs": trail(datasette, ("aircraft", "/aircraft"), (crumb, None)) if crumb else trail(datasette, ("aircraft", None)),
             },
             request=request,
         )
@@ -350,7 +364,7 @@ def aircraft_view(template, crumb):
     return view
 
 
-aircraft_table_page = aircraft_view("aircraft_table.html", "table")
+aircraft_table_page = aircraft_view("aircraft_table.html", None)
 aircraft_makers_page = aircraft_view("aircraft_makers.html", "makers")
 
 
@@ -428,18 +442,27 @@ async def airline_globe_page(datasette, request):
     return Response.html(html)
 
 
-async def airline_page(datasette, request):
-    info = await resolve_airline(datasette, request.url_vars["slug"])
-    html = await datasette.render_template(
-        "airline.html",
-        {
-            **info, "own": info["airline"] or info["group"],
-            "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
-            "crumbs": airline_crumbs(datasette, info),
-        },
-        request=request,
-    )
-    return Response.html(html)
+def airline_view(template, tail):
+    """An airline's page, in one of its views: over time (its size and airport pairs) or what changed between two years."""
+
+    async def view(datasette, request):
+        info = await resolve_airline(datasette, request.url_vars["slug"])
+        html = await datasette.render_template(
+            template,
+            {
+                **info, "own": info["airline"] or info["group"],
+                "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
+                "crumbs": airline_crumbs(datasette, info, *tail),
+            },
+            request=request,
+        )
+        return Response.html(html)
+
+    return view
+
+
+airline_page = airline_view("airline.html", ())
+airline_changes_page = airline_view("airline_changes.html", (("changes", None),))
 
 
 async def about_page(datasette, request):

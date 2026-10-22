@@ -2,16 +2,13 @@ import { slugify } from './rollup.js';
 
 const LB_PER_SHORT_TON = 2000;
 
-// The aircraft kinds the pages offer; BTS's kind text starts with one of these words ("Jet, four-engine")
-export const KIND_OPTIONS = [
-  { value: 'all', label: 'all aircraft' },
-  { value: 'Jet', label: 'jets' },
-  { value: 'Turboprop', label: 'turboprops' },
-  { value: 'Piston', label: 'piston aircraft' },
-  { value: 'Helicopter', label: 'helicopters' },
-];
+// Menus built from the data: every kind and every maker, each with the short form used in the URL (jet-twin-engine, boeing)
+const byLabel = (a, b) => a.label.localeCompare(b.label);
+const options = (values, all) => [all, ...[...new Set(values)].filter(Boolean).map((v) => ({ value: slugify(v), label: v })).sort(byLabel)];
+export const kindOptions = (rows) => options(rows.map((r) => r.aircraft_kind), { value: 'all', label: 'all aircraft' });
+export const makerOptions = (rows) => options(rows.map((r) => r.maker), { value: 'all', label: 'any maker' });
 
-export const kindMatches = (aircraftKind, value) => value === 'all' || String(aircraftKind || '').startsWith(value);
+export const kindMatches = (aircraftKind, value) => value === 'all' || slugify(aircraftKind || '') === value;
 
 const amount = (row, measure) => (Number(row[measure]) || 0) / (measure === 'freight' ? LB_PER_SHORT_TON : 1);
 const byValue = (a, b) => b.value - a.value || a.name.localeCompare(b.name);
@@ -25,7 +22,7 @@ export function groupFamilies(rows, { measure = 'passengers', kind = 'all', make
   const byFamily = new Map();
   for (const r of rows) {
     if (!kindMatches(r.aircraft_kind, kind)) continue;
-    if (maker !== 'all' && r.maker !== maker) continue;
+    if (maker !== 'all' && slugify(r.maker || '') !== maker) continue;
     const fam = byFamily.get(r.family) || { family: r.family, slug: slugify(r.family), types: [] };
     byFamily.set(r.family, fam);
     fam.types.push({
@@ -67,4 +64,29 @@ export function sortFamilies(families, key, dir = 'desc') {
     const c = TEXT_KEYS.has(key) ? String(x).localeCompare(String(y)) : (x ?? -Infinity) - (y ?? -Infinity);
     return sign * c || a.family.localeCompare(b.family);
   });
+}
+
+export const LIMIT_OPTIONS = [
+  { value: 'top15', label: 'the top 15 families' },
+  { value: 'top20', label: 'the top 20 families' },
+  { value: 'top50', label: 'the top 50 families' },
+  { value: 'all', label: 'every family' },
+  { value: 'min1', label: 'families with at least 1%' },
+  { value: 'min0.1', label: 'families with at least 0.1%' },
+];
+export const DEFAULT_LIMIT = 'top20';
+
+// The families to list: the top N by value, or those whose share is at least a percentage. Applied to the ranking by
+// value whatever column the table is sorted by, and not at all while searching. Also returns how many were left out
+// and the share of the total that the listed ones make up.
+export function limitFamilies(families, limit, { searching = false } = {}) {
+  const ranked = [...families].sort((a, b) => b.value - a.value || a.family.localeCompare(b.family));
+  let shown = ranked;
+  if (!searching) {
+    const top = /^top(\d+)$/.exec(limit);
+    const min = /^min(\d+(?:\.\d+)?)$/.exec(limit);
+    if (top) shown = ranked.slice(0, Number(top[1]));
+    else if (min) shown = ranked.filter((f) => f.share * 100 >= Number(min[1]));
+  }
+  return { shown, hidden: ranked.length - shown.length, shownShare: shown.reduce((s, f) => s + f.share, 0) };
 }

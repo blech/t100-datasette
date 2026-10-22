@@ -153,40 +153,73 @@ function nameHeading() {
   $('full-name').hidden = false;
 }
 
+// links to the airline's other views keep the settings in the query (min, from and to, span)
+function carryQuery() {
+  for (const a of document.querySelectorAll('nav.views a')) a.search = location.search;
+}
+
+// set or clear one setting in the query, without a reload
+function remember(key, value, fallback) {
+  const q = new URLSearchParams(location.search);
+  if (value === fallback) q.delete(key); else q.set(key, value);
+  history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}`);
+  carryQuery();
+}
+
+// the airline's two views share this script: over time (size and airport pairs) and what changed
 async function main() {
-  nameHeading();
-  const measure = $('al-measure');
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
-  for (const sel of [$('al-a'), $('al-b')]) {
-    for (let y = firstYear; y <= lastYear; y++) sel.append(new Option(String(y), String(y)));
-  }
-  const qs = new URLSearchParams(location.search);
-  const within = (v, d) => (Number(v) >= firstYear && Number(v) <= lastYear ? String(Number(v)) : d);
-  $('al-b').value = within(qs.get('to'), String(lastYear));
-  $('al-span').value = parseSpan(qs.get('span'));
-  $('al-a').value = within(qs.get('from'), String(Math.max(firstYear, lastYear - 6)));
-  try {
-    const [d, airports] = await Promise.all([fetchRows(queryUrl('carrier_group_detail', { group, airline })), fetchRows(queryUrl('airports'))]);
-    detail = d.rows;
-    places = new Map(airports.rows.map((r) => [r.code, r.place]));
-  } catch (err) {
-    console.error(err);
-    $('size-chart').textContent = 'Could not load the chart data.';
+  const hasSize = Boolean($('size-chart'));
+  const hasChanges = Boolean($('change-table'));
+  // old links to the changes section land on its own page now
+  if (location.hash === '#changes' && !hasChanges) {
+    location.replace(`/airlines/${airline || group}/changes${location.search}`);
     return;
   }
-  for (const id of ['al-measure', 'al-kind', 'al-split']) $(id).addEventListener('change', drawSize);
-  $('al-span').addEventListener('change', () => {
-    const q = new URLSearchParams(location.search);
-    if ($('al-span').value === 'all') q.set('span', 'all'); else q.delete('span');
-    history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}`);
-    drawSize(); drawPairs();
+  nameHeading();
+  const qs = new URLSearchParams(location.search);
+  if ([...$('al-min').options].some((o) => o.value === qs.get('min'))) $('al-min').value = qs.get('min');
+  if (hasSize) {
+    for (const [k, label] of Object.entries(HEAT_MEASURES)) $('al-measure').append(new Option(label.toLowerCase(), k));
+    $('al-span').value = parseSpan(qs.get('span'));
+  }
+  if (hasChanges) {
+    for (const sel of [$('al-a'), $('al-b')]) {
+      for (let y = firstYear; y <= lastYear; y++) sel.append(new Option(String(y), String(y)));
+    }
+    const within = (v, d) => (Number(v) >= firstYear && Number(v) <= lastYear ? String(Number(v)) : d);
+    $('al-b').value = within(qs.get('to'), String(lastYear));
+    $('al-a').value = within(qs.get('from'), String(Math.max(firstYear, lastYear - 6)));
+  }
+  try {
+    const [d, airports] = await Promise.all([
+      hasSize ? fetchRows(queryUrl('carrier_group_detail', { group, airline })) : null,
+      hasChanges ? fetchRows(queryUrl('airports')) : null,
+    ]);
+    if (d) detail = d.rows;
+    if (airports) places = new Map(airports.rows.map((r) => [r.code, r.place]));
+  } catch (err) {
+    console.error(err);
+    $(hasSize ? 'size-chart' : 'change-summary').textContent = 'Could not load the data.';
+    return;
+  }
+  $('al-min').addEventListener('change', () => {
+    remember('min', $('al-min').value, '12');
+    if (hasSize) drawPairs();
+    if (hasChanges) loadChanges();
   });
-  $('al-min').addEventListener('change', () => { drawPairs(); loadChanges(); });
-  for (const id of ['al-a', 'al-b']) $(id).addEventListener('change', loadChanges);
-  $('al-status').addEventListener('change', drawTable);
-  drawSize();
-  document.addEventListener('t100:theme', () => { drawSize(); drawPairs(); });
-  await Promise.all([drawPairs(), loadChanges()]);
+  if (hasSize) {
+    for (const id of ['al-measure', 'al-kind', 'al-split']) $(id).addEventListener('change', drawSize);
+    $('al-span').addEventListener('change', () => { remember('span', $('al-span').value, 'flown'); drawSize(); drawPairs(); });
+    drawSize();
+    document.addEventListener('t100:theme', () => { drawSize(); drawPairs(); });
+  }
+  if (hasChanges) {
+    $('al-a').addEventListener('change', () => { remember('from', $('al-a').value, null); loadChanges(); });
+    $('al-b').addEventListener('change', () => { remember('to', $('al-b').value, null); loadChanges(); });
+    $('al-status').addEventListener('change', drawTable);
+  }
+  carryQuery();
+  await Promise.all([hasSize ? drawPairs() : null, hasChanges ? loadChanges() : null]);
 }
 
 main();
