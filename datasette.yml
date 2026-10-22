@@ -203,6 +203,44 @@ databases:
             AND (SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0)
           ORDER BY year, dest
 
+      # an airport's departures by year, airline group, service and kind, for its charts; groups found as carrier_group_year finds them
+      airport_size:
+        sql: |
+          SELECT
+            t.year,
+            COALESCE(g.group_id, 'unknown') AS group_id,
+            COALESCE(g.group_name, 'Unknown carrier') AS group_name,
+            CASE WHEN t.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN t.class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(t.departures_performed) AS deps, SUM(t.seats) AS seats, SUM(t.passengers) AS passengers, SUM(t.freight) AS freight
+          FROM t100 t
+          LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+          LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+          WHERE t.origin = :origin AND t.year IS NOT NULL
+          GROUP BY t.year, 2, 3, service, kind
+          ORDER BY t.year
+
+      # each destination and airline group from an airport in two years, with the first and last month flown, for what changed
+      airport_changes:
+        sql: |
+          SELECT
+            t.dest,
+            MAX(t.dest_city_name) AS city,
+            COALESCE(g.group_id, 'unknown') AS group_id,
+            COALESCE(g.group_name, 'Unknown carrier') AS group_name,
+            SUM(CASE WHEN t.year = CAST(:a AS integer) THEN t.departures_performed ELSE 0 END) AS deps_a,
+            SUM(CASE WHEN t.year = CAST(:b AS integer) THEN t.departures_performed ELSE 0 END) AS deps_b,
+            SUM(CASE WHEN t.year = CAST(:a AS integer) THEN t.passengers ELSE 0 END) AS pax_a,
+            MIN(CASE WHEN t.departures_performed > 0 THEN t.year * 100 + t.month END) AS first_ym,
+            MAX(CASE WHEN t.departures_performed > 0 THEN t.year * 100 + t.month END) AS last_ym
+          FROM t100 t
+          LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+          LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+          WHERE t.origin = :origin
+          GROUP BY t.dest, 3, 4
+          HAVING deps_a > 0 OR deps_b > 0
+          ORDER BY deps_a DESC, deps_b DESC
+
       # every domestic route in one year, for hovering an airport on the all-airports map: the same routes, with the same
       # rule for domestic and the same 12-departure cut-off, as routes_by_year gives one airport with international hidden
       domestic_routes:
