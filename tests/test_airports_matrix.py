@@ -43,3 +43,26 @@ def test_the_airports_section_has_three_views(ds):
 def test_the_matrix_breadcrumb_goes_back_to_the_table(ds):
     html = get(ds, "/airports/over-time").text
     assert '<a href="/airports">airports</a>' in html and 'aria-current="page">over time<' in html
+
+
+def markets(db_path):
+    totals(db_path)
+    put(db_path, "airport_year_totals", [dict(year=2019, origin="LGA", origin_city_name="New York, NY", origin_wac=22, deps=50, seats=5000, passengers=4000, freight=0),
+                                         dict(year=2019, origin="SMALL", origin_city_name="Tiny, AK", origin_wac=1, deps=1, seats=0, passengers=0, freight=0)])
+    put(db_path, "airport_market", [dict(code="ATL", market_id="30397"), dict(code="LGA", market_id="31703"), dict(code="JFK", market_id="31703")])
+    put(db_path, "route_year_totals", [dict(year=2019, origin=o, dest=d, deps=n, domestic_deps=n, seats=0, passengers=0, freight=0)
+                                       for o, d, n in (("LGA", "MIA", 20), ("JFK", "MIA", 30), ("JFK", "LHR", 15), ("LGA", "ORD", 5))])
+
+
+def test_top_airports_gives_every_us_airport_of_the_year_with_its_market(ds, db_path):
+    markets(db_path)
+    rows = {r["origin"]: r for r in get_json(ds, "/t100/top_airports.json?year=2019&_shape=objects&_size=max")["rows"]}
+    assert set(rows) == {"ATL", "LGA", "SMALL", "ZZZ"}                   # every US airport, however small; not LHR
+    assert rows["LGA"]["market_id"] == "31703" and rows["SMALL"]["market_id"] is None
+    assert rows["LGA"]["dests"] == 1 and rows["LGA"]["market_dests"] == 2  # New York reaches MIA and LHR 12+ times, MIA counted once
+
+
+def test_airport_by_year_gives_each_airport_its_market(ds, db_path):
+    markets(db_path)
+    rows = get_json(ds, "/t100/airport_by_year.json?_shape=objects&_size=max")["rows"]
+    assert {r["origin"]: r["market_id"] for r in rows} == {"ATL": "30397"}

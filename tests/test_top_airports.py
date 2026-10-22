@@ -29,16 +29,13 @@ def top(ds, year=2025):
     return {r["origin"]: r for r in body["rows"]}
 
 
-def test_includes_top_twenty_for_each_measure_and_nothing_else(ds, db_path):
+def test_includes_every_us_airport_of_the_year_for_the_page_to_rank(ds, db_path):
     # 30 airports: passengers and departures rise with i; freight falls with i; each has one destination
     add_segments(db_path, "t100_domestic", [
         us(f"A{i:02d}", 2025, deps=100 + i, pax=1000 * (i + 1), seats=2000 * (i + 1), freight=1000 * (30 - i))
         for i in range(30)
     ])
-    got = set(top(ds))
-    by_volume = {f"A{i:02d}" for i in range(10, 30)}   # top 20 of passengers and departures
-    by_freight = {f"A{i:02d}" for i in range(0, 20)}   # top 20 of freight
-    assert got == by_volume | by_freight
+    assert set(top(ds)) == {f"A{i:02d}" for i in range(30)}   # the page picks its top 20 airports, or cities, itself
 
 
 def test_airports_in_several_top_twenties_appear_once(ds, db_path):

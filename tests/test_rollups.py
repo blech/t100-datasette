@@ -268,3 +268,16 @@ def test_helicopters_are_grouped_by_maker_with_their_models_as_versions(db_path)
     assert "Helicopters" not in {f for f, *_ in got.values()}
     # "Bell" is a whole word, and Sikorsky's flying boat isn't a helicopter
     assert got["020"][0] != "Bell helicopters" and got["280"][0] != "Sikorsky helicopters"
+
+
+def test_airport_market_gives_each_code_its_newest_bts_city_market(db_path):
+    from build_database import rebuild_airport_market
+    seg2 = lambda origin, dest, year, om, dm: dict(year=year, month=1, origin=origin, dest=dest, origin_city_market_id=om, dest_city_market_id=dm,
+                                                   departures_performed=1, passengers=1, seats=1, freight=0)
+    add_segments(db_path, "t100_domestic", [
+        seg2("JFK", "LGA", 2024, "31703", "31703"), seg2("EWR", "JFK", 2024, "31703", "31703"),
+        seg2("XYZ", "JFK", 2005, "10001", "31703"), seg2("XYZ", "JFK", 2020, "20002", "31703"),   # a code whose market changed
+        seg2("JFK", "LHR", 2024, "31703", None),                                                   # a destination with no market
+    ])
+    got = dict(query(db_path, "SELECT code, market_id FROM airport_market", rebuild_airport_market))
+    assert got == {"JFK": "31703", "LGA": "31703", "EWR": "31703", "XYZ": "20002"}
