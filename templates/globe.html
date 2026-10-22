@@ -47,6 +47,8 @@
       <label class="check"><input id="month-toggle" type="checkbox"> Months</label>
       <input id="month" type="range" min="1" max="12" value="1" step="1" aria-label="Month" hidden>
       <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
+      <button id="centre" type="button">Centre {{ origin }}</button>
+      <button id="fit" type="button" title="Zoom to fit the routes shown">Fit routes</button>
       <select id="colour" aria-label="Colour routes by"><option value="service">Colour: domestic or international</option><option value="change">Colour: kept, added or dropped</option></select>
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
       <select id="theme" aria-label="Theme"></select>

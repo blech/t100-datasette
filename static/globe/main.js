@@ -1,5 +1,5 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from './src/themes.js';
-import { defaultView, clamp } from './src/camera.js';
+import { defaultView, clamp, glide, rotationFor } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
@@ -261,6 +261,15 @@ function bindControls() {
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
   $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
+  const a = airports.get(origin);
+  $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: rotationFor(a.lon, a.lat), zoom: view.zoom }; });
+  $('fit').addEventListener('click', () => {
+    const points = [[a.lon, a.lat], ...shown.map((r) => r.to)];
+    // the clear area between the header and the controls, with room for the labels
+    const box = { left: 24, right: innerWidth - 48, top: $('header').getBoundingClientRect().bottom + 24, bottom: $('controls').getBoundingClientRect().top - 8 };
+    const fit = renderer.fit(points, box);
+    if (fit) { view.vel = [0, 0]; view.target = fit; }
+  });
 
   for (const el of [range.from, range.to]) { el.min = '0'; el.max = String(years.length - 1); }
   const move = (which, el) => async () => {
@@ -353,7 +362,7 @@ function frame(last, now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   const moving = !view.dragging && (Math.abs(view.vel[0]) > 0.05 || Math.abs(view.vel[1]) > 0.05);
   applyInertia(view, dt);
-  if (moving) dirty = true;
+  if (glide(view, dt) || moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
     const routes = origin ? shown : chooserRoutesFor(hover);

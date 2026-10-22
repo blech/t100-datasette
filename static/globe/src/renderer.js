@@ -1,5 +1,6 @@
 import { distPointSegment } from './geo.js';
 import { colourFor, widthFor, dashFor } from './scale.js';
+import { fitView } from './camera.js';
 
 const ARC_SAMPLES = 24;
 
@@ -55,6 +56,13 @@ export class NetworkRenderer {
   degPerPx() { return 57.2958 / Math.max(1, this.R); }
 
   centre() { return [this.w / 2, this.mode === 'globe' ? this.h * 0.46 : this.h * 0.5]; }
+
+  // the view that frames `points` inside `box` on the map as it is now (see fitView)
+  fit(points, box) {
+    const d3 = window.d3;
+    const projection = this.mode === 'globe' ? d3.geoOrthographic() : d3.geoEqualEarth();
+    return fitView(points, projection, { flat: this.mode === 'flat', centre: this.centre(), baseScale: this.baseScale, box });
+  }
 
   visible(lon, lat) {
     if (this.mode === 'flat') return true;
