@@ -6,7 +6,7 @@ from tests.helpers import get, get_json
 from tests.test_rollup_queries import fam, put
 
 
-@pytest.mark.parametrize("path, kind", [("/airlines", "airlines")])
+@pytest.mark.parametrize("path, kind", [("/airlines/over-time", "airlines")])
 def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     r = get(ds, path)
     assert r.status_code == 200
@@ -15,7 +15,7 @@ def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     assert 'id="heatmap"' in r.text and 'id="label-tip"' in r.text
 
 
-@pytest.mark.parametrize("path", ["/airlines"])
+@pytest.mark.parametrize("path", ["/airlines/over-time"])
 def test_settings_read_as_one_sentence(ds, path):
     html = get(ds, path).text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
@@ -82,9 +82,10 @@ def test_carrier_routes_year_returns_one_years_pairs(ds, db_path):
 
 def test_airline_search_box_is_on_the_airlines_page_and_each_airline_page(ds, db_path):
     put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
-    for path in ["/airlines", "/airlines/delta"]:
+    for path in ["/airlines/over-time", "/airlines/delta"]:
         html = get(ds, path).text
         assert 'id="airline-search"' in html and 'id="airline-list"' in html and "/static/charts/airlinesearch.js" in html
+    assert 'id="airline-search"' not in get(ds, "/airlines").text
     assert 'id="airline-search"' not in get(ds, "/aircraft").text
 
 
@@ -152,3 +153,18 @@ def test_chart_pages_offer_a_year_span_and_know_the_full_range(ds, db_path):
 def test_the_aircraft_table_offers_a_limit_and_an_all_years_choice(ds):
     html = get(ds, "/aircraft").text
     assert 'id="at-limit"' in html
+
+
+def test_the_airlines_table_page_has_its_controls_breadcrumb_and_script(ds):
+    html = get(ds, "/airlines").text
+    sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
+    assert re.findall(r'<select id="([^"]+)"', sentence) == ["airline-measure", "airline-year", "airline-flights", "airline-service", "airline-limit"]
+    for id_ in ["airline-q", "airline-status", "airline-table"]:
+        assert f'id="{id_}"' in html
+    assert "/static/charts/airlinetable.js" in html and "data-latest-year=" in html
+    assert 'aria-current="page">airlines<' in html
+
+
+def test_the_heat_map_breadcrumb_goes_back_to_the_table(ds):
+    html = get(ds, "/airlines/over-time").text
+    assert '<a href="/airlines">airlines</a>' in html and 'aria-current="page">over time<' in html

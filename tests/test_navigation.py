@@ -50,7 +50,7 @@ def test_the_airline_pages_map_view_keeps_the_id_its_script_rewrites():
     assert [v["id"] for v in views_for("/airlines/delta")] == [None, None, "map-link"]
 
 
-@pytest.mark.parametrize("path", ["/", "/airlines", "/aircraft/boeing-737", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
+@pytest.mark.parametrize("path", ["/", "/aircraft/boeing-737", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
 def test_pages_with_one_view_have_none(path):
     assert views_for(path) == []
 
@@ -72,7 +72,8 @@ PAGES = {
     "/aircraft": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
     "/aircraft/engines": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
     "/aircraft/makers": ("aircraft", ["Families", "Makers", "Long-haul engines"]),
-    "/airlines": ("airlines", []),
+    "/airlines": ("airlines", ["Airlines", "Over time"]),
+    "/airlines/over-time": ("airlines", ["Airlines", "Over time"]),
     "/about": ("about", []),
 }
 
@@ -121,3 +122,10 @@ def test_an_airlines_page_and_map_have_overview_and_map_views(ds, db_path):
 def test_a_route_links_to_more_from_its_origin(ds):
     html = get(ds, "/airports/ATL/LAX").text
     assert 'href="/airports/ATL"' in html and 'id="map-link"' in html
+
+
+def test_the_airlines_table_and_heat_map_are_two_views_of_the_section():
+    assert [(v["label"], v["href"], v["current"]) for v in views_for("/airlines")] == [
+        ("Airlines", "/airlines", True), ("Over time", "/airlines/over-time", False)]
+    assert [v["current"] for v in views_for("/airlines/over-time")] == [False, True]
+    assert [v["label"] for v in views_for("/airlines/delta")] == ["Over time", "Changes", "Map"]  # an airline is still its own subject

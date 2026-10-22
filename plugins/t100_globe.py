@@ -31,7 +31,8 @@ def register_routes():
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?/table$", route_table_page),
         (r"^/about$", about_page),
         (r"^/aircraft$", aircraft_table_page),
-        (r"^/airlines$", rollup_page("airlines")),
+        (r"^/airlines$", airline_table_page),
+        (r"^/airlines/over-time$", rollup_page("airlines")),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/changes$", airline_changes_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)$", airline_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
@@ -100,6 +101,8 @@ def views_for(path):
         case ["aircraft", *rest] if rest in ([], ["makers"], ["engines"]):
             aircraft = [("Families", "/aircraft", None), ("Makers", "/aircraft/makers", None), ("Long-haul engines", "/aircraft/engines", None)]
             return make(*aircraft, current=[[], ["makers"], ["engines"]].index(rest))
+        case ["airlines"] | ["airlines", "over-time"]:
+            return make(("Airlines", "/airlines", None), ("Over time", "/airlines/over-time", None), current=len(parts) - 1)
         case ["airlines", slug, *rest] if rest in ([], ["changes"], ["globe"]):
             return make(("Over time", f"/airlines/{slug}", None), ("Changes", f"/airlines/{slug}/changes", None),
                         ("Map", f"/airlines/{slug}/globe", "map-link"), current=[[], ["changes"], ["globe"]].index(rest))
@@ -331,13 +334,31 @@ def rollup_page(kind):
                 "kind": kind,
                 "page": page,
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
-                "crumbs": trail(datasette, (page["crumb"], None)),
+                "crumbs": trail(datasette, (page["crumb"], f"/{kind}"), ("over time", None)),
             },
             request=request,
         )
         return Response.html(html)
 
     return view
+
+
+HEAT_MAP_ONLY = ("n", "rank", "scale")  # the airlines heat map's settings that mean nothing to the table that took its address
+
+
+async def airline_table_page(datasette, request):
+    """Every airline group, ranked, with its members inside; old links to the heat map that had /airlines go on to it."""
+    if any(k in request.args for k in HEAT_MAP_ONLY):
+        return Response.redirect(f"/airlines/over-time?{request.query_string}", status=301)
+    html = await datasette.render_template(
+        "airline_table.html",
+        {
+            "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+            "crumbs": trail(datasette, ("airlines", None)),
+        },
+        request=request,
+    )
+    return Response.html(html)
 
 
 async def engines_page(datasette, request):

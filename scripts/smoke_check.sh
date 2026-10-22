@@ -31,7 +31,9 @@ check 200 /aircraft/engines                                         "engine-char
 check 200 /aircraft/makers                                          "maker-chart"
 check 200 /aircraft/boeing-737                                      "family-chart"
 check 404 /aircraft/no-such-plane
-check 200 /airlines                                                 "heat-kind"
+check 200 /airlines                                                 "airline-table"
+check 200 /airlines/over-time                                       "heat-kind"
+check 301 "/airlines?scale=busiest"
 check 200 /airlines/delta                                          "size-chart"
 check 200 /airlines/delta/globe                                    'id="globe"'
 check 404 /airlines/no-such-airline
