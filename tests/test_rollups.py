@@ -236,3 +236,35 @@ def test_big_families_split_into_the_versions_people_know(db_path):
     # a version rule must not pull a type into another family: these stay where the family rules put them
     assert got["678"][0] == "Embraer E-Jet" and got["405"][0] == "Beech turboprops"
     assert got["143"] == ("Convair", "Convair 240/340/440") and got["459"] == ("Saab 340 / 2000", "Saab 340")
+
+
+HELICOPTERS = [("364", "3", "BHT 206 L4 Long Ranger"), ("315", "3", "Bell B-206A"), ("366", "3", "Bell BHT 407"), ("368", "3", "Bell BHT 412"),
+               ("345", "3", "Bell 212 Twin Two Twelve"), ("311", "3", "Bell B-47D"), ("317", "3", "HU-1H 204B"),
+               ("390", "3", "Sikorsky S-76"), ("386", "3", "Sikorsky S-61N"), ("380", "3", "Sikorsky S-51"),
+               ("340", "3", "Eurocompter As350 B2 Astar"), ("370", "3", "Air Bus Euro BO-105"), ("330", "3", "Boelkow BO-105C"), ("303", "3", "Sud Alouette"),
+               ("325", "3", "Agusta A-119 Koala"), ("393", "3", "Agustawestland Aw139"), ("360", "3", "Robinson R44"),
+               ("355", "3", "HughES-500/530"), ("350", "3", "Hughes 300"),
+               ("320", "3", "Boeing Vertol BV-107"), ("396", "3", "Westland SR-N5 (Acv)"),
+               ("020", "0", "Bellanca CH-300"), ("280", "2", "Sikorsky VS-44A (Amphibian)")]
+
+
+def test_helicopters_are_grouped_by_maker_with_their_models_as_versions(db_path):
+    add_types(db_path, *HELICOPTERS)
+    got = {r[0]: r[1:4] for r in query(db_path, "SELECT aircraft_type, family, subfamily, aircraft_class FROM aircraft_family", rebuild_aircraft_family)}
+    bell = {t: got[t][:2] for t in ("364", "315", "366", "368", "345", "311", "317")}
+    assert bell == {"364": ("Bell helicopters", "Bell 206"), "315": ("Bell helicopters", "Bell 206"), "366": ("Bell helicopters", "Bell 407"),
+                    "368": ("Bell helicopters", "Bell 412"), "345": ("Bell helicopters", "Bell 212"), "311": ("Bell helicopters", "Bell 47"),
+                    "317": ("Bell helicopters", "Bell 204 (Huey)")}
+    assert {t: got[t][:2] for t in ("390", "386", "380")} == {"390": ("Sikorsky helicopters", "S-76"), "386": ("Sikorsky helicopters", "S-61"),
+                                                              "380": ("Sikorsky helicopters", "S-51")}
+    assert {t: got[t][:2] for t in ("340", "370", "330", "303")} == {"340": ("Airbus helicopters", "AS350 (Eurocopter)"), "370": ("Airbus helicopters", "BO-105 (MBB)"),
+                                                                     "330": ("Airbus helicopters", "BO-105 (MBB)"), "303": ("Airbus helicopters", "Alouette (Sud Aviation)")}
+    assert {t: got[t][:2] for t in ("325", "393")} == {"325": ("Leonardo helicopters", "Agusta A119"), "393": ("Leonardo helicopters", "AgustaWestland AW139")}
+    assert got["360"][:2] == ("Robinson helicopters", "R44")
+    assert {t: got[t][:2] for t in ("355", "350")} == {"355": ("Hughes / MD helicopters", "500/530"), "350": ("Hughes / MD helicopters", "300")}
+    assert all(got[t][2] == "Helicopter" for t, *_ in HELICOPTERS if t not in ("020", "280"))
+    # makers with nothing flown since 1990 stay in the fallback; nothing is left in a family named just "Helicopters"
+    assert got["320"][0] == got["396"][0] == "Other helicopter"
+    assert "Helicopters" not in {f for f, *_ in got.values()}
+    # "Bell" is a whole word, and Sikorsky's flying boat isn't a helicopter
+    assert got["020"][0] != "Bell helicopters" and got["280"][0] != "Sikorsky helicopters"

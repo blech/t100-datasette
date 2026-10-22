@@ -145,5 +145,29 @@ priority,name_regex,family,subfamily,class
 144,L100,Lockheed turboprops,L-100 Hercules,Turboprop
 145,Electra|L100,Lockheed turboprops,Lockheed turboprop,Turboprop
 146,Gulfstream|Challenger|Global|Lear|Falcon|Citation|Hawker|Falcon,Business jets,Business jet,Business jet
-147,Sikorsky|BHT|Bell|Helicopter|Aerospatiale/.*Heli,Helicopters,Helicopter,Helicopter
-148,Cessna|Piper|Beech 18|Islander|Beaver|Otter|Gipps|Float|Navajo|Cherokee,Light piston / utility,Piston,Piston
+147,Bell B-47,Bell helicopters,Bell 47,Helicopter
+148,\bHU-1H\b|(\bBell\b|\bBHT\b).*\b20[45]\b,Bell helicopters,Bell 204 (Huey),Helicopter
+149,(\bBell\b|\bBHT\b).*\b206,Bell helicopters,Bell 206,Helicopter
+150,(\bBell\b|\bBHT\b).*\b212\b,Bell helicopters,Bell 212,Helicopter
+151,(\bBell\b|\bBHT\b).*\b407\b,Bell helicopters,Bell 407,Helicopter
+152,(\bBell\b|\bBHT\b).*\b412\b,Bell helicopters,Bell 412,Helicopter
+153,(\bBell\b|\bBHT\b),Bell helicopters,Bell (other models),Helicopter
+154,Sikorsky S-51,Sikorsky helicopters,S-51,Helicopter
+155,Sikorsky S-55,Sikorsky helicopters,S-55,Helicopter
+156,Sikorsky S-58,Sikorsky helicopters,S-58,Helicopter
+157,Sikorsky S-61,Sikorsky helicopters,S-61,Helicopter
+158,Sikorsky S-62,Sikorsky helicopters,S-62,Helicopter
+159,Sikorsky S-76,Sikorsky helicopters,S-76,Helicopter
+160,Sikorsky S-\d,Sikorsky helicopters,Sikorsky (other models),Helicopter
+161,\bAS-?350\b|Astar,Airbus helicopters,AS350 (Eurocopter),Helicopter
+162,\bBO-?105,Airbus helicopters,BO-105 (MBB),Helicopter
+163,Alouette,Airbus helicopters,Alouette (Sud Aviation),Helicopter
+164,Eurocop|Eurocomp|Air Bus Euro|Aerospatiale.*Heli,Airbus helicopters,Airbus (other models),Helicopter
+165,Agusta.*\bA-?119\b,Leonardo helicopters,Agusta A119,Helicopter
+166,\bAW-?139\b,Leonardo helicopters,AgustaWestland AW139,Helicopter
+167,Agusta,Leonardo helicopters,Leonardo (other models),Helicopter
+168,Robinson R-?44\b,Robinson helicopters,R44,Helicopter
+169,Robinson R-?\d,Robinson helicopters,Robinson (other models),Helicopter
+170,Hughes.*\b500\b,Hughes / MD helicopters,500/530,Helicopter
+171,Hughes.*\b300\b,Hughes / MD helicopters,300,Helicopter
+172,Cessna|Piper|Beech 18|Islander|Beaver|Otter|Gipps|Float|Navajo|Cherokee,Light piston / utility,Piston,Piston
