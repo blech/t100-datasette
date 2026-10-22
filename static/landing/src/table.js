@@ -29,5 +29,13 @@ export function toSearch(state, maxYear) {
 }
 
 // the sort column carries over as the airport page's matrix measure (the keys are the same); destinations has no matrix
+// the table's sort and the airports matrix's measure are the same setting where both have it (not destinations, not seats)
+const SHARED = ['deps', 'freight'];
+export const matrixSearch = (sort) => (SHARED.includes(sort) ? `?measure=${sort}` : '');
+export const tableSearch = (search) => {
+  const measure = new URLSearchParams(search || '').get('measure');
+  return SHARED.includes(measure) ? `?sort=${measure}` : '';
+};
+
 export const airportHref = (code, sort) =>
   `/airports/${encodeURIComponent(code)}${sort === 'passengers' || sort === 'dests' ? '' : `?measure=${sort}`}`;

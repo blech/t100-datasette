@@ -3,6 +3,7 @@ import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows } from '/static/charts/src/rollup.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
+import { tableSearch } from '/static/landing/src/table.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -12,6 +13,7 @@ import { replaceSearch } from '/static/nav/src/state.js';
 const KINDS = {
   airlines: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
   routes: { query: 'carrier_route_by_year', key: 'route', noun: 'route' },
+  airports: { query: 'airport_by_year', key: 'origin', noun: 'airport' },
 };
 const kind = document.body.dataset.kind;
 const page = KINDS[kind];
@@ -53,7 +55,12 @@ function pushState() {
 
 // the views line: an airline's views pass their whole query, as its other pages do; the airlines matrix passes the
 // settings the airlines table reads too
-const carry = () => { for (const a of document.querySelectorAll('nav.views a')) a.search = kind === 'routes' ? location.search : sharedQuery(location.search); };
+const carry = () => {
+  for (const a of document.querySelectorAll('nav.views a')) {
+    if (kind === 'airports') { if (a.pathname === '/airports') a.search = tableSearch(location.search); } // the table takes the measure as its sort
+    else a.search = kind === 'routes' ? location.search : sharedQuery(location.search);
+  }
+};
 
 // a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
@@ -72,10 +79,11 @@ const place = (code) => places.get(code) || code;
 const pairOf = (route) => route.split(' – ');
 function familyHref(name) {
   if (kind === 'routes') { const [o, d] = pairOf(name); return `/airports/${o}/${d}?split=carrier&highlight=airline:${body.group}`; }
+  if (kind === 'airports') return `/airports/${name}/destinations`; // a matrix leads to a matrix
   const id = rows.find((r) => r.group_name === name)?.group_id;
   return id ? `/airlines/${id}` : undefined;
 }
-const titleOf = (name) => (kind === 'routes' ? pairOf(name).map(place).join(' – ') : name);
+const titleOf = (name) => (kind === 'routes' ? pairOf(name).map(place).join(' – ') : kind === 'airports' ? `${name} · ${rows.find((r) => r.origin === name)?.city || ''}` : name);
 
 function draw() {
   $('scale-note').hidden = !relative();
@@ -85,7 +93,7 @@ function draw() {
     busiest: `Colour compares each cell with the year's biggest ${page.noun}: the biggest is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own. Hover over a cell for both.`,
   }[state.scale];
   $('matrix-rank').options[1].textContent = `${latestFullYear} only`;
-  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}${kind === 'routes' ? ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 12 times (12 departures). A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}`;
+  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}${kind === 'airports' ? ' Click an airport\'s code to see where it flies.' : ''}${kind === 'routes' ? ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 12 times (12 departures). A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}`;
 
   const box = $('matrix');
   box.replaceChildren();
@@ -97,7 +105,7 @@ function draw() {
   const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1200),
     height: res.dests.length * ROW_PX + 90,
-    marginLeft: 190,
+    marginLeft: kind === 'airports' ? 48 : 190, // airport codes are short; airline names and routes aren't
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
@@ -122,7 +130,7 @@ function fillControls() {
   for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
   measure.value = state.measure;
   if ($('matrix-kind')) $('matrix-kind').value = state.flights;
-  $('matrix-service').value = state.service;
+  if ($('matrix-service')) $('matrix-service').value = state.service;
   $('matrix-n').value = String(state.n);
   $('matrix-rank').value = state.rank;
   for (const radio of document.querySelectorAll('input[name="scale"]')) {
@@ -132,7 +140,7 @@ function fillControls() {
   const bind = (id, field, convert = String) => $(id).addEventListener('change', (e) => { state[field] = convert(e.target.value); pushState(); draw(); });
   bind('matrix-measure', 'measure');
   if ($('matrix-kind')) bind('matrix-kind', 'flights');
-  bind('matrix-service', 'service');
+  if ($('matrix-service')) bind('matrix-service', 'service');
   bind('matrix-n', 'n', Number);
   bind('matrix-rank', 'rank');
 }

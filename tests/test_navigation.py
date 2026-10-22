@@ -22,8 +22,9 @@ def views(path):
 
 
 def test_airports_views():
-    assert views("/airports") == [("Busiest airports", "/airports", True), ("Map", "/airports/globe", False)]
-    assert views("/airports/globe") == [("Busiest airports", "/airports", False), ("Map", "/airports/globe", True)]
+    A = [("Busiest airports", "/airports"), ("Over time", "/airports/over-time"), ("Map", "/airports/globe")]
+    for i, (_, path) in enumerate(A):
+        assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(A)], path
 
 
 def test_an_airports_views_use_upper_case_codes():
@@ -64,8 +65,9 @@ def test_datasettes_own_pages_still_render_with_their_own_views_list(ds):
 
 PAGES = {
     "/": (None, []),
-    "/airports": ("airports", ["Busiest airports", "Map"]),
-    "/airports/globe": ("airports", ["Busiest airports", "Map"]),
+    "/airports": ("airports", ["Busiest airports", "Over time", "Map"]),
+    "/airports/over-time": ("airports", ["Busiest airports", "Over time", "Map"]),
+    "/airports/globe": ("airports", ["Busiest airports", "Over time", "Map"]),
     "/airports/ATL": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
     "/airports/ATL/destinations": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
     "/airports/ATL/changes": ("airports", ["Over time", "Destinations", "Changes", "Map"]),

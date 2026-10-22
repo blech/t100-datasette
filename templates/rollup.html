@@ -15,13 +15,14 @@
     <h1>{{ page.title }} over time</h1>
     {% if kind == "airlines" %}{% include "_airline_search.html" %}{% endif %}
     <p class="intro">
-      Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.
+      {% if kind == "airports" %}Every US airport in the data, counting flights departing from it, by year. Click an airport's code to see where it flies.
+      {% else %}Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.{% endif %}
     </p>
     <p class="chart-sentence">
       Show <select id="matrix-measure" aria-label="Measure"></select>
-      for <select id="matrix-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
+      {% if kind != "airports" %}for <select id="matrix-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
       on <select id="matrix-service" aria-label="Flights"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>
-      for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
+      {% endif %}      for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
       {{ page.noun }}, ranked by <select id="matrix-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
     </p>
     <fieldset id="matrix-scale" class="scale-choice">
@@ -34,7 +35,8 @@
     <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note" id="rank-note"></p>
     <p class="note" id="about-note">
-      How airlines are <a href="/about#groupings">grouped</a>.
+      {% if kind == "airports" %}Each airport counts flights <em>from</em> it only: <a href="/about#direction">routes are one-way</a>. Airports with fewer than 365 departures in every year are left out.
+      {% else %}How airlines are <a href="/about#groupings">grouped</a>.{% endif %}
       Freight before 2003 leaves out most domestic FedEx and UPS flying, so shares of freight jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.
     </p>
     {% include "_footer.html" %}
