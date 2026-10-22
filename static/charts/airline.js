@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
@@ -128,6 +129,7 @@ async function loadChanges() {
   // the views line's map link follows the years compared; a page without one (an old template) still gets its table
   const mapLink = $('map-link');
   if (mapLink) mapLink.href = `/airlines/${airline || group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
+  setDataLink('carrier_route_changes', { group, airline, a, b });
   const { rows } = await fetchRows(queryUrl('carrier_route_changes', { group, airline, a, b }));
   routes = classifyRoutes(rows, { min: Number(min) });
   const c = summariseRoutes(routes);
@@ -190,6 +192,7 @@ async function main() {
     $('al-b').value = within(qs.get('to'), String(lastYear));
     $('al-a').value = within(qs.get('from'), String(Math.max(firstYear, lastYear - 6)));
   }
+  if (hasSize) setDataLink('carrier_group_detail', { group, airline });
   try {
     const [d, airports] = await Promise.all([
       hasSize ? fetchRows(queryUrl('carrier_group_detail', { group, airline })) : null,

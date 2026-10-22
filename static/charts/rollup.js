@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows } from '/static/charts/src/rollup.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
@@ -137,6 +138,7 @@ function fillControls() {
 }
 
 async function main() {
+  setDataLink(page.query, queryParams);
   fillControls();
   carry();
   try {

@@ -1,4 +1,5 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { defaultView, clamp } from '/static/globe/src/camera.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -86,6 +87,7 @@ async function yearRows(year) {
 
 async function load() {
   const id = ++latest;
+  setDataLink('carrier_routes_year', { group, airline, year: state.year });
   setStatus('Loading…');
   try {
     const [now, then] = await Promise.all([yearRows(state.year), state.compare ? yearRows(state.compare) : null]);

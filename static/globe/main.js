@@ -1,4 +1,5 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from './src/themes.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { defaultView, clamp, glide, rotationFor } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
@@ -173,6 +174,7 @@ function drawLegend() {
 }
 
 function refresh() {
+  setDataLink('routes_by_year', { origin, min_deps: '' });
   hover = -1;
   selected = -1;
   $('panel').hidden = true;
@@ -216,6 +218,9 @@ async function showChooser() {
     a.textContent = `${r.origin} ${r.origin_city_name}`;
     box.append(a);
   }
+  // the chooser's airports, over all years; the controls (where a map's data link sits) are hidden here, so it closes the list
+  setDataLink('top_us_airports', { year: '', sort_column: '' });
+  if ($('data-link')) box.append($('data-link'));
   box.hidden = false;
   $('title').textContent = 'US airport network';
   chooserPoints = placePoints(res.rows, airports);

@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, buildCityMatrix, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -214,6 +215,7 @@ $('matrix').addEventListener('click', (e) => {
 });
 
 async function main() {
+  setDataLink('routes_by_year', { origin, min_deps: '' });
   fillControls();
   try {
     const [byYear, airports] = await Promise.all([

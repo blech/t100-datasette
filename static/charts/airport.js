@@ -1,4 +1,5 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList } from '/static/charts/src/airport.js';
 import { formatYearMonth } from '/static/charts/src/airline.js';
@@ -115,6 +116,7 @@ async function overTime() {
     measure: [$('ap-measure').value, 'passengers'], flights: [$('ap-flights').value, 'passenger'],
     split: [$('ap-split').value, 'service'], min: [$('ap-min').value, '12'],
   });
+  setDataLink('airport_size', { origin, group: '' });
   try {
     const [s, p] = await Promise.all([
       fetchRows(queryUrl('airport_size', { origin })),
@@ -185,6 +187,7 @@ function summarise() {
 
 async function loadChanges() {
   const a = $('ap-a').value, b = $('ap-b').value;
+  setDataLink('airport_changes', { origin, a, b, group: '' });
   try {
     changes = (await fetchRows(queryUrl('airport_changes', { origin, a, b }))).rows;
   } catch (err) {

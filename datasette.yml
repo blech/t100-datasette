@@ -38,6 +38,8 @@ databases:
           ORDER BY a.code
 
       top_us_airports:
+        title: "US airports by traffic"
+        description: "One row per airport: its traffic from it, for the year given, or every year when it is empty."
         sql: |
           SELECT
             origin,
@@ -62,6 +64,8 @@ databases:
           LIMIT 100;
 
       top_airports:
+        title: "Busiest US airports in a year"
+        description: "One row per airport in the year: departures from it, seats, passengers, freight, load factor and destinations flown to at least 12 times. Give a year."
         sql: |
           -- dests: destinations with at least 12 departures that year, the cut-off the maps and matrices use
           WITH dests AS (
@@ -183,6 +187,8 @@ databases:
             END
             DESC
       routes_by_year:
+        title: "Destinations from an airport, by year"
+        description: "One row per destination and year, counting departures from the origin, with routes under the minimum departures (12 when empty) left out."
         sql: |
           SELECT
             dest,
@@ -205,6 +211,8 @@ databases:
 
       # an airport's departures by year, airline group, service and kind, for its charts; groups found as carrier_group_year finds them
       airport_size:
+        title: "Departures from an airport, by year, airline group, service and kind"
+        description: "One row per year, airline group, domestic or international, and passenger or freight, counting departures from the origin. Leave group empty for every airline."
         sql: |
           SELECT
             t.year,
@@ -217,11 +225,14 @@ databases:
           LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
           LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
           WHERE t.origin = :origin AND t.year IS NOT NULL
+            AND (:group = '' OR COALESCE(g.group_id, 'unknown') = :group)
           GROUP BY t.year, 2, 3, service, kind
           ORDER BY t.year
 
       # each destination and airline group from an airport in two years, with the first and last month flown, for what changed
       airport_changes:
+        title: "Destinations and airline groups from an airport, in two years"
+        description: "One row per destination and airline group flown in either year, counting departures from the origin, with the first and last month flown. Leave group empty for every airline."
         sql: |
           SELECT
             t.dest,
@@ -237,6 +248,7 @@ databases:
           LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
           LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
           WHERE t.origin = :origin
+            AND (:group = '' OR COALESCE(g.group_id, 'unknown') = :group)
           GROUP BY t.dest, 3, 4
           HAVING deps_a > 0 OR deps_b > 0
           ORDER BY deps_a DESC, deps_b DESC
@@ -264,6 +276,8 @@ databases:
           ORDER BY year, family
 
       carrier_group_by_year:
+        title: "Airline groups by year"
+        description: "One row per airline group, year, service and kind."
         sql: |
           SELECT
             year, group_id, group_name,
@@ -275,6 +289,8 @@ databases:
           ORDER BY year, group_name
 
       family_detail:
+        title: "An aircraft family by year, version and airline group"
+        description: "One row per year, version, airline group, service and kind. Leave group empty for every airline."
         sql: |
           SELECT
             year, subfamily, group_id, group_name,
@@ -282,11 +298,13 @@ databases:
             CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
             SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
           FROM family_detail_year
-          WHERE family = :family
+          WHERE family = :family AND (:group = '' OR group_id = :group)
           GROUP BY year, subfamily, group_id, group_name, service, kind
           ORDER BY year
 
       type_table:
+        title: "Aircraft types and families, in a year or all years"
+        description: "One row per aircraft type, with its family and maker, the first and last years it flew, and its departures, seats, passengers and freight in the year. Leave year empty for all years."
         sql: |
           SELECT
             y.aircraft_type AS type_id,
@@ -296,10 +314,10 @@ databases:
             COALESCE(t.kind, 'Unknown') AS aircraft_kind,
             MIN(CASE WHEN y.deps > 0 THEN y.year END) AS first_year,
             MAX(CASE WHEN y.deps > 0 THEN y.year END) AS last_year,
-            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.deps ELSE 0 END) AS deps,
-            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.seats ELSE 0 END) AS seats,
-            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.passengers ELSE 0 END) AS passengers,
-            SUM(CASE WHEN (:year = 'all' OR y.year = CAST(:year AS INTEGER)) THEN y.freight ELSE 0 END) AS freight
+            SUM(CASE WHEN (:year IN ('', 'all') OR y.year = CAST(:year AS INTEGER)) THEN y.deps ELSE 0 END) AS deps,
+            SUM(CASE WHEN (:year IN ('', 'all') OR y.year = CAST(:year AS INTEGER)) THEN y.seats ELSE 0 END) AS seats,
+            SUM(CASE WHEN (:year IN ('', 'all') OR y.year = CAST(:year AS INTEGER)) THEN y.passengers ELSE 0 END) AS passengers,
+            SUM(CASE WHEN (:year IN ('', 'all') OR y.year = CAST(:year AS INTEGER)) THEN y.freight ELSE 0 END) AS freight
           FROM type_year y
             LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type
             LEFT JOIN aircraft_family f ON f.aircraft_type = y.aircraft_type
@@ -308,6 +326,8 @@ databases:
 
       # the airlines table: each member airline's chosen year (or every year) by service and kind, with the years it flew
       airline_table:
+        title: "Airline groups and their airlines, in a year or all years"
+        description: "One row per airline, service and kind, with its group and the first and last years it flew. Leave year empty for all years."
         sql: |
           SELECT
             d.group_id,
@@ -318,17 +338,19 @@ databases:
             CASE WHEN d.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
             MIN(CASE WHEN d.deps > 0 THEN d.year END) AS first_year,
             MAX(CASE WHEN d.deps > 0 THEN d.year END) AS last_year,
-            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) AS deps,
-            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.seats ELSE 0 END) AS seats,
-            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.passengers ELSE 0 END) AS passengers,
-            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.freight ELSE 0 END) AS freight
+            SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) AS deps,
+            SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.seats ELSE 0 END) AS seats,
+            SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.passengers ELSE 0 END) AS passengers,
+            SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.freight ELSE 0 END) AS freight
           FROM carrier_group_year d
             LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
           GROUP BY d.group_id, d.group_name, d.airline_id, airline_name, service, kind
-          HAVING SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) > 0
+          HAVING SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) > 0
           ORDER BY d.group_id, d.airline_id
 
       maker_by_year:
+        title: "Aircraft makers by year"
+        description: "One row per maker, year, service and kind."
         sql: |
           SELECT
             y.year,
@@ -357,6 +379,8 @@ databases:
 
       # the airline queries take :group (a merged group's id, or an airline's own) and :airline ('' for the whole group, or one member)
       carrier_group_detail:
+        title: "An airline group, or one of its airlines, by year"
+        description: "One row per year, service and kind. Leave airline empty for the whole group."
         sql: |
           SELECT
             d.year,
@@ -382,6 +406,8 @@ databases:
           ORDER BY year
 
       carrier_routes_year:
+        title: "An airline's airport pairs in one year"
+        description: "One row per airport pair (both directions together) flown in the year. Leave airline empty for the whole group. Give a year."
         sql: |
           SELECT r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, r.origin, r.dest, r.deps, r.seats, r.passengers, r.freight, r.domestic_deps
           FROM carrier_route_year r
@@ -391,6 +417,8 @@ databases:
 
       # an airline's routes matrix: each airport pair (both directions together) by year, flown at least 12 times
       carrier_route_by_year:
+        title: "An airline's airport pairs by year"
+        description: "One row per airport pair (both directions together) and year flown at least 12 times. Leave airline empty for the whole group."
         sql: |
           SELECT
             r.origin, r.dest, r.year,
@@ -403,6 +431,8 @@ databases:
           ORDER BY r.year, r.origin, r.dest
 
       carrier_route_changes:
+        title: "An airline's airport pairs in two years"
+        description: "One row per airport pair and airline flown in either year, with the first and last month flown. Leave airline empty for the whole group."
         sql: |
           SELECT
             r.origin, r.dest, r.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline,
@@ -420,6 +450,8 @@ databases:
           ORDER BY deps_a DESC, deps_b DESC
 
       engines_by_year:
+        title: "Departures by number of engines and distance, by year"
+        description: "One row per year, engine count, distance band and kind."
         sql: |
           SELECT
             year, aircraft_group, distance_band,
@@ -455,6 +487,8 @@ databases:
           ORDER BY month, dest
 
       route:
+        title: "Every carrier and aircraft on a route, by year"
+        description: "One row per year, carrier and aircraft, for departures from the origin to the destination. Leave group empty for every airline."
         sql: >
           WITH cn AS (
             -- BTS lists an airline's entity once per name and start date, and often repeats a row, so joining on the entity
@@ -497,6 +531,7 @@ databases:
           WHERE
             origin = :origin
             AND dest = :dest
+            AND (:group = '' OR g.group_id = :group)
           GROUP BY
             year,
             cp.name,
@@ -508,6 +543,8 @@ databases:
             total_passengers DESC
 
       route_year:
+        title: "Every carrier and aircraft on a route, by month, in one year"
+        description: "One row per month, carrier and aircraft, for departures from the origin to the destination in the year. Leave group empty for every airline. Give a year."
         sql: >
           WITH cn AS (
             -- BTS lists an airline's entity once per name and start date, and often repeats a row, so joining on the entity
@@ -552,6 +589,7 @@ databases:
             origin = :origin
             AND dest = :dest
             AND year = :year
+            AND (:group = '' OR g.group_id = :group)
           ORDER BY
             month ASC,
             a.name ASC,
