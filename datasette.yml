@@ -260,6 +260,28 @@ databases:
           GROUP BY y.aircraft_type
           ORDER BY y.aircraft_type
 
+      # the airlines table: each member airline's chosen year (or every year) by service and kind, with the years it flew
+      airline_table:
+        sql: |
+          SELECT
+            d.group_id,
+            d.group_name,
+            d.airline_id,
+            COALESCE(g.airline_name, d.group_name) AS airline_name,
+            CASE WHEN d.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN d.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            MIN(CASE WHEN d.deps > 0 THEN d.year END) AS first_year,
+            MAX(CASE WHEN d.deps > 0 THEN d.year END) AS last_year,
+            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) AS deps,
+            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.seats ELSE 0 END) AS seats,
+            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.passengers ELSE 0 END) AS passengers,
+            SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.freight ELSE 0 END) AS freight
+          FROM carrier_group_year d
+            LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
+          GROUP BY d.group_id, d.group_name, d.airline_id, airline_name, service, kind
+          HAVING SUM(CASE WHEN (:year = 'all' OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) > 0
+          ORDER BY d.group_id, d.airline_id
+
       maker_by_year:
         sql: |
           SELECT

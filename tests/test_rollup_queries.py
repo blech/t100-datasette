@@ -140,3 +140,39 @@ def test_type_table_can_add_up_every_year(ds, db_path):
     row = get_json(ds, "/t100/type_table.json?_shape=objects&year=all")["rows"][0]
     assert (row["deps"], row["first_year"], row["last_year"]) == (16, 2001, 2019)
     assert get_json(ds, "/t100/type_table.json?_shape=objects&year=2001")["rows"][0]["deps"] == 4
+
+
+def cg(year, airline, group, name, deps, domestic=1, service_class="F"):
+    return dict(year=year, airline_id=airline, group_id=group, group_name=name, domestic=domestic, service_class=service_class,
+                deps=deps, seats=deps * 100, passengers=deps * 80, freight=deps * 1000)
+
+
+def seed_delta(db_path):
+    put(db_path, "carrier_group", [dict(airline_id="19790", group_id="delta", group_name="Delta (incl. Northwest)", airline_name="Delta Air Lines Inc."),
+                                   dict(airline_id="19386", group_id="delta", group_name="Delta (incl. Northwest)", airline_name="Northwest Airlines Inc.")])
+    put(db_path, "carrier_group_year", [cg(2005, "19790", "delta", "Delta (incl. Northwest)", 50), cg(2005, "19386", "delta", "Delta (incl. Northwest)", 20),
+                                        cg(2005, "19386", "delta", "Delta (incl. Northwest)", 3, domestic=0, service_class="G"),
+                                        cg(2019, "19790", "delta", "Delta (incl. Northwest)", 60),
+                                        cg(2019, "19393", "southwest", "Southwest", 70)])
+
+
+def test_airline_table_gives_each_member_its_year_by_service_and_kind(ds, db_path):
+    seed_delta(db_path)
+    rows = get_json(ds, "/t100/airline_table.json?_shape=objects&year=2005")["rows"]
+    got = {(r["airline_id"], r["service"], r["kind"]): r["deps"] for r in rows}
+    assert got == {("19790", "domestic", "passenger"): 50, ("19386", "domestic", "passenger"): 20, ("19386", "international", "freight"): 3}
+    nw = next(r for r in rows if r["airline_id"] == "19386" and r["kind"] == "passenger")
+    assert (nw["group_id"], nw["group_name"], nw["airline_name"]) == ("delta", "Delta (incl. Northwest)", "Northwest Airlines Inc.")
+    later = get_json(ds, "/t100/airline_table.json?_shape=objects&year=2019")["rows"]
+    assert sorted(r["airline_id"] for r in later) == ["19393", "19790"]  # Northwest flew nothing in 2019
+    sw = next(r for r in later if r["airline_id"] == "19393")
+    assert sw["airline_name"] == "Southwest"  # no carrier_group row: the group's name stands in
+
+
+def test_airline_table_can_add_up_every_year_and_spans_every_year(ds, db_path):
+    seed_delta(db_path)
+    rows = get_json(ds, "/t100/airline_table.json?_shape=objects&year=all")["rows"]
+    dl = next(r for r in rows if r["airline_id"] == "19790")
+    assert (dl["deps"], dl["passengers"], dl["first_year"], dl["last_year"]) == (110, 8800, 2005, 2019)
+    one = next(r for r in get_json(ds, "/t100/airline_table.json?_shape=objects&year=2019")["rows"] if r["airline_id"] == "19790")
+    assert (one["deps"], one["first_year"], one["last_year"]) == (60, 2005, 2019)
