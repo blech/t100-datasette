@@ -1,0 +1,3 @@
+{% extends "default:query.html" %}
+{# a canned query with a title names the page by it, not by the first line of its SQL #}
+{% block title %}{% if metadata and metadata.title %}{{ metadata.title }} · {{ database }}{% else %}{{ super() }}{% endif %}{% endblock %}
