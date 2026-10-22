@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, MATRIX_MEASURES, labelMargin, textWidth } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -126,19 +126,21 @@ function drawCities() {
     const parts = c.parts ? c.parts.slice(0, 5).map((p) => ({ label: p.dest, value: formatCount(p.value) })) : [];
     const more = c.parts && c.parts.length > 5 ? [{ label: `+${c.parts.length - 5} more`, value: '' }] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
-    const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.expandable ? `#toggle:${row.key}` : routeYearHref(row.codes[0], c.year);
+    // a city's cell opens the route in that year when the city has one airport; a city with several opens into them
+    const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.codes.length === 1 ? routeYearHref(row.codes[0], c.year) : `#toggle:${row.key}`;
     return { ...c, year: String(c.year), href, head, rows: [...cellRows(c), ...parts, ...more] };
   });
+  // a city is its name, opening into its airports (the links); an airport under it is its code, named on hover
   const labels = res.rows.map((r) => ({
     ...r,
-    text: r.kind === 'airport' ? `${r.code}${r.name ? ` · ${r.name}` : ''}` : `${r.expandable ? (r.open ? '▾' : '▸') : '\u2003'} ${r.label}`,
-    href: r.kind === 'airport' ? airportHref(r.code) : r.expandable ? `#toggle:${r.key}` : airportHref(r.codes[0]),
+    text: r.kind === 'airport' ? r.code : `${r.open ? '▾' : '▸'} ${r.label}`,
+    href: r.kind === 'airport' ? airportHref(r.code) : `#toggle:${r.key}`,
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
   const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1200),
     height: res.rows.length * ROW_PX + 90,
-    marginLeft: 280,
+    marginLeft: labelMargin(labels.map((l) => l.text), textWidth(box)),
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },

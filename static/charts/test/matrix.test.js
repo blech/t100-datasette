@@ -60,7 +60,7 @@ test('menu of measures', () => {
 });
 
 // ---- grouping by BTS market ----
-import { buildCityMatrix } from '../src/matrix.js';
+import { buildCityMatrix, labelMargin } from '../src/matrix.js';
 
 const c = (dest, year, passengers, market, city, extra = {}) =>
   ({ dest, year, passengers, deps: 1, seats: 1, freight: 0, service: 'international', market_id: market, city, ...extra });
@@ -75,26 +75,28 @@ const group = { measure: 'passengers', service: 'all', n: 10, open: [] };
 
 test('airports in one market become one row, ranked by the market total', () => {
   const res = buildCityMatrix(london, group);
-  assert.deepEqual(res.rows.map((r) => r.label.split(' · ')[0]), ['Paris, France', 'London, United Kingdom', 'Dublin, Ireland']);
+  assert.deepEqual(res.rows.map((r) => r.label), ['Paris, France', 'London, United Kingdom', 'Dublin, Ireland']);
   const lon = res.cells.filter((x) => x.row === res.rows[1].key);
   assert.deepEqual(lon.map((x) => [x.year, x.value]), [[2018, 800], [2019, 1250]]);
 });
 
-test('a group row is labelled with its busiest airports in volume order, and says how many more', () => {
+test('a group row is labelled with the city alone; its airports, busiest first, are in codes', () => {
   const res = buildCityMatrix(london, group);
-  assert.equal(res.rows[1].label, 'London, United Kingdom · LHR, LGW, STN');
+  assert.equal(res.rows[1].label, 'London, United Kingdom');
+  assert.deepEqual(res.rows[1].codes, ['LHR', 'LGW', 'STN']);
   const many = ['A', 'B', 'C', 'D', 'E'].map((d, i) => c(d, 2019, 100 - i, '1', 'Big City'));
-  assert.equal(buildCityMatrix(many, group).rows[0].label, 'Big City · A, B, C +2');
+  assert.equal(buildCityMatrix(many, group).rows[0].label, 'Big City');
 });
 
 test('the city name comes from the busiest airport, not from the first or alphabetical row', () => {
   const rows = [c('EWR', 2019, 100, '31703', 'Newark, NJ'), c('JFK', 2019, 900, '31703', 'New York, NY'), c('HPN', 2019, 5, '31703', 'White Plains, NY')];
-  assert.match(buildCityMatrix(rows, group).rows[0].label, /^New York, NY · JFK, EWR/);
+  assert.equal(buildCityMatrix(rows, group).rows[0].label, 'New York, NY');
 });
 
-test('multi-airport groups can be expanded, single-airport ones cannot', () => {
+test('every group can be opened, a one-airport city too, so its airport is there to follow', () => {
   const res = buildCityMatrix(london, group);
-  assert.deepEqual(res.rows.map((r) => r.expandable), [true, true, false]);
+  assert.deepEqual(res.rows.map((r) => r.expandable), [true, true, true]);
+  assert.deepEqual(buildCityMatrix(london, { ...group, open: ['31000'] }).rows.filter((r) => r.kind === 'airport').map((r) => r.code), ['DUB']);
   assert.ok(res.rows.every((r) => r.kind === 'group' && r.open === false));
 });
 
@@ -119,7 +121,7 @@ test('airports without a market id stand alone, and a reused code in two markets
   ];
   const res = buildCityMatrix(rows, group);
   assert.equal(res.rows.length, 3);
-  assert.ok(res.rows.every((r) => !r.expandable));
+  assert.deepEqual(res.rows.map((r) => r.codes), [['DOH'], ['SAW'], ['SAW']]);
 });
 
 test('cells keep a per-airport breakdown for the tooltip, biggest first', () => {
@@ -254,4 +256,15 @@ test('city view compares markets with the busiest market, and opened airports wi
 
 test('an empty selection has no maxima', () => {
   assert.deepEqual(buildMatrix([], {}).yearMax, {});
+});
+
+test('the label column is as wide as its longest label, within limits', () => {
+  assert.equal(labelMargin(['ATL', 'LAX']), 48);                          // codes need little room
+  assert.equal(labelMargin(['▸ Los Angeles, CA', '▸ Chicago, IL']), 17 * 7 + 16);
+  assert.equal(labelMargin(['x'.repeat(100)]), 280);                       // never wider than before
+});
+
+test('a city row is named by the city name its airports carry most between them', () => {
+  const rows = [c('BWI', 2019, 1300, '30852', 'Baltimore, MD'), c('DCA', 2019, 1200, '30852', 'Washington, DC'), c('IAD', 2019, 1100, '30852', 'Washington, DC')];
+  assert.equal(buildCityMatrix(rows, group).rows[0].label, 'Washington, DC');
 });

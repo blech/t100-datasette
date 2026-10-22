@@ -28,7 +28,8 @@ def test_the_airports_matrix_page(ds):
     assert 'data-kind="airports"' in r.text and 'id="matrix"' in r.text and "/static/charts/rollup.js" in r.text
     assert "Airports over time" in r.text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', r.text, re.S).group(1)
-    assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-n", "matrix-rank"]
+    assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-n", "matrix-group", "matrix-rank"]
+    assert '<option value="city">cities</option>' in sentence
     assert "airlines" not in sentence and "_airline_search" not in r.text and 'id="airline-search"' not in r.text
 
 
@@ -66,3 +67,9 @@ def test_airport_by_year_gives_each_airport_its_market(ds, db_path):
     markets(db_path)
     rows = get_json(ds, "/t100/airport_by_year.json?_shape=objects&_size=max")["rows"]
     assert {r["origin"]: r["market_id"] for r in rows} == {"ATL": "30397"}
+
+
+def test_the_busiest_airports_table_offers_airports_or_cities(ds):
+    html = get(ds, "/airports").text
+    bar = re.search(r'<div class="bar">.*?</div>', html, re.S).group(0)
+    assert re.search(r'<select id="group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>', bar)
