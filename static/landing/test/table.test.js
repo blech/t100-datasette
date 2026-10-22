@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupCities, matrixSearch, tableSearch, topBy, parseState, toSearch, SORTS, airportHref, loadFactor } from '../src/table.js';
+import { yearLabel, groupCities, matrixSearch, tableSearch, topBy, parseState, toSearch, SORTS, airportHref, loadFactor } from '../src/table.js';
 
 test('topBy sorts descending by the chosen measure and keeps the top n', () => {
   const rows = [
@@ -85,4 +85,11 @@ test('a city is named by the city name its airports carry most between them, not
   const [dc] = groupCities([ap('BWI', '30852', 'Baltimore, MD', 1300), ap('DCA', '30852', 'Washington, DC', 1200), ap('IAD', '30852', 'Washington, DC', 1100)]);
   assert.equal(dc.name, 'Washington, DC');
   assert.equal(dc.airports[0].origin, 'BWI');   // still listed busiest first
+});
+
+test('all years is a year choice of its own, written as year=all', () => {
+  assert.equal(parseState('?year=all', 1990, 2025).year, 'all');
+  assert.equal(toSearch({ year: 'all', sort: 'passengers', group: 'airport' }, 2025), '?year=all');
+  assert.equal(yearLabel('all', 1990, 2025), '1990–2025');
+  assert.equal(yearLabel(2019, 1990, 2025), '2019');
 });

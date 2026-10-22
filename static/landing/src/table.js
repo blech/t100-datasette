@@ -15,11 +15,14 @@ export function parseState(search, minYear, maxYear) {
   const year = Number.parseInt(q.get('year'), 10);
   const sort = q.get('sort');
   return {
-    year: Number.isFinite(year) && year >= minYear && year <= maxYear ? year : maxYear,
+    year: q.get('year') === 'all' ? 'all' : Number.isFinite(year) && year >= minYear && year <= maxYear ? year : maxYear,
     sort: Object.hasOwn(SORTS, sort) ? sort : 'passengers',
     group: q.get('group') === 'city' ? 'city' : 'airport',
   };
 }
+
+// the heading's years: one year, or the whole span for all years
+export const yearLabel = (year, minYear, maxYear) => (year === 'all' ? `${minYear}–${maxYear}` : String(year));
 
 export function toSearch(state, maxYear) {
   const q = new URLSearchParams();

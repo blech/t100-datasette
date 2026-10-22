@@ -108,3 +108,16 @@ def test_totals_match_the_view_for_every_airport_and_year(db_path):
     expected = conn.execute("SELECT origin, year, SUM(departures_performed), SUM(passengers) FROM t100 GROUP BY origin, year ORDER BY 1, 2").fetchall()
     got = conn.execute("SELECT origin, year, deps, passengers FROM airport_year_totals ORDER BY 1, 2").fetchall()
     assert got == expected
+
+
+def test_all_years_adds_up_every_year_and_counts_destinations_flown_12_times_in_some_year(ds, db_path):
+    add_segments(db_path, "t100_domestic", [
+        us("ATL", 2019, 12, 100, seats=200, dest="BOS", city="Atlanta, GA"),
+        us("ATL", 2024, 20, 300, seats=400, dest="BOS", city="Atlanta, GA"),   # BOS again: counted once
+        us("ATL", 2024, 6, 50, seats=100, dest="DEN", city="Atlanta, GA"),     # never 12 in a year
+        us("ATL", 2025, 12, 10, seats=20, dest="SEA", city="Atlanta, Georgia"),  # the newest name is the one shown
+    ])
+    for year in ("all", ""):
+        atl = top(ds, year)["ATL"]
+        assert (atl["deps"], atl["passengers"], atl["seats"], atl["dests"]) == (50, 460, 720, 2), year
+        assert atl["origin_city_name"] == "Atlanta, Georgia"

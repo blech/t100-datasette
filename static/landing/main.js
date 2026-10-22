@@ -1,7 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { SORTS, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities } from './src/table.js';
+import { SORTS, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel } from './src/table.js';
 import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
 
 const ROWS_SHOWN = 20;
@@ -39,7 +39,7 @@ function render() {
     if (th.dataset.sort === state.sort) th.setAttribute('aria-sort', 'descending');
     else th.removeAttribute('aria-sort');
   }
-  $('heading').textContent = `Busiest airports by ${SORTS[state.sort].toLowerCase()}, ${state.year}`;
+  $('heading').textContent = `Busiest ${state.group === 'city' ? 'cities' : 'airports'} by ${SORTS[state.sort].toLowerCase()}, ${yearLabel(state.year, minYear, maxYear)}`;
   const body = document.querySelector('#airports tbody');
   body.replaceChildren();
   // an airport's row: its code (to its page), name, figures and map; under an opened city it's indented
@@ -49,7 +49,7 @@ function render() {
     const code = cell('', 'code');
     code.append(link(airportHref(r.origin, state.sort), r.origin));
     const more = cell('', 'more');
-    more.append(link(`/airports/${encodeURIComponent(r.origin)}/globe?year=${state.year}`, 'Map →'));
+    more.append(link(`/airports/${encodeURIComponent(r.origin)}/globe${state.year === 'all' ? '' : `?year=${state.year}`}`, 'Map →')); // all years: the map's latest
     tr.append(code, cell(r.origin_city_name || '', 'city'), countCell(r.passengers, 'passengers'), countCell(r.deps, 'departures'),
       percentCell(loadFactor(r)), cell(exactCount(r.dests), 'num'), tonsCell(r.freight), more);
     return tr;
@@ -96,7 +96,7 @@ async function load() {
     const res = await fetchRows(queryUrl('top_airports', { year: state.year }));
     if (id !== loadSeq) return;
     rows = res.rows;
-    $('status').textContent = rows.length ? '' : `No data for ${state.year}.`;
+    $('status').textContent = rows.length ? '' : `No data for ${yearLabel(state.year, minYear, maxYear)}.`;
   } catch (err) {
     if (id !== loadSeq) return;
     console.error(err);
@@ -107,10 +107,11 @@ async function load() {
 }
 
 const select = $('year');
+select.append(new Option('All years', 'all'));
 for (let y = maxYear; y >= minYear; y--) select.append(new Option(String(y), String(y)));
 select.value = String(state.year);
 carryToMatrix();
-select.addEventListener('change', () => { state.year = Number(select.value); pushState(); load(); });
+select.addEventListener('change', () => { state.year = select.value === 'all' ? 'all' : Number(select.value); pushState(); load(); });
 const grouping = $('group');
 grouping.value = state.group;
 grouping.addEventListener('change', () => { state.group = grouping.value; pushState(); render(); });
