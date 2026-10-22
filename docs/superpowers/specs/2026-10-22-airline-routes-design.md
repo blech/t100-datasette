@@ -7,7 +7,7 @@ This is the second of the four new views in sub-project 3 of bucket 4 in `docs/s
 - what changed between two years;
 - a map of one year or a span.
 
-None of them shows how its network shifted year by year: hubs built up or wound down, or a merged airline's routes fading out. A heat map does. Each row is a route, each column a year, and the colour is its size. It's the same kind of view as an airport's destinations and the airlines heat map, and it reuses their code.
+None of them shows how its network shifted year by year: hubs built up or wound down, or a merged airline's routes fading out. A heat map does. Each row is an airport pair, each column a year, and the colour is its size. It's the same kind of view as an airport's destinations and the airlines heat map, and it reuses their code.
 
 (A first draft of this spec made the view a table. The owner chose a heat map instead: a ranked table of thousands of routes mostly repeats the map and the Changes page. A table can come later if a question needs one.)
 
@@ -37,7 +37,7 @@ There's a new canned query, `carrier_route_by_year`, which follows the other air
 - `:group`: a merged group's id, or an airline's own;
 - `:airline`: `''` for the whole group, or one member.
 
-**It reads** `carrier_route_year`, and returns one row per origin, destination and year, summed over the group's members:
+**It reads** `carrier_route_year`, which holds airport pairs, not directions. Each pair's codes are in alphabetical order (`origin` < `dest`), with both directions added together, as the airline's map and Changes table count them. The query returns one row per pair and year, summed over the group's members:
 - `origin`, `dest`, `year`;
 - `deps`, `seats`, `passengers` and `freight`;
 - `service`: `domestic` when more than half that year's departures on the route are domestic, otherwise `international`. This is the rule `routes_by_year` uses.
@@ -52,9 +52,9 @@ Place names, for each row's hover text, come from the existing `airports` query 
 
 The page reuses the airlines heat map's script, `static/charts/rollup.js`, with a new page kind, `routes`. It shares `buildHeatmap`, the colour scales, the popover and the notes. What differs from the airlines heat map:
 
-- **Rows are routes,** labelled `ATL → MCO`, one row per direction, because the site treats each direction as a route of its own.
+- **Rows are airport pairs,** labelled `ATL – MCO`, with both directions counted together, as on the airline's Changes table and map. The airline data has no other form: it's built that way.
 - **The hover text on a label** gives the places: "Atlanta – Orlando".
-- **A row's label links to the route,** with this airline picked out: `/airports/ATL/MCO?split=carrier&highlight=airline:{group}`. `{group}` is the page's group, even on a member's page, as in the Changes table.
+- **A row's label links to one direction of the route** (the alphabetical one, as the Changes table's links do), with this airline picked out: `/airports/ATL/MCO?split=carrier&highlight=airline:{group}`. `{group}` is the page's group, even on a member's page, as in the Changes table. The route page offers the other direction.
 - **The controls** read as one sentence:
   - **measure:** passengers (the default), departures, seats or freight;
   - **routes:** all (the default), domestic or international;
@@ -65,7 +65,7 @@ The page reuses the airlines heat map's script, `static/charts/rollup.js`, with 
   These are the airlines heat map's controls, apart from "flights". Their parameter names and defaults are the same: `measure`, `service`, `n`, `rank` and `scale`.
 - **"Ranked by {year} only"** uses the airline's own last year, not the data's. For Northwest, that's 2009 rather than 2025, so the option never gives an empty chart.
 - **The notes** say:
-  - rows are routes this airline flew;
+  - rows are airport pairs this airline flew, in both directions together;
   - a route-year needs 12 departures to appear;
   - a merged airline counts its members together for every year;
   - each label opens the route with the airline highlighted.
@@ -87,7 +87,7 @@ The page reuses the airlines heat map's script, `static/charts/rollup.js`, with 
 - **`static/charts/rollup.js`:**
   - **The `routes` kind:**
     - the query `carrier_route_by_year`, with `group` and `airline` from the body;
-    - rows keyed by `origin → dest`;
+    - rows keyed by `origin – dest`;
     - no flights filter;
     - labels linking to the route with the highlight;
     - hover text from the airport places;
@@ -99,7 +99,7 @@ The page reuses the airlines heat map's script, `static/charts/rollup.js`, with 
 ## Out of scope
 
 - A table of an airline's routes.
-- Grouping both directions of a route into one row.
+- Splitting a pair into its two directions: the airline data doesn't keep them apart.
 - Splitting a merged group's routes by member.
 - The other two new views.
 
@@ -122,7 +122,7 @@ The page reuses the airlines heat map's script, `static/charts/rollup.js`, with 
 
 **JavaScript (`node --test`):**
 - `rollupRows` keeps rows without a `kind` when asked for `passenger`, and still filters rows that have one.
-- A pure function, `routeRows(rows)`, turns query rows into `rollupRows` input keyed `ATL → MCO`, keeping service.
+- A pure function, `routeRows(rows)`, turns query rows into rows keyed `ATL – MCO`, keeping the measures and service.
 
 **In a browser (headless Playwright):**
 - `/airlines/delta/routes` draws a heat map with 50 rows.
