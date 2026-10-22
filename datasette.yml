@@ -343,6 +343,19 @@ databases:
           WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline) AND r.year = :year
           ORDER BY r.passengers DESC
 
+      # an airline's routes heat map: each airport pair (both directions together) by year, flown at least 12 times
+      carrier_route_by_year:
+        sql: |
+          SELECT
+            r.origin, r.dest, r.year,
+            SUM(r.deps) AS deps, SUM(r.seats) AS seats, SUM(r.passengers) AS passengers, SUM(r.freight) AS freight,
+            CASE WHEN SUM(r.domestic_deps) * 2 > SUM(r.deps) THEN 'domestic' ELSE 'international' END AS service
+          FROM carrier_route_year r
+          WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline)
+          GROUP BY r.origin, r.dest, r.year
+          HAVING SUM(r.deps) >= 12
+          ORDER BY r.year, r.origin, r.dest
+
       carrier_route_changes:
         sql: |
           SELECT

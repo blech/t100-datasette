@@ -176,3 +176,20 @@ def test_airline_table_can_add_up_every_year_and_spans_every_year(ds, db_path):
     assert (dl["deps"], dl["passengers"], dl["first_year"], dl["last_year"]) == (110, 8800, 2005, 2019)
     one = next(r for r in get_json(ds, "/t100/airline_table.json?_shape=objects&year=2019")["rows"] if r["airline_id"] == "19790")
     assert (one["deps"], one["first_year"], one["last_year"]) == (60, 2005, 2019)
+
+
+def cry(year, airline, origin, dest, deps, domestic=True):
+    return dict(group_id="delta", airline_id=airline, year=year, origin=origin, dest=dest, deps=deps, seats=deps * 100,
+                passengers=deps * 80, freight=deps * 1000, first_month=1, last_month=12, domestic_deps=deps if domestic else 0)
+
+
+def test_carrier_route_by_year_sums_members_and_keeps_pairs_flown_12_times(ds, db_path):
+    put(db_path, "carrier_route_year", [cry(2005, "19790", "ATL", "LGA", 10), cry(2005, "19386", "ATL", "LGA", 5),
+                                        cry(2019, "19790", "ATL", "LGA", 30), cry(2019, "19790", "ATL", "XNA", 11),
+                                        cry(2019, "19790", "ATL", "LHR", 20, domestic=False)])
+    url = "/t100/carrier_route_by_year.json?_shape=objects&group=delta&airline="
+    got = {(r["origin"], r["dest"], r["year"]): (r["deps"], r["passengers"], r["service"]) for r in get_json(ds, url)["rows"]}
+    assert got == {("ATL", "LGA", 2005): (15, 1200, "domestic"), ("ATL", "LGA", 2019): (30, 2400, "domestic"),
+                   ("ATL", "LHR", 2019): (20, 1600, "international")}  # ATL-XNA flew 11 times: under the cut-off
+    one = get_json(ds, url + "19790")["rows"]
+    assert [(r["origin"], r["dest"], r["year"]) for r in one] == [("ATL", "LGA", 2019), ("ATL", "LHR", 2019)]  # Delta alone flew ATL-LGA 10 times in 2005
