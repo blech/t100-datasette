@@ -8,6 +8,7 @@ import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight, parseHighlight, highlightedSeries, highlightMessage } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
+import { setDataLink } from '/static/common/datalink.js';
 
 // the tallest stack, which sets the y axis's scale
 const stackMax = (points, key, value = (p) => p.value) => {
@@ -247,9 +248,10 @@ async function main() {
   }
   const mapLink = $('map-link');
   if (mapLink) mapLink.href = `/airports/${origin}/globe${year !== null ? `?year=${year}` : ''}`;
-  $('raw-link').href = year === null
-    ? `/t100/route?origin=${origin}&dest=${dest}&_hide_sql=1`
-    : `/t100/route_year?origin=${origin}&dest=${dest}&year=${year}&_hide_sql=1`;
+  // the data behind the page, narrowed to the airline the page arrived highlighting
+  const group = parseHighlight(location.search)?.id ?? '';
+  if (year === null) setDataLink('route', { origin, dest, group });
+  else setDataLink('route_year', { origin, dest, year, group });
   fillSelect($('chart-split'), SPLITS, state.split);
   $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); if (onTable) drawTable(); else drawChart(); });
   if (onTable) {

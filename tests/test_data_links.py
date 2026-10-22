@@ -1,8 +1,11 @@
+import re
+
 import pytest
 import yaml
 
 from tests.helpers import add_segments, get, get_json
 from tests.test_rollup_queries import put
+from tests.test_views_pages import delta
 
 INVENTORY = ["top_airports", "top_us_airports", "airport_size", "routes_by_year", "airport_changes", "route", "route_year", "type_table",
              "maker_by_year", "engines_by_year", "family_detail", "airline_table", "carrier_group_by_year", "carrier_group_detail",
@@ -55,3 +58,48 @@ def test_each_linked_query_has_a_title_and_description():
 def test_a_data_page_is_titled_by_its_query_not_its_sql(ds):
     html = get(ds, "/t100/route?origin=SFO&dest=JFK&group=&_hide_sql=1").text
     assert "<title>t100: WITH" not in html and "Every carrier and aircraft on a route, by year" in html
+
+
+SCROLLING = ["/airports", "/airports/SFO", "/airports/SFO/destinations", "/airports/SFO/changes", "/airports/SFO/JFK", "/airports/SFO/JFK/2019/table",
+             "/aircraft", "/aircraft/makers", "/aircraft/engines", "/aircraft/boeing-737", "/airlines", "/airlines/over-time",
+             "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/changes"]
+FOOTER_LINK = '<span class="data-link" hidden><a id="data-link" href="">This page\'s data</a> · </span>'
+
+
+def footer(html):
+    return re.search(r'<footer class="site-footer">.*?</footer>', html, re.S).group(0)
+
+
+def test_every_scrolling_page_has_the_data_link_in_its_footer(ds, db_path):
+    delta(db_path)
+    put(db_path, "family_year", [dict(family="Boeing 737", year=2019, domestic=1, service_class="F", deps=1)])
+    for path in SCROLLING:
+        r = get(ds, path)
+        assert r.status_code == 200, path
+        f = footer(r.text)
+        assert FOOTER_LINK in f and f.index(FOOTER_LINK) < f.index("About the data"), path
+
+
+def test_the_maps_have_the_data_link_in_their_controls(ds, db_path):
+    delta(db_path)
+    for path in ("/airports/globe", "/airports/SFO/globe", "/airlines/delta/globe"):
+        html = get(ds, path).text
+        assert re.search(r'id="theme"[^>]*></select>\s*<a id="data-link" class="data-link" href="" hidden>This map\'s data</a>', html), path
+
+
+def test_the_route_notes_no_longer_carry_a_raw_data_link(ds):
+    for path in ("/airports/SFO/JFK", "/airports/SFO/JFK/table", "/airports/SFO/JFK/2019"):
+        html = get(ds, path).text
+        assert "Raw data table" not in html and 'id="raw-link"' not in html, path
+
+
+def test_the_about_page_explains_the_data_links(ds):
+    html = get(ds, "/about").text
+    source = html[html.index('id="source"'):]
+    assert "This page's data" in source and "group" in source and "/t100/t100" in source
+
+
+def test_the_front_and_about_pages_have_no_stray_separator(ds):
+    for path in ("/", "/about"):
+        text = " ".join(re.sub(r"<[^>]+>", " ", footer(get(ds, path).text)).split())
+        assert "· ·" not in text, path
