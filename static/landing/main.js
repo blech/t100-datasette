@@ -1,6 +1,6 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { SORTS, topBy, parseState, toSearch, airportHref } from './src/table.js';
+import { SORTS, topBy, parseState, toSearch, airportHref, loadFactor } from './src/table.js';
 import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
 
 const ROWS_SHOWN = 20;
@@ -23,6 +23,7 @@ function cell(text, className, title) {
 // a measured count, rounded, with the exact figure on hover
 const countCell = (n, noun) => cell(formatCount(n), 'num', `${exactCount(n)} ${noun}`);
 const tonsCell = (pounds) => cell(formatTons(pounds), 'num', `${exactCount(pounds)} lb`);
+const percentCell = (pct) => cell(pct === null ? '–' : `${pct.toFixed(1)}%`, 'num');
 
 function link(href, text) {
   const a = document.createElement('a');
@@ -50,7 +51,8 @@ function render() {
       cell(r.origin_city_name || '', 'city'),
       countCell(r.passengers, 'passengers'),
       countCell(r.deps, 'departures'),
-      countCell(r.seats, 'seats'),
+      percentCell(loadFactor(r)),
+      cell(exactCount(r.dests), 'num'),
       tonsCell(r.freight),
       more,
     );

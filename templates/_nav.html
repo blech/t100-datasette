@@ -10,6 +10,8 @@
     {%- endfor %}
   </ul></nav>
 </div>
-{% if nav_views %}<nav class="views" aria-label="Views">
+<nav class="views" aria-label="Views">
+{% if nav_views %}
   {%- for v in nav_views %}{% if not loop.first %} · {% endif %}{% if v.current %}<strong aria-current="page">{{ v.label }}</strong>{% else %}<a href="{{ v.href }}"{% if v.id %} id="{{ v.id }}"{% endif %}>{{ v.label }}</a>{% endif %}{% endfor -%}
-</nav>{% endif %}
+{% endif %}
+</nav>

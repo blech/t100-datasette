@@ -1,4 +1,7 @@
-export const SORTS = { passengers: 'Passengers', deps: 'Departures', seats: 'Seats', freight: 'Freight' };
+export const SORTS = { passengers: 'Passengers', deps: 'Departures', dests: 'Destinations', freight: 'Freight' };
+
+// passengers as a percentage of seats, or null with no seats (an all-freight airport)
+export const loadFactor = (r) => (Number(r.seats) > 0 ? (Number(r.passengers) / Number(r.seats)) * 100 : null);
 
 // descending by `key`, ties by airport code; does not modify `rows`
 export function topBy(rows, key, n) {
@@ -25,6 +28,6 @@ export function toSearch(state, maxYear) {
   return s ? `?${s}` : '';
 }
 
-// the sort column carries over as the airport page's heat map measure (the keys are the same)
+// the sort column carries over as the airport page's heat map measure (the keys are the same); destinations has no heat map
 export const airportHref = (code, sort) =>
-  `/airports/${encodeURIComponent(code)}${sort === 'passengers' ? '' : `?measure=${sort}`}`;
+  `/airports/${encodeURIComponent(code)}${sort === 'passengers' || sort === 'dests' ? '' : `?measure=${sort}`}`;

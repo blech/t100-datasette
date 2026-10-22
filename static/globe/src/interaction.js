@@ -19,6 +19,7 @@ export function attachInteraction(canvas, view, hooks) {
     pointers.set(e.pointerId, pos(e));
     if (pointers.size === 1) moved = 0;
     view.vel = [0, 0];
+    view.target = null; // grabbing the globe stops a glide
     view.dragging = true;
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
@@ -73,6 +74,7 @@ export function attachInteraction(canvas, view, hooks) {
 
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
+    view.target = null;
     view.zoom = clamp(view.zoom * Math.exp(-e.deltaY * 0.0015), ZMIN, ZMAX);
     hooks.onUserMove();
   }, { passive: false });
