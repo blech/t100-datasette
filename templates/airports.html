@@ -14,7 +14,7 @@
     {% include "_nav.html" %}
     <h1>Busiest US airports</h1>
     <p class="intro">
-      The busiest US airports in any year since {{ min_year }}, by passengers, departures, seats or freight.
+      The busiest US airports in any year since {{ min_year }}, by passengers, departures, destinations or freight.
       Pick one to see where it flies and how its routes changed, or <a href="/airports/globe">browse them on the map</a>.
     </p>
 
@@ -32,7 +32,8 @@
             <th scope="col" class="left">City</th>
             <th scope="col" class="num" data-sort="passengers"><button type="button">Passengers</button></th>
             <th scope="col" class="num" data-sort="deps"><button type="button">Departures</button></th>
-            <th scope="col" class="num" data-sort="seats"><button type="button">Seats</button></th>
+            <th scope="col" class="num">Load factor</th>
+            <th scope="col" class="num" data-sort="dests"><button type="button">Destinations</button></th>
             <th scope="col" class="num" data-sort="freight"><button type="button">Freight</button></th>
             <th scope="col"><span class="visually-hidden">More detail</span></th>
           </tr>
@@ -41,7 +42,7 @@
       </table>
     </div>
     <p id="status" role="status"></p>
-    <p class="note">The table shows the top 20 for the column you sort by. Freight is in short tons (2,000 lb). Hover over a number for the exact figure. <a href="/about#measures">What the columns mean</a>.
+    <p class="note">The table shows the top 20 for the column you sort by. Load factor is passengers as a share of seats. Destinations counts airports with at least 12 departures to them that year. Freight is in short tons (2,000 lb). Hover over a number for the exact figure. <a href="/about#measures">What the columns mean</a>.
       On the map, routes with fewer than 12 departures a year are hidden.</p>
     {% include "_footer.html" %}
   </main>

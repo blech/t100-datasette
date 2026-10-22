@@ -63,19 +63,27 @@ databases:
 
       top_airports:
         sql: |
-          WITH ranked AS (
-            SELECT origin, origin_city_name, deps, seats, passengers, freight,
+          -- dests: destinations with at least 12 departures that year, the cut-off the maps and heat maps use
+          WITH dests AS (
+            SELECT origin, COUNT(*) AS dests
+            FROM route_year_totals
+            WHERE year = CAST(:year AS integer) AND deps >= 12
+            GROUP BY origin
+          ),
+          ranked AS (
+            SELECT a.origin, origin_city_name, deps, seats, passengers, freight, COALESCE(d.dests, 0) AS dests,
               RANK() OVER (ORDER BY passengers DESC) AS by_passengers,
               RANK() OVER (ORDER BY deps DESC) AS by_deps,
-              RANK() OVER (ORDER BY seats DESC) AS by_seats,
+              RANK() OVER (ORDER BY COALESCE(d.dests, 0) DESC) AS by_dests,
               RANK() OVER (ORDER BY freight DESC) AS by_freight
-            FROM airport_year_totals
+            FROM airport_year_totals AS a
+            LEFT JOIN dests AS d ON d.origin = a.origin
             WHERE year = CAST(:year AS integer)
               AND origin_wac BETWEEN 1 AND 93
           )
-          SELECT origin, origin_city_name, deps, seats, passengers, freight
+          SELECT origin, origin_city_name, deps, seats, passengers, freight, dests
           FROM ranked
-          WHERE by_passengers <= 20 OR by_deps <= 20 OR by_seats <= 20 OR by_freight <= 20
+          WHERE by_passengers <= 20 OR by_deps <= 20 OR by_dests <= 20 OR by_freight <= 20
           ORDER BY passengers DESC, origin
 
       # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
