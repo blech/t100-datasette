@@ -1,12 +1,12 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { HEAT_MEASURES } from '/static/charts/src/heatmap.js';
-import { buildFamilySeries, hasVersions } from '/static/charts/src/rollup.js';
+import { buildFamilySeries, hasVersions, SPLIT_LABEL } from '/static/charts/src/rollup.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
-import { attachHighlight } from '/static/common/highlight.js';
+import { attachHighlight, parseHighlight, highlightedSeries } from '/static/common/highlight.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
@@ -43,10 +43,35 @@ function pushState() {
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'split', 'span'], `?${q}`)}`);
 }
 
+// "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
+function highlightLine(highlight, wanted, byAirline) {
+  const line = $('highlight-line');
+  const name = highlight && rows.find((r) => r.group_id === highlight.id)?.group_name;
+  line.hidden = !name;
+  if (!name) return;
+  const splitLabel = $('fam-split').selectedOptions[0]?.textContent || state.split;
+  const text = !byAirline ? `${name} isn't shown when split by ${splitLabel}`
+    : wanted.size ? `Highlighting ${name}` : `${name} doesn't appear here`;
+  const clear = Object.assign(document.createElement('a'), { href: '#', textContent: 'clear' });
+  clear.addEventListener('click', (e) => {
+    e.preventDefault();
+    const q = new URLSearchParams(location.search);
+    q.delete('highlight');
+    history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}`);
+    draw();
+  });
+  line.replaceChildren(`${text} · `, clear);
+}
+
 function draw() {
   const box = $('family-chart');
   box.replaceChildren();
-  const res = buildFamilySeries(rows, state);
+  // an airline carried here by ?highlight= (from a route's table) is picked out, and never folded into Other
+  const highlight = parseHighlight(location.search);
+  const byAirline = state.split === 'airline';
+  const wanted = byAirline ? highlightedSeries(rows, highlight, SPLIT_LABEL.airline) : new Set();
+  highlightLine(highlight, wanted, byAirline);
+  const res = buildFamilySeries(rows, { ...state, keep: wanted });
   if (!res.points.length) { box.textContent = `No ${unit()} for this selection.`; return; }
   const years = yearDomain(res.years, { span: state.span, ...bounds }).map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
@@ -67,7 +92,7 @@ function draw() {
       Plot.ruleY([0]),
     ],
   });
-  attachHighlight(chart);
+  attachHighlight(chart, { pinned: wanted });
   box.append(...attachPopover(chart, { content: (d) => ({ title: `${family}, ${d.period}`, rows: d.rows }), at: (d) => [d.period, d.top] }));
 }
 

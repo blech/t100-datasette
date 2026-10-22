@@ -123,3 +123,10 @@ test('hasVersions is true only when a family has more than one named version', (
   assert.equal(hasVersions([{ subfamily: '747-400' }, { subfamily: '747-8' }]), true);
   assert.equal(hasVersions([]), false);
 });
+
+test('buildFamilySeries makes room for an airline asked for: it takes the eighth place', () => {
+  const rows = Array.from({ length: 10 }, (_, i) => ({ year: 2019, group_id: `g${i}`, group_name: `G${i}`, kind: 'passenger', service: 'domestic', passengers: 100 - i }));
+  const res = buildFamilySeries(rows, { split: 'airline', keep: new Set(['G9']) });
+  assert.deepEqual(res.series, ['G0', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G9', 'Other']);
+  assert.deepEqual(res.points.filter((p) => p.series === 'Other').map((p) => p.value), [93 + 92]);
+});

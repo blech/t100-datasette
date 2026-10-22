@@ -1,12 +1,12 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { shortenField } from '/static/charts/src/names.js';
 import { slugify } from '/static/charts/src/rollup.js';
-import { buildSeries, aggregateTable, MEASURES, SPLITS } from '/static/charts/src/series.js';
+import { buildSeries, aggregateTable, labelFor, MEASURES, SPLITS } from '/static/charts/src/series.js';
 import { formatCount, formatTons, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
-import { attachHighlight } from '/static/common/highlight.js';
+import { attachHighlight, parseHighlight, highlightedSeries } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 
 // the tallest stack, which sets the y axis's scale
@@ -56,9 +56,37 @@ function fillSelect(select, options, value) {
   select.value = value;
 }
 
+// "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
+function highlightLine(highlight, wanted, byAirline) {
+  const line = $('highlight-line');
+  const name = highlight && allRows.find((r) => r.group_id === highlight.id)?.group_name;
+  line.hidden = !name;
+  if (!name) return;
+  const text = !byAirline ? `${name} isn't shown when split by ${SPLITS[state.split].toLowerCase()}`
+    : wanted.size ? `Highlighting ${name}` : `${name} doesn't appear here`;
+  const clear = Object.assign(document.createElement('a'), { href: '#', textContent: 'clear' });
+  clear.addEventListener('click', (e) => {
+    e.preventDefault();
+    const q = new URLSearchParams(location.search);
+    q.delete('highlight');
+    history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}`);
+    carryQuery();
+    drawChart();
+  });
+  line.replaceChildren(`${text} · `, clear);
+}
+
 function drawChart() {
   const monthly = year !== null;
-  const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year' });
+  // an airline carried here by ?highlight= (from its own pages) is picked out, and never folded into Other
+  const highlight = parseHighlight(location.search);
+  const byAirline = state.split === 'carrier' || state.split === 'both';
+  const wanted = byAirline ? highlightedSeries(viewRows, highlight, (r) => labelFor(r, state.split)) : new Set();
+  // split by carrier the airline is kept as a series of its own; split by carrier and aircraft it may fly a dozen
+  // types, so only its pairings already among the largest are picked out, and the chart keeps its shape
+  const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year', keep: state.split === 'carrier' ? wanted : new Set() });
+  const pinned = new Set([...wanted].filter((l) => res.series.includes(l)));
+  highlightLine(highlight, pinned, byAirline);
   const box = $('route-chart-plot');
   box.replaceChildren();
   if (!res.points.length) { box.textContent = 'No data to chart for this selection.'; return; }
@@ -89,7 +117,7 @@ function drawChart() {
     color: { legend: true, ...seriesColours(res.series, isDark()) },
     marks,
   });
-  if (res.stackable) attachHighlight(chart); // load factor's lines aren't a stack
+  if (res.stackable) attachHighlight(chart, { pinned }); // load factor's lines aren't a stack
   box.append(...attachPopover(chart, {
     content: (d) => ({ title: monthly ? `${MONTH_NAMES[Number(d.period) - 1]} ${year}` : d.period, rows: d.rows }),
     at: (d) => [d.period, d.top],
@@ -144,7 +172,7 @@ function drawTable() {
     const tr = document.createElement('tr');
     const names = state.split === 'none' ? [cell('All', 'left')] : [
       ...(t.carrier !== null ? [linkCell(t.carrier, t.groupId && `/airlines/${t.groupId}`, `${fullNames.get(t.carrier) || t.carrier}: all of this airline's flying`)] : []),
-      ...(t.aircraft !== null ? [linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}`, `${t.family}, all versions`)] : []),
+      ...(t.aircraft !== null ? [linkCell(t.aircraft, t.family && `/aircraft/${slugify(t.family)}${t.groupId ? `?split=airline&highlight=airline:${t.groupId}` : ''}`, `${t.family}, all versions`)] : []),
     ];
     tr.append(
       ...names,

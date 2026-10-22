@@ -169,7 +169,7 @@ function showPanel(r) {
     const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
     dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
-  const a = Object.assign(document.createElement('a'), { href: `/airports/${r.origin}/${r.dest}`, textContent: 'This route over time →' });
+  const a = Object.assign(document.createElement('a'), { href: `/airports/${r.origin}/${r.dest}?split=carrier&highlight=airline:${group}`, textContent: 'This route over time →' });
   p.append(close, h, sub, dl, a);
   p.hidden = false;
 }

@@ -138,3 +138,12 @@ test('aggregateTable keeps the link targets that still apply', () => {
   assert.equal(aggregateTable(tableRows, 'aircraft')[0].family, 'Airbus A320');
   assert.equal(aggregateTable(tableRows, 'aircraft')[0].groupId, null);
 });
+
+test('buildSeries makes room for a series asked for: it takes the last place, so colours stay distinct', () => {
+  const rows = Array.from({ length: 10 }, (_, i) => ({ year: 2019, carrier: `C${i}`, aircraft: 'A', deps: 1, total_seats: 1, total_passengers: 100 - i, total_freight: 0 }));
+  const plain = buildSeries(rows, { top: 8 });
+  assert.ok(!plain.series.includes('C9') && plain.series.includes('Other'));
+  const kept = buildSeries(rows, { top: 8, keep: new Set(['C9']) });
+  assert.deepEqual(kept.series, ['C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C9', 'Other'], 'eight named series at most');
+  assert.deepEqual(kept.points.filter((p) => p.series === 'Other').map((p) => p.value), [93 + 92], 'C7 and C8 fold into Other');
+});

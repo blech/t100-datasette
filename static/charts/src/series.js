@@ -11,7 +11,7 @@ const LB_PER_SHORT_TON = 2000;
 const num = (v) => Number(v) || 0;
 const name = (v) => (v === null || v === undefined || String(v).trim() === '' ? 'Unknown' : String(v));
 
-const labelFor = (row, split) => {
+export const labelFor = (row, split) => {
   if (split === 'none') return 'All';
   if (split === 'carrier') return name(row.carrier);
   if (split === 'aircraft') return name(row.aircraft);
@@ -31,7 +31,7 @@ function valueOf(measure, t) {
 
 // Rows from the `route` or `route_year` query -> one value per (period, series).
 // Series beyond the `top` biggest overall are folded into "Other", listed last.
-export function buildSeries(rows, { measure = 'passengers', split = 'carrier', top = 8, periodKey = 'year' } = {}) {
+export function buildSeries(rows, { measure = 'passengers', split = 'carrier', top = 8, periodKey = 'year', keep = new Set() } = {}) {
   const cells = new Map(); // `${period}\u0000${label}` -> sums
   const overall = new Map(); // label -> total of the measure's base quantity
   for (const r of rows) {
@@ -47,8 +47,11 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
   }
 
   const ranked = [...overall.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([l]) => l);
-  const kept = new Set(ranked.slice(0, top));
-  const folded = ranked.length > top;
+  // the top series; one asked for by name from further down (a highlighted airline) takes the last places instead,
+  // so there are never more than `top` named series and each keeps a colour of its own
+  const extra = ranked.slice(top).filter((l) => keep.has(l));
+  const kept = new Set([...ranked.slice(0, Math.max(0, top - extra.length)), ...extra]);
+  const folded = ranked.length > kept.size;
 
   // merge folded series into "Other" before taking the measure (so load factor stays a ratio)
   const merged = new Map();
@@ -66,7 +69,7 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
     if (value !== null) points.push({ period: m.period, series: m.label, value });
   }
   points.sort((a, b) => a.period - b.period || a.series.localeCompare(b.series));
-  const series = ranked.slice(0, top).filter((l) => points.some((p) => p.series === l));
+  const series = ranked.filter((l) => kept.has(l) && points.some((p) => p.series === l));
   if (folded && points.some((p) => p.series === 'Other')) series.push('Other');
   const periods = [...new Set(points.map((p) => p.period))].sort((a, b) => a - b);
   return { points, series, periods, stackable: measure !== 'load_factor' };
