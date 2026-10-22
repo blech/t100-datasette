@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { seriesByFill, parseHighlight, highlightedSeries } from '../highlight.js';
+import { seriesByFill, parseHighlight, highlightedSeries, highlightMessage } from '../highlight.js';
 
 test('seriesByFill maps each colour to the series drawn in it', () => {
   const lookup = seriesByFill({ domain: ['737 NG', '737 MAX', 'Other'], range: ['#7f1d1d', '#9e261f', '#a1a1aa'] });
@@ -27,4 +27,14 @@ test('highlightedSeries finds every series an airline group appears in', () => {
   assert.deepEqual([...highlightedSeries(rows, { kind: 'airline', id: 'delta' }, label)].sort(), ['Delta', 'Northwest']);
   assert.equal(highlightedSeries(rows, { kind: 'airline', id: 'nope' }, label).size, 0);
   assert.equal(highlightedSeries(rows, null, label).size, 0);
+});
+
+test('highlightMessage says what the highlight line shows, and offers the other way when the airline is not on this one', () => {
+  assert.equal(highlightMessage({ highlight: null }), null);
+  assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'fedex' }, name: undefined, byAirline: true, shown: false }),
+    { text: "This airline doesn't fly this way", reverse: true });  // an airline's pages link pairs, which may be the direction it never flew
+  assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'delta' }, name: 'Delta', byAirline: true, shown: true }), { text: 'Highlighting Delta', reverse: false });
+  assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'delta' }, name: 'Delta', byAirline: true, shown: false }), { text: "Delta doesn't appear here", reverse: false });
+  assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'delta' }, name: 'Delta', byAirline: false, splitLabel: 'aircraft', shown: false }),
+    { text: "Delta isn't shown when split by aircraft", reverse: false });
 });

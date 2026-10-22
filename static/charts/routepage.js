@@ -6,7 +6,7 @@ import { formatCount, formatTons, exactCount, millionsAxis } from '/static/commo
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
-import { attachHighlight, parseHighlight, highlightedSeries } from '/static/common/highlight.js';
+import { attachHighlight, parseHighlight, highlightedSeries, highlightMessage } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 
 // the tallest stack, which sets the y axis's scale
@@ -59,11 +59,11 @@ function fillSelect(select, options, value) {
 // "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
 function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
+  if (!line) return;
   const name = highlight && allRows.find((r) => r.group_id === highlight.id)?.group_name;
-  line.hidden = !name;
-  if (!name) return;
-  const text = !byAirline ? `${name} isn't shown when split by ${SPLITS[state.split].toLowerCase()}`
-    : wanted.size ? `Highlighting ${name}` : `${name} doesn't appear here`;
+  const msg = highlightMessage({ highlight, name, byAirline, splitLabel: SPLITS[state.split].toLowerCase(), shown: wanted.size > 0 });
+  line.hidden = !msg;
+  if (!msg) return;
   const clear = Object.assign(document.createElement('a'), { href: '#', textContent: 'clear' });
   clear.addEventListener('click', (e) => {
     e.preventDefault();
@@ -73,7 +73,9 @@ function highlightLine(highlight, wanted, byAirline) {
     carryQuery();
     drawChart();
   });
-  line.replaceChildren(`${text} · `, clear);
+  // the other way, with the highlight: the reverse-direction link in the sentence below carries the query
+  const other = Object.assign(document.createElement('a'), { href: $('reverse-link').href, textContent: `${dest} → ${origin}` });
+  line.replaceChildren(msg.text, ...(msg.reverse ? ['; try the other way, ', other] : []), ' · ', clear);
 }
 
 function drawChart() {
@@ -225,7 +227,16 @@ async function main() {
     $('route-chart-plot').textContent = '';
     return;
   }
-  if (!allRows.length) { $('status').textContent = `No flights from ${origin} to ${dest} in the data.`; return; }
+  if (!allRows.length) {
+    $('status').textContent = `No flights from ${origin} to ${dest} in the data.`;
+    carryQuery();
+    // an airline's pages link airport pairs, so a highlighted airline may only have flown the other way
+    if (parseHighlight(location.search)) {
+      const other = Object.assign(document.createElement('a'), { href: $('reverse-link').href, textContent: `${dest} → ${origin}` });
+      $('status').append(' Try the other way, ', other, '.');
+    }
+    return;
+  }
   const years = [...new Set(allRows.map((r) => Number(r.year)))].sort((a, b) => a - b);
   const first = allRows[0];
   $('subtitle').textContent = `${first.origin_city_name || origin} to ${first.dest_city_name || dest}`;

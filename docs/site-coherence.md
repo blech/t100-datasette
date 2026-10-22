@@ -89,6 +89,16 @@ Questions:
   - `/airlines/{airline}/routes` shows airport pairs (both directions together) by year, with route-years of at least 12 departures, and labels that open the route with the airline highlighted.
   - The views line is Over time · Routes · Changes · Map.
   - A table version was considered and dropped.
+  - **Fixed from its final review:** a pair's link opens its alphabetical direction, which the airline may never have flown (57 of FedEx's pairs in 2019). The route page now says "This airline doesn't fly this way; try the other way, …" (or offers the other way under "No flights"), keeping the highlight.
+  - **Deferred minors from its final review:**
+    - **An airline that never flew a pair 12 times in a year** (94 of 841 groups) gets "Nothing to chart for this selection.", which suggests a setting would help. It could name the reason.
+    - **The truncation warning** is set on `#rank-note` before `draw()` rewrites it, so it's never seen. Older than this branch; it affects `/airlines/over-time` too, and doesn't trigger today.
+    - **The chart waits for the airports query** (1.3 MB) that only supplies hover text. It could draw first and add places after, or use a slimmer query.
+    - **American's routes are 4.2 MB, uncompressed:** worth turning on gzip (datasette-gzip, or at the proxy).
+    - **The cell popover** shows codes only ("ATL – LGA · 2019"); the label's hover has the places.
+    - **Same-airport pairs** (GCN – GCN, sightseeing) appear as rows.
+    - **At phone width** the year labels crowd together, as on the airlines heat map.
+    - **A made-up highlight** (`?highlight=airline:nope`) now says "This airline doesn't fly this way" rather than nothing.
 - **Still to come:**
   - an airport over time (its heat map moving to `/destinations`);
   - a family map.
