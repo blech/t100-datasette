@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rollupRows, buildEngineShares, ENGINE_BANDS } from '../src/rollup.js';
+import { rollupRows, routeRows, buildEngineShares, ENGINE_BANDS } from '../src/rollup.js';
 import { buildHeatmap } from '../src/heatmap.js';
 
 const f = (year, family, deps, extra = {}) => ({ year, family, deps, seats: deps * 100, passengers: deps * 80, freight: 0, service: 'domestic', kind: 'passenger', ...extra });
@@ -129,4 +129,17 @@ test('buildFamilySeries makes room for an airline asked for: it takes the eighth
   const res = buildFamilySeries(rows, { split: 'airline', keep: new Set(['G9']) });
   assert.deepEqual(res.series, ['G0', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G9', 'Other']);
   assert.deepEqual(res.points.filter((p) => p.series === 'Other').map((p) => p.value), [93 + 92]);
+});
+
+test('rollupRows keeps rows that have no kind of flight, whatever kind is asked for', () => {
+  const rows = [{ year: 2019, route: 'ATL – LGA', deps: 5, seats: 0, passengers: 0, freight: 0, service: 'domestic' }];
+  assert.equal(rollupRows(rows, { key: 'route', kind: 'passenger' }).length, 1);
+  assert.equal(rollupRows([f(2019, 'Boeing 747', 1, { kind: 'freight' })], { key: 'family', kind: 'passenger' }).length, 0);
+});
+
+test('routeRows names each airport pair and keeps its measures and service', () => {
+  const out = routeRows([{ origin: 'ATL', dest: 'LGA', year: 2019, deps: 30, seats: 3000, passengers: 2400, freight: 30000, service: 'domestic' }]);
+  assert.deepEqual(out, [{ route: 'ATL – LGA', origin: 'ATL', dest: 'LGA', year: 2019, service: 'domestic', deps: 30, seats: 3000, passengers: 2400, freight: 30000 }]);
+  const res = buildHeatmap(rollupRows(out, { key: 'route', kind: 'passenger' }), { measure: 'deps', n: 5 });
+  assert.deepEqual(res.dests, ['ATL – LGA']);
 });
