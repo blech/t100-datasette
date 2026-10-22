@@ -85,8 +85,11 @@ Questions:
     - **The status during a search** pairs the match count with everyone's total ("2 airlines, 900 million passengers"). Inherited from the aircraft table.
     - **The heat map's "airlines" breadcrumb** doesn't carry `measure`, `flights` and `service`, unlike the views line.
     - **The group "Federal Express Corporation"** isn't found by "FedEx".
+- **An airline's routes: built as a heat map**, spec `docs/superpowers/specs/2026-10-22-airline-routes-design.md`.
+  - `/airlines/{airline}/routes` shows airport pairs (both directions together) by year, with route-years of at least 12 departures, and labels that open the route with the airline highlighted.
+  - The views line is Over time · Routes · Changes · Map.
+  - A table version was considered and dropped.
 - **Still to come:**
-  - an airline's routes heat map;
   - an airport over time (its heat map moving to `/destinations`);
   - a family map.
 
