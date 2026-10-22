@@ -72,6 +72,17 @@ Questions:
   - **`setPinned` and its WeakMap in `static/common/highlight.js` are unused,** because "clear" redraws instead.
   - **Tests:** the family `keep` test checks "Other"'s total but re-imports `buildFamilySeries`, which is already imported.
 
+**Part 3 (four new views): on branch `new-views`**, one spec and plan each.
+
+- **A table of all airlines: built**, spec `docs/superpowers/specs/2026-10-22-airlines-table-design.md`.
+  - `/airlines` is the table: groups that open to their members, sortable, with year, flights, routes, limit and search.
+  - The heat map moved to `/airlines/over-time`. The views line is "Airlines · Over time", and it carries `measure`, `flights` and `service` both ways.
+  - Old `/airlines` links with `n`, `rank` or `scale` get a 301 to the heat map.
+- **Still to come:**
+  - an airline's routes heat map;
+  - an airport over time (its heat map moving to `/destinations`);
+  - a family map.
+
 ### 5. Colour: done (merged, branch `colour`)
 
 - **One palette:** `static/common/palette.js` holds every data colour by role, light and dark (spec `docs/superpowers/specs/2026-10-21-colour-design.md`).
