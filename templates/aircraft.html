@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-query="aircraft_detail" data-param="aircraft" data-subject="{{ type_id }}" data-title="{{ name }}" data-default-split="all" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
+<body data-query="aircraft_detail" data-param="aircraft" data-subject="{{ type_id }}" data-title="{{ name }}" data-default-split="airline" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
     {% include "_nav.html" %}
     <h1>{{ name }} over time</h1>
@@ -20,7 +20,7 @@
       Show <select id="fam-measure" aria-label="Measure"></select>
       for <select id="fam-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
       on <select id="fam-service" aria-label="Routes"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>,
-      split by <select id="fam-split" aria-label="Split by"><option value="all">nothing</option><option value="service">domestic or international</option></select>,
+      split by <select id="fam-split" aria-label="Split by"><option value="airline">airline</option><option value="all">nothing</option></select>,
       over <select id="fam-span" aria-label="Years shown"><option value="flown">years flown</option><option value="all">all years</option></select>.
     </p>
     <p class="note" id="highlight-line" hidden></p>

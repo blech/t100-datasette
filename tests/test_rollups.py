@@ -147,6 +147,24 @@ def test_family_detail_year_splits_by_subfamily_and_carrier_group(db_path):
     assert rows == [("737 MAX", "delta", 3, 45, 30, 0), ("737 NG", "delta", 14, 210, 140, 6)]
 
 
+def test_aircraft_carrier_year_gives_each_aircraft_its_airline_groups(db_path):
+    add_types(db_path, *TYPES)
+    add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."), ("19386", "B1", "Northwest Airlines Inc."))
+    add_segments(db_path, "t100_domestic", [
+        flight(aircraft_type="614", carrier_entity="A1", **{"class": "F"}, deps=10, pax=100, seats=150, freight=5),
+        flight(aircraft_type="614", carrier_entity="B1", **{"class": "F"}, deps=4, pax=40, seats=60, freight=1),
+        flight(aircraft_type="839", carrier_entity="A1", **{"class": "F"}, deps=3, pax=30, seats=45, freight=0)])
+    rows = query(db_path, "SELECT aircraft, group_id, deps, seats, passengers, freight FROM aircraft_carrier_year ORDER BY aircraft")
+    assert rows == [("614", "delta", 14, 210, 140, 6), ("839", "delta", 3, 45, 30, 0)]
+
+
+def test_aircraft_carrier_year_totals_match_type_year_and_keep_unknowns(db_path):
+    add_types(db_path, *TYPES)
+    add_segments(db_path, "t100_domestic", [flight(aircraft_type="614", carrier_entity="NOPE", **{"class": "F"}, deps=2), flight(aircraft_type=None, carrier_entity="NOPE", **{"class": "G"}, deps=3)])
+    assert query(db_path, "SELECT SUM(deps), SUM(freight) FROM aircraft_carrier_year") == query(db_path, "SELECT SUM(deps), SUM(freight) FROM type_year")
+    assert {r[0] for r in query(db_path, "SELECT group_id FROM aircraft_carrier_year")} == {"unknown"}
+
+
 def test_family_detail_year_totals_match_family_year(db_path):
     add_types(db_path, *TYPES)
     add_segments(db_path, "t100_domestic", [flight(aircraft_type="614", **{"class": "F"}), flight(aircraft_type="999", **{"class": "G"}, deps=5)])
@@ -194,7 +212,7 @@ def test_rebuilding_twice_gives_the_same_tables(db_path):
     first = rebuild_derived_tables(conn)
     second = rebuild_derived_tables(conn)
     assert first == second
-    assert {"aircraft_family", "family_year", "carrier_group", "carrier_group_year", "aircraft_group_band_year", "family_detail_year"} <= set(first)
+    assert {"aircraft_family", "family_year", "carrier_group", "carrier_group_year", "aircraft_group_band_year", "family_detail_year", "aircraft_carrier_year"} <= set(first)
 
 
 def test_carrier_route_year_joins_both_directions_and_both_merged_airlines(db_path):

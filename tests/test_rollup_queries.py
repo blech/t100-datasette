@@ -195,9 +195,14 @@ def test_carrier_route_by_year_sums_members_and_keeps_pairs_flown_12_times(ds, d
     assert [(r["origin"], r["dest"], r["year"]) for r in one] == [("ATL", "LGA", 2019), ("ATL", "LHR", 2019)]  # Delta alone flew ATL-LGA 10 times in 2005
 
 
-def test_aircraft_detail_gives_one_aircrafts_years_by_service_and_kind(ds, db_path):
-    put(db_path, "type_year", [ty(2001, "614", 1, "F", 4), ty(2019, "614", 1, "F", 10), ty(2019, "614", 1, "L", 5), ty(2019, "614", 0, "G", 2), ty(2019, "619", 1, "F", 99)])
-    rows = get_json(ds, "/t100/aircraft_detail.json?_shape=objects&aircraft=614")["rows"]
-    got = {(r["year"], r["service"], r["kind"]): r["deps"] for r in rows}
-    assert got == {(2001, "domestic", "passenger"): 4, (2019, "domestic", "passenger"): 15, (2019, "international", "freight"): 2}
+def test_aircraft_detail_gives_one_aircrafts_years_by_airline_service_and_kind(ds, db_path):
+    def row(year, aircraft, group, domestic, service_class, deps):
+        return dict(year=year, aircraft=aircraft, group_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
+                    deps=deps, seats=deps * 100, passengers=deps * 80, freight=deps * 1000)
+    put(db_path, "aircraft_carrier_year", [row(2001, "614", "delta", 1, "F", 4), row(2019, "614", "delta", 1, "F", 10), row(2019, "614", "delta", 1, "L", 5),
+                                           row(2019, "614", "united", 0, "G", 2), row(2019, "619", "delta", 1, "F", 99)])
+    rows = get_json(ds, "/t100/aircraft_detail.json?_shape=objects&aircraft=614&group=")["rows"]
+    assert {(r["year"], r["group_id"], r["service"], r["kind"]): r["deps"] for r in rows} == {
+        (2001, "delta", "domestic", "passenger"): 4, (2019, "delta", "domestic", "passenger"): 15, (2019, "united", "international", "freight"): 2}
     assert [r["year"] for r in rows] == sorted(r["year"] for r in rows)
+    assert {r["group_id"] for r in get_json(ds, "/t100/aircraft_detail.json?_shape=objects&aircraft=614&group=united")["rows"]} == {"united"}

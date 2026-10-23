@@ -200,3 +200,16 @@ def test_a_type_with_no_family_has_a_page_named_as_the_table_names_it(ds, db_pat
     aircraft_fixtures(db_path)
     r = get(ds, "/aircraft/unknown/type-999")
     assert r.status_code == 200 and 'data-subject="999"' in r.text and "Type 999" in r.text
+
+
+def split_options(html):
+    select = re.search(r'<select id="fam-split".*?</select>', html, re.S).group(0)
+    return re.findall(r'<option value="([^"]+)"', select)
+
+
+def test_the_splits_are_version_airline_or_nothing_for_a_family_and_airline_or_nothing_for_an_aircraft(ds, db_path):
+    aircraft_fixtures(db_path)
+    assert split_options(get(ds, "/aircraft/boeing-737").text) == ["subfamily", "airline", "all"]
+    aircraft = get(ds, "/aircraft/boeing-737/boeing-737-800").text
+    assert split_options(aircraft) == ["airline", "all"]
+    assert 'data-default-split="airline"' in aircraft

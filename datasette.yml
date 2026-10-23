@@ -325,17 +325,17 @@ databases:
           ORDER BY year
 
       aircraft_detail:
-        title: "One aircraft by year, service and kind"
-        description: "One row per year, service and kind for the aircraft type with the given id (aircraft_types.ac_typeid)."
+        title: "One aircraft by year, airline group, service and kind"
+        description: "One row per year, airline group, service and kind for the aircraft with the given id (aircraft_types.ac_typeid). Leave group empty for every airline."
         sql: |
           SELECT
-            year,
+            year, group_id, group_name,
             CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
             CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
             SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
-          FROM type_year
-          WHERE aircraft_type = :aircraft
-          GROUP BY year, service, kind
+          FROM aircraft_carrier_year
+          WHERE aircraft = :aircraft AND (:group = '' OR group_id = :group)
+          GROUP BY year, group_id, group_name, service, kind
           ORDER BY year
 
       type_table:

@@ -27,7 +27,7 @@ const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
-  split: pick('split', defaultSplit ? ['all', 'service'] : ['subfamily', 'airline', 'service'], defaultSplit),
+  split: pick('split', defaultSplit ? ['airline', 'all'] : ['subfamily', 'airline', 'all'], defaultSplit),
   span: parseSpan(params.get('span')),
 };
 const bounds = { min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) };
@@ -47,7 +47,7 @@ function pushState() {
 
 // "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
 // the data behind the page, narrowed to the airline it's highlighting, if any
-const dataLink = () => setDataLink(query, { [param]: subject, ...(query === 'family_detail' ? { group: parseHighlight(location.search)?.id ?? '' } : {}) });
+const dataLink = () => setDataLink(query, { [param]: subject, group: parseHighlight(location.search)?.id ?? '' });
 
 function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
