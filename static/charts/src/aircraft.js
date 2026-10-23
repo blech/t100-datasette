@@ -12,6 +12,9 @@ export const makerOptions = (rows, { kind = 'all', measure } = {}) => options(
   { value: 'all', label: 'any maker' },
 );
 
+// An aircraft's page sits under its family's: /aircraft/boeing-737/boeing-737-800
+export const aircraftHref = (familySlug, name) => `/aircraft/${familySlug}/${slugify(name)}`;
+
 export const kindMatches = (aircraftKind, value) => value === 'all' || slugify(aircraftKind || '') === value;
 
 const amount = (row, measure) => (Number(row[measure]) || 0) / (measure === 'freight' ? LB_PER_SHORT_TON : 1);

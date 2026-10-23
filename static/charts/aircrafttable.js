@@ -1,6 +1,6 @@
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { groupFamilies, sortFamilies, limitFamilies, LIMIT_OPTIONS, DEFAULT_LIMIT, kindOptions, makerOptions } from '/static/charts/src/aircraft.js';
+import { aircraftHref, groupFamilies, sortFamilies, limitFamilies, LIMIT_OPTIONS, DEFAULT_LIMIT, kindOptions, makerOptions } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { formatCount, countLabel } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
@@ -58,10 +58,12 @@ function headerCell(key, label, cls) {
   return th;
 }
 
-function typeRow(x) {
+function typeRow(x, familySlug) {
   const tr = document.createElement('tr');
   tr.className = 'type-row';
-  tr.append(cell(x.name, 'left type-name'), cell(x.maker, 'left'), cell(x.aircraftKind, 'left'), cell(span(x.firstYear, x.lastYear)), cell(formatCount(x.value)), cell(pct(x.share)));
+  const name = cell('', 'left type-name');
+  name.append(Object.assign(document.createElement('a'), { href: aircraftHref(familySlug, x.name), textContent: x.name }));
+  tr.append(name, cell(x.maker, 'left'), cell(x.aircraftKind, 'left'), cell(span(x.firstYear, x.lastYear)), cell(formatCount(x.value)), cell(pct(x.share)));
   return tr;
 }
 
@@ -102,7 +104,7 @@ function draw() {
     first.append(toggle, ' ', link);
     tr.append(first, cell(f.maker, 'left'), cell(f.aircraftKind, 'left'), cell(span(f.firstYear, f.lastYear)), cell(formatCount(f.value)), cell(pct(f.share)));
     tbody.append(tr);
-    if (isOpen) for (const x of f.types) tbody.append(typeRow(x));
+    if (isOpen) for (const x of f.types) tbody.append(typeRow(x, f.slug));
   }
   table.append(thead, tbody);
   box.append(table);

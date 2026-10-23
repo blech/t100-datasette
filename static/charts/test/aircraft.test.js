@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { kindOptions, makerOptions, kindMatches, groupFamilies, sortFamilies, limitFamilies, LIMIT_OPTIONS } from '../src/aircraft.js';
+import { aircraftHref, kindOptions, makerOptions, kindMatches, groupFamilies, sortFamilies, limitFamilies, LIMIT_OPTIONS } from '../src/aircraft.js';
 
 const t = (type_id, name, family, maker, aircraft_kind, deps, extra = {}) => ({
   type_id, name, family, maker, aircraft_kind, first_year: 1990, last_year: 2025, deps, seats: deps * 100, passengers: deps * 80, freight: deps * 2000, ...extra,
@@ -149,4 +149,9 @@ test('limitFamilies ranks by value even when the families come in another order'
 test('the aircraft limit menu keeps its wording', () => {
   assert.deepEqual(LIMIT_OPTIONS.map((o) => o.label),
     ['the top 15 families', 'the top 20 families', 'the top 50 families', 'every family', 'families with at least 1%', 'families with at least 0.1%']);
+});
+
+test('an aircraft links to its page under its family, by the slugs of both names', () => {
+  assert.equal(aircraftHref('boeing-737', 'Boeing 737-800'), '/aircraft/boeing-737/boeing-737-800');
+  assert.equal(aircraftHref('other-piston-single-engine', 'Cessna C206/207/209/210 Stationair'), '/aircraft/other-piston-single-engine/cessna-c206-207-209-210-stationair');
 });

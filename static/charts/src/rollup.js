@@ -70,6 +70,7 @@ export const SPLIT_LABEL = {
   airline: (r) => r.group_name || 'Unknown carrier',
   maker: (r) => r.maker || 'Unknown maker',
   service: (r) => SERVICE_LABELS[r.service] || r.service,
+  all: () => 'All flights',
 };
 
 // A family has versions to split by only when its types fall into more than one named subfamily

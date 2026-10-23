@@ -18,7 +18,8 @@ const stackMax = (points, key, value = (p) => p.value) => {
   return Math.max(0, ...sums.values());
 };
 
-const family = document.body.dataset.family;
+// A family page charts family_detail for its family; an aircraft page charts aircraft_detail for one type id (see templates/aircraft.html)
+const { family = '', query = 'family_detail', param = 'family', subject = family, title = family, defaultSplit = null } = document.body.dataset;
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
@@ -26,7 +27,7 @@ const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
-  split: pick('split', ['subfamily', 'airline', 'service'], null),
+  split: pick('split', defaultSplit ? ['all', 'service'] : ['subfamily', 'airline', 'service'], defaultSplit),
   span: parseSpan(params.get('span')),
 };
 const bounds = { min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) };
@@ -46,7 +47,7 @@ function pushState() {
 
 // "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
 // the data behind the page, narrowed to the airline it's highlighting, if any
-const dataLink = () => setDataLink('family_detail', { family, group: parseHighlight(location.search)?.id ?? '' });
+const dataLink = () => setDataLink(query, { [param]: subject, ...(query === 'family_detail' ? { group: parseHighlight(location.search)?.id ?? '' } : {}) });
 
 function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
@@ -98,10 +99,11 @@ function draw() {
     ],
   });
   attachHighlight(chart, { pinned: wanted });
-  box.append(...attachPopover(chart, { content: (d) => ({ title: `${family}, ${d.period}`, rows: d.rows }), at: (d) => [d.period, d.top] }));
+  box.append(...attachPopover(chart, { content: (d) => ({ title: `${title}, ${d.period}`, rows: d.rows }), at: (d) => [d.period, d.top] }));
 }
 
 function chooseSplit() {
+  if (defaultSplit) return;   // an aircraft page offers only the splits its template lists
   // a family with several versions is most interesting split by version; otherwise by airline.
   // A family with one version has nothing to split, so the option is not offered and an old link falls back to airline.
   const versions = hasVersions(rows);
@@ -114,9 +116,11 @@ async function main() {
   const measure = $('fam-measure');
   for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k));
   try {
-    rows = (await fetchRows(queryUrl('family_detail', { family }))).rows;
-    const shorts = shortNames(rows.map((r) => r.group_name));
-    rows = rows.map((r) => ({ ...r, group_name: shorts.get(r.group_name) }));
+    rows = (await fetchRows(queryUrl(query, { [param]: subject }))).rows;
+    if (rows.some((r) => r.group_name)) {
+      const shorts = shortNames(rows.map((r) => r.group_name));
+      rows = rows.map((r) => ({ ...r, group_name: shorts.get(r.group_name) }));
+    }
   } catch (err) {
     console.error(err);
     $('family-chart').textContent = 'Could not load the chart data.';

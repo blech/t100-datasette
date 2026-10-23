@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ name }} over time · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-query="aircraft_detail" data-param="aircraft" data-subject="{{ type_id }}" data-title="{{ name }}" data-default-split="all" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
+  <main>
+    {% include "_nav.html" %}
+    <h1>{{ name }} over time</h1>
+    <p class="intro" id="subtitle">
+      {% if maker != "Unknown maker" %}Made by {{ maker }}. {% endif %}{% if kind != "Unknown" %}{{ kind }}. {% endif %}{% if first %}Flew {% if first == last %}in {{ first }}{% else %}from {{ first }} to {{ last }}{% endif %}. {% endif %}Part of the {% if family == "Unknown" %}Unknown{% else %}<a href="/aircraft/{{ family_slug }}">{{ family }}</a>{% endif %} family.
+    </p>
+    <p class="chart-sentence">
+      Show <select id="fam-measure" aria-label="Measure"></select>
+      for <select id="fam-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
+      on <select id="fam-service" aria-label="Routes"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>,
+      split by <select id="fam-split" aria-label="Split by"><option value="all">nothing</option><option value="service">domestic or international</option></select>,
+      over <select id="fam-span" aria-label="Years shown"><option value="flown">years flown</option><option value="all">all years</option></select>.
+    </p>
+    <p class="note" id="highlight-line" hidden></p>
+    <div id="family-chart" aria-live="polite">Loading chart…</div>
+    <p class="note" id="family-note">Each bar is one year. Freight is in short tons (2,000 lb). BTS's aircraft types lump a few variants together, so one type may cover more than its name says.</p>
+    {% include "_footer.html" %}
+  </main>
+  <script type="module" src="/static/charts/family.js"></script>
+</body>
+</html>

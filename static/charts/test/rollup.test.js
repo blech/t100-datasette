@@ -143,3 +143,14 @@ test('routeRows names each airport pair and keeps its measures and service', () 
   const res = buildMatrix(rollupRows(out, { key: 'route', kind: 'passenger' }), { measure: 'deps', n: 5 });
   assert.deepEqual(res.dests, ['ATL – LGA']);
 });
+
+test('splitting by nothing gives one series of all the flights, domestic and international together', () => {
+  const rows = [
+    { year: 2019, service: 'domestic', kind: 'passenger', deps: 4, passengers: 400 },
+    { year: 2019, service: 'international', kind: 'passenger', deps: 1, passengers: 100 },
+    { year: 2020, service: 'domestic', kind: 'passenger', deps: 2, passengers: 200 },
+  ];
+  const res = buildFamilySeries(rows, { measure: 'passengers', kind: 'passenger', split: 'all' });
+  assert.deepEqual(res.series, ['All flights']);
+  assert.deepEqual(res.points, [{ year: 2019, series: 'All flights', value: 500 }, { year: 2020, series: 'All flights', value: 200 }]);
+});

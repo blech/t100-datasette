@@ -45,6 +45,7 @@ What exists now (updated as views are added):
 | One route | `/airports/SFO/LHR/table` (airlines × aircraft) | only as a line on the airport and airline maps | `/airports/SFO/LHR` (stacked bars; one year by month) | |
 | All aircraft | `/aircraft` (families and types) | | `/aircraft/makers`, `/aircraft/engines` | |
 | One aircraft family | | | `/aircraft/boeing-737` | |
+| One aircraft | | | `/aircraft/boeing-737/boeing-737-800` | |
 | All airlines | `/airlines` (groups and members) | | front page airline chart | `/airlines/over-time` (airlines × years) |
 | One airline | `/airlines/delta/changes` ("What changed" routes) | `/airlines/delta/globe` | `/airlines/delta` (size, airport pairs) | `/airlines/delta/routes` (airport pairs × years) |
 
@@ -137,6 +138,8 @@ Questions:
   - Once they exist, a city's name links to its page and the ▸ alone opens the row, as the aircraft table separates a family's name from its disclosure.
   - Further on: city pairs for routes (New York–Miami across LGA, JFK, EWR and MIA, FLL), as `explore/12_market_routes.sql` on the `explore/sql-scripts` branch tried.
 - **Still to come:** a family map.
+- **Idea: comparing aircraft.** Charting several aircraft together (the AN-225 beside the AN-124 and the 747-8) probably wants to be general: the same picking and overlaying for airlines, airports and routes, not a feature of the aircraft page.
+- **The aircraft page** (`docs/superpowers/specs/2026-10-23-aircraft-page-design.md`) is built: `/aircraft/<family>/<aircraft>`, reached from an aircraft's name in the table. Still to come: a "families or aircraft" grouping option on the table, the families matrix at `/aircraft/over-time`, and the kinds page replacing the long-haul page.
 
 ### 5. Colour: done (merged, branch `colour`)
 

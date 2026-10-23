@@ -193,3 +193,11 @@ def test_carrier_route_by_year_sums_members_and_keeps_pairs_flown_12_times(ds, d
                    ("ATL", "LHR", 2019): (20, 1600, "international")}  # ATL-XNA flew 11 times: under the cut-off
     one = get_json(ds, url + "19790")["rows"]
     assert [(r["origin"], r["dest"], r["year"]) for r in one] == [("ATL", "LGA", 2019), ("ATL", "LHR", 2019)]  # Delta alone flew ATL-LGA 10 times in 2005
+
+
+def test_aircraft_detail_gives_one_aircrafts_years_by_service_and_kind(ds, db_path):
+    put(db_path, "type_year", [ty(2001, "614", 1, "F", 4), ty(2019, "614", 1, "F", 10), ty(2019, "614", 1, "L", 5), ty(2019, "614", 0, "G", 2), ty(2019, "619", 1, "F", 99)])
+    rows = get_json(ds, "/t100/aircraft_detail.json?_shape=objects&aircraft=614")["rows"]
+    got = {(r["year"], r["service"], r["kind"]): r["deps"] for r in rows}
+    assert got == {(2001, "domestic", "passenger"): 4, (2019, "domestic", "passenger"): 15, (2019, "international", "freight"): 2}
+    assert [r["year"] for r in rows] == sorted(r["year"] for r in rows)

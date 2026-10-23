@@ -48,6 +48,7 @@ def register_routes():
         (r"^/aircraft/makers$", aircraft_makers_page),
         (r"^/aircraft/table$", moved("/aircraft")),  # the table's address before it became /aircraft
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
+        (r"^/aircraft/(?P<slug>[a-z0-9-]+)/(?P<aircraft>[a-z0-9-]+)$", aircraft_page),
         # the paths the site used before airports came first
         (r"^/globe$", moved("/airports/globe")),
         (r"^/routes$", moved("/airports")),
@@ -100,9 +101,10 @@ def views_for(path):
             year = f"/{rest[0]}" if rest and rest[0].isdigit() else ""
             base = f"/airports/{a}/{b}{year}"
             return make(("Over time", base, None), ("Table", f"{base}/table", None), current=1 if rest and rest[-1] == "table" else 0)
-        case ["aircraft", *rest] if rest in ([], ["makers"], ["engines"]):
+        case ["aircraft", *rest] if len(rest) < 3:
             aircraft = [("Families", "/aircraft", None), ("Makers", "/aircraft/makers", None), ("Long-haul engines", "/aircraft/engines", None)]
-            return make(*aircraft, current=[[], ["makers"], ["engines"]].index(rest))
+            # a family or one of its aircraft is a page of the section but not one of these views: none is current
+            return make(*aircraft, current=[[], ["makers"], ["engines"]].index(rest) if rest in ([], ["makers"], ["engines"]) else -1)
         case ["airlines"] | ["airlines", "over-time"]:
             return make(("Airlines", "/airlines", None), ("Over time", "/airlines/over-time", None), current=len(parts) - 1)
         case ["airlines", slug, *rest] if rest in ([], ["routes"], ["changes"], ["globe"]):
@@ -434,6 +436,31 @@ async def family_page(datasette, request):
     html = await datasette.render_template(
         "family.html",
         {"family": family, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+async def aircraft_page(datasette, request):
+    """One aircraft (a BTS aircraft type) under its family: /aircraft/<family>/<aircraft>, both slugs of the names the table shows."""
+    family_slug, aircraft_slug = request.url_vars["slug"], request.url_vars["aircraft"]
+    rows = (await datasette.get_database("t100").execute(
+        """
+        SELECT y.aircraft_type, COALESCE(t.name, CASE y.aircraft_type WHEN 'unknown' THEN 'Type not reported' ELSE 'Type ' || y.aircraft_type END),
+               COALESCE(f.family, 'Unknown'), COALESCE(t.maker, 'Unknown maker'), COALESCE(t.kind, 'Unknown'), MIN(CASE WHEN y.deps > 0 THEN y.year END), MAX(CASE WHEN y.deps > 0 THEN y.year END)
+        FROM type_year y LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type LEFT JOIN aircraft_family f ON f.aircraft_type = y.aircraft_type
+        GROUP BY y.aircraft_type
+        """
+    )).rows
+    found = next((r for r in rows if slugify(r[2]) == family_slug and slugify(r[1]) == aircraft_slug), None)
+    if found is None:
+        raise NotFound(f"No aircraft {aircraft_slug} in {family_slug}")
+    type_id, name, family, maker, kind, first, last = found
+    html = await datasette.render_template(
+        "aircraft.html",
+        {"type_id": type_id, "name": name, "family": family, "family_slug": family_slug, "maker": maker, "kind": kind, "first": first, "last": last,
+         "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
+         "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, f"/aircraft/{family_slug}"), (name, None))},
         request=request,
     )
     return Response.html(html)

@@ -52,7 +52,7 @@ def test_the_airline_pages_map_view_keeps_the_id_its_script_rewrites():
     assert [v["id"] for v in views_for("/airlines/delta")] == [None, None, None, "map-link"]
 
 
-@pytest.mark.parametrize("path", ["/", "/aircraft/boeing-737", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
+@pytest.mark.parametrize("path", ["/", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
 def test_pages_with_one_view_have_none(path):
     assert views_for(path) == []
 
@@ -134,3 +134,10 @@ def test_the_airlines_table_and_matrix_are_two_views_of_the_section():
         ("Airlines", "/airlines", True), ("Over time", "/airlines/over-time", False)]
     assert [v["current"] for v in views_for("/airlines/over-time")] == [False, True]
     assert [v["label"] for v in views_for("/airlines/delta")] == ["Over time", "Routes", "Changes", "Map"]  # an airline is still its own subject
+
+
+def test_family_and_aircraft_pages_show_the_aircraft_views_with_none_current():
+    AIRCRAFT = [("Families", "/aircraft", False), ("Makers", "/aircraft/makers", False), ("Long-haul engines", "/aircraft/engines", False)]
+    assert views("/aircraft/boeing-737") == AIRCRAFT
+    assert views("/aircraft/boeing-737/boeing-737-800") == AIRCRAFT
+    assert views("/aircraft/boeing-737/boeing-737-800/extra") == []

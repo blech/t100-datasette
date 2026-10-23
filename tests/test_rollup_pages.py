@@ -168,3 +168,35 @@ def test_the_airlines_table_page_has_its_controls_breadcrumb_and_script(ds):
 def test_the_matrix_breadcrumb_goes_back_to_the_table(ds):
     html = get(ds, "/airlines/over-time").text
     assert '<a href="/airlines">airlines</a>' in html and 'aria-current="page">over time<' in html
+
+
+def aircraft_fixtures(db_path):
+    put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800", maker="Boeing", kind="Jet, twin-engine")])
+    put(db_path, "aircraft_family", [dict(aircraft_type="614", name="Boeing 737-800", family="Boeing 737", subfamily="737 NG", aircraft_class="Narrowbody jet", fallback=0)])
+    put(db_path, "type_year", [dict(year=y, aircraft_type=t, domestic=1, service_class="F", deps=5, seats=500, passengers=400, freight=0)
+                               for y, t in ((2001, "614"), (2019, "614"), (2019, "999"))])
+    put(db_path, "family_year", [fam(2019, "Boeing 737", 1, "F", 5)])
+
+
+def test_an_aircraft_page_is_found_by_its_family_and_its_own_slug(ds, db_path):
+    aircraft_fixtures(db_path)
+    r = get(ds, "/aircraft/boeing-737/boeing-737-800")
+    assert r.status_code == 200
+    assert 'data-query="aircraft_detail"' in r.text and 'data-subject="614"' in r.text and 'data-title="Boeing 737-800"' in r.text
+    assert "/static/charts/family.js" in r.text
+    assert "<h1>Boeing 737-800 over time</h1>" in r.text
+    assert 'href="/aircraft/boeing-737"' in r.text and "Boeing" in r.text and "Jet, twin-engine" in r.text and "2001" in r.text
+    assert 'aria-current="page">Boeing 737-800<' in r.text
+
+
+def test_an_aircraft_page_for_an_unknown_aircraft_or_the_wrong_family_is_404(ds, db_path):
+    aircraft_fixtures(db_path)
+    assert get(ds, "/aircraft/boeing-737/no-such-plane").status_code == 404
+    assert get(ds, "/aircraft/no-such-family/boeing-737-800").status_code == 404
+    assert get(ds, "/aircraft/makers/boeing-737-800").status_code == 404
+
+
+def test_a_type_with_no_family_has_a_page_named_as_the_table_names_it(ds, db_path):
+    aircraft_fixtures(db_path)
+    r = get(ds, "/aircraft/unknown/type-999")
+    assert r.status_code == 200 and 'data-subject="999"' in r.text and "Type 999" in r.text
