@@ -88,6 +88,19 @@ test('the maker menu lists each maker once, sorted, with a URL-friendly value', 
     [['all', 'any maker'], ['airbus', 'Airbus'], ['boeing', 'Boeing'], ['pilatus', 'Pilatus'], ['unknown-maker', 'Unknown maker']]);
 });
 
+test('the maker menu offers only makers of the chosen kind', () => {
+  assert.deepEqual(makerOptions(rows, { kind: 'jet-twin-engine' }).map((o) => o.value), ['all', 'airbus', 'boeing']);
+  assert.deepEqual(makerOptions(rows, { kind: 'turboprop-one-or-two-engines' }).map((o) => o.value), ['all', 'pilatus']);
+  assert.deepEqual(makerOptions(rows, { kind: 'no-such-kind' }).map((o) => o.value), ['all']);
+});
+
+test('given a measure, the maker menu leaves out makers with none of it in the year', () => {
+  assert.deepEqual(makerOptions(rows, { measure: 'deps' }).map((o) => o.value), ['all', 'airbus', 'boeing', 'pilatus']);
+  assert.deepEqual(makerOptions(rows).map((o) => o.value), ['all', 'airbus', 'boeing', 'pilatus', 'unknown-maker']);
+  const freightless = [...rows, t('7', 'Cessna 208', 'Other turboprop', 'Cessna', 'Turboprop, one or two engines', 5, { freight: 0 })];
+  assert.deepEqual(makerOptions(freightless, { measure: 'freight', kind: 'turboprop-one-or-two-engines' }).map((o) => o.value), ['all', 'pilatus']);
+});
+
 test('names with markup characters come through as plain strings', () => {
   const { families } = groupFamilies([t('1', '<b>x</b> & y', 'Fam <i>', 'M&M', 'Jet, twin-engine', 1)], { measure: 'deps' });
   assert.equal(families[0].types[0].name, '<b>x</b> & y');

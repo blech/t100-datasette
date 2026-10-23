@@ -6,7 +6,11 @@ const LB_PER_SHORT_TON = 2000;
 const byLabel = (a, b) => a.label.localeCompare(b.label);
 const options = (values, all) => [all, ...[...new Set(values)].filter(Boolean).map((v) => ({ value: slugify(v), label: v })).sort(byLabel)];
 export const kindOptions = (rows) => options(rows.map((r) => r.aircraft_kind), { value: 'all', label: 'all aircraft' });
-export const makerOptions = (rows) => options(rows.map((r) => r.maker), { value: 'all', label: 'any maker' });
+// The maker menu lists makers with something to show: of the chosen kind and, given a measure, with some of it in the year
+export const makerOptions = (rows, { kind = 'all', measure } = {}) => options(
+  rows.filter((r) => kindMatches(r.aircraft_kind, kind) && (!measure || amount(r, measure) > 0)).map((r) => r.maker),
+  { value: 'all', label: 'any maker' },
+);
 
 export const kindMatches = (aircraftKind, value) => value === 'all' || slugify(aircraftKind || '') === value;
 

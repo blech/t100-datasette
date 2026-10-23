@@ -12,7 +12,7 @@ const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? pa
 const years = ['all', ...Array.from({ length: latest - 1990 + 1 }, (_, i) => String(latest - i))];
 const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
-  year: pick('year', years, String(latest)),
+  year: pick('year', years, 'all'),
   kind: params.get('kind') || 'all',   // checked against the menus once the data is in
   maker: params.get('maker') || 'all',
   limit: pick('limit', LIMIT_OPTIONS.map((o) => o.value), DEFAULT_LIMIT),
@@ -32,7 +32,7 @@ const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
 function pushState() {
   const q = new URLSearchParams();
-  const defaults = { measure: 'passengers', year: String(latest), kind: 'all', maker: 'all', limit: DEFAULT_LIMIT, q: '', sort: 'value', dir: 'desc' };
+  const defaults = { measure: 'passengers', year: 'all', kind: 'all', maker: 'all', limit: DEFAULT_LIMIT, q: '', sort: 'value', dir: 'desc' };
   for (const [k, v] of Object.entries(state)) if (v !== defaults[k]) q.set(k, v);
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, Object.keys(defaults), `?${q}`)}`);
 }
@@ -116,6 +116,16 @@ function draw() {
   }
 }
 
+// Fill a menu from the data; a choice it no longer offers goes back to 'all'
+function fillMenu(id, field, opts) {
+  $(id).replaceChildren(...opts.map((o) => new Option(o.label, o.value)));
+  if (!opts.some((o) => o.value === state[field])) { state[field] = 'all'; pushState(); }
+  $(id).value = state[field];
+}
+
+// Only makers with something in the chosen kind, year and measure
+const fillMakers = () => fillMenu('at-maker', 'maker', makerOptions(rows, { kind: state.kind, measure: state.measure }));
+
 async function load() {
   setDataLink('type_table', { year: state.year });
   const id = ++seq;
@@ -134,11 +144,8 @@ async function load() {
   if (id !== seq) return;
   rows = fetched;
   loading = false;
-  for (const [id, field, opts] of [['at-kind', 'kind', kindOptions(rows)], ['at-maker', 'maker', makerOptions(rows)]]) {
-    $(id).replaceChildren(...opts.map((o) => new Option(o.label, o.value)));
-    if (!opts.some((o) => o.value === state[field])) { state[field] = 'all'; pushState(); }
-    $(id).value = state[field];
-  }
+  fillMenu('at-kind', 'kind', kindOptions(rows));
+  fillMakers();
   draw();
 }
 
@@ -151,8 +158,8 @@ function main() {
   $('at-limit').value = state.limit;
   $('at-limit').addEventListener('change', (e) => { state.limit = e.target.value; pushState(); draw(); });
   $('at-q').value = state.q;
-  $('at-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
-  $('at-kind').addEventListener('change', (e) => { state.kind = e.target.value; pushState(); draw(); });
+  $('at-measure').addEventListener('change', (e) => { state.measure = e.target.value; fillMakers(); pushState(); draw(); });
+  $('at-kind').addEventListener('change', (e) => { state.kind = e.target.value; fillMakers(); pushState(); draw(); });
   $('at-maker').addEventListener('change', (e) => { state.maker = e.target.value; pushState(); draw(); });
   $('at-q').addEventListener('input', (e) => { state.q = e.target.value; pushState(); draw(); });
   $('at-year').addEventListener('change', (e) => { state.year = e.target.value; pushState(); load(); });
