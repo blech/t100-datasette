@@ -324,6 +324,23 @@ databases:
           GROUP BY year, subfamily, group_id, group_name, service, kind
           ORDER BY year
 
+      family_aircraft:
+        title: "An aircraft family by year, aircraft, service and kind"
+        description: "One row per year, aircraft, service and kind for the aircraft family with the given name, all airlines together."
+        sql: |
+          SELECT
+            a.year, a.aircraft,
+            COALESCE(t.name, CASE a.aircraft WHEN 'unknown' THEN 'Type not reported' ELSE 'Type ' || a.aircraft END) AS aircraft_name,
+            CASE WHEN a.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN a.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(a.deps) AS deps, SUM(a.seats) AS seats, SUM(a.passengers) AS passengers, SUM(a.freight) AS freight
+          FROM aircraft_carrier_year a
+            LEFT JOIN aircraft_family f ON f.aircraft_type = a.aircraft
+            LEFT JOIN aircraft_types t ON t.ac_typeid = a.aircraft
+          WHERE COALESCE(f.family, 'Unknown') = :family
+          GROUP BY a.year, a.aircraft, aircraft_name, service, kind
+          ORDER BY a.year
+
       aircraft_detail:
         title: "One aircraft by year, airline group, service and kind"
         description: "One row per year, airline group, service and kind for the aircraft with the given id (aircraft_types.ac_typeid). Leave group empty for every airline."

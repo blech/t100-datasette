@@ -70,6 +70,7 @@ export const SPLIT_LABEL = {
   airline: (r) => r.group_name || 'Unknown carrier',
   maker: (r) => r.maker || 'Unknown maker',
   service: (r) => SERVICE_LABELS[r.service] || r.service,
+  aircraft: (r) => r.aircraft_name || 'Unknown aircraft',
   all: () => 'All flights',
 };
 
@@ -100,7 +101,7 @@ export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', 
   if (split === 'subfamily') order.sort((a, b) => first.get(a) - first.get(b) || totals.get(b) - totals.get(a));
   else if (split === 'service') order.sort();
   else order.sort((a, b) => totals.get(b) - totals.get(a) || a.localeCompare(b));
-  const folded = (split === 'airline' || split === 'maker') && order.length > top;
+  const folded = (split === 'airline' || split === 'maker' || split === 'aircraft') && order.length > top;
   // the top series; one asked for by name from further down (a highlighted airline) takes the last places instead,
   // so there are never more than `top` named series and each keeps a colour of its own
   const extra = order.slice(top).filter((s) => keep.has(s));

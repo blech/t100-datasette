@@ -207,9 +207,9 @@ def split_options(html):
     return re.findall(r'<option value="([^"]+)"', select)
 
 
-def test_the_splits_are_version_airline_or_nothing_for_a_family_and_airline_or_nothing_for_an_aircraft(ds, db_path):
+def test_the_splits_are_version_airline_aircraft_or_nothing_for_a_family_and_airline_or_nothing_for_an_aircraft(ds, db_path):
     aircraft_fixtures(db_path)
-    assert split_options(get(ds, "/aircraft/boeing-737").text) == ["subfamily", "airline", "all"]
+    assert split_options(get(ds, "/aircraft/boeing-737").text) == ["subfamily", "airline", "aircraft", "all"]
     aircraft = get(ds, "/aircraft/boeing-737/boeing-737-800").text
     assert split_options(aircraft) == ["airline", "all"]
     assert 'data-default-split="airline"' in aircraft

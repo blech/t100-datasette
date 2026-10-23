@@ -206,3 +206,20 @@ def test_aircraft_detail_gives_one_aircrafts_years_by_airline_service_and_kind(d
         (2001, "delta", "domestic", "passenger"): 4, (2019, "delta", "domestic", "passenger"): 15, (2019, "united", "international", "freight"): 2}
     assert [r["year"] for r in rows] == sorted(r["year"] for r in rows)
     assert {r["group_id"] for r in get_json(ds, "/t100/aircraft_detail.json?_shape=objects&aircraft=614&group=united")["rows"]} == {"united"}
+
+
+def test_family_aircraft_gives_each_aircraft_of_a_family_by_year_service_and_kind(ds, db_path):
+    def row(year, aircraft, group, domestic, service_class, deps):
+        return dict(year=year, aircraft=aircraft, group_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
+                    deps=deps, seats=deps * 100, passengers=deps * 80, freight=deps * 1000)
+    put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800"), dict(ac_typeid="619", ac_group="6", name="Boeing 737-300"),
+                                    dict(ac_typeid="852", ac_group="8", name="DC-8-63F")])
+    put(db_path, "aircraft_family", [dict(aircraft_type=t, name=n, family=f, subfamily="", aircraft_class="Narrowbody jet", fallback=0)
+                                     for t, n, f in (("614", "Boeing 737-800", "Boeing 737"), ("619", "Boeing 737-300", "Boeing 737"), ("852", "DC-8-63F", "DC-8"))])
+    put(db_path, "aircraft_carrier_year", [row(2019, "614", "delta", 1, "F", 10), row(2019, "614", "united", 1, "F", 5), row(2019, "619", "delta", 0, "G", 2),
+                                           row(2019, "852", "delta", 1, "F", 99), row(2019, "999", "delta", 1, "F", 3)])
+    rows = get_json(ds, "/t100/family_aircraft.json?_shape=objects&family=Boeing+737")["rows"]
+    assert {(r["aircraft"], r["aircraft_name"], r["service"], r["kind"]): r["deps"] for r in rows} == {
+        ("614", "Boeing 737-800", "domestic", "passenger"): 15, ("619", "Boeing 737-300", "international", "freight"): 2}
+    unknown = get_json(ds, "/t100/family_aircraft.json?_shape=objects&family=Unknown")["rows"]
+    assert [(r["aircraft"], r["aircraft_name"]) for r in unknown] == [("999", "Type 999")]

@@ -154,3 +154,11 @@ test('splitting by nothing gives one series of all the flights, domestic and int
   assert.deepEqual(res.series, ['All flights']);
   assert.deepEqual(res.points, [{ year: 2019, series: 'All flights', value: 500 }, { year: 2020, series: 'All flights', value: 200 }]);
 });
+
+test('splitting by aircraft gives a series for each, by total, with the smaller ones folded into Other', () => {
+  const rows = [];
+  for (let i = 1; i <= 10; i++) rows.push({ year: 2019, service: 'domestic', kind: 'passenger', aircraft_name: `Plane ${i}`, deps: 1, passengers: i * 100 });
+  const res = buildFamilySeries(rows, { measure: 'passengers', kind: 'passenger', split: 'aircraft' });
+  assert.deepEqual(res.series, ['Plane 10', 'Plane 9', 'Plane 8', 'Plane 7', 'Plane 6', 'Plane 5', 'Plane 4', 'Plane 3', 'Other']);
+  assert.equal(res.points.find((p) => p.series === 'Other').value, 300);
+});

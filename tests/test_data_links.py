@@ -8,7 +8,7 @@ from tests.test_rollup_queries import put
 from tests.test_views_pages import delta
 
 INVENTORY = ["top_airports", "top_us_airports", "airport_size", "routes_by_year", "airport_changes", "route", "route_year", "type_table",
-             "maker_by_year", "engines_by_year", "family_detail", "aircraft_detail", "airline_table", "carrier_group_by_year", "carrier_group_detail",
+             "maker_by_year", "engines_by_year", "family_detail", "family_aircraft", "aircraft_detail", "airline_table", "carrier_group_by_year", "carrier_group_detail",
              "carrier_route_by_year", "carrier_route_changes", "carrier_routes_year", "airport_by_year"]
 
 AIRLINES = {"united": ("19977", "U1", "United Air Lines Inc.", "United (incl. Continental)"),

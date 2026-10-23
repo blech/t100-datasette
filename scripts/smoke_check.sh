@@ -63,6 +63,7 @@ check 200 "/t100/top_carrier_history.json?year=2025&_shape=objects"  '"Southwest
 check 200 "/t100/domestic_routes.json?year=2025&_shape=objects"      '"ATL"'
 check 200 "/t100/busiest_airports.json?year=2025&_shape=objects"    '"ATL"'
 check 200 "/t100/family_detail.json?family=Boeing+737&_shape=objects" '"737 NG"'
+check 200 "/t100/family_aircraft.json?family=Boeing+737&_shape=objects"   '"Boeing 737-800"'
 check 200 "/t100/aircraft_detail.json?aircraft=614&_shape=objects"      '"passenger"'
 check 200 "/t100/type_table.json?year=2019&_shape=objects"          '"Boeing 737'
 check 200 "/t100/maker_by_year.json?_shape=objects"                 '"maker": "Boeing"'

@@ -1,7 +1,8 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
-import { buildFamilySeries, hasVersions, SPLIT_LABEL } from '/static/charts/src/rollup.js';
+import { buildFamilySeries, hasVersions, slugify, SPLIT_LABEL } from '/static/charts/src/rollup.js';
+import { aircraftHref } from '/static/charts/src/aircraft.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
@@ -27,11 +28,12 @@ const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
-  split: pick('split', defaultSplit ? ['airline', 'all'] : ['subfamily', 'airline', 'all'], defaultSplit),
+  split: pick('split', defaultSplit ? ['airline', 'all'] : ['subfamily', 'airline', 'aircraft', 'all'], defaultSplit),
   span: parseSpan(params.get('span')),
 };
 const bounds = { min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) };
 let rows = [];
+let aircraftRows = null;   // the family's aircraft, fetched the first time the aircraft split is chosen
 
 const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 
@@ -43,11 +45,14 @@ function pushState() {
   q.set('split', state.split);
   if (state.span !== 'flown') q.set('span', state.span);
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'split', 'span'], `?${q}`)}`);
+  dataLink();
 }
 
 // "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
 // the data behind the page, narrowed to the airline it's highlighting, if any
-const dataLink = () => setDataLink(query, { [param]: subject, group: parseHighlight(location.search)?.id ?? '' });
+const dataLink = () => (state.split === 'aircraft'
+  ? setDataLink('family_aircraft', { family })
+  : setDataLink(query, { [param]: subject, group: parseHighlight(location.search)?.id ?? '' }));
 
 function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
@@ -77,11 +82,15 @@ function draw() {
   const byAirline = state.split === 'airline';
   const wanted = byAirline ? highlightedSeries(rows, highlight, SPLIT_LABEL.airline) : new Set();
   highlightLine(highlight, wanted, byAirline);
-  const res = buildFamilySeries(rows, { ...state, keep: wanted });
+  const byAircraft = state.split === 'aircraft';
+  const hint = $('click-hint');
+  if (hint) hint.hidden = !byAircraft;
+  const res = buildFamilySeries(byAircraft ? aircraftRows || [] : rows, { ...state, keep: wanted });
   if (!res.points.length) { box.textContent = `No ${unit()} for this selection.`; return; }
   const years = yearDomain(res.years, { span: state.span, ...bounds }).map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
-  const data = res.points.map((p) => ({ ...p, year: String(p.year) }));
+  // on the aircraft split a bar opens that aircraft's page (Other is several, so it stays unlinked)
+  const data = res.points.map((p) => ({ ...p, year: String(p.year), href: byAircraft && p.series !== 'Other' ? aircraftHref(slugify(family), p.series) : undefined }));
   const tips = periodRows(data, { key: (p) => p.year, order: res.series, format: (v) => formatCount(v) });
   const colors = { ...seriesColours(res.series, isDark()), legend: true };
   const chart = Plot.plot({
@@ -93,7 +102,7 @@ function draw() {
     y: { ...millionsAxis(stackMax(res.points, 'year'), MATRIX_MEASURES[state.measure]), grid: true },
     color: colors,
     marks: [
-      Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series }),
+      Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series, href: 'href' }),
       Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
       Plot.ruleY([0]),
     ],
@@ -109,6 +118,18 @@ function chooseSplit() {
   const versions = hasVersions(rows);
   if (!versions) $('fam-split').querySelector('option[value="subfamily"]')?.remove();
   if (!state.split || (state.split === 'subfamily' && !versions)) state.split = versions ? 'subfamily' : 'airline';
+}
+
+async function loadAircraft() {
+  if (aircraftRows) return true;
+  try {
+    aircraftRows = (await fetchRows(queryUrl('family_aircraft', { family }))).rows;
+    return true;
+  } catch (err) {
+    console.error(err);
+    $('family-chart').textContent = 'Could not load the aircraft.';
+    return false;
+  }
 }
 
 async function main() {
@@ -133,9 +154,16 @@ async function main() {
   $('fam-split').value = state.split;
   $('fam-span').value = state.span;
   for (const [id, field] of [['fam-measure', 'measure'], ['fam-kind', 'kind'], ['fam-service', 'service'], ['fam-split', 'split'], ['fam-span', 'span']]) {
-    $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });
+    $(id).addEventListener('change', async (e) => {
+      state[field] = e.target.value;
+      if (field === 'split' && state.split === 'aircraft' && !(await loadAircraft())) return;
+      pushState();
+      draw();
+    });
   }
   document.addEventListener('t100:theme', () => draw());
+  if (state.split === 'aircraft' && !(await loadAircraft())) return;
+  dataLink();
   draw();
 }
 
