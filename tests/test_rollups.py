@@ -75,7 +75,7 @@ def leftovers(db_path, *types):
 def test_unmatched_types_of_a_maker_with_two_or_more_form_a_family_whatever_their_kind(db_path):
     got = leftovers(db_path, ("801", "0", "Zork Z-1 Skylark", "Zork"), ("802", "4", "Zork Z-9 Turbo", "Zork"))
     assert got["801"] == ("Zork (other models)", "Piston", 1, "")
-    assert got["802"] == ("Zork (other models)", "Turboprop", 1, "")
+    assert got["802"] == ("Zork (other models)", "Piston", 1, "")   # one class for the family: a tie goes to the alphabetically first
 
 
 def test_a_makers_single_unmatched_type_joins_the_per_kind_other(db_path):
@@ -102,6 +102,16 @@ def test_rebuilding_twice_gives_the_same_families(db_path):
     rebuild_aircraft_family(conn)
     second = {r[0]: r[1:] for r in conn.execute("SELECT aircraft_type, family, aircraft_class, fallback, subfamily FROM aircraft_family")}
     assert first == second
+
+
+def test_a_makers_family_of_mixed_kinds_has_one_class_and_rolls_up_into_family_year(db_path):
+    add_types(db_path, ("801", "0", "Cessna 150/152"), ("802", "4", "Cessna C-441"), ("803", "0", "Cessna 172 Skyhawk"))
+    add_segments(db_path, "t100_domestic", [flight(aircraft_type=t, **{"class": "F"}, deps=d) for t, d in (("801", 3), ("802", 4), ("803", 5))])
+    conn = sqlite3.connect(db_path)
+    rebuild_derived_tables(conn)
+    classes = {r[0] for r in conn.execute("SELECT aircraft_class FROM aircraft_family WHERE family = 'Cessna (other models)'")}
+    assert classes == {"Piston"}, "the most common class among the family's types"
+    assert conn.execute("SELECT SUM(deps), COUNT(DISTINCT aircraft_class) FROM family_year WHERE family = 'Cessna (other models)'").fetchone() == (12, 1)
 
 
 def test_family_year_splits_domestic_and_international_and_service_class(db_path):

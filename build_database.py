@@ -287,12 +287,19 @@ def rebuild_aircraft_family(conn: sqlite3.Connection, rules_path=None) -> int:
         else:
             unmatched.append((code, name, group, maker or None))
     per_maker = collections.Counter(maker for *_, maker in unmatched if maker)
+    named = []
     for code, name, group, maker in unmatched:
         if maker and per_maker[maker] > 1:
             family = f"{maker} (other models)"
         else:
             family = "Other " + _KIND_BY_GROUP.get(group, "Jet, twin-engine").lower()
-        rows.append((code, name, family, "", _GROUP_CLASS.get(group, "Other jet"), 1))
+        named.append((code, name, family, _GROUP_CLASS.get(group, "Other jet")))
+    # family_year keys a family on one class, so a family of mixed kinds takes its most common (then alphabetically first)
+    classes = collections.defaultdict(collections.Counter)
+    for _, _, family, cls in named:
+        classes[family][cls] += 1
+    family_class = {fam: min(c, key=lambda k: (-c[k], k)) for fam, c in classes.items()}
+    rows += [(code, name, family, "", family_class[family], 1) for code, name, family, _ in named]
     with conn:
         conn.execute("DELETE FROM aircraft_family")
         conn.executemany("INSERT OR REPLACE INTO aircraft_family VALUES (?, ?, ?, ?, ?, ?)", rows)
