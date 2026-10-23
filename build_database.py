@@ -1,4 +1,5 @@
 """Build helpers for the T-100 database: schema, indexes, view, coordinate overrides."""
+import collections
 import csv
 import re
 import sqlite3
@@ -264,29 +265,34 @@ def rebuild_airport_names(conn: sqlite3.Connection) -> int:
 # Distance bands for aircraft_group_band_year: each band starts at the number shown
 DISTANCE_BAND_STARTS = (0, 500, 1500, 3000, 5000)
 _BAND_SQL = "CASE WHEN COALESCE(distance, 0) < 500 THEN 0 WHEN distance < 1500 THEN 500 WHEN distance < 3000 THEN 1500 WHEN distance < 5000 THEN 3000 ELSE 5000 END"
-# aircraft_types.ac_group -> (family, class) for types no rule in data/aircraft_families.csv matches
-_GROUP_FALLBACK = {
-    "0": ("Other piston", "Piston"), "1": ("Other piston", "Piston"), "2": ("Other piston", "Piston"),
-    "3": ("Other helicopter", "Helicopter"), "4": ("Other turboprop", "Turboprop"), "5": ("Other turboprop", "Turboprop"),
-    "6": ("Other jet", "Other jet"), "7": ("Other tri-jet", "Other jet"), "8": ("Other quad-jet", "Other jet"),
-}
+# aircraft_types.ac_group -> class, for types no rule in data/aircraft_families.csv matches
+_GROUP_CLASS = {"0": "Piston", "1": "Piston", "2": "Piston", "3": "Helicopter", "4": "Turboprop", "5": "Turboprop", "6": "Other jet", "7": "Other jet", "8": "Other jet"}
 
 
 def rebuild_aircraft_family(conn: sqlite3.Connection, rules_path=None) -> int:
-    """Map every aircraft type to a family. The first rule (lowest priority) whose regex matches the type's name wins."""
+    """Map every aircraft type to a family. The first rule (lowest priority) whose regex matches the type's name wins.
+
+    A type no rule matches joins "<maker> (other models)" when two or more unmatched types share its maker, else
+    "Other <kind>" (the kind of its BTS group). Those rows are flagged `fallback`."""
     create_schema(conn)
     with open(rules_path or DATA_DIR / "aircraft_families.csv", newline="") as f:
         rules = sorted(csv.DictReader(f), key=lambda r: int(r["priority"]))
     compiled = [(re.compile(r["name_regex"], re.IGNORECASE), r["family"], r["subfamily"], r["class"]) for r in rules]
-    rows = []
-    for code, group, name in conn.execute("SELECT ac_typeid, ac_group, name FROM aircraft_types WHERE ac_typeid IS NOT NULL"):
+    rows, unmatched = [], []
+    for code, group, name, maker in conn.execute("SELECT ac_typeid, ac_group, name, maker FROM aircraft_types WHERE ac_typeid IS NOT NULL"):
         for pattern, family, subfamily, cls in compiled:
             if pattern.search(name or ""):
                 rows.append((code, name, family, subfamily, cls, 0))
                 break
         else:
-            family, cls = _GROUP_FALLBACK.get(group, ("Other jet", "Other jet"))
-            rows.append((code, name, family, "", cls, 1))
+            unmatched.append((code, name, group, maker or None))
+    per_maker = collections.Counter(maker for *_, maker in unmatched if maker)
+    for code, name, group, maker in unmatched:
+        if maker and per_maker[maker] > 1:
+            family = f"{maker} (other models)"
+        else:
+            family = "Other " + _KIND_BY_GROUP.get(group, "Jet, twin-engine").lower()
+        rows.append((code, name, family, "", _GROUP_CLASS.get(group, "Other jet"), 1))
     with conn:
         conn.execute("DELETE FROM aircraft_family")
         conn.executemany("INSERT OR REPLACE INTO aircraft_family VALUES (?, ?, ?, ?, ?, ?)", rows)

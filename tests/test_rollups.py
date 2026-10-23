@@ -59,7 +59,49 @@ def test_a350_rule_does_not_catch_a_helicopter(db_path):
 
 
 def test_unmatched_types_fall_back_on_the_bts_group_and_are_flagged(db_path):
-    assert families(db_path)["901"] == ("Other turboprop", "", "Turboprop", 1)
+    assert families(db_path)["901"] == ("Other turboprop, one or two engines", "", "Turboprop", 1)
+
+
+def leftovers(db_path, *types):
+    """Families for (type id, BTS group, name, maker) rows, with the maker set as rebuild_aircraft_type_labels would."""
+    add_types(db_path, *[t[:3] for t in types])
+    conn = sqlite3.connect(db_path)
+    conn.executemany("UPDATE aircraft_types SET maker = ? WHERE ac_typeid = ?", [(t[3], t[0]) for t in types])
+    conn.commit()
+    conn.close()
+    return {r[0]: r[1:] for r in query(db_path, "SELECT aircraft_type, family, aircraft_class, fallback, subfamily FROM aircraft_family", rebuild_aircraft_family)}
+
+
+def test_unmatched_types_of_a_maker_with_two_or_more_form_a_family_whatever_their_kind(db_path):
+    got = leftovers(db_path, ("801", "0", "Zork Z-1 Skylark", "Zork"), ("802", "4", "Zork Z-9 Turbo", "Zork"))
+    assert got["801"] == ("Zork (other models)", "Piston", 1, "")
+    assert got["802"] == ("Zork (other models)", "Turboprop", 1, "")
+
+
+def test_a_makers_single_unmatched_type_joins_the_per_kind_other(db_path):
+    got = leftovers(db_path, ("803", "2", "Zork L-1049", "Zork"), ("804", "0", "Quux Q-3", "Quux"), ("805", "0", "Quux Q-4", "Quux"))
+    assert got["803"][0] == "Other piston, four-engine"
+    assert got["804"][0] == got["805"][0] == "Quux (other models)"
+
+
+def test_unmatched_types_with_no_maker_join_the_per_kind_other(db_path):
+    got = leftovers(db_path, ("806", "1", "Float/Amphib A", None), ("807", "1", "Float/Amphib B", None), ("808", "3", "Mystery Copter", ""))
+    assert got["806"][0] == got["807"][0] == "Other piston, twin-engine"
+    assert got["808"][0] == "Other helicopter"
+
+
+def test_rule_matched_types_are_not_counted_as_leftovers(db_path):
+    got = leftovers(db_path, ("614", "6", "Boeing 737-800", "Boeing"), ("809", "6", "Boeing Zeta", "Boeing"))
+    assert got["614"][0] == "Boeing 737"
+    assert got["809"][0] == "Other jet, twin-engine"
+
+
+def test_rebuilding_twice_gives_the_same_families(db_path):
+    first = leftovers(db_path, ("801", "0", "Zork Z-1 Skylark", "Zork"), ("802", "4", "Zork Z-9 Turbo", "Zork"), ("803", "2", "Zork L-1049", "Other"))
+    conn = sqlite3.connect(db_path)
+    rebuild_aircraft_family(conn)
+    second = {r[0]: r[1:] for r in conn.execute("SELECT aircraft_type, family, aircraft_class, fallback, subfamily FROM aircraft_family")}
+    assert first == second
 
 
 def test_family_year_splits_domestic_and_international_and_service_class(db_path):

@@ -170,4 +170,3 @@ priority,name_regex,family,subfamily,class
 169,Robinson R-?\d,Robinson helicopters,Robinson (other models),Helicopter
 170,Hughes.*\b500\b,Hughes / MD helicopters,500/530,Helicopter
 171,Hughes.*\b300\b,Hughes / MD helicopters,300,Helicopter
-172,Cessna|Piper|Beech 18|Islander|Beaver|Otter|Gipps|Float|Navajo|Cherokee,Light piston / utility,Piston,Piston
