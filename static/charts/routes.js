@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, MATRIX_MEASURES, labelMargin, textWidth } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, MATRIX_MEASURES, labelMargin, textWidth, pointerReach } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -66,10 +67,12 @@ function drawAirports() {
     rows: cellRows(c),
     href: routeYearHref(c.dest, c.year),
   }));
+  const width = Math.min(box.clientWidth || 900, 1100);
+  const marginLeft = 48;
   const chart = Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1100),
+    width,
     height: res.dests.length * ROW_PX + 90,
-    marginLeft: 48,
+    marginLeft,
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
@@ -78,7 +81,7 @@ function drawAirports() {
     color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
-      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: airportHref(d) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
@@ -137,10 +140,12 @@ function drawCities() {
     href: r.kind === 'airport' ? airportHref(r.code) : `#toggle:${r.key}`,
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
+  const width = Math.min(box.clientWidth || 900, 1200);
+  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box));
   const chart = Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1200),
+    width,
     height: res.rows.length * ROW_PX + 90,
-    marginLeft: labelMargin(labels.map((l) => l.text), textWidth(box)),
+    marginLeft,
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
@@ -149,7 +154,7 @@ function drawCities() {
     color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), href: 'href' }),
-      Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(labels, {
         y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
@@ -167,17 +172,6 @@ const cellPopover = (y) => ({
   link: (d) => (d.href && !d.href.startsWith('#') ? d.href : null),
 });
 
-// Row labels carry their hover text in an SVG <title>; move it into our own tooltip so it shows at once
-// and the same way in every browser.
-function useLabelTips() {
-  for (const text of $('matrix').querySelectorAll('svg text')) {
-    const title = text.querySelector(':scope > title');
-    if (!title) continue;
-    text.dataset.tip = title.textContent;
-    title.remove();
-  }
-}
-
 function draw() {
   const note = $('scale-note');
   note.hidden = !relative();
@@ -193,19 +187,10 @@ function draw() {
     : `Destinations are ranked by the measure in ${rankYear()} alone, so ones that did not fly then are not shown.`;
   if (state.group === 'city') drawCities();
   else drawAirports();
-  useLabelTips();
+  useLabelTips($('matrix'));
 }
 
-const labelTip = $('label-tip');
-$('matrix').addEventListener('mousemove', (e) => {
-  const text = e.target.closest && e.target.closest('text[data-tip]');
-  if (!text) { labelTip.hidden = true; return; }
-  labelTip.textContent = text.dataset.tip;
-  labelTip.style.left = `${Math.min(e.clientX + 14, window.innerWidth - 320)}px`;
-  labelTip.style.top = `${e.clientY + 14}px`;
-  labelTip.hidden = false;
-});
-$('matrix').addEventListener('mouseleave', () => { labelTip.hidden = true; });
+attachLabelTips($('matrix'), $('label-tip'));
 
 $('matrix').addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('a');

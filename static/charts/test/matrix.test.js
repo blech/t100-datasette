@@ -268,3 +268,13 @@ test('a city row is named by the city name its airports carry most between them'
   const rows = [c('BWI', 2019, 1300, '30852', 'Baltimore, MD'), c('DCA', 2019, 1200, '30852', 'Washington, DC'), c('IAD', 2019, 1100, '30852', 'Washington, DC')];
   assert.equal(buildCityMatrix(rows, group).rows[0].label, 'Washington, DC');
 });
+
+test('the pointer reaches every point of a cell but not the labels beside the first one', async () => {
+  const { pointerReach } = await import('../src/matrix.js');
+  for (const [width, years] of [[1200, 36], [900, 36], [390, 36], [900, 5]]) {
+    const cell = (width - 120) / years;                    // the band each year gets beside a 120px label column
+    const reach = pointerReach({ width, marginLeft: 120, years, rowPx: 20 });
+    assert.ok(reach >= Math.hypot(cell / 2, 10), `${width}/${years}: a cell's corner is in reach`);
+    assert.ok(reach < cell / 2 + 8, `${width}/${years}: a label, 8px left of the first cell, is not`);
+  }
+});

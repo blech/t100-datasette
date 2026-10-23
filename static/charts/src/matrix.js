@@ -47,6 +47,14 @@ export function buildMatrix(rows, { measure = 'passengers', service = 'all', n =
 // when they listed their airports. `width` measures a label; a page passes the browser's measure of its 12px type
 export const labelMargin = (texts, width = (t) => t.length * 7) => Math.min(280, Math.max(48, Math.ceil(Math.max(0, ...texts.map((t) => width(String(t)))) + 16)));
 
+// how far the cell pointer reaches (Plot.pointer's maxRadius): from a cell's centre to its corners, so any point in a cell
+// picks it, but short of the row labels, which end 8px left of the first year's cells (its default 40px reached into them,
+// so hovering a label lit up that row's first cell)
+export function pointerReach({ width, marginLeft, years, rowPx }) {
+  const cell = (width - marginLeft) / Math.max(1, years);
+  return Math.min(Math.hypot(cell / 2, rowPx / 2) + 0.5, cell / 2 + 7.5);
+}
+
 // a label's width in px as the page's 12px type sets it, for labelMargin (a browser's canvas; null where there isn't one)
 export function textWidth(box) {
   const ctx = typeof document !== 'undefined' && document.createElement('canvas').getContext('2d');

@@ -1,6 +1,8 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
+import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, labelMargin, textWidth, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, labelMargin, textWidth, pointerReach, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows } from '/static/charts/src/rollup.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
 import { tableSearch } from '/static/landing/src/table.js';
@@ -79,6 +81,7 @@ const labelOf = (name) => shorts.get(name) || name;
 
 // a label opens the thing it names: an airline's own page, or a route with this airline picked out
 let places = new Map();
+let airportInfo = new Map(); // code -> the airports query's row (name, ICAO code, place), for an airport's hover text
 const place = (code) => places.get(code) || code;
 const pairOf = (route) => route.split(' – ');
 function familyHref(name) {
@@ -87,7 +90,8 @@ function familyHref(name) {
   const id = rows.find((r) => r.group_name === name)?.group_id;
   return id ? `/airlines/${id}` : undefined;
 }
-const titleOf = (name) => (kind === 'routes' ? pairOf(name).map(place).join(' – ') : kind === 'airports' ? `${name} · ${rows.find((r) => r.origin === name)?.city || ''}` : name);
+const airportTitle = (code) => (airportInfo.has(code) ? airportTip(code, airportInfo) : `${code} · ${rows.find((r) => r.origin === code)?.city || ''}`);
+const titleOf = (name) => (kind === 'routes' ? pairOf(name).map(place).join(' – ') : kind === 'airports' ? airportTitle(name) : name);
 
 // the airports matrix by city: a city is its name, opening into its airports (each a link to its destinations matrix)
 const cityOf = () => new Map(rows.map((r) => [r.origin, r.city]));
@@ -102,17 +106,19 @@ function drawCities(box) {
     ...r,
     text: r.kind === 'airport' ? r.code : `${r.open ? '▾' : '▸'} ${r.label}`,
     href: r.kind === 'airport' ? `/airports/${r.code}/destinations` : `#toggle:${r.key}`,
-    title: r.kind === 'airport' ? `${r.code} · ${city.get(r.code) || ''}` : [r.label, '', ...r.codes.map((c) => `${c}  ${city.get(c) || ''}`)].join('\n'),
+    title: r.kind === 'airport' ? airportTitle(r.code) : airportInfo.size ? groupTip(r, airportInfo) : [r.label, '', ...r.codes.map((c) => `${c}  ${city.get(c) || ''}`)].join('\n'),
   }));
   const data = res.cells.map((c) => {
     const row = byKey.get(c.row);
     const parts = c.parts && row.codes.length > 1 ? c.parts.slice(0, 5).map((p) => ({ label: p.dest, value: formatCount(p.value) })) : [];
     return { ...c, year: String(c.year), head: row.kind === 'airport' ? row.code : row.label, rows: [...cellRows(c), ...parts] };
   });
+  const width = Math.min(box.clientWidth || 900, 1200);
+  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box));
   const chart = Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1200),
+    width,
     height: res.rows.length * ROW_PX + 90,
-    marginLeft: labelMargin(labels.map((l) => l.text), textWidth(box)),
+    marginLeft,
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
@@ -121,7 +127,7 @@ function drawCities(box) {
     color: colourOptions(res.cells),
     marks: [
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField() }),
-      Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(labels, {
         y: 'key', text: 'text', title: 'title', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
@@ -149,16 +155,18 @@ function draw() {
 
   const box = $('matrix');
   box.replaceChildren();
-  if (state.group === 'city') { drawCities(box); return; }
+  if (state.group === 'city') { drawCities(box); useLabelTips(box); return; }
   const res = buildMatrix(rollupRows(rows, { key: page.key, kind: kind === 'routes' ? 'all' : state.flights }), { ...state, rankYear: rankYear() });
   if (!res.cells.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const years = res.years.map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.cells.map((c) => ({ ...c, year: String(c.year) }));
+  const width = Math.min(box.clientWidth || 900, 1200);
+  const marginLeft = kind === 'airports' ? 48 : 190; // airport codes are short; airline names and routes aren't
   const chart = Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1200),
+    width,
     height: res.dests.length * ROW_PX + 90,
-    marginLeft: kind === 'airports' ? 48 : 190, // airport codes are short; airline names and routes aren't
+    marginLeft,
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
@@ -169,13 +177,14 @@ function draw() {
       : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) },
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField() }),
-      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(res.dests.map((d) => ({ dest: d, label: labelOf(d), href: familyHref(d), title: titleOf(d) })), { y: 'dest', text: 'label', title: 'title', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8, fill: 'currentColor' }),
     ],
   });
   box.append(...attachPopover(chart, {
     content: (d) => ({ title: `${d.dest} · ${d.year}`, rows: cellRows(d) }), at: (d) => [d.year, d.dest], keyOf: () => ({ kind: 'none' }),
   }));
+  useLabelTips(box);
 }
 
 function fillControls() {
@@ -211,6 +220,8 @@ $('matrix').addEventListener('click', (e) => {
   draw();
 });
 
+attachLabelTips($('matrix'), $('label-tip'));
+
 async function main() {
   setDataLink(page.query, queryParams);
   fillControls();
@@ -218,10 +229,11 @@ async function main() {
   try {
     const [res, airports] = await Promise.all([
       fetchRows(queryUrl(page.query, queryParams)),
-      kind === 'routes' ? fetchRows(queryUrl('airports')).catch(() => null) : null, // place names are only hover text
+      kind === 'routes' || kind === 'airports' ? fetchRows(queryUrl('airports')).catch(() => null) : null, // place and airport names are only hover text
     ]);
     rows = kind === 'routes' ? routeRows(res.rows) : res.rows;
     if (airports) places = new Map(airports.rows.map((r) => [r.code, r.place]));
+    if (airports) airportInfo = new Map(airports.rows.map((r) => [r.code, r]));
     if (kind === 'airlines') shorts = shortNames(rows.map((r) => r.group_name));
     if (res.truncated) $('rank-note').textContent = 'Too many rows: some are missing from this chart.';
   } catch (err) {
