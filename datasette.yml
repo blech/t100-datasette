@@ -311,18 +311,18 @@ databases:
           ORDER BY year, group_name
 
       family_detail:
-        title: "An aircraft family by year, version and airline group"
-        description: "One row per year, version, airline group, service and kind. Leave group empty for every airline."
+        title: "Aircraft families by year, version and airline group"
+        description: "One row per family, year, version, airline group, service and kind. Leave family empty for every family, and group empty for every airline."
         sql: |
           SELECT
-            year, subfamily, group_id, group_name,
+            family, year, subfamily, group_id, group_name,
             CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
             CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
             SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
           FROM family_detail_year
-          WHERE family = :family AND (:group = '' OR group_id = :group)
-          GROUP BY year, subfamily, group_id, group_name, service, kind
-          ORDER BY year
+          WHERE (:family = '' OR family = :family) AND (:group = '' OR group_id = :group)
+          GROUP BY family, year, subfamily, group_id, group_name, service, kind
+          ORDER BY year, family
 
       type_table:
         title: "Aircraft types and families, in a year or all years"
