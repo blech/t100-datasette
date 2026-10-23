@@ -18,6 +18,7 @@ check() {  # check <expected status> <path> [text the body must contain]
 check 200 /                                                         "usa-map"
 check 200 /airports                                                 "Busiest"
 check 200 /airports/globe                                           "data-origin"
+check 200 /airports/over-time                                       "data-kind=\"airports\""
 check 200 /airports/SFO                                             "size-chart"
 check 200 /airports/SFO/destinations                                "matrix"
 check 200 /airports/SFO/changes                                     "change-table"

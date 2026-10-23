@@ -36,17 +36,17 @@ The aim is to make the site feel like one piece, in how it looks and in how it w
 
 Each subject has some of the same few kinds of view. A view should link to the same kind of view for related subjects: an airport's map to the maps of the airlines flying there, a table to the matching table. Today most links go to a subject's default page, whatever kind of view the reader was in.
 
-What exists now:
+What exists now (updated as views are added):
 
 | Subject | Table | Map | Chart over time | Matrix |
 |---|---|---|---|---|
-| All airports | `/airports` (busiest) | `/airports/globe` | | |
+| All airports | `/airports` (busiest) | `/airports/globe` | | `/airports/over-time` (airports × years) |
 | One airport | `/airports/SFO/changes` (destinations and airlines gained and lost) | `/airports/SFO/globe` | `/airports/SFO` (size, destinations) | `/airports/SFO/destinations` (destinations × years) |
-| One route | `/airports/SFO/LHR` (airlines × aircraft) | only as a line on the airport and airline maps | `/airports/SFO/LHR` (stacked bars; one year by month) | |
-| All aircraft | | | `/aircraft/engines` | `/aircraft` (families × years) |
+| One route | `/airports/SFO/LHR/table` (airlines × aircraft) | only as a line on the airport and airline maps | `/airports/SFO/LHR` (stacked bars; one year by month) | |
+| All aircraft | `/aircraft` (families and types) | | `/aircraft/makers`, `/aircraft/engines` | |
 | One aircraft family | | | `/aircraft/boeing-737` | |
-| All airlines | | | front page airline chart | `/airlines` (airlines × years) |
-| One airline | `/airlines/delta` ("What changed" routes) | `/airlines/delta/globe` | `/airlines/delta` (size, airport pairs) | |
+| All airlines | `/airlines` (groups and members) | | front page airline chart | `/airlines/over-time` (airlines × years) |
+| One airline | `/airlines/delta/changes` ("What changed" routes) | `/airlines/delta/globe` | `/airlines/delta` (size, airport pairs) | `/airlines/delta/routes` (airport pairs × years) |
 
 Questions:
 - **Cross-links:** which links between views should exist? For example, map → map for the same year and service, table → table, matrix cell → the route or the airline.
@@ -122,6 +122,18 @@ Questions:
     - **Reversed years** (from after to) give a summary that reads backwards.
     - **Legend links match by short name,** so two top-8 groups that shorten alike would share one link.
     - **The new pages' titles don't name the place,** unlike the matrix's "SFO (San Francisco, CA)".
+- **An airports matrix: built** (no spec; a small addition on the airlines matrix's page script).
+  - `/airports/over-time` shows US airports by year (those with at least 365 departures in some year), counting departures from each; the views line is Busiest airports · Over time · Map.
+  - Its codes open each airport's destinations matrix; the measure and the table's sort carry each way for passengers, departures and freight.
+  - No passenger/freight or domestic/international choice: `airport_year_totals` doesn't split either way.
+- **Next: city grouping** for the busiest-airports table and the airports matrix (New York as JFK + LGA + EWR), which needs a lookup of each airport's BTS city market and a production load.
+  - City rows show the market's name only ("Los Angeles, CA"); every city row opens, a one-airport market too, and the airports inside are the links. The name and its ▸ open and close the row.
+  - The destinations matrix's city view takes the same labels: no codes beside the name (they're on hover and in the opened rows), and a label column sized to its longest label.
+- **Backlog: city pages.** A page for a BTS city market, so a city's name can link somewhere: what an airport has (over time, destinations, changes, map), added up across its airports.
+  - Address: `/airports/cities/{market}` (e.g. `/airports/cities/new-york-ny`, keeping it in the Airports section) or a section of its own at `/cities/{market}`.
+  - The queries filter by `origin` and can take a market's list of codes instead.
+  - Once they exist, a city's name links to its page and the ▸ alone opens the row, as the aircraft table separates a family's name from its disclosure.
+  - Further on: city pairs for routes (New York–Miami across LGA, JFK, EWR and MIA, FLL), as `explore/12_market_routes.sql` on the `explore/sql-scripts` branch tried.
 - **Still to come:** a family map.
 
 ### 5. Colour: done (merged, branch `colour`)

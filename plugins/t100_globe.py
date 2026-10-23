@@ -25,6 +25,7 @@ def register_routes():
         (r"^/$", home_page),
         (r"^/airports$", airports_index),
         (r"^/airports/globe$", globe_page),
+        (r"^/airports/over-time$", rollup_page("airports")),
         (rf"^/airports/(?P<origin>{CODE})$", airport_page),
         (rf"^/airports/(?P<origin>{CODE})/destinations$", routes_page),
         (rf"^/airports/(?P<origin>{CODE})/changes$", airport_changes_page),
@@ -85,10 +86,9 @@ def views_for(path):
         return [{"label": label, "href": href, "current": i == current, "id": id_} for i, (label, href, id_) in enumerate(items)]
 
     match parts:
-        case ["airports"]:
-            return make(("Busiest airports", "/airports", None), ("Map", "/airports/globe", None), current=0)
-        case ["airports", "globe"]:
-            return make(("Busiest airports", "/airports", None), ("Map", "/airports/globe", None), current=1)
+        case ["airports"] | ["airports", "over-time"] | ["airports", "globe"]:
+            return make(("Busiest airports", "/airports", None), ("Over time", "/airports/over-time", None), ("Map", "/airports/globe", None),
+                        current=[[], ["over-time"], ["globe"]].index(parts[1:]))
         case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
@@ -350,6 +350,7 @@ route_table_page = route_view("route_table.html", table=True)
 
 ROLLUP_PAGES = {
     "airlines": {"title": "Airlines", "crumb": "airlines", "noun": "airlines", "query": "carrier_group_by_year", "key": "group_name"},
+    "airports": {"title": "Airports", "crumb": "airports", "noun": "airports", "query": "airport_by_year", "key": "origin"},
 }
 
 

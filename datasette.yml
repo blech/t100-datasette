@@ -90,6 +90,17 @@ databases:
           WHERE by_passengers <= 20 OR by_deps <= 20 OR by_dests <= 20 OR by_freight <= 20
           ORDER BY passengers DESC, origin
 
+      # the airports matrix: every US airport that flew at least 365 times in some year, with all its years
+      airport_by_year:
+        title: "US airports by year"
+        description: "One row per US airport and year, counting departures from it, for airports with at least 365 departures in some year."
+        sql: |
+          SELECT origin, origin_city_name AS city, year, deps, seats, passengers, freight
+          FROM airport_year_totals
+          WHERE origin_wac BETWEEN 1 AND 93
+            AND origin IN (SELECT origin FROM airport_year_totals WHERE origin_wac BETWEEN 1 AND 93 GROUP BY origin HAVING MAX(deps) >= 365)
+          ORDER BY year, origin
+
       # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
       busiest_airports:
         sql: |

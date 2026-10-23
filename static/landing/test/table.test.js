@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { topBy, parseState, toSearch, SORTS, airportHref, loadFactor } from '../src/table.js';
+import { matrixSearch, tableSearch, topBy, parseState, toSearch, SORTS, airportHref, loadFactor } from '../src/table.js';
 
 test('topBy sorts descending by the chosen measure and keeps the top n', () => {
   const rows = [
@@ -45,4 +45,14 @@ test('seats is no longer a sort', () => {
 test('loadFactor is passengers over seats, null with no seats', () => {
   assert.equal(loadFactor({ passengers: 80, seats: 100 }), 80);
   assert.equal(loadFactor({ passengers: 0, seats: 0 }), null);
+});
+
+test('the table and the airports matrix carry the measure each way, where both have it', () => {
+  assert.equal(matrixSearch('passengers'), '');
+  assert.equal(matrixSearch('deps'), '?measure=deps');
+  assert.equal(matrixSearch('freight'), '?measure=freight');
+  assert.equal(matrixSearch('dests'), '');           // the matrix has no destinations
+  assert.equal(tableSearch('?measure=deps&n=25&theme=dark'), '?sort=deps');
+  assert.equal(tableSearch('?measure=seats'), '');   // the table has no seats column
+  assert.equal(tableSearch(''), '');
 });

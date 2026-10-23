@@ -1,7 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { SORTS, topBy, parseState, toSearch, airportHref, loadFactor } from './src/table.js';
+import { SORTS, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch } from './src/table.js';
 import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
 
 const ROWS_SHOWN = 20;
@@ -61,8 +61,12 @@ function render() {
   }
 }
 
+// the views line's matrix takes the sort as its measure
+const carryToMatrix = () => { const a = document.querySelector('nav.views a[href^="/airports/over-time"]'); if (a) a.href = `/airports/over-time${matrixSearch(state.sort)}`; };
+
 function pushState() {
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['year', 'sort'], toSearch(state, maxYear))}`);
+  carryToMatrix();
 }
 
 async function load() {
@@ -86,6 +90,7 @@ async function load() {
 const select = $('year');
 for (let y = maxYear; y >= minYear; y--) select.append(new Option(String(y), String(y)));
 select.value = String(state.year);
+carryToMatrix();
 select.addEventListener('change', () => { state.year = Number(select.value); pushState(); load(); });
 
 for (const th of document.querySelectorAll('th[data-sort]')) {

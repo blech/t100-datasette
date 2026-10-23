@@ -25,7 +25,7 @@ def test_airports_index_is_the_table(ds):
 
 def test_globe_page_links_to_routes_over_time(ds):
     assert 'href="/airports/ATL"' in get(ds, "/airports/ATL/globe").text
-    assert "/airports/" not in get(ds, "/airports/globe").text
+    assert not re.search(r'href="/airports/[A-Za-z0-9]{3}\b', get(ds, "/airports/globe").text)  # the all-airports map names no airport
 
 
 def test_page_offers_the_city_grouping(ds):
