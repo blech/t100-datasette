@@ -16,6 +16,10 @@ CREATE TABLE "aircraft_types" (
    [maker] TEXT, [kind] TEXT
 );
 
+CREATE TABLE "airport_market" (
+   [code] TEXT PRIMARY KEY, [market_id] TEXT
+) WITHOUT ROWID;
+
 CREATE TABLE "airport_names" (
    [code] TEXT PRIMARY KEY, [name] TEXT
 ) WITHOUT ROWID;

@@ -64,42 +64,53 @@ databases:
           LIMIT 100;
 
       top_airports:
-        title: "Busiest US airports in a year"
-        description: "One row per airport in the year: departures from it, seats, passengers, freight, load factor and destinations flown to at least 12 times. Give a year."
+        title: "Busiest US airports in a year or all years"
+        description: "One row per US airport: departures from it, seats, passengers, freight, destinations flown to at least 12 times (in some year, for all years), and its BTS city market with the market's own count of destinations. Leave year empty for all years."
         sql: |
-          -- dests: destinations with at least 12 departures that year, the cut-off the maps and matrices use
+          -- dests: destinations with at least 12 departures in the year (or in some year, for all years), each counted once, the
+          -- cut-off the maps and matrices use; market_dests counts each destination once for all the market's airports
           WITH dests AS (
-            SELECT origin, COUNT(*) AS dests
+            SELECT origin, COUNT(DISTINCT dest) AS dests
             FROM route_year_totals
-            WHERE year = CAST(:year AS integer) AND deps >= 12
+            WHERE (:year IN ('', 'all') OR year = CAST(:year AS integer)) AND deps >= 12
             GROUP BY origin
           ),
-          ranked AS (
-            SELECT a.origin, origin_city_name, deps, seats, passengers, freight, COALESCE(d.dests, 0) AS dests,
-              RANK() OVER (ORDER BY passengers DESC) AS by_passengers,
-              RANK() OVER (ORDER BY deps DESC) AS by_deps,
-              RANK() OVER (ORDER BY COALESCE(d.dests, 0) DESC) AS by_dests,
-              RANK() OVER (ORDER BY freight DESC) AS by_freight
+          market_dests AS (
+            SELECT m.market_id, COUNT(DISTINCT r.dest) AS market_dests
+            FROM route_year_totals AS r
+            JOIN airport_market AS m ON m.code = r.origin
+            WHERE (:year IN ('', 'all') OR r.year = CAST(:year AS integer)) AND r.deps >= 12
+            GROUP BY m.market_id
+          ),
+          totals AS (
+            SELECT origin, SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight,
+              -- a year's own city name; for all years, the newest
+              CASE WHEN :year IN ('', 'all') THEN (SELECT n.origin_city_name FROM airport_year_totals AS n WHERE n.origin = a.origin ORDER BY n.year DESC LIMIT 1)
+                ELSE MAX(origin_city_name) END AS origin_city_name
             FROM airport_year_totals AS a
-            LEFT JOIN dests AS d ON d.origin = a.origin
-            WHERE year = CAST(:year AS integer)
+            WHERE (:year IN ('', 'all') OR year = CAST(:year AS integer))
               AND origin_wac BETWEEN 1 AND 93
+            GROUP BY origin
           )
-          SELECT origin, origin_city_name, deps, seats, passengers, freight, dests
-          FROM ranked
-          WHERE by_passengers <= 20 OR by_deps <= 20 OR by_dests <= 20 OR by_freight <= 20
-          ORDER BY passengers DESC, origin
+          SELECT t.origin, t.origin_city_name, t.deps, t.seats, t.passengers, t.freight, COALESCE(d.dests, 0) AS dests,
+            m.market_id, COALESCE(md.market_dests, COALESCE(d.dests, 0)) AS market_dests
+          FROM totals AS t
+          LEFT JOIN dests AS d ON d.origin = t.origin
+          LEFT JOIN airport_market AS m ON m.code = t.origin
+          LEFT JOIN market_dests AS md ON md.market_id = m.market_id
+          ORDER BY t.passengers DESC, t.origin
 
-      # the airports matrix: every US airport that flew at least 365 times in some year, with all its years
+      # the airports matrix: every US airport that flew at least 365 times in some year, with all its years and its city market
       airport_by_year:
         title: "US airports by year"
-        description: "One row per US airport and year, counting departures from it, for airports with at least 365 departures in some year."
+        description: "One row per US airport and year, counting departures from it, for airports with at least 365 departures in some year, with each airport's BTS city market."
         sql: |
-          SELECT origin, origin_city_name AS city, year, deps, seats, passengers, freight
-          FROM airport_year_totals
-          WHERE origin_wac BETWEEN 1 AND 93
-            AND origin IN (SELECT origin FROM airport_year_totals WHERE origin_wac BETWEEN 1 AND 93 GROUP BY origin HAVING MAX(deps) >= 365)
-          ORDER BY year, origin
+          SELECT a.origin, a.origin_city_name AS city, m.market_id, a.year, a.deps, a.seats, a.passengers, a.freight
+          FROM airport_year_totals AS a
+          LEFT JOIN airport_market AS m ON m.code = a.origin
+          WHERE a.origin_wac BETWEEN 1 AND 93
+            AND a.origin IN (SELECT origin FROM airport_year_totals WHERE origin_wac BETWEEN 1 AND 93 GROUP BY origin HAVING MAX(deps) >= 365)
+          ORDER BY a.year, a.origin
 
       # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
       busiest_airports:

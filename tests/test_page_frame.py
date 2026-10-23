@@ -23,3 +23,9 @@ def test_only_the_airports_table_loads_its_own_stylesheet(name):
 def test_the_airline_change_table_scrolls_in_its_own_box():
     html = open("templates/airline_changes.html").read()
     assert re.search(r'<div class="scroll">\s*<table id="change-table">', html)
+
+
+@pytest.mark.parametrize("name", [t for t in TEMPLATES if "/static/charts/rollup.js" in open(f"templates/{t}.html").read() or "/static/charts/routes.js" in open(f"templates/{t}.html").read()])
+def test_every_matrix_page_has_the_label_popover(name):
+    # a matrix turns its row labels' titles into this popover, so a page without it would lose its labels' hover text
+    assert 'id="label-tip"' in open(f"templates/{name}.html").read()

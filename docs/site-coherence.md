@@ -126,7 +126,9 @@ Questions:
   - `/airports/over-time` shows US airports by year (those with at least 365 departures in some year), counting departures from each; the views line is Busiest airports · Over time · Map.
   - Its codes open each airport's destinations matrix; the measure and the table's sort carry each way for passengers, departures and freight.
   - No passenger/freight or domestic/international choice: `airport_year_totals` doesn't split either way.
-- **Next: city grouping** for the busiest-airports table and the airports matrix (New York as JFK + LGA + EWR), which needs a lookup of each airport's BTS city market and a production load.
+- **City grouping: built** (no spec). The busiest-airports table and the airports matrix show airports or cities (`group=city`, carried between them), from a new derived table, `airport_market` (each code's newest BTS city market).
+  - A city adds up its airports (busiest first when opened), counts each destination once, and is named by the city name its airports carry most between them (Washington, DC, not BWI's Baltimore, MD).
+  - `top_airports` now gives every US airport of the year with its market, and the table picks its top 20 airports or cities itself.
   - City rows show the market's name only ("Los Angeles, CA"); every city row opens, a one-airport market too, and the airports inside are the links. The name and its ▸ open and close the row.
   - The destinations matrix's city view takes the same labels: no codes beside the name (they're on hover and in the opened rows), and a label column sized to its longest label.
 - **Backlog: city pages.** A page for a BTS city market, so a city's name can link somewhere: what an airport has (over time, destinations, changes, map), added up across its airports.

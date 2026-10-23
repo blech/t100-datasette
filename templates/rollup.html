@@ -23,7 +23,7 @@
       {% if kind != "airports" %}for <select id="matrix-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
       on <select id="matrix-service" aria-label="Flights"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>
       {% endif %}      for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
-      {{ page.noun }}, ranked by <select id="matrix-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
+      {% if kind == "airports" %}<select id="matrix-group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>{% else %}{{ page.noun }}{% endif %}, ranked by <select id="matrix-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
     </p>
     <fieldset id="matrix-scale" class="scale-choice">
       <legend>Colour</legend>

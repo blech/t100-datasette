@@ -133,6 +133,10 @@ CREATE TABLE IF NOT EXISTS "route_year_totals" (
 CREATE TABLE IF NOT EXISTS "airport_names" (
    [code] TEXT PRIMARY KEY, [name] TEXT
 ) WITHOUT ROWID;
+-- BTS's city market for each airport code (JFK, LGA and EWR are all 31703, New York), derived by rebuild_airport_market()
+CREATE TABLE IF NOT EXISTS "airport_market" (
+   [code] TEXT PRIMARY KEY, [market_id] TEXT
+) WITHOUT ROWID;
 """
 
 
@@ -199,6 +203,33 @@ def rebuild_airport_year_totals(conn: sqlite3.Connection) -> int:
             """
         )
     return conn.execute("SELECT COUNT(*) FROM airport_year_totals").fetchone()[0]
+
+
+def rebuild_airport_market(conn: sqlite3.Connection) -> int:
+    """Recompute airport_market: the newest BTS city market for each airport code, as airport_names chooses a name
+    (the latest year, then the market most rows give it), from both ends of every segment."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM airport_market")
+        conn.execute(
+            """
+            INSERT INTO airport_market (code, market_id)
+            SELECT code, market_id FROM (
+              SELECT code, market_id, ROW_NUMBER() OVER (PARTITION BY code ORDER BY year DESC, uses DESC, market_id) AS rank
+              FROM (
+                SELECT code, market_id, year, SUM(uses) AS uses FROM (
+                  SELECT origin AS code, origin_city_market_id AS market_id, year, COUNT(*) AS uses FROM t100 GROUP BY 1, 2, 3
+                  UNION ALL
+                  SELECT dest, dest_city_market_id, year, COUNT(*) FROM t100 GROUP BY 1, 2, 3
+                )
+                WHERE code IS NOT NULL AND market_id IS NOT NULL AND market_id NOT IN ('', 'NULL')
+                GROUP BY code, market_id, year
+              )
+            )
+            WHERE rank = 1
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM airport_market").fetchone()[0]
 
 
 def rebuild_airport_names(conn: sqlite3.Connection) -> int:
@@ -450,6 +481,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
     return {
         "airport_year_totals": rebuild_airport_year_totals(conn),
         "airport_names": rebuild_airport_names(conn),
+        "airport_market": rebuild_airport_market(conn),
         "aircraft_type_labels": rebuild_aircraft_type_labels(conn),
         "aircraft_family": rebuild_aircraft_family(conn),
         "family_year": rebuild_family_year(conn),

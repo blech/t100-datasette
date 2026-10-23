@@ -22,6 +22,7 @@
 
     <div class="bar">
       <h2 id="heading">Busiest airports</h2>
+      <label>Show <select id="group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select></label>
       <label>Year <select id="year" aria-label="Year"></select></label>
     </div>
     <div class="scroll">
@@ -42,7 +43,7 @@
       </table>
     </div>
     <p id="status" role="status"></p>
-    <p class="note">The table shows the top 20 for the column you sort by. Load factor is passengers as a share of seats. Destinations counts airports with at least 12 departures to them that year. Freight is in short tons (2,000 lb). Hover over a number for the exact figure. <a href="/about#measures">What the columns mean</a>.
+    <p class="note">The table shows the top 20 for the column you sort by. Load factor is passengers as a share of seats. Destinations counts airports with at least 12 departures to them that year (for all years, in some year), each counted once. A city is a BTS city market (New York is JFK, LaGuardia and Newark): its row adds up its airports, counts each destination once, and opens to list them. Freight is in short tons (2,000 lb). Hover over a number for the exact figure. <a href="/about#measures">What the columns mean</a>.
       On the map, routes with fewer than 12 departures a year are hidden.</p>
     {% include "_footer.html" %}
   </main>

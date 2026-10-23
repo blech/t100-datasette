@@ -43,10 +43,28 @@ export function buildMatrix(rows, { measure = 'passengers', service = 'all', n =
   return { dests, years: [...yearSet].sort((a, b) => a - b), cells, yearTotals, yearMax };
 }
 
-const CODES_IN_LABEL = 3;
+// the row labels' column: wide enough for the longest label, from three-letter codes to the 280px the city labels had
+// when they listed their airports. `width` measures a label; a page passes the browser's measure of its 12px type
+export const labelMargin = (texts, width = (t) => t.length * 7) => Math.min(280, Math.max(48, Math.ceil(Math.max(0, ...texts.map((t) => width(String(t)))) + 16)));
 
-// Same grid, but airports in one BTS city market are one row. Groups with several airports can be
-// opened (`open` lists market ids), which puts their airports on rows directly beneath.
+// how far the cell pointer reaches (Plot.pointer's maxRadius): from a cell's centre to its corners, so any point in a cell
+// picks it, but short of the row labels, which end 8px left of the first year's cells (its default 40px reached into them,
+// so hovering a label lit up that row's first cell)
+export function pointerReach({ width, marginLeft, years, rowPx }) {
+  const cell = (width - marginLeft) / Math.max(1, years);
+  return Math.min(Math.hypot(cell / 2, rowPx / 2) + 0.5, cell / 2 + 7.5);
+}
+
+// a label's width in px as the page's 12px type sets it, for labelMargin (a browser's canvas; null where there isn't one)
+export function textWidth(box) {
+  const ctx = typeof document !== 'undefined' && document.createElement('canvas').getContext('2d');
+  if (!ctx) return undefined;
+  ctx.font = `12px ${getComputedStyle(box).fontFamily}`;
+  return (t) => ctx.measureText(t).width;
+}
+
+// Same grid, but airports in one BTS city market are one row. A group can be opened (`open` lists market ids),
+// which puts its airports on rows directly beneath.
 export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const openSet = new Set(open.map(String));
@@ -85,15 +103,13 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
   const outRows = [];
   const cells = [];
   for (const g of ranked) {
-    const lead = g.list[0];
-    const shown = g.list.slice(0, CODES_IN_LABEL).map((a) => a.dest).join(', ');
-    const extra = g.list.length - CODES_IN_LABEL;
-    const expandable = g.list.length > 1;
-    const isOpen = expandable && openSet.has(g.key);
-    outRows.push({
-      key: g.key, kind: 'group', label: `${lead.name || lead.dest} · ${shown}${extra > 0 ? ` +${extra}` : ''}`,
-      expandable, open: isOpen, codes: g.list.map((a) => a.dest),
-    });
+    // the city alone, named by the city name its airports carry most between them (DCA and IAD's "Washington, DC" over
+    // BWI's "Baltimore, MD"); its airports are on hover and in the rows it opens into, which every city has
+    const carried = new Map();
+    for (const a of g.list) carried.set(a.name || a.dest, (carried.get(a.name || a.dest) || 0) + a.rank);
+    const label = [...carried].sort((x, y) => y[1] - x[1])[0][0];
+    const isOpen = openSet.has(g.key);
+    outRows.push({ key: g.key, kind: 'group', label, expandable: true, open: isOpen, codes: g.list.map((a) => a.dest) });
     for (const [year, cell] of g.byYear) {
       if (cell.value <= 0) continue;
       const parts = [...cell.parts].map(([dest, value]) => ({ dest, value })).filter((p) => p.value > 0)

@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
+import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, MATRIX_MEASURES, labelMargin, textWidth, pointerReach } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -66,10 +67,12 @@ function drawAirports() {
     rows: cellRows(c),
     href: routeYearHref(c.dest, c.year),
   }));
+  const width = Math.min(box.clientWidth || 900, 1100);
+  const marginLeft = 48;
   const chart = Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1100),
+    width,
     height: res.dests.length * ROW_PX + 90,
-    marginLeft: 48,
+    marginLeft,
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
@@ -78,7 +81,7 @@ function drawAirports() {
     color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
-      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: airportHref(d) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
@@ -126,19 +129,23 @@ function drawCities() {
     const parts = c.parts ? c.parts.slice(0, 5).map((p) => ({ label: p.dest, value: formatCount(p.value) })) : [];
     const more = c.parts && c.parts.length > 5 ? [{ label: `+${c.parts.length - 5} more`, value: '' }] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
-    const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.expandable ? `#toggle:${row.key}` : routeYearHref(row.codes[0], c.year);
+    // a city's cell opens the route in that year when the city has one airport; a city with several opens into them
+    const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.codes.length === 1 ? routeYearHref(row.codes[0], c.year) : `#toggle:${row.key}`;
     return { ...c, year: String(c.year), href, head, rows: [...cellRows(c), ...parts, ...more] };
   });
+  // a city is its name, opening into its airports (the links); an airport under it is its code, named on hover
   const labels = res.rows.map((r) => ({
     ...r,
-    text: r.kind === 'airport' ? `${r.code}${r.name ? ` · ${r.name}` : ''}` : `${r.expandable ? (r.open ? '▾' : '▸') : '\u2003'} ${r.label}`,
-    href: r.kind === 'airport' ? airportHref(r.code) : r.expandable ? `#toggle:${r.key}` : airportHref(r.codes[0]),
+    text: r.kind === 'airport' ? r.code : `${r.open ? '▾' : '▸'} ${r.label}`,
+    href: r.kind === 'airport' ? airportHref(r.code) : `#toggle:${r.key}`,
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
+  const width = Math.min(box.clientWidth || 900, 1200);
+  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box));
   const chart = Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1200),
+    width,
     height: res.rows.length * ROW_PX + 90,
-    marginLeft: 280,
+    marginLeft,
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
@@ -147,7 +154,7 @@ function drawCities() {
     color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), href: 'href' }),
-      Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 })),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(labels, {
         y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
@@ -165,17 +172,6 @@ const cellPopover = (y) => ({
   link: (d) => (d.href && !d.href.startsWith('#') ? d.href : null),
 });
 
-// Row labels carry their hover text in an SVG <title>; move it into our own tooltip so it shows at once
-// and the same way in every browser.
-function useLabelTips() {
-  for (const text of $('matrix').querySelectorAll('svg text')) {
-    const title = text.querySelector(':scope > title');
-    if (!title) continue;
-    text.dataset.tip = title.textContent;
-    title.remove();
-  }
-}
-
 function draw() {
   const note = $('scale-note');
   note.hidden = !relative();
@@ -191,19 +187,10 @@ function draw() {
     : `Destinations are ranked by the measure in ${rankYear()} alone, so ones that did not fly then are not shown.`;
   if (state.group === 'city') drawCities();
   else drawAirports();
-  useLabelTips();
+  useLabelTips($('matrix'));
 }
 
-const labelTip = $('label-tip');
-$('matrix').addEventListener('mousemove', (e) => {
-  const text = e.target.closest && e.target.closest('text[data-tip]');
-  if (!text) { labelTip.hidden = true; return; }
-  labelTip.textContent = text.dataset.tip;
-  labelTip.style.left = `${Math.min(e.clientX + 14, window.innerWidth - 320)}px`;
-  labelTip.style.top = `${e.clientY + 14}px`;
-  labelTip.hidden = false;
-});
-$('matrix').addEventListener('mouseleave', () => { labelTip.hidden = true; });
+attachLabelTips($('matrix'), $('label-tip'));
 
 $('matrix').addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('a');

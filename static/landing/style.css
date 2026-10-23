@@ -2,3 +2,11 @@
 .bar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:24px 0 8px; }
 td.code a { font-weight:600; }
 td.city { white-space:normal; }
+
+/* city view: a city's ▸ opens it to list its airports, indented and lighter beneath it */
+#airports button.twist { all: unset; cursor: pointer; display: inline-block; width: 1.2em; color: var(--muted, #777); }
+#airports button.twist:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+#airports tr.city-row td.city { font-weight: 600; }
+#airports tr.member td.code { padding-left: 1.4em; }
+#airports tr.member td { color: var(--muted, #777); }
+#airports tr.member td a { color: inherit; }
