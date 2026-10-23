@@ -13,7 +13,7 @@ const years = ['all', ...Array.from({ length: latest - 1990 + 1 }, (_, i) => Str
 const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   year: pick('year', years, 'all'),
-  kind: params.get('kind') || 'all',   // checked against the menus once the data is in
+  type: params.get('type') || 'all',   // checked against the menus once the data is in
   maker: params.get('maker') || 'all',
   limit: pick('limit', LIMIT_OPTIONS.map((o) => o.value), DEFAULT_LIMIT),
   q: params.get('q') || '',
@@ -32,7 +32,7 @@ const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
 function pushState() {
   const q = new URLSearchParams();
-  const defaults = { measure: 'passengers', year: 'all', kind: 'all', maker: 'all', limit: DEFAULT_LIMIT, q: '', sort: 'value', dir: 'desc' };
+  const defaults = { measure: 'passengers', year: 'all', type: 'all', maker: 'all', limit: DEFAULT_LIMIT, q: '', sort: 'value', dir: 'desc' };
   for (const [k, v] of Object.entries(state)) if (v !== defaults[k]) q.set(k, v);
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, Object.keys(defaults), `?${q}`)}`);
 }
@@ -71,7 +71,7 @@ function draw() {
   if (loading) return;
   const box = $('aircraft-table');
   const status = $('at-status');
-  const { families, total } = groupFamilies(rows, state);
+  const { families, total } = groupFamilies(rows, { ...state, kind: state.type });
   box.replaceChildren();
   status.textContent = '';
   if (!families.length) { box.textContent = state.q ? `Nothing matches "${state.q}".` : `No ${unit()} for this selection.`; return; }
@@ -79,7 +79,7 @@ function draw() {
   const sorted = sortFamilies(shown, state.sort, state.dir);
   const table = document.createElement('table');
   const head = document.createElement('tr');
-  head.append(headerCell('family', 'Family', 'left'), headerCell('maker', 'Maker', 'left'), headerCell('aircraftKind', 'Kind', 'left'),
+  head.append(headerCell('family', 'Family', 'left'), headerCell('maker', 'Maker', 'left'), headerCell('aircraftKind', 'Type', 'left'),
     headerCell('firstYear', 'Flew'), headerCell('value', MATRIX_MEASURES[state.measure]), document.createElement('th'));
   head.lastChild.textContent = 'Share';
   const thead = document.createElement('thead');
@@ -96,7 +96,7 @@ function draw() {
     const isOpen = open.has(f.family) || f.matched;
     toggle.textContent = isOpen ? '▾' : '▸';
     toggle.setAttribute('aria-expanded', String(isOpen));
-    toggle.setAttribute('aria-label', `${isOpen ? 'Hide' : 'Show'} the types in ${f.family}`);
+    toggle.setAttribute('aria-label', `${isOpen ? 'Hide' : 'Show'} the aircraft in ${f.family}`);
     toggle.addEventListener('click', () => { if (open.has(f.family)) open.delete(f.family); else open.add(f.family); focusKey = `twist:${f.family}`; draw(); });
     const link = document.createElement('a');
     link.href = `/aircraft/${f.slug}`;
@@ -125,8 +125,8 @@ function fillMenu(id, field, opts) {
   $(id).value = state[field];
 }
 
-// Only makers with something in the chosen kind, year and measure
-const fillMakers = () => fillMenu('at-maker', 'maker', makerOptions(rows, { kind: state.kind, measure: state.measure }));
+// Only makers with something in the chosen type, year and measure
+const fillMakers = () => fillMenu('at-maker', 'maker', makerOptions(rows, { kind: state.type, measure: state.measure }));
 
 async function load() {
   setDataLink('type_table', { year: state.year });
@@ -146,7 +146,7 @@ async function load() {
   if (id !== seq) return;
   rows = fetched;
   loading = false;
-  fillMenu('at-kind', 'kind', kindOptions(rows));
+  fillMenu('at-kind', 'type', kindOptions(rows));
   fillMakers();
   draw();
 }
@@ -161,7 +161,7 @@ function main() {
   $('at-limit').addEventListener('change', (e) => { state.limit = e.target.value; pushState(); draw(); });
   $('at-q').value = state.q;
   $('at-measure').addEventListener('change', (e) => { state.measure = e.target.value; fillMakers(); pushState(); draw(); });
-  $('at-kind').addEventListener('change', (e) => { state.kind = e.target.value; fillMakers(); pushState(); draw(); });
+  $('at-kind').addEventListener('change', (e) => { state.type = e.target.value; fillMakers(); pushState(); draw(); });
   $('at-maker').addEventListener('change', (e) => { state.maker = e.target.value; pushState(); draw(); });
   $('at-q').addEventListener('input', (e) => { state.q = e.target.value; pushState(); draw(); });
   $('at-year').addEventListener('change', (e) => { state.year = e.target.value; pushState(); load(); });

@@ -213,3 +213,13 @@ def test_the_splits_are_version_airline_aircraft_or_nothing_for_a_family_and_air
     aircraft = get(ds, "/aircraft/boeing-737/boeing-737-800").text
     assert split_options(aircraft) == ["airline", "all"]
     assert 'data-default-split="airline"' in aircraft
+
+
+def test_an_aircraft_is_never_called_a_type_but_the_bts_groups_are(ds, db_path):
+    aircraft_fixtures(db_path)
+    for path in ("/aircraft", "/aircraft/makers"):
+        html = get(ds, path).text
+        assert 'aria-label="Type of aircraft"' in html and "Kind of aircraft" not in html, path
+    for path in ("/aircraft", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800", "/about"):
+        text = re.sub(r"<[^>]+>", " ", get(ds, path).text)
+        assert not re.search(r"aircraft types? (BTS|lump)|BTS's aircraft types|one type|a type by|its types|each type|older types", text, re.I), path

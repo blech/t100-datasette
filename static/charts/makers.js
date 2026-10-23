@@ -24,7 +24,7 @@ const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
-  aircraftKind: params.get('aircraft') || 'all',  // checked against the menu once the data is in
+  aircraftKind: params.get('type') || 'all',  // checked against the menu once the data is in
 };
 let rows = [];
 
@@ -35,8 +35,8 @@ function pushState() {
   if (state.measure !== 'passengers') q.set('measure', state.measure);
   if (state.kind !== 'passenger') q.set('flights', state.kind);
   if (state.service !== 'all') q.set('service', state.service);
-  if (state.aircraftKind !== 'all') q.set('aircraft', state.aircraftKind);
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'aircraft'], `?${q}`)}`);
+  if (state.aircraftKind !== 'all') q.set('type', state.aircraftKind);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'type'], `?${q}`)}`);
 }
 
 function draw() {
