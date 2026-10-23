@@ -164,6 +164,10 @@ Questions:
 - **Titles:** 32px on desktop and 26px on phones, on every page.
 - **No sideways scroll on phones.**
 - **Theme fallbacks** are defined once and held to `themes.js`.
+- **Backlog: Datasette's own pages in the site's style, light mode only.** The data pages (the database index, the `t100` table browser, canned query results, rows) keep Datasette's look today.
+  - **Templates:** `templates/base.html` extends `default:base.html` and overrides only blocks. In `extra_head` it links a Datasette-only stylesheet, and in `nav` it puts the site header (`_nav.html`) in place of Datasette's. Datasette's page templates are not copied, so upgrades don't need merging. Datasette already uses the name `crumbs` for its macros, so the plugin passes the site's crumbs under another name, through `extra_template_vars`. The footer already comes through.
+  - **Styles:** one stylesheet maps the site's tokens onto Datasette's classes: the body font and colours, links, the header and footer, the results table (`.rows-and-columns`) to match the site's tables, the parameter form, buttons, and the table browser's filters and facets. Datasette's `app.css` (about 4,000 lines) stays underneath.
+  - **No dark mode there:** the stylesheet gives the light tokens only, with no `prefers-color-scheme` block, so it doesn't link `base.css` as it stands. It sets `color-scheme: light`, and the page doesn't run `static/nav/main.js`'s theme painting. A reader in dark mode gets a light data page, as now, and the footer there already has no theme menu. Dark mode could come later as its own step.
 - **What follows** is the original description of the problem:
 
 
