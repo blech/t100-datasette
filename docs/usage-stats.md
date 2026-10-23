@@ -1,6 +1,6 @@
 # Usage statistics: proposed approach
 
-Status: proposal, not implemented (2026-10-15). Nothing here has been built or run.
+Status: implemented on `feature/usage-stats` (2026-10-24): `plugins/t100_usage.py`, `scripts/usage_report.py`, a Privacy section on the About page, and `T100_USAGE_LOG` in `fly.toml`. Decisions on the open questions at the end: airport codes are kept in the route; the salt is per UTC day; the User-Agent is in the hash; raw files are kept 12 months (`--prune 12`); crawler traffic on the data pages is tagged `other` rather than dropped. Also decided: only `/t100/…` and `/-/…` requests that are HTML or an error are logged as `other`, so the chart queries each page makes don't fill the log.
 
 ## Goal
 

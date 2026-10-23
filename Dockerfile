@@ -15,5 +15,6 @@ COPY datasette.yml serve_public.sh schema.sql ./
 COPY plugins plugins
 COPY templates templates
 COPY static static
+COPY scripts/usage_report.py scripts/usage_report.py
 
 CMD ["./serve_public.sh"]

@@ -15,6 +15,7 @@ primary_region = 'ord'
   processes = ['app']
 
 [env]
+  T100_USAGE_LOG = '/mnt/db/usage'
 
 [mounts]
   source="t100_db"

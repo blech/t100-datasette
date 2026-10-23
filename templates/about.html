@@ -24,6 +24,7 @@
       <li><a href="#breaks">Known gaps and breaks</a></li>
       <li><a href="#coverage">What is and isn't covered</a></li>
       <li><a href="#source">Source</a></li>
+      <li><a href="#privacy">Privacy</a></li>
     </ul></nav>
 
     <h2 id="direction">Routes are one-way</h2>
@@ -90,6 +91,10 @@
     </p>
     <p>
       Every page links to the data it draws, under &ldquo;This page's data&rdquo; at the foot of the page (on a map, &ldquo;This map's data&rdquo; among its controls). That opens the query behind the page, filled in with the page's settings. The fields at the top of it can be changed: most queries that read an airline group take <code>group</code>, the group's id as it appears in its page's address (<code>delta</code>, <code>united</code>), and left empty it means every airline. The underlying segments can be browsed and filtered column by column in the <a href="/t100/t100">t100 table</a>, though that uses BTS's own carrier and aircraft codes rather than this site's groups and families.
+    </p>
+    <h2 id="privacy">Privacy</h2>
+    <p>
+      To see how the site is used, each page view is recorded as the time, the page (without any settings in its address), the referring site if there is one, and an anonymous token. The token comes from a hash of your address and browser together with a random value that is thrown away every day, so it can't be turned back into an IP address and doesn't link your visits on different days. Your IP address, your browser's details and anything that could follow you around are not kept. The site sets no cookies. The one thing it stores on your device is your theme choice, in your browser's local storage, and that never leaves it.
     </p>
     {% include "_footer.html" %}
   </main>
