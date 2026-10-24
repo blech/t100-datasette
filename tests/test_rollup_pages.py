@@ -6,7 +6,7 @@ from tests.helpers import get, get_json
 from tests.test_rollup_queries import fam, put
 
 
-@pytest.mark.parametrize("path, kind", [("/airlines/over-time", "airlines")])
+@pytest.mark.parametrize("path, kind", [("/airlines/over-time", "airlines"), ("/aircraft/over-time", "aircraft")])
 def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     r = get(ds, path)
     assert r.status_code == 200
@@ -15,7 +15,7 @@ def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     assert 'id="matrix"' in r.text and 'id="label-tip"' in r.text
 
 
-@pytest.mark.parametrize("path", ["/airlines/over-time"])
+@pytest.mark.parametrize("path", ["/airlines/over-time", "/aircraft/over-time"])
 def test_settings_read_as_one_sentence(ds, path):
     html = get(ds, path).text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
@@ -223,3 +223,10 @@ def test_an_aircraft_is_never_called_a_type_but_the_bts_groups_are(ds, db_path):
     for path in ("/aircraft", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800", "/about"):
         text = re.sub(r"<[^>]+>", " ", get(ds, path).text)
         assert not re.search(r"aircraft types? (BTS|lump)|BTS's aircraft types|one type|a type by|its types|each type|older types", text, re.I), path
+
+
+def test_the_families_matrix_has_its_own_address_and_wording(ds):
+    html = get(ds, "/aircraft/over-time").text
+    assert "Aircraft families over time" in html and "airline" not in html.split('<p class="intro">')[1].split("</p>")[0].lower()
+    assert "Every airline" not in html and "Every US airport" not in html
+    assert 'id="matrix-group"' not in html

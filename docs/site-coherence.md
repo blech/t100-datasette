@@ -43,7 +43,7 @@ What exists now (updated as views are added):
 | All airports | `/airports` (busiest) | `/airports/globe` | | `/airports/over-time` (airports × years) |
 | One airport | `/airports/SFO/changes` (destinations and airlines gained and lost) | `/airports/SFO/globe` | `/airports/SFO` (size, destinations) | `/airports/SFO/destinations` (destinations × years) |
 | One route | `/airports/SFO/LHR/table` (airlines × aircraft) | only as a line on the airport and airline maps | `/airports/SFO/LHR` (stacked bars; one year by month) | |
-| All aircraft | `/aircraft` (families and types) | | `/aircraft/makers`, `/aircraft/engines` | |
+| All aircraft | `/aircraft` (families and types) | | `/aircraft/makers`, `/aircraft/engines` | `/aircraft/over-time` (families × years, each opening into its aircraft) |
 | One aircraft family | | | `/aircraft/boeing-737` | |
 | One aircraft | | | `/aircraft/boeing-737/boeing-737-800` | |
 | All airlines | `/airlines` (groups and members) | | front page airline chart | `/airlines/over-time` (airlines × years) |
@@ -139,7 +139,8 @@ Questions:
   - Further on: city pairs for routes (New York–Miami across LGA, JFK, EWR and MIA, FLL), as `explore/12_market_routes.sql` on the `explore/sql-scripts` branch tried.
 - **Still to come:** a family map.
 - **Idea: comparing aircraft.** Charting several aircraft together (the AN-225 beside the AN-124 and the 747-8) probably wants to be general: the same picking and overlaying for airlines, airports and routes, not a feature of the aircraft page.
-- **The aircraft page** (`docs/superpowers/specs/2026-10-23-aircraft-page-design.md`) is built: `/aircraft/<family>/<aircraft>`, reached from an aircraft's name in the table. Still to come: a "families or aircraft" grouping option on the table, the families matrix at `/aircraft/over-time`, and the kinds page replacing the long-haul page.
+- **The aircraft page** (`docs/superpowers/specs/2026-10-23-aircraft-page-design.md`) is built: `/aircraft/<family>/<aircraft>`, reached from an aircraft's name in the table. Still to come: a "families or aircraft" grouping option on the table, and the types page replacing the long-haul page.
+- **The families matrix: built** (no spec; the airports matrix's page script and city grouping reused). `/aircraft/over-time` lists families by year; a ▸ opens a family into its aircraft, the family's name opens its page and an aircraft's name opens that aircraft's page. Data: a new query, `aircraft_by_year` (no new table). The views line is Families · Over time · Makers · Long-haul engines. Not carried between views (the aircraft views share no settings). Untested in a phone-width browser.
 
 ### 5. Colour: done (merged, branch `colour`)
 

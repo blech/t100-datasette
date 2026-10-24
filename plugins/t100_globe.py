@@ -44,6 +44,7 @@ def register_routes():
         (r"^/carriers$", moved("/airlines")),
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)$", moved("/airlines/{slug}")),
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{slug}/globe")),
+        (r"^/aircraft/over-time$", rollup_page("aircraft")),
         (r"^/aircraft/engines$", engines_page),
         (r"^/aircraft/makers$", aircraft_makers_page),
         (r"^/aircraft/table$", moved("/aircraft")),  # the table's address before it became /aircraft
@@ -102,9 +103,11 @@ def views_for(path):
             base = f"/airports/{a}/{b}{year}"
             return make(("Over time", base, None), ("Table", f"{base}/table", None), current=1 if rest and rest[-1] == "table" else 0)
         case ["aircraft", *rest] if len(rest) < 3:
-            aircraft = [("Families", "/aircraft", None), ("Makers", "/aircraft/makers", None), ("Long-haul engines", "/aircraft/engines", None)]
+            aircraft = [("Families", "/aircraft", None), ("Over time", "/aircraft/over-time", None), ("Makers", "/aircraft/makers", None),
+                        ("Long-haul engines", "/aircraft/engines", None)]
             # a family or one of its aircraft is a page of the section but not one of these views: none is current
-            return make(*aircraft, current=[[], ["makers"], ["engines"]].index(rest) if rest in ([], ["makers"], ["engines"]) else -1)
+            views = [[], ["over-time"], ["makers"], ["engines"]]
+            return make(*aircraft, current=views.index(rest) if rest in views else -1)
         case ["airlines"] | ["airlines", "over-time"]:
             return make(("Airlines", "/airlines", None), ("Over time", "/airlines/over-time", None), current=len(parts) - 1)
         case ["airlines", slug, *rest] if rest in ([], ["routes"], ["changes"], ["globe"]):
@@ -353,6 +356,7 @@ route_table_page = route_view("route_table.html", table=True)
 ROLLUP_PAGES = {
     "airlines": {"title": "Airlines", "crumb": "airlines", "noun": "airlines", "query": "carrier_group_by_year", "key": "group_name"},
     "airports": {"title": "Airports", "crumb": "airports", "noun": "airports", "query": "airport_by_year", "key": "origin"},
+    "aircraft": {"title": "Aircraft families", "crumb": "aircraft", "noun": "families", "query": "aircraft_by_year", "key": "family"},
 }
 
 

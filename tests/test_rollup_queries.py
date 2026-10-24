@@ -223,3 +223,22 @@ def test_family_aircraft_gives_each_aircraft_of_a_family_by_year_service_and_kin
         ("614", "Boeing 737-800", "domestic", "passenger"): 15, ("619", "Boeing 737-300", "international", "freight"): 2}
     unknown = get_json(ds, "/t100/family_aircraft.json?_shape=objects&family=Unknown")["rows"]
     assert [(r["aircraft"], r["aircraft_name"]) for r in unknown] == [("999", "Type 999")]
+
+
+def test_aircraft_by_year_gives_each_aircraft_with_its_family_maker_and_kind(ds, db_path):
+    def row(year, aircraft, domestic, service_class, deps):
+        return dict(year=year, aircraft=aircraft, group_id="delta", group_name="Delta", domestic=domestic, service_class=service_class,
+                    deps=deps, seats=deps * 100, passengers=deps * 80, freight=deps * 1000)
+    put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800", maker="Boeing", kind="Jet, twin-engine")])
+    put(db_path, "aircraft_family", [dict(aircraft_type="614", name="Boeing 737-800", family="Boeing 737")])
+    put(db_path, "type_year", [dict(year=2019, aircraft_type="614", domestic=1, service_class="F", deps=10, seats=1000, passengers=800, freight=0),
+                               dict(year=2019, aircraft_type="614", domestic=1, service_class="L", deps=5, seats=500, passengers=400, freight=0),
+                               dict(year=2019, aircraft_type="614", domestic=0, service_class="G", deps=2, seats=0, passengers=0, freight=4000),
+                               dict(year=2019, aircraft_type="999", domestic=1, service_class="F", deps=3, seats=300, passengers=240, freight=0)])
+    rows = get_json(ds, "/t100/aircraft_by_year.json?_shape=objects")["rows"]
+    got = {(r["aircraft"], r["service"], r["kind"]): r["deps"] for r in rows}
+    assert got == {("614", "domestic", "passenger"): 15, ("614", "international", "freight"): 2, ("999", "domestic", "passenger"): 3}
+    known = next(r for r in rows if r["aircraft"] == "614")
+    assert (known["family"], known["aircraft_name"], known["maker"], known["aircraft_kind"]) == ("Boeing 737", "Boeing 737-800", "Boeing", "Jet, twin-engine")
+    unknown = next(r for r in rows if r["aircraft"] == "999")
+    assert (unknown["family"], unknown["aircraft_name"], unknown["maker"]) == ("Unknown", "Type 999", "Unknown maker")

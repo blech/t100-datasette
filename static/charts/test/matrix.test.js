@@ -278,3 +278,13 @@ test('the pointer reaches every point of a cell but not the labels beside the fi
     assert.ok(reach < cell / 2 + 8, `${width}/${years}: a label, 8px left of the first cell, is not`);
   }
 });
+
+test('a group named by its rows keeps that name, not the busiest airport\'s city', () => {
+  const rows = [
+    { dest: '614', market_id: 'boeing-737', group_label: 'Boeing 737', city: 'Boeing 737-800', year: 2019, service: 'domestic', passengers: 80 },
+    { dest: '619', market_id: 'boeing-737', group_label: 'Boeing 737', city: 'Boeing 737-300', year: 2019, service: 'domestic', passengers: 10 },
+  ];
+  const res = buildCityMatrix(rows, { open: ['boeing-737'] });
+  assert.equal(res.rows[0].label, 'Boeing 737');
+  assert.deepEqual(res.rows.slice(1).map((r) => [r.code, r.name]), [['614', 'Boeing 737-800'], ['619', 'Boeing 737-300']]);
+});

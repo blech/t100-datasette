@@ -63,7 +63,7 @@ export function textWidth(box) {
   return (t) => ctx.measureText(t).width;
 }
 
-// Same grid, but airports in one BTS city market are one row. A group can be opened (`open` lists market ids),
+// Same grid, but airports in one BTS city market are one row (or aircraft in one family: rows with a `group_label` name their group). A group can be opened (`open` lists market ids),
 // which puts its airports on rows directly beneath.
 export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
@@ -76,7 +76,7 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
     const key = r.market_id !== null && r.market_id !== undefined && r.market_id !== '' ? String(r.market_id) : `solo:${r.dest}`;
     const v = valueOf(r, measure);
     yearTotals[r.year] = (yearTotals[r.year] || 0) + v;
-    const g = groups.get(key) || { key, rank: 0, airports: new Map(), byYear: new Map() };
+    const g = groups.get(key) || { key, rank: 0, name: r.group_label || null, airports: new Map(), byYear: new Map() };
     groups.set(key, g);
     const ranked = rankYear === null || Number(r.year) === rankYear;
     if (ranked) g.rank += v;
@@ -107,7 +107,7 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
     // BWI's "Baltimore, MD"); its airports are on hover and in the rows it opens into, which every city has
     const carried = new Map();
     for (const a of g.list) carried.set(a.name || a.dest, (carried.get(a.name || a.dest) || 0) + a.rank);
-    const label = [...carried].sort((x, y) => y[1] - x[1])[0][0];
+    const label = g.name || [...carried].sort((x, y) => y[1] - x[1])[0][0]; // rows can name their own group (a family)
     const isOpen = openSet.has(g.key);
     outRows.push({ key: g.key, kind: 'group', label, expandable: true, open: isOpen, codes: g.list.map((a) => a.dest) });
     for (const [year, cell] of g.byYear) {

@@ -16,6 +16,7 @@
     {% if kind == "airlines" %}{% include "_airline_search.html" %}{% endif %}
     <p class="intro">
       {% if kind == "airports" %}Every US airport in the data, counting flights departing from it, by year. Click an airport's code to see where it flies.
+      {% elif kind == "aircraft" %}Every aircraft family in the data, by year. Click a <span aria-hidden="true">▸</span> to list a family's aircraft, a family's name to see its page, or an aircraft's name to see that one.
       {% else %}Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.{% endif %}
     </p>
     <p class="chart-sentence">
@@ -36,6 +37,7 @@
     <p class="note" id="rank-note"></p>
     <p class="note" id="about-note">
       {% if kind == "airports" %}Each airport counts flights <em>from</em> it only: <a href="/about#direction">routes are one-way</a>. Airports with fewer than 365 departures in every year are left out.
+      {% elif kind == "aircraft" %}How aircraft are <a href="/about#groupings">grouped</a> into families. Aircraft the rules do not place are grouped by their maker.
       {% else %}How airlines are <a href="/about#groupings">grouped</a>.{% endif %}
       Freight before 2003 leaves out most domestic FedEx and UPS flying, so shares of freight jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.
     </p>

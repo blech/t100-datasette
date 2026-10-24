@@ -310,6 +310,26 @@ databases:
           GROUP BY year, group_id, group_name, service, kind
           ORDER BY year, group_name
 
+      aircraft_by_year:
+        title: "Aircraft by year, with their family"
+        description: "One row per aircraft, year, service and kind, with the aircraft's family, maker and BTS type."
+        sql: |
+          SELECT
+            y.year,
+            y.aircraft_type AS aircraft,
+            COALESCE(t.name, CASE y.aircraft_type WHEN 'unknown' THEN 'Type not reported' ELSE 'Type ' || y.aircraft_type END) AS aircraft_name,
+            COALESCE(f.family, 'Unknown') AS family,
+            COALESCE(t.maker, 'Unknown maker') AS maker,
+            COALESCE(t.kind, 'Unknown') AS aircraft_kind,
+            CASE WHEN y.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN y.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(y.deps) AS deps, SUM(y.seats) AS seats, SUM(y.passengers) AS passengers, SUM(y.freight) AS freight
+          FROM type_year y
+            LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type
+            LEFT JOIN aircraft_family f ON f.aircraft_type = y.aircraft_type
+          GROUP BY y.year, y.aircraft_type, aircraft_name, family, maker, aircraft_kind, service, kind
+          ORDER BY y.year, y.aircraft_type
+
       family_detail:
         title: "An aircraft family by year, version and airline group"
         description: "One row per year, version, airline group, service and kind. Leave group empty for every airline."

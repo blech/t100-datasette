@@ -31,6 +31,7 @@ check 301 /aircraft/table
 check 200 /-/derived                                              '"ok": true'
 check 200 /about                                                   "Known gaps"
 check 200 /aircraft                                                "aircraft-table"
+check 200 /aircraft/over-time                                     "matrix-kind"
 check 200 /aircraft/engines                                         "engine-chart"
 check 200 /aircraft/makers                                          "maker-chart"
 check 200 /aircraft/boeing-737                                      "family-chart"
@@ -65,6 +66,7 @@ check 200 "/t100/busiest_airports.json?year=2025&_shape=objects"    '"ATL"'
 check 200 "/t100/family_detail.json?family=Boeing+737&_shape=objects" '"737 NG"'
 check 200 "/t100/family_aircraft.json?family=Boeing+737&_shape=objects"   '"Boeing 737-800"'
 check 200 "/t100/aircraft_detail.json?aircraft=614&_shape=objects"      '"passenger"'
+check 200 "/t100/aircraft_by_year.json?_size=1&_shape=objects"           '"aircraft_name"'
 check 200 "/t100/type_table.json?year=2019&_shape=objects"          '"Boeing 737'
 check 200 "/t100/maker_by_year.json?_shape=objects"                 '"maker": "Boeing"'
 check 404 /airports/SFO/LH

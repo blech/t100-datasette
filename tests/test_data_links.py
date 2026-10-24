@@ -9,7 +9,7 @@ from tests.test_views_pages import delta
 
 INVENTORY = ["top_airports", "top_us_airports", "airport_size", "routes_by_year", "airport_changes", "route", "route_year", "type_table",
              "maker_by_year", "engines_by_year", "family_detail", "family_aircraft", "aircraft_detail", "airline_table", "carrier_group_by_year", "carrier_group_detail",
-             "carrier_route_by_year", "carrier_route_changes", "carrier_routes_year", "airport_by_year"]
+             "carrier_route_by_year", "carrier_route_changes", "carrier_routes_year", "airport_by_year", "aircraft_by_year"]
 
 AIRLINES = {"united": ("19977", "U1", "United Air Lines Inc.", "United (incl. Continental)"),
             "delta": ("19790", "D1", "Delta Air Lines Inc.", "Delta (incl. Northwest)")}
@@ -64,7 +64,7 @@ def test_a_data_page_is_titled_by_its_query_not_its_sql(ds):
 
 
 SCROLLING = ["/airports", "/airports/SFO", "/airports/SFO/destinations", "/airports/SFO/changes", "/airports/SFO/JFK", "/airports/SFO/JFK/2019/table",
-             "/aircraft", "/aircraft/makers", "/aircraft/engines", "/aircraft/boeing-737", "/airlines", "/airlines/over-time", "/airports/over-time",
+             "/aircraft", "/aircraft/makers", "/aircraft/engines", "/aircraft/boeing-737", "/airlines", "/airlines/over-time", "/airports/over-time", "/aircraft/over-time",
              "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/changes"]
 FOOTER_LINK = '<span class="data-link" hidden><a id="data-link" href="">This page\'s data</a> · </span>'
 
