@@ -4,7 +4,7 @@ import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, buildCityMatrix, labelMargin, textWidth, pointerReach, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
-import { aircraftHref } from '/static/charts/src/aircraft.js';
+import { aircraftHref, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
 import { tableSearch } from '/static/landing/src/table.js';
 import { shortNames } from '/static/charts/src/names.js';
@@ -122,7 +122,7 @@ function drawCities(box) {
       const member = r.kind === 'airport';
       return {
         ...r,
-        text: member ? r.name : r.label,
+        text: rowLabel(member ? r.name : r.label),
         href: member ? aircraftHref(r.groupKey, r.name) : `/aircraft/${r.key}`,
         title: member ? aircraftTitle(r.code, r.name) : [r.label, `${r.codes.length} aircraft`, '', ...r.codes.slice(0, 12).map((c) => aircraftInfo.get(c)?.name || c), ...(r.codes.length > 12 ? ['…'] : [])].join('\n'),
       };
@@ -142,7 +142,8 @@ function drawCities(box) {
     return { ...c, year: String(c.year), head: aircraft ? (row.kind === 'airport' ? row.name : row.label) : row.kind === 'airport' ? row.code : row.label, rows: [...cellRows(c), ...parts] };
   });
   const width = Math.min(box.clientWidth || 900, 1200);
-  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box)) + (aircraft ? 16 : 0); // a family's ▸ sits in its own column at the left
+  const measure = textWidth(box) || ((t) => t.length * 7);
+  const marginLeft = labelMargin(labels.map((l) => l.text), measure) + (aircraft ? 18 : 0); // room for a family's ▸ before its name
   const chart = Plot.plot({
     width,
     height: res.rows.length * ROW_PX + 90,
@@ -160,10 +161,11 @@ function drawCities(box) {
         y: 'key', text: 'text', title: 'title', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
       }),
-      ...(aircraft ? [Plot.text(labels.filter((l) => l.kind === 'group'), {
+      // a family's ▸ sits just before its name (Plot's dx is one number, so one small mark per row, offset by the name's width)
+      ...(aircraft ? labels.filter((l) => l.kind === 'group').map((l) => Plot.text([l], {
         y: 'key', text: (d) => (d.open ? '▾' : '▸'), title: (d) => `${d.open ? 'Hide' : 'List'} ${d.label}'s aircraft`, href: (d) => `#toggle:${d.key}`,
-        frameAnchor: 'left', textAnchor: 'start', dx: -marginLeft + 1, fill: 'currentColor', fontSize: 16,
-      })] : []),
+        frameAnchor: 'left', textAnchor: 'end', dx: -8 - Math.ceil(measure(l.text) * 1.08) - 5, fill: 'currentColor', fontSize: 14,
+      })) : []),
     ],
   });
   box.append(...attachPopover(chart, {

@@ -100,3 +100,12 @@ export function limitFamilies(families, limit, { searching = false } = {}) {
   }
   return { shown, hidden: ranked.length - shown.length, shownShare: shown.reduce((s, f) => s + f.share, 0) };
 }
+
+const ROW_LABEL_MAX = 34;
+
+// a matrix row's label, where the label column has little room: a maker's "(other models)" is "(other)", and a long
+// aircraft name is cut (the full name is the row's hover text)
+export function rowLabel(name) {
+  const short = String(name).replace(' (other models)', ' (other)').replace(', one or two engines', ', 1–2 engines');
+  return short.length > ROW_LABEL_MAX ? `${short.slice(0, ROW_LABEL_MAX - 1).trimEnd()}…` : short;
+}

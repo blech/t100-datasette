@@ -155,3 +155,18 @@ test('an aircraft links to its page under its family, by the slugs of both names
   assert.equal(aircraftHref('boeing-737', 'Boeing 737-800'), '/aircraft/boeing-737/boeing-737-800');
   assert.equal(aircraftHref('other-piston-single-engine', 'Cessna C206/207/209/210 Stationair'), '/aircraft/other-piston-single-engine/cessna-c206-207-209-210-stationair');
 });
+
+import { rowLabel } from '../src/aircraft.js';
+
+test('a matrix row label drops "models" from a maker family and shortens "one or two engines"', () => {
+  assert.equal(rowLabel('McDonnell Douglas (other models)'), 'McDonnell Douglas (other)');
+  assert.equal(rowLabel('Other turboprop, one or two engines'), 'Other turboprop, 1–2 engines');
+  assert.equal(rowLabel('Boeing 737'), 'Boeing 737');
+});
+
+test('a long aircraft name is cut with an ellipsis; a short one is left alone', () => {
+  const long = 'Fokker Friendship F-27/Fairchild F-27/A/B/F/J';
+  const cut = rowLabel(long);
+  assert.ok(cut.length <= 34 && cut.endsWith('…'));
+  assert.equal(rowLabel('Boeing 737-800'), 'Boeing 737-800');
+});
