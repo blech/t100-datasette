@@ -175,3 +175,6 @@ The scrolling pages and the full-window maps have grown separate layout rules. T
 - **The theme colours are defined twice:** fallbacks in `static/landing/style.css` and `static/globe/style.css` before the script runs, and `static/nav/main.js` for every page after.
 
 A shared set of base styles for both kinds of page could hold the column, the type sizes and the colour fallbacks in one place.
+- **Extended saved queries (branch `extended_saved_queries`; started).** The saved queries are the site's open data, so the next idea is to make them answer the questions the charts raise.
+  - Built so far: `family_detail` takes `year`, `service`, `kind` and `sort` (name, passengers or freight, within each year); a new `family_airlines` gives one row per airline for a family (or one of its aircraft) in a year or all years, summed over service and kind, with the same filters and sort. A bar on the family and aircraft charts opens it for that year (on the aircraft split a bar still opens the aircraft's page; a tooltip can't hold a link, so it is the bar).
+  - Still to decide: derived columns (freight per departure, seats per departure, passengers per seat as a load factor; integer division in SQLite needs a `1.0 *`), and which of the other saved queries want the same year, filter and sort parameters.

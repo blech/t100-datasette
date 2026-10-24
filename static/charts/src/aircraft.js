@@ -1,4 +1,5 @@
 import { slugify } from './rollup.js';
+import { dataHref } from '../../common/datalink.js';
 
 const LB_PER_SHORT_TON = 2000;
 
@@ -118,4 +119,13 @@ export function carriedSearch({ measure, flights, service }) {
   if (service !== 'all') q.set('service', service);
   const s = q.toString();
   return s ? `?${s}` : '';
+}
+
+// the data behind one year's bar: the family's airlines (or one aircraft's) that year, sorted by the measure when it is one the
+// query sorts by, and narrowed to the chart's kind of flight and routes
+export function airlinesLink({ family, aircraft = '', year, measure, flights, service }) {
+  return dataHref('family_airlines', {
+    family, aircraft, year, service: service === 'all' ? '' : service, kind: flights === 'all' ? '' : flights,
+    sort: ['passengers', 'freight'].includes(measure) ? measure : '',
+  });
 }

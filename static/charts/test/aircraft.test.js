@@ -178,3 +178,17 @@ test('the matrix passes its measure, kind of flight and routes to a family or ai
   assert.equal(carriedSearch({ measure: 'freight', flights: 'all', service: 'international' }), '?measure=freight&flights=all&service=international');
   assert.equal(carriedSearch({ measure: 'deps', flights: 'passenger', service: 'all' }), '?measure=deps');
 });
+
+import { airlinesLink } from '../src/aircraft.js';
+
+test('a bar opens that year\'s airlines for the family, sorted by what the chart shows and narrowed as the chart is', () => {
+  const href = airlinesLink({ family: 'Boeing 747', year: 2021, measure: 'freight', flights: 'all', service: 'international' });
+  const q = new URLSearchParams(href.split('?')[1]);
+  assert.ok(href.startsWith('/t100/family_airlines?'));
+  assert.deepEqual(Object.fromEntries(q), { family: 'Boeing 747', aircraft: '', year: '2021', service: 'international', kind: '', sort: 'freight', _hide_sql: '1' });
+});
+
+test('an aircraft page gives the aircraft too; departures and seats leave the sort to the query; passenger flights stay passenger', () => {
+  const q = new URLSearchParams(airlinesLink({ family: 'Boeing 747', aircraft: '614', year: 1999, measure: 'deps', flights: 'passenger', service: 'all' }).split('?')[1]);
+  assert.deepEqual([q.get('aircraft'), q.get('sort'), q.get('kind'), q.get('service')], ['614', '', 'passenger', '']);
+});

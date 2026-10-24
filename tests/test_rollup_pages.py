@@ -189,6 +189,14 @@ def test_an_aircraft_page_is_found_by_its_family_and_its_own_slug(ds, db_path):
     assert 'aria-current="page">Boeing 737-800<' in r.text
 
 
+def test_family_and_aircraft_pages_have_what_their_bars_link_to(ds, db_path):
+    aircraft_fixtures(db_path)
+    aircraft = get(ds, "/aircraft/boeing-737/boeing-737-800").text
+    assert 'data-family-name="Boeing 737"' in aircraft and 'id="click-hint"' in aircraft  # the aircraft page names its family for the data link
+    family = get(ds, "/aircraft/boeing-737").text
+    assert '<p class="note" id="click-hint"></p>' in family  # shown on every split, its words set by the script
+
+
 def test_an_aircraft_page_for_an_unknown_aircraft_or_the_wrong_family_is_404(ds, db_path):
     aircraft_fixtures(db_path)
     assert get(ds, "/aircraft/boeing-737/no-such-plane").status_code == 404

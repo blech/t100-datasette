@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-query="aircraft_detail" data-param="aircraft" data-subject="{{ type_id }}" data-title="{{ name }}" data-default-split="airline" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
+<body data-query="aircraft_detail" data-param="aircraft" data-subject="{{ type_id }}" data-title="{{ name }}" data-family-name="{{ family }}" data-default-split="airline" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
     {% include "_nav.html" %}
     <h1>{{ name }} over time</h1>
@@ -24,6 +24,7 @@
       over <select id="fam-span" aria-label="Years shown"><option value="flown">years flown</option><option value="all">all years</option></select>.
     </p>
     <p class="note" id="highlight-line" hidden></p>
+    <p class="note" id="click-hint"></p>
     <div id="family-chart" aria-live="polite">Loading chart…</div>
     <p class="note" id="family-note">Each bar is one year. Freight is in short tons (2,000 lb). BTS's aircraft lump a few variants together, so one aircraft may cover more than its name says.</p>
     {% include "_footer.html" %}

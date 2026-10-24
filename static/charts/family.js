@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { buildFamilySeries, hasVersions, slugify, SPLIT_LABEL } from '/static/charts/src/rollup.js';
-import { aircraftHref } from '/static/charts/src/aircraft.js';
+import { aircraftHref, airlinesLink } from '/static/charts/src/aircraft.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
@@ -21,6 +21,8 @@ const stackMax = (points, key, value = (p) => p.value) => {
 
 // A family page charts family_detail for its family; an aircraft page charts aircraft_detail for one type id (see templates/aircraft.html)
 const { family = '', query = 'family_detail', param = 'family', subject = family, title = family, defaultSplit = null } = document.body.dataset;
+// the family's name, for the data link: a family page has it as its subject, an aircraft page as a separate attribute
+const familyName = document.body.dataset.familyName || family;
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
@@ -84,13 +86,15 @@ function draw() {
   highlightLine(highlight, wanted, byAirline);
   const byAircraft = state.split === 'aircraft';
   const hint = $('click-hint');
-  if (hint) hint.hidden = !byAircraft;
+  if (hint) hint.textContent = byAircraft ? 'Click a bar to open that aircraft.' : `Click a bar to see that year's airlines as data.`;
   const res = buildFamilySeries(byAircraft ? aircraftRows || [] : rows, { ...state, keep: wanted });
   if (!res.points.length) { box.textContent = `No ${unit()} for this selection.`; return; }
   const years = yearDomain(res.years, { span: state.span, ...bounds }).map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
-  // on the aircraft split a bar opens that aircraft's page (Other is several, so it stays unlinked)
-  const data = res.points.map((p) => ({ ...p, year: String(p.year), href: byAircraft && p.series !== 'Other' ? aircraftHref(slugify(family), p.series) : undefined }));
+  // on the aircraft split a bar opens that aircraft's page (Other is several, so it stays unlinked); on any other a bar opens the
+  // data behind its year: every airline of the family (or aircraft) that year, which is where "Other" can be read
+  const yearData = (year) => airlinesLink({ family: familyName, aircraft: param === 'aircraft' ? subject : '', year, measure: state.measure, flights: state.kind, service: state.service });
+  const data = res.points.map((p) => ({ ...p, year: String(p.year), href: byAircraft ? (p.series !== 'Other' ? aircraftHref(slugify(family), p.series) : undefined) : yearData(p.year) }));
   const tips = periodRows(data, { key: (p) => p.year, order: res.series, format: (v) => formatCount(v) });
   const colors = { ...seriesColours(res.series, isDark()), legend: true };
   const chart = Plot.plot({
@@ -108,7 +112,7 @@ function draw() {
     ],
   });
   attachHighlight(chart, { pinned: wanted });
-  box.append(...attachPopover(chart, { content: (d) => ({ title: `${title}, ${d.period}`, rows: d.rows }), at: (d) => [d.period, d.top] }));
+  box.append(...attachPopover(chart, { content: (d) => ({ title: `${title}, ${d.period}`, rows: d.rows }), at: (d) => [d.period, d.top], link: (d) => (byAircraft ? null : yearData(d.period)) }));
 }
 
 function chooseSplit() {

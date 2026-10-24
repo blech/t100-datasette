@@ -362,7 +362,7 @@ databases:
 
       family_detail:
         title: "An aircraft family by year, version and airline group"
-        description: "One row per year, version, airline group, service and kind. Leave group empty for every airline. Leave year empty for all years."
+        description: "One row per year, version, airline group, service and kind. Leave group empty for every airline. Leave year empty for all years. Leave service (domestic or international) and kind (passenger or freight) empty for both. Sort within each year by name, passengers or freight; empty sorts by year alone."
         sql: |
           SELECT
             year, subfamily, group_id, group_name,
@@ -372,8 +372,13 @@ databases:
           FROM family_detail_year
           WHERE family = :family AND (:group = '' OR group_id = :group)
             AND (:year IN ('', 'all') OR year = CAST(:year AS INTEGER))
+            AND (:service IN ('', 'all') OR service = :service)
+            AND (:kind IN ('', 'all') OR kind = :kind)
           GROUP BY year, subfamily, group_id, group_name, service, kind
-          ORDER BY year
+          ORDER BY year,
+            CASE WHEN :sort = 'name' THEN group_name END,
+            CASE WHEN :sort = 'passengers' THEN SUM(passengers) END DESC,
+            CASE WHEN :sort = 'freight' THEN SUM(freight) END DESC
 
       family_aircraft:
         title: "An aircraft family by year, aircraft, service and kind"
@@ -392,6 +397,28 @@ databases:
             AND (:year IN ('', 'all') OR a.year = CAST(:year AS INTEGER))
           GROUP BY a.year, a.aircraft, aircraft_name, service, kind
           ORDER BY a.year
+
+      family_airlines:
+        title: "An aircraft family's airlines, in a year or all years"
+        description: "One row per airline group for the aircraft family with the given name, added up over service and kind (or just one: service is domestic or international, kind is passenger or freight), with the first and last years it flew. Leave aircraft empty for the whole family, or give one aircraft's id. Leave year empty for all years. Sort by name, passengers or freight; empty sorts by passengers, then freight."
+        sql: |
+          SELECT
+            a.group_id, a.group_name,
+            MIN(CASE WHEN a.deps > 0 THEN a.year END) AS first_year,
+            MAX(CASE WHEN a.deps > 0 THEN a.year END) AS last_year,
+            SUM(a.deps) AS deps, SUM(a.seats) AS seats, SUM(a.passengers) AS passengers, SUM(a.freight) AS freight
+          FROM aircraft_carrier_year a
+            LEFT JOIN aircraft_family f ON f.aircraft_type = a.aircraft
+          WHERE COALESCE(f.family, 'Unknown') = :family
+            AND (:aircraft = '' OR a.aircraft = :aircraft)
+            AND (:year IN ('', 'all') OR a.year = CAST(:year AS INTEGER))
+            AND (:service IN ('', 'all') OR CASE WHEN a.domestic = 1 THEN 'domestic' ELSE 'international' END = :service)
+            AND (:kind IN ('', 'all') OR CASE WHEN a.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END = :kind)
+          GROUP BY a.group_id, a.group_name
+          ORDER BY
+            CASE WHEN :sort = 'name' THEN a.group_name END,
+            CASE WHEN :sort = 'freight' THEN SUM(a.freight) END DESC,
+            SUM(a.passengers) DESC, SUM(a.freight) DESC, a.group_name
 
       aircraft_detail:
         title: "One aircraft by year, airline group, service and kind"

@@ -272,3 +272,73 @@ def test_the_family_descriptions_say_what_an_empty_year_does():
     queries = yaml.safe_load(open("datasette.yml"))["databases"]["t100"]["queries"]
     for name in ("family_detail", "family_aircraft"):
         assert "Leave year empty for all years." in queries[name]["description"], name
+
+
+def _airlines_2021(db_path):
+    """Delta flies mostly passengers, Atlas only freight, Zeta both; two 737 aircraft and a DC-8."""
+    def row(aircraft, group, domestic, service_class, deps, passengers, freight, year=2021):
+        return dict(year=year, aircraft=aircraft, group_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
+                    deps=deps, seats=passengers * 2, passengers=passengers, freight=freight)
+    put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800"), dict(ac_typeid="619", ac_group="6", name="Boeing 737-300"),
+                                    dict(ac_typeid="852", ac_group="8", name="DC-8-63F")])
+    put(db_path, "aircraft_family", [dict(aircraft_type=t, name=n, family=f, subfamily=sf, aircraft_class="Narrowbody jet", fallback=0)
+                                     for t, n, f, sf in (("614", "Boeing 737-800", "Boeing 737", "737 NG"), ("619", "Boeing 737-300", "Boeing 737", "737 Classic"),
+                                                         ("852", "DC-8-63F", "DC-8", ""))])
+    flights = [row("614", "delta", 1, "F", 10, 900, 0), row("614", "delta", 0, "F", 4, 300, 0), row("619", "delta", 1, "F", 2, 100, 0),
+               row("614", "atlas", 0, "G", 3, 0, 5000), row("619", "zeta", 1, "F", 5, 400, 100), row("619", "zeta", 1, "G", 1, 0, 9000),
+               row("614", "delta", 1, "F", 99, 9999, 0, year=2020), row("852", "delta", 1, "F", 77, 7777, 0)]
+    put(db_path, "aircraft_carrier_year", flights)
+    put(db_path, "family_detail_year", [dict(family="Boeing 737", year=r["year"], subfamily="737 NG" if r["aircraft"] == "614" else "737 Classic", group_id=r["group_id"],
+                                             group_name=r["group_name"], domestic=r["domestic"], service_class=r["service_class"], deps=r["deps"], seats=r["seats"],
+                                             passengers=r["passengers"], freight=r["freight"]) for r in flights if r["aircraft"] != "852"])
+
+
+def _names(ds, path):
+    return [r["group_name"] for r in get_json(ds, path)["rows"]]
+
+
+def test_family_detail_can_be_sorted_and_cut_to_a_service_and_kind(ds, db_path):
+    _airlines_2021(db_path)
+    base = "/t100/family_detail.json?_shape=objects&family=Boeing+737&group=&year=2021"
+    assert _names(ds, base + "&sort=name")[0] == "Atlas"
+    assert _names(ds, base + "&sort=name") == sorted(_names(ds, base + "&sort=name"))
+    assert _names(ds, base + "&sort=passengers")[0] == "Delta"
+    assert _names(ds, base + "&sort=freight")[0] == "Zeta"
+    assert {(r["service"], r["kind"]) for r in get_json(ds, base + "&service=international&kind=")["rows"]} == {("international", "passenger"), ("international", "freight")}
+    assert {r["kind"] for r in get_json(ds, base + "&kind=freight")["rows"]} == {"freight"}
+    assert {r["service"] for r in get_json(ds, base + "&service=domestic&kind=passenger")["rows"]} == {"domestic"}
+    # no sort, service or kind given: the rows are as they were, year by year
+    every = get_json(ds, "/t100/family_detail.json?_shape=objects&family=Boeing+737&group=")["rows"]
+    assert [r["year"] for r in every] == sorted(r["year"] for r in every)
+
+
+def test_family_airlines_gives_one_row_per_airline_summed_over_service_and_kind(ds, db_path):
+    _airlines_2021(db_path)
+    rows = get_json(ds, "/t100/family_airlines.json?_shape=objects&family=Boeing+737&aircraft=&year=2021&service=&kind=&sort=")["rows"]
+    assert {r["group_id"]: (r["deps"], r["passengers"], r["freight"]) for r in rows} == {"delta": (16, 1300, 0), "atlas": (3, 0, 5000), "zeta": (6, 400, 9100)}
+    assert [r["group_name"] for r in rows] == ["Delta", "Zeta", "Atlas"]  # the default: passengers, then freight
+    for sort, first in (("name", "Atlas"), ("passengers", "Delta"), ("freight", "Zeta")):
+        got = get_json(ds, f"/t100/family_airlines.json?_shape=objects&family=Boeing+737&aircraft=&year=2021&service=&kind=&sort={sort}")["rows"]
+        assert got[0]["group_name"] == first, sort
+
+
+def test_family_airlines_takes_a_year_a_service_a_kind_and_one_aircraft(ds, db_path):
+    _airlines_2021(db_path)
+    def get(**params):
+        q = {"family": "Boeing 737", "aircraft": "", "year": "", "service": "", "kind": "", "sort": "", **params}
+        return get_json(ds, "/t100/family_airlines.json?_shape=objects&" + "&".join(f"{k}={v}" for k, v in q.items()))["rows"]
+    assert {r["deps"] for r in get(year="2020")} == {99}  # one year
+    assert sum(r["deps"] for r in get()) == 16 + 3 + 6 + 99  # no year: every year
+    assert sum(r["deps"] for r in get(year="all")) == sum(r["deps"] for r in get())
+    assert {r["group_id"] for r in get(year="2021", service="international")} == {"delta", "atlas"}
+    assert {r["group_id"] for r in get(year="2021", kind="freight")} == {"atlas", "zeta"}
+    assert {r["group_id"]: r["deps"] for r in get(year="2021", aircraft="619")} == {"delta": 2, "zeta": 6}  # one aircraft of the family
+    assert get(family="DC-8", year="2021")[0]["deps"] == 77
+    assert [(r["first_year"], r["last_year"]) for r in get() if r["group_id"] == "delta"] == [(2020, 2021)]
+
+
+def test_the_family_descriptions_name_the_sorts():
+    queries = yaml.safe_load(open("datasette.yml"))["databases"]["t100"]["queries"]
+    for name in ("family_detail", "family_airlines"):
+        for word in ("sort", "name", "passengers", "freight", "service", "kind"):
+            assert word in queries[name]["description"], (name, word)
