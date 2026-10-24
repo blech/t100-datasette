@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, labelMargin, textWidth, pointerReach, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
@@ -117,7 +117,6 @@ function drawCities(box) {
   const years = res.years.map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
   const labels = res.rows.map((r) => {
-    const mark = r.open ? '▾' : '▸';
     if (aircraft) {
       const member = r.kind === 'airport';
       return {
@@ -129,7 +128,7 @@ function drawCities(box) {
     }
     return {
       ...r,
-      text: r.kind === 'airport' ? r.code : `${mark} ${r.label}`,
+      text: r.kind === 'airport' ? r.code : r.label,
       href: r.kind === 'airport' ? `/airports/${r.code}/destinations` : `#toggle:${r.key}`,
       title: r.kind === 'airport' ? airportTitle(r.code) : airportInfo.size ? groupTip(r, airportInfo) : [r.label, '', ...r.codes.map((c) => `${c}  ${city.get(c) || ''}`)].join('\n'),
     };
@@ -142,7 +141,7 @@ function drawCities(box) {
     return { ...c, year: String(c.year), head: aircraft ? (row.kind === 'airport' ? row.name : row.label) : row.kind === 'airport' ? row.code : row.label, rows: [...cellRows(c), ...parts] };
   });
   const width = Math.min(box.clientWidth || 900, 1200);
-  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box)) + (aircraft ? 16 : 0); // room for the ▸ column
+  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box)) + ARROW_SLOT;
   const chart = Plot.plot({
     width,
     height: res.rows.length * ROW_PX + 90,
@@ -157,14 +156,10 @@ function drawCities(box) {
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField() }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(labels, {
-        y: 'key', text: 'text', title: 'title', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: aircraft ? -24 : -8,
+        y: 'key', text: 'text', title: 'title', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8 - ARROW_SLOT,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
       }),
-      // a family's ▸ is in a column of its own between the names and the cells; aircraft rows leave their slot empty
-      ...(aircraft ? [Plot.text(labels.filter((l) => l.kind === 'group'), {
-        y: 'key', text: (d) => (d.open ? '▾' : '▸'), title: (d) => `${d.open ? 'Hide' : 'List'} ${d.label}'s aircraft`, href: (d) => `#toggle:${d.key}`,
-        frameAnchor: 'left', textAnchor: 'end', dx: -5, fill: 'currentColor', fontSize: 14,
-      })] : []),
+      disclosureArrows(Plot, labels, (d) => `${d.open ? 'Hide' : 'List'} ${d.label}'s ${aircraft ? 'aircraft' : 'airports'}`),
     ],
   });
   box.append(...attachPopover(chart, {

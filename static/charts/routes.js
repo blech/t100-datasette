@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, MATRIX_MEASURES, labelMargin, textWidth, pointerReach } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, MATRIX_MEASURES, labelMargin, textWidth, pointerReach } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -136,12 +136,12 @@ function drawCities() {
   // a city is its name, opening into its airports (the links); an airport under it is its code, named on hover
   const labels = res.rows.map((r) => ({
     ...r,
-    text: r.kind === 'airport' ? r.code : `${r.open ? '▾' : '▸'} ${r.label}`,
+    text: r.kind === 'airport' ? r.code : r.label,
     href: r.kind === 'airport' ? airportHref(r.code) : `#toggle:${r.key}`,
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
   const width = Math.min(box.clientWidth || 900, 1200);
-  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box));
+  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box)) + ARROW_SLOT;
   const chart = Plot.plot({
     width,
     height: res.rows.length * ROW_PX + 90,
@@ -156,9 +156,10 @@ function drawCities() {
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), href: 'href' }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(labels, {
-        y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
+        y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8 - ARROW_SLOT,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
       }),
+      disclosureArrows(Plot, labels, (d) => `${d.open ? 'Hide' : 'List'} ${d.label}'s airports`),
     ],
   });
   box.append(...attachPopover(chart, cellPopover('row')));

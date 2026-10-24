@@ -288,3 +288,14 @@ test('a group named by its rows keeps that name, not the busiest airport\'s city
   assert.equal(res.rows[0].label, 'Boeing 737');
   assert.deepEqual(res.rows.slice(1).map((r) => [r.code, r.name]), [['614', 'Boeing 737-800'], ['619', 'Boeing 737-300']]);
 });
+
+import { disclosureArrows } from '../src/matrix.js';
+
+test('a grouped matrix has an arrow only for its groups, ▾ when open, each a toggle link', () => {
+  const Plot = { text: (data, options) => ({ data, options }) };
+  const labels = [{ kind: 'group', key: 'a', open: false }, { kind: 'airport', key: 'a/X' }, { kind: 'group', key: 'b', open: true }];
+  const { data, options } = disclosureArrows(Plot, labels, () => '');
+  assert.deepEqual(data.map((d) => d.key), ['a', 'b']);
+  assert.deepEqual(data.map((d) => options.text(d)), ['▸', '▾']);
+  assert.deepEqual(data.map((d) => options.href(d)), ['#toggle:a', '#toggle:b']);
+});

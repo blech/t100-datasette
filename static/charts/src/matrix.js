@@ -47,6 +47,14 @@ export function buildMatrix(rows, { measure = 'passengers', service = 'all', n =
 // when they listed their airports. `width` measures a label; a page passes the browser's measure of its 12px type
 export const labelMargin = (texts, width = (t) => t.length * 7) => Math.min(280, Math.max(48, Math.ceil(Math.max(0, ...texts.map((t) => width(String(t)))) + 16)));
 
+// a grouped matrix's ▸/▾ column, between the row names and the cells: the names end ARROW_SLOT px short of the cells to leave
+// room for it, and a group's arrow (a #toggle: link) opens and closes the group. `title` gives each arrow's hover text
+export const ARROW_SLOT = 16;
+export const disclosureArrows = (Plot, labels, title) => Plot.text(labels.filter((l) => l.kind === 'group'), {
+  y: 'key', text: (d) => (d.open ? '▾' : '▸'), title, href: (d) => `#toggle:${d.key}`,
+  frameAnchor: 'left', textAnchor: 'end', dx: -5, fill: 'currentColor', fontSize: 14,
+});
+
 // how far the cell pointer reaches (Plot.pointer's maxRadius): from a cell's centre to its corners, so any point in a cell
 // picks it, but short of the row labels, which end 8px left of the first year's cells (its default 40px reached into them,
 // so hovering a label lit up that row's first cell)
