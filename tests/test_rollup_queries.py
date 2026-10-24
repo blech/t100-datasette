@@ -59,6 +59,17 @@ def test_family_detail_with_an_empty_family_gives_an_airlines_every_family(ds, d
     assert {(r["family"], r["group_id"]) for r in rows} == {("Boeing 737", "delta"), ("Boeing 737", "united")}
 
 
+def test_family_detail_narrows_to_a_year_and_an_empty_year_means_all_years(ds, db_path):
+    def detail(year, deps):
+        return dict(family="Boeing 747", year=year, subfamily="747", group_id="united", group_name="United", domestic=0, service_class="F",
+                    deps=deps, seats=0, passengers=0, freight=0)
+    put(db_path, "family_detail_year", [detail(2019, 5), detail(2020, 3)])
+    def years(year):
+        return sorted((r["year"], r["deps"]) for r in get_json(ds, f"/t100/family_detail.json?family=Boeing+747&group=&year={year}&_shape=objects")["rows"])
+    assert years("2019") == [(2019, 5)]
+    assert years("") == years("all") == [(2019, 5), (2020, 3)]
+
+
 def test_carrier_route_changes_compares_two_years_per_pair(ds, db_path):
     row = lambda year, dest, deps: dict(group_id="vx", airline_id="21171", year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=0, freight=0, first_month=1, last_month=12)
     put(db_path, "carrier_route_year", [row(2017, "DEN", 300), row(2017, "LAX", 900), row(2019, "LAX", 800), row(2019, "PDX", 200), row(2017, "TINY", 3)])

@@ -126,7 +126,7 @@ def test_an_empty_year_means_all_years_as_all_does(ds, db_path, query, table, ro
 
 def test_the_descriptions_say_what_an_empty_year_does():
     queries = yaml.safe_load(open("datasette.yml"))["databases"]["t100"]["queries"]
-    for name in ("type_table", "airline_table", "top_airports"):
+    for name in ("type_table", "airline_table", "top_airports", "family_detail"):
         assert "Leave year empty for all years." in queries[name]["description"], name
     for name in ("route_year", "carrier_routes_year"):
         assert "Give a year." in queries[name]["description"], name

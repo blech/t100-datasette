@@ -46,7 +46,7 @@ function pushState() {
 
 // "Highlighting Delta (incl. Northwest) · clear", or why it isn't shown; hidden when there is nothing to say
 // the data behind the page, narrowed to the airline it's highlighting, if any
-const dataLink = () => setDataLink('family_detail', { family, group: parseHighlight(location.search)?.id ?? '' });
+const dataLink = () => setDataLink('family_detail', { family, group: parseHighlight(location.search)?.id ?? '', year: '' });
 
 function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
