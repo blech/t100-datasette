@@ -1,5 +1,7 @@
 import sqlite3
 
+import yaml
+
 from tests.helpers import add_segments, get_json
 
 
@@ -242,3 +244,31 @@ def test_aircraft_by_year_gives_each_aircraft_with_its_family_maker_and_kind(ds,
     assert (known["family"], known["aircraft_name"], known["maker"], known["aircraft_kind"]) == ("Boeing 737", "Boeing 737-800", "Boeing", "Jet, twin-engine")
     unknown = next(r for r in rows if r["aircraft"] == "999")
     assert (unknown["family"], unknown["aircraft_name"], unknown["maker"]) == ("Unknown", "Type 999", "Unknown maker")
+
+
+def _aircraft_years(db_path):
+    def row(year, aircraft, deps):
+        return dict(year=year, aircraft=aircraft, group_id="delta", group_name="Delta", domestic=1, service_class="F",
+                    deps=deps, seats=deps * 100, passengers=deps * 80, freight=0)
+    put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800")])
+    put(db_path, "aircraft_family", [dict(aircraft_type="614", name="Boeing 737-800", family="Boeing 737", subfamily="737-800", aircraft_class="Narrowbody jet", fallback=0)])
+    put(db_path, "aircraft_carrier_year", [row(2018, "614", 4), row(2019, "614", 10)])
+    put(db_path, "family_detail_year", [dict(family="Boeing 737", year=y, subfamily="737-800", group_id="delta", group_name="Delta", domestic=1,
+                                             service_class="F", deps=d, seats=0, passengers=0, freight=0) for y, d in ((2018, 4), (2019, 10))])
+
+
+def test_family_detail_and_family_aircraft_can_be_cut_to_one_year(ds, db_path):
+    _aircraft_years(db_path)
+    for query in ("family_detail", "family_aircraft"):
+        base = f"/t100/{query}.json?_shape=objects&family=Boeing+737"
+        every = get_json(ds, base)["rows"]
+        assert [r["year"] for r in every] == [2018, 2019], query  # no year given: every year, as before
+        assert get_json(ds, base + "&year=")["rows"] == every == get_json(ds, base + "&year=all")["rows"], query
+        assert [(r["year"], r["deps"]) for r in get_json(ds, base + "&year=2019")["rows"]] == [(2019, 10)], query
+        assert get_json(ds, base + "&year=1999")["rows"] == [], query
+
+
+def test_the_family_descriptions_say_what_an_empty_year_does():
+    queries = yaml.safe_load(open("datasette.yml"))["databases"]["t100"]["queries"]
+    for name in ("family_detail", "family_aircraft"):
+        assert "Leave year empty for all years." in queries[name]["description"], name

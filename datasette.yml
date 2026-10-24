@@ -332,7 +332,7 @@ databases:
 
       family_detail:
         title: "An aircraft family by year, version and airline group"
-        description: "One row per year, version, airline group, service and kind. Leave group empty for every airline."
+        description: "One row per year, version, airline group, service and kind. Leave group empty for every airline. Leave year empty for all years."
         sql: |
           SELECT
             year, subfamily, group_id, group_name,
@@ -341,12 +341,13 @@ databases:
             SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
           FROM family_detail_year
           WHERE family = :family AND (:group = '' OR group_id = :group)
+            AND (:year IN ('', 'all') OR year = CAST(:year AS INTEGER))
           GROUP BY year, subfamily, group_id, group_name, service, kind
           ORDER BY year
 
       family_aircraft:
         title: "An aircraft family by year, aircraft, service and kind"
-        description: "One row per year, aircraft, service and kind for the aircraft family with the given name, all airlines together."
+        description: "One row per year, aircraft, service and kind for the aircraft family with the given name, all airlines together. Leave year empty for all years."
         sql: |
           SELECT
             a.year, a.aircraft,
@@ -358,6 +359,7 @@ databases:
             LEFT JOIN aircraft_family f ON f.aircraft_type = a.aircraft
             LEFT JOIN aircraft_types t ON t.ac_typeid = a.aircraft
           WHERE COALESCE(f.family, 'Unknown') = :family
+            AND (:year IN ('', 'all') OR a.year = CAST(:year AS INTEGER))
           GROUP BY a.year, a.aircraft, aircraft_name, service, kind
           ORDER BY a.year
 
