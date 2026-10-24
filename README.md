@@ -47,7 +47,7 @@ The project relies on the following key packages:
 
 - **`t100.db`**: SQLite database: `t100_international` and `t100_domestic` segment tables, a `t100` view over both (with a `domestic` 0/1 column), and lookup tables for carriers, aircraft types, airports and airport coordinate overrides, `airport_year_totals` (per-airport yearly totals), `airport_names` (BTS's newest city name per airport code), `airport_market` (BTS's newest city market per airport code), and rollups by aircraft family, merger-aware carrier group and aircraft group/distance band (`aircraft_family`, `family_year`, `carrier_group`, `carrier_group_year`, `aircraft_group_band_year`, `family_detail_year`, `carrier_route_year`, `route_year_totals`), all derived from the segment tables: rebuild them with `build_database.rebuild_derived_tables` after loading data. Not committed.
 - **`datasette.yml`**: Datasette configuration and canned queries: `top_us_airports`, `destinations`, `route`, `route_year`, and the queries behind the map (`airports`, `routes_by_year`, `routes_by_month`).
-- **`plugins/`**: `t100_globe.py` registers the front page and the `/airports/...` pages (the older `/globe`, `/globe/ATL`, `/routes/ATL` and `/route/A/B` paths redirect); `t100_render_links.py` renders `more_detail` columns as links.
+- **`plugins/`**: `t100_globe.py` registers the front page and the `/airports/...` pages (the older `/globe`, `/globe/ATL`, `/routes/ATL` and `/route/A/B` paths redirect); `t100_render_links.py` renders `more_detail` columns as links; `t100_guard.py` refuses `_next` and `_facet` on the two big segment tables and serves `/robots.txt`; `t100_usage.py` writes the anonymous visit log described under Usage statistics.
 - **`templates/`**: `globe.html` (the map page) and templates for the canned query pages.
 - **`static/nav/`** and **`templates/_nav.html`**: the header shared by every page (breadcrumb trail, and a theme chooser: Auto follows the system's light or dark mode, or pick Light or Dark, both from AirTrail's colours) and the code that keeps `theme`, `measure`, `service` and the matrix settings in in-site links (reading a map's `hide` setting back into `service`). The site name in the trail is `site_name` under `plugins: t100_globe` (default `t100.husk.org`).
 - **`static/home/`**: the front page's graphics. The map uses `static/globe/src/usamap.js`, d3's Albers USA projection with a third inset for Puerto Rico and the Virgin Islands, drawn over the vendored us-atlas `states-10m.json`.
@@ -87,3 +87,13 @@ Every push to `main` runs `.github/workflows/deploy.yml`: the Python and JavaScr
     flyctl tokens create deploy -a blech-datasette-t100 | gh secret set FLY_API_TOKEN
 
 The database is not part of the image: it lives on the Fly volume (`/mnt/db/t100.db`) and a code deploy does not change it. If a code change needs a new table or column, load it on the volume first, or the smoke check will fail after the deploy. A deploy restarts the machine, which means a few seconds of downtime.
+
+## Usage statistics
+
+When `T100_USAGE_LOG` names a directory (`fly.toml` sets `/mnt/db/usage`), `plugins/t100_usage.py` appends one tab-separated line per page view to `visits-YYYY-MM.log` there: time, an anonymous visitor token, the page (years replaced by `{year}`, no query string), status, referring host, and `human`, `bot` or `other` (crawler traffic on the data pages). The token is the start of a hash of the client address, User-Agent and a random salt kept in a private file and replaced each UTC day, so it can't be reversed and doesn't link days. No address or User-Agent is stored, and a failure to write never affects a page. The design is in `docs/usage-stats.md`.
+
+Read it with `scripts/usage_report.py` (standard library only; it is in the image):
+
+    flyctl ssh console -a blech-datasette-t100 -C "python3 scripts/usage_report.py /mnt/db/usage --month 2026-10"
+
+`--prune 12` also deletes files older than 12 months. The log is per machine, so it assumes the single machine this app runs on.
