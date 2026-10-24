@@ -22,6 +22,12 @@ CREATE TABLE "aircraft_types" (
    [maker] TEXT, [kind] TEXT
 );
 
+CREATE TABLE "airport_carrier_year" (
+   [year] INTEGER, [origin] TEXT, [origin_wac] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
+
 CREATE TABLE "airport_market" (
    [code] TEXT PRIMARY KEY, [market_id] TEXT
 ) WITHOUT ROWID;

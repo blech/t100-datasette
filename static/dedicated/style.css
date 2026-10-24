@@ -1,0 +1,3 @@
+/* the most-dedicated tables: an airport and its city stay on one line, so a long airline name is the only thing that wraps */
+td.city { white-space: nowrap; }
+td.airline { white-space: normal; min-width: 12em; }

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Most dedicated airports, {{ year }} · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/dedicated/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="/static/dedicated/main.js"></script>
+</head>
+<body>
+  <main>
+    {% include "_nav.html" %}
+    <h1>Most dedicated airports</h1>
+    <p class="intro">
+      Airports where one airline carries most of what leaves, among the biggest US airports in {{ year }}: Southwest at Dallas Love, Allegiant at St. Petersburg, FedEx at Memphis.
+      Pick one to see where it flies and how its routes changed.
+    </p>
+
+    <form class="bar" method="get" action="/airports/dedicated">
+      <h2 id="heading">Biggest airline's share, {{ year }}</h2>
+      <label>Year <select name="year" id="year" aria-label="Year">
+          {%- for y in range(max_year, min_year - 1, -1) %}
+          <option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>
+          {%- endfor %}
+        </select></label>
+      <noscript><button type="submit">Show</button></noscript>
+    </form>
+
+    {% for t in tables %}
+    <section aria-labelledby="{{ t.measure }}-heading">
+      <h2 id="{{ t.measure }}-heading">{{ t.title }}</h2>
+      {% if t.rows %}
+      <div class="scroll">
+        <table id="{{ t.measure }}">
+          <thead>
+            <tr>
+              <th scope="col" class="left">Airport</th>
+              <th scope="col" class="left">City</th>
+              <th scope="col" class="left">Biggest airline</th>
+              <th scope="col" class="num">Share</th>
+              <th scope="col" class="num">Airline's {{ t.unit }}</th>
+              <th scope="col" class="num">Airport's {{ t.unit }}</th>
+              <th scope="col" class="num">Size rank</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- for r in t.rows %}
+            <tr>
+              <td class="code"><a href="/airports/{{ r.code }}{{ t.query }}">{{ r.code }}</a></td>
+              <td class="city">{{ r.city or "" }}</td>
+              <td class="airline"><a href="/airlines/{{ r.airline_id }}">{{ r.airline }}</a></td>
+              <td class="num">{{ r.share }}</td>
+              <td class="num">{{ r.airline_total }}</td>
+              <td class="num">{{ r.total }}</td>
+              <td class="num">{{ r.size_rank }}</td>
+            </tr>
+            {%- endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% elif t.rows is none %}
+      <p class="note">This table could not be built right now.</p>
+      {% else %}
+      <p class="note">No data for {{ year }}.</p>
+      {% endif %}
+      <p class="note">
+        {% if t.measure == "passengers" -%}
+        The ten of the {{ t.pool }} busiest US airports by passengers whose biggest airline carries the largest share of them. Passengers are those boarding there, on flights leaving the airport, domestic and international.
+        {%- else -%}
+        The ten of the {{ t.pool }} biggest US airports by freight whose biggest airline carries the largest share of it. Only a few dozen airports handle much freight, so the pool is smaller than for passengers. Freight is in short tons (2,000 lb).
+        {%- if year < 2003 %} Freight before 2003 leaves out most domestic FedEx and UPS flying, so these shares are not reliable: see <a href="/about#breaks">known gaps in the data</a>.{% endif %}
+        {%- endif %}
+      </p>
+    </section>
+    {% endfor %}
+
+    <p class="note">
+      Share is the biggest airline's part of the airport's total. Airlines that merged are counted together (Southwest includes AirTran, Delta includes Northwest). Regional airlines flying under a major's name are listed on their own,
+      so at that major's hubs its share is understated. Size rank is the airport's place among US airports by the same measure. More on <a href="/about#groupings">how things are grouped</a>.
+    </p>
+    {% include "_footer.html" %}
+  </main>
+</body>
+</html>

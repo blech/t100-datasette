@@ -123,6 +123,36 @@ databases:
           ORDER BY passengers DESC, origin
           LIMIT 100
 
+      # the most dedicated airports: of the biggest US airports by passengers (100) or freight (25) in one year, the ten whose
+      # biggest airline group carries the largest share of what leaves the airport. Reads airport_carrier_year, so it is
+      # a small query whatever the year; measure is 'passengers' or 'freight' (anything else counts as passengers)
+      dedicated_airports:
+        title: "Airports dominated by one airline"
+        sql: |
+          WITH by_airline AS (
+            SELECT origin, group_id, MIN(group_name) AS group_name,
+                   SUM(CASE :measure WHEN 'freight' THEN freight ELSE passengers END) AS value
+            FROM airport_carrier_year
+            WHERE year = CAST(:year AS integer) AND origin_wac BETWEEN 1 AND 93
+            GROUP BY origin, group_id
+          ), totals AS (
+            SELECT origin, SUM(value) AS total FROM by_airline GROUP BY origin HAVING SUM(value) > 0
+          ), biggest AS (
+            SELECT origin, total, ROW_NUMBER() OVER (ORDER BY total DESC, origin) AS size_rank FROM totals
+          ), leaders AS (
+            SELECT b.origin, b.size_rank, b.total, a.group_id, a.group_name, a.value AS airline_total,
+                   ROW_NUMBER() OVER (PARTITION BY b.origin ORDER BY a.value DESC, a.group_id) AS place
+            FROM biggest b JOIN by_airline a ON a.origin = b.origin
+            WHERE b.size_rank <= CASE :measure WHEN 'freight' THEN 25 ELSE 100 END
+          )
+          SELECT l.origin, y.origin_city_name, l.size_rank, l.total, l.group_id, l.group_name, l.airline_total,
+                 1.0 * l.airline_total / l.total AS share
+          FROM leaders l
+          LEFT JOIN airport_year_totals y ON y.origin = l.origin AND y.year = CAST(:year AS integer)
+          WHERE l.place = 1
+          ORDER BY share DESC, l.total DESC, l.origin
+          LIMIT 10
+
       # the front page airline story: the share of all passengers carried by the four and ten biggest
       # reporting carriers each year (operating carriers, so regional partners count on their own)
       carrier_concentration:

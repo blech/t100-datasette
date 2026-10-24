@@ -25,6 +25,7 @@ def register_routes():
         (r"^/$", home_page),
         (r"^/airports$", airports_index),
         (r"^/airports/globe$", globe_page),
+        (r"^/airports/dedicated$", dedicated_airports_page),
         (r"^/airports/over-time$", rollup_page("airports")),
         (rf"^/airports/(?P<origin>{CODE})$", airport_page),
         (rf"^/airports/(?P<origin>{CODE})/destinations$", routes_page),
@@ -88,9 +89,10 @@ def views_for(path):
         return [{"label": label, "href": href, "current": i == current, "id": id_} for i, (label, href, id_) in enumerate(items)]
 
     match parts:
-        case ["airports"] | ["airports", "over-time"] | ["airports", "globe"]:
-            return make(("Busiest airports", "/airports", None), ("Over time", "/airports/over-time", None), ("Map", "/airports/globe", None),
-                        current=[[], ["over-time"], ["globe"]].index(parts[1:]))
+        case ["airports"] | ["airports", "dedicated"] | ["airports", "over-time"] | ["airports", "globe"]:
+            return make(("Busiest airports", "/airports", None), ("Most dedicated", "/airports/dedicated", None),
+                        ("Over time", "/airports/over-time", None), ("Map", "/airports/globe", None),
+                        current=[[], ["dedicated"], ["over-time"], ["globe"]].index(parts[1:]))
         case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
@@ -238,6 +240,46 @@ async def airports_index(datasette, request):
     html = await datasette.render_template(
         "airports.html",
         {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+# the most-dedicated page: one table per measure; the pool is how many of the biggest airports compete (see the dedicated_airports query)
+DEDICATED_TABLES = (
+    {"measure": "passengers", "title": "Passengers", "pool": 100, "unit": "passengers", "query": ""},
+    # the airport page's own settings (measure, kind of flight) that show the same thing: freight on every flight, belly cargo included
+    {"measure": "freight", "title": "Freight", "pool": 25, "unit": "short tons", "query": "?measure=freight&flights=all"},
+)
+LB_PER_SHORT_TON = 2000
+
+
+def dedicated_rows(rows, measure):
+    """dedicated_airports rows -> table rows with the shares and totals as the page prints them (freight in short tons, not pounds)."""
+    scale = LB_PER_SHORT_TON if measure == "freight" else 1
+    return [{"code": r["origin"], "city": r["origin_city_name"], "size_rank": r["size_rank"],
+             "airline": short_airline_name(r["group_name"]), "airline_id": r["group_id"],
+             "share": percent(r["share"], 1), "airline_total": prose_count(r["airline_total"] / scale), "total": prose_count(r["total"] / scale)}
+            for r in rows]
+
+
+async def dedicated_airports_page(datasette, request):
+    """Airports where one airline group carries most of what leaves, for passengers and for freight, in one year."""
+    min_year, max_year = year_range(datasette)
+    year = max_year
+    try:
+        asked = int(request.args.get("year", ""))
+        year = asked if min_year <= asked <= max_year else max_year
+    except ValueError:
+        pass
+    tables = []
+    for t in DEDICATED_TABLES:
+        rows = await story(datasette, "dedicated_airports", lambda rows, m=t["measure"]: dedicated_rows(rows, m), {"year": year, "measure": t["measure"]})
+        tables.append({**t, "rows": rows})
+    html = await datasette.render_template(
+        "airports_dedicated.html",
+        {"min_year": min_year, "max_year": max_year, "year": year, "tables": tables,
+         "crumbs": trail(datasette, ("airports", "/airports"), ("most dedicated", None))},
         request=request,
     )
     return Response.html(html)

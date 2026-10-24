@@ -3,7 +3,7 @@ import re
 from tests.helpers import get, get_json
 from tests.test_rollup_queries import put
 
-VIEWS = [("Busiest airports", "/airports"), ("Over time", "/airports/over-time"), ("Map", "/airports/globe")]
+VIEWS = [("Busiest airports", "/airports"), ("Most dedicated", "/airports/dedicated"), ("Over time", "/airports/over-time"), ("Map", "/airports/globe")]
 
 
 def totals(db_path):
@@ -33,7 +33,7 @@ def test_the_airports_matrix_page(ds):
     assert "airlines" not in sentence and "_airline_search" not in r.text and 'id="airline-search"' not in r.text
 
 
-def test_the_airports_section_has_three_views(ds):
+def test_the_airports_section_has_four_views(ds):
     for i, (_, path) in enumerate(VIEWS):
         line = re.search(r'<nav class="views".*?</nav>', get(ds, path).text, re.S).group(0)
         for j, (label, href) in enumerate(VIEWS):

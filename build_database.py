@@ -80,6 +80,12 @@ CREATE TABLE IF NOT EXISTS "airport_year_totals" (
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [origin])
 ) WITHOUT ROWID;
+-- Derived from the segment tables by rebuild_airport_carrier_year(): each airline group's yearly totals for the segments leaving each airport, so an airport's carrier mix needs no segment scan
+CREATE TABLE IF NOT EXISTS "airport_carrier_year" (
+   [year] INTEGER, [origin] TEXT, [origin_wac] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
 -- Aircraft type -> family/subfamily/class, from data/aircraft_families.csv rules by rebuild_aircraft_family()
 CREATE TABLE IF NOT EXISTS "aircraft_family" (
    [aircraft_type] TEXT PRIMARY KEY, [name] TEXT, [family] TEXT, [subfamily] TEXT, [aircraft_class] TEXT, [fallback] INTEGER
@@ -413,6 +419,26 @@ def rebuild_carrier_group_year(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM carrier_group_year").fetchone()[0]
 
 
+def rebuild_airport_carrier_year(conn: sqlite3.Connection) -> int:
+    """Recompute airport_carrier_year: each airline group's yearly totals for the segments leaving each airport. Carrier entities missing from the carriers table are kept as 'unknown'."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM airport_carrier_year")
+        conn.execute(
+            """
+            INSERT INTO airport_carrier_year
+            SELECT t.year, t.origin, MAX(t.origin_wac), COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, ''),
+                   SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight)
+            FROM t100 t
+            LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+            LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+            WHERE t.year IS NOT NULL AND t.origin IS NOT NULL
+            GROUP BY t.year, t.origin, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, '')
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM airport_carrier_year").fetchone()[0]
+
+
 def rebuild_aircraft_carrier_year(conn: sqlite3.Connection) -> int:
     """Recompute aircraft_carrier_year: each aircraft's yearly totals by airline group. Unknown aircraft and carriers are kept."""
     create_schema(conn)
@@ -527,6 +553,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "type_year": rebuild_type_year(conn),
         "carrier_group": rebuild_carrier_groups(conn),
         "carrier_group_year": rebuild_carrier_group_year(conn),
+        "airport_carrier_year": rebuild_airport_carrier_year(conn),
         "aircraft_group_band_year": rebuild_aircraft_group_band_year(conn),
         "family_detail_year": rebuild_family_detail_year(conn),
         "aircraft_carrier_year": rebuild_aircraft_carrier_year(conn),
