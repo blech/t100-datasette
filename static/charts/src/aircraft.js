@@ -109,3 +109,13 @@ export function rowLabel(name) {
   const short = String(name).replace(' (other models)', ' (other)').replace(', one or two engines', ', 1–2 engines');
   return short.length > ROW_LABEL_MAX ? `${short.slice(0, ROW_LABEL_MAX - 1).trimEnd()}…` : short;
 }
+
+// the settings the families matrix shares with a family or aircraft page (same names there), as a query string; defaults are left out
+export function carriedSearch({ measure, flights, service }) {
+  const q = new URLSearchParams();
+  if (measure !== 'passengers') q.set('measure', measure);
+  if (flights !== 'passenger') q.set('flights', flights);
+  if (service !== 'all') q.set('service', service);
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}

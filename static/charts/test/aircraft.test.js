@@ -170,3 +170,11 @@ test('a long aircraft name is cut with an ellipsis; a short one is left alone', 
   assert.ok(cut.length <= 34 && cut.endsWith('…'));
   assert.equal(rowLabel('Boeing 737-800'), 'Boeing 737-800');
 });
+
+import { carriedSearch } from '../src/aircraft.js';
+
+test('the matrix passes its measure, kind of flight and routes to a family or aircraft page, leaving out the defaults', () => {
+  assert.equal(carriedSearch({ measure: 'passengers', flights: 'passenger', service: 'all' }), '');
+  assert.equal(carriedSearch({ measure: 'freight', flights: 'all', service: 'international' }), '?measure=freight&flights=all&service=international');
+  assert.equal(carriedSearch({ measure: 'deps', flights: 'passenger', service: 'all' }), '?measure=deps');
+});

@@ -4,7 +4,7 @@ import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
-import { aircraftHref, rowLabel } from '/static/charts/src/aircraft.js';
+import { aircraftHref, carriedSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
 import { tableSearch } from '/static/landing/src/table.js';
 import { shortNames } from '/static/charts/src/names.js';
@@ -122,7 +122,7 @@ function drawCities(box) {
       return {
         ...r,
         text: rowLabel(member ? r.name : r.label),
-        href: member ? aircraftHref(r.groupKey, r.name) : `/aircraft/${r.key}`,
+        href: (member ? aircraftHref(r.groupKey, r.name) : `/aircraft/${r.key}`) + carriedSearch(state), // the family and aircraft pages read the same measure, flights and service
         title: member ? aircraftTitle(r.code, r.name) : [r.label, `${r.codes.length} aircraft`, '', ...r.codes.slice(0, 12).map((c) => aircraftInfo.get(c)?.name || c), ...(r.codes.length > 12 ? ['…'] : [])].join('\n'),
       };
     }
