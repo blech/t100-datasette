@@ -13,6 +13,7 @@
   <main>
     {% include "_nav.html" %}
     <h1>Aircraft by maker</h1>
+    {% set find = "aircraft" %}{% include "_find.html" %}
     <p class="intro">Who built the aircraft that flew, year by year.</p>
     <p class="chart-sentence">
       Show <select id="mk-measure" aria-label="Measure"></select>

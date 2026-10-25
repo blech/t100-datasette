@@ -1,0 +1,8 @@
+{# A section's find box, under the page's title: set `find` to "airline", "airport" or "aircraft" before including it,
+   and `find_suffix` to open another view of what's found (a map's "/globe"). The tables filter their own rows instead. #}
+{%- set find_label = {"airline": "Find an airline", "airport": "Find an airport", "aircraft": "Find an aircraft"}[find] -%}
+<p class="find">
+  <label>{{ find_label }} <input id="find" type="search" list="find-list" data-find="{{ find }}"{% if find_suffix %} data-suffix="{{ find_suffix }}"{% endif %} placeholder="{{ {"airline": "Name, such as Delta", "airport": "Code or city, such as SFO or Boston", "aircraft": "Name, such as Boeing 737 or A320"}[find] }}" autocomplete="off" aria-label="{{ find_label }}"></label>
+  <datalist id="find-list"></datalist>
+  <script type="module" src="/static/charts/find.js"></script>
+</p>

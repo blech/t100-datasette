@@ -510,6 +510,34 @@ databases:
           GROUP BY d.airline_id, COALESCE(g.airline_name, d.group_name), d.group_name
           ORDER BY deps DESC
 
+      # what the airport search offers: every airport flown from, US or not, busiest first
+      airport_list:
+        title: "Every airport flown from, busiest first"
+        description: "One row per airport: its code, place and name, the first and last years with departures from it, and its departures in all years."
+        sql: |
+          SELECT y.origin AS code, COALESCE(n.name, MAX(y.origin_city_name)) AS place, o.name AS name,
+            MIN(y.year) AS first_year, MAX(y.year) AS last_year, SUM(y.deps) AS deps
+          FROM airport_year_totals y
+          LEFT JOIN airport_names n ON n.code = y.origin
+          LEFT JOIN (SELECT iata_code, MIN(name) AS name FROM openflights_airports GROUP BY iata_code) o ON o.iata_code = y.origin
+          GROUP BY y.origin
+          ORDER BY deps DESC
+
+      # what the aircraft search offers: every aircraft flown, with its family, named as the aircraft pages name them, busiest first
+      aircraft_list:
+        title: "Every aircraft flown, with its family, busiest first"
+        description: "One row per aircraft: its family and name, the first and last years it flew, and its departures in all years."
+        sql: |
+          SELECT COALESCE(f.family, 'Unknown') AS family,
+            COALESCE(t.name, CASE y.aircraft_type WHEN 'unknown' THEN 'Type not reported' ELSE 'Type ' || y.aircraft_type END) AS name,
+            MIN(y.year) AS first_year, MAX(y.year) AS last_year, SUM(y.deps) AS deps
+          FROM type_year y
+          LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type
+          LEFT JOIN aircraft_family f ON f.aircraft_type = y.aircraft_type
+          WHERE y.deps > 0
+          GROUP BY y.aircraft_type
+          ORDER BY deps DESC
+
       # the airline queries take :group (a merged group's id, or an airline's own) and :airline ('' for the whole group, or one member)
       carrier_group_detail:
         title: "An airline group, or one of its airlines, by year"

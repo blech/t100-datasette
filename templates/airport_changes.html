@@ -13,6 +13,7 @@
   <main>
     {% include "_nav.html" %}
     <h1 id="title">{{ origin }}: what changed</h1>
+    {% set find = "airport" %}{% include "_find.html" %}
     <p class="intro" id="subtitle"></p>
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">Count destinations flown to at least <select id="ap-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> in a year.</p>

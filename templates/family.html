@@ -13,6 +13,7 @@
   <main>
     {% include "_nav.html" %}
     <h1>{{ family }} over time</h1>
+    {% set find = "aircraft" %}{% include "_find.html" %}
     <p class="intro" id="subtitle"></p>
     <p class="chart-sentence">
       Show <select id="fam-measure" aria-label="Measure"></select>
