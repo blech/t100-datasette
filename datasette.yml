@@ -361,24 +361,25 @@ databases:
           ORDER BY y.year, y.aircraft_type
 
       family_detail:
-        title: "An aircraft family by year, version and airline group"
-        description: "One row per year, version, airline group, service and kind. Leave group empty for every airline. Leave year empty for all years. Leave service (domestic or international) and kind (passenger or freight) empty for both. Sort within each year by name, passengers or freight; empty sorts by year alone."
+        title: "Aircraft families by year, version and airline group"
+        description: "One row per family, year, version, airline group, service and kind. Leave family empty for every family, and group empty for every airline. Leave year empty for all years. Leave service (domestic or international) and kind (passenger or freight) empty for both. Sort within each year by name, passengers or freight; empty sorts by year alone."
         sql: |
           SELECT
-            year, subfamily, group_id, group_name,
+            family, year, subfamily, group_id, group_name,
             CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
             CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
             SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
           FROM family_detail_year
-          WHERE family = :family AND (:group = '' OR group_id = :group)
+          WHERE (:family = '' OR family = :family) AND (:group = '' OR group_id = :group)
             AND (:year IN ('', 'all') OR year = CAST(:year AS INTEGER))
             AND (:service IN ('', 'all') OR service = :service)
             AND (:kind IN ('', 'all') OR kind = :kind)
-          GROUP BY year, subfamily, group_id, group_name, service, kind
+          GROUP BY family, year, subfamily, group_id, group_name, service, kind
           ORDER BY year,
             CASE WHEN :sort = 'name' THEN group_name END,
             CASE WHEN :sort = 'passengers' THEN SUM(passengers) END DESC,
-            CASE WHEN :sort = 'freight' THEN SUM(freight) END DESC
+            CASE WHEN :sort = 'freight' THEN SUM(freight) END DESC,
+            family
 
       family_aircraft:
         title: "An aircraft family by year, aircraft, service and kind"
