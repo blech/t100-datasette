@@ -20,6 +20,16 @@ def test_only_the_airports_table_loads_its_own_stylesheet(name):
     assert ("/static/landing/style.css" in stylesheets(name)) == (name == "airports")
 
 
+def test_search_fields_are_drawn_like_the_menus_beside_them():
+    # without a rule of their own, search fields take the browser's small type and box
+    css = open("static/common/base.css").read()
+    rule = re.search(r'^([^{\n]*\bselect\b[^{\n]*)\{([^}]*)\}', css, re.M)
+    assert rule and 'input[type="search"]' in rule.group(1) and "font:inherit" in rule.group(2)
+    for name in TEMPLATES:
+        for field in re.findall(r'<input[^>]*type="search"[^>]*>', open(f"templates/{name}.html").read()):
+            assert "style=" not in field, name
+
+
 def test_the_airline_change_table_scrolls_in_its_own_box():
     html = open("templates/airline_changes.html").read()
     assert re.search(r'<div class="scroll">\s*<table id="change-table">', html)
