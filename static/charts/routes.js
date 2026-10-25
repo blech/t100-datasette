@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, MATRIX_MEASURES, labelMargin, textWidth, pointerReach } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, MATRIX_MEASURES, labelMargin, textWidth, pointerReach, placeKey } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -53,6 +53,7 @@ function pushState() {
 function drawAirports() {
   const box = $('matrix');
   box.replaceChildren();
+  placeKey($('matrix-key'), null);
   const res = buildMatrix(rows, { ...state, rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
@@ -87,6 +88,7 @@ function drawAirports() {
       }),
     ],
   });
+  placeKey($('matrix-key'), chart);
   box.append(...attachPopover(chart, cellPopover('dest')));
 }
 
@@ -97,8 +99,8 @@ const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[s
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination` });
 const colourScale = (max) => (relative()
-  ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
-  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(max, MATRIX_MEASURES[state.measure]) });
+  ? { type: 'sqrt', scheme: 'YlOrRd', label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
+  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(max, MATRIX_MEASURES[state.measure]) });
 // a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
   { label: MATRIX_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
@@ -116,6 +118,7 @@ function toggle(key) {
 function drawCities() {
   const box = $('matrix');
   box.replaceChildren();
+  placeKey($('matrix-key'), null);
   const res = buildCityMatrix(rows, { ...state, rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
@@ -162,6 +165,7 @@ function drawCities() {
       disclosureArrows(Plot, labels, (d) => `${d.open ? 'Hide' : 'List'} ${d.label}'s airports`),
     ],
   });
+  placeKey($('matrix-key'), chart);
   box.append(...attachPopover(chart, cellPopover('row')));
 }
 

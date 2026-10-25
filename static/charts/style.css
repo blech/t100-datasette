@@ -18,6 +18,11 @@
 .scale-choice { display: flex; flex-wrap: wrap; gap: 4px 16px; border: 0; padding: 0; margin: 0 0 8px; }
 .scale-choice legend { float: left; padding: 0; }
 .scale-choice label { white-space: nowrap; }
+/* the Colour choice with the key it sets beside it, the key wrapping beneath on a narrow screen */
+.key-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 32px; margin: 0 0 8px; }
+.key-row .scale-choice { margin: 0; }
+.matrix-key:empty { display: none; }
+.matrix-key svg { display: block; }
 #change-table { margin-top: 8px; }
 #size-chart svg, #pairs-chart svg { --plot-background: var(--bg); }
 :is(#aircraft-table, #airline-table) { overflow-x: auto; }

@@ -23,12 +23,15 @@
       <select id="matrix-group" aria-label="Group rows by"><option value="airport">airports</option><option value="city">cities (BTS markets)</option></select>,
       ranked by <select id="matrix-rank" aria-label="Year used to rank destinations"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
     </p>
-    <fieldset id="matrix-scale" class="scale-choice">
-      <legend>Colour</legend>
-      <label><input type="radio" name="scale" value="absolute" checked> Amount</label>
-      <label><input type="radio" name="scale" value="year"> Share of each year</label>
-      <label><input type="radio" name="scale" value="busiest"> Compared to top destination</label>
-    </fieldset>
+    <div class="key-row">
+      <fieldset id="matrix-scale" class="scale-choice">
+        <legend>Colour</legend>
+        <label><input type="radio" name="scale" value="absolute" checked> Amount</label>
+        <label><input type="radio" name="scale" value="year"> Share of each year</label>
+        <label><input type="radio" name="scale" value="busiest"> Compared to top destination</label>
+      </fieldset>
+      <div id="matrix-key" class="matrix-key"></div>
+    </div>
     <p class="note" id="scale-note" hidden></p>
     <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> Each cell is one destination in one year; click a cell to see that route in that year, or a row's code to see where it flies. In city view, click a row to open it into its airports. Routes with fewer than 12 departures a year are hidden. Each destination counts flights <em>from</em> {{ origin }} only: <a href="/about#direction">routes are one-way</a>.</p>

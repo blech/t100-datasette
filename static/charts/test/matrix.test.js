@@ -299,3 +299,15 @@ test('a grouped matrix has an arrow only for its groups, ▾ when open, each a t
   assert.deepEqual(data.map((d) => options.text(d)), ['▸', '▾']);
   assert.deepEqual(data.map((d) => options.href(d)), ['#toggle:a', '#toggle:b']);
 });
+
+import { placeKey } from '../src/matrix.js';
+
+test('the colour key is drawn into its own box, and emptied when there is nothing to chart', () => {
+  const box = { children: ['old key'], replaceChildren(...c) { this.children = c; } };
+  const chart = { legend: (scale) => `${scale} legend` };
+  placeKey(box, chart);
+  assert.deepEqual(box.children, ['color legend']);
+  placeKey(box, null);
+  assert.deepEqual(box.children, []);
+  placeKey(null, chart);                                                    // a page without a key box draws none
+});

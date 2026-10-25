@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, carriedSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
@@ -162,14 +162,15 @@ function drawCities(box) {
       disclosureArrows(Plot, labels, (d) => `${d.open ? 'Hide' : 'List'} ${d.label}'s ${aircraft ? 'aircraft' : 'airports'}`),
     ],
   });
+  placeKey($('matrix-key'), chart);
   box.append(...attachPopover(chart, {
     content: (d) => ({ title: `${d.head} · ${d.year}`, rows: d.rows }), at: (d) => [d.year, d.row], keyOf: () => ({ kind: 'none' }),
   }));
 }
 
 const colourOptions = (cells) => (relative()
-  ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
-  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) });
+  ? { type: 'sqrt', scheme: 'YlOrRd', label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
+  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) });
 
 function draw() {
   $('scale-note').hidden = !relative();
@@ -183,6 +184,7 @@ function draw() {
 
   const box = $('matrix');
   box.replaceChildren();
+  placeKey($('matrix-key'), null);
   if (grouped()) { drawCities(box); useLabelTips(box); return; }
   const res = buildMatrix(rollupRows(rows, { key: page.key, kind: kind === 'routes' ? 'all' : state.flights }), { ...state, rankYear: rankYear() });
   if (!res.cells.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
@@ -201,14 +203,15 @@ function draw() {
     x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.dests, axis: null },
     color: relative()
-      ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
-      : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) },
+      ? { type: 'sqrt', scheme: 'YlOrRd', label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
+      : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) },
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField() }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(res.dests.map((d) => ({ dest: d, label: labelOf(d), href: familyHref(d), title: titleOf(d) })), { y: 'dest', text: 'label', title: 'title', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8, fill: 'currentColor' }),
     ],
   });
+  placeKey($('matrix-key'), chart);
   box.append(...attachPopover(chart, {
     content: (d) => ({ title: `${d.dest} · ${d.year}`, rows: cellRows(d) }), at: (d) => [d.year, d.dest], keyOf: () => ({ kind: 'none' }),
   }));

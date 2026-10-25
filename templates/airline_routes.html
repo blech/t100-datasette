@@ -25,12 +25,15 @@
       for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
       routes, ranked by <select id="matrix-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ last_year }} only</option></select>.
     </p>
-    <fieldset id="matrix-scale" class="scale-choice">
-      <legend>Colour</legend>
-      <label><input type="radio" name="scale" value="absolute"> Amount</label>
-      <label><input type="radio" name="scale" value="year" checked> Share of each year</label>
-      <label><input type="radio" name="scale" value="busiest"> Compared to the biggest</label>
-    </fieldset>
+    <div class="key-row">
+      <fieldset id="matrix-scale" class="scale-choice">
+        <legend>Colour</legend>
+        <label><input type="radio" name="scale" value="absolute"> Amount</label>
+        <label><input type="radio" name="scale" value="year" checked> Share of each year</label>
+        <label><input type="radio" name="scale" value="busiest"> Compared to the biggest</label>
+      </fieldset>
+      <div id="matrix-key" class="matrix-key"></div>
+    </div>
     <p class="note" id="scale-note" hidden></p>
     <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note" id="rank-note"></p>

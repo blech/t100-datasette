@@ -63,6 +63,12 @@ export function pointerReach({ width, marginLeft, years, rowPx }) {
   return Math.min(Math.hypot(cell / 2, rowPx / 2) + 0.5, cell / 2 + 7.5);
 }
 
+// the colour key, drawn beside the Colour choice that sets it rather than inside the chart, between the settings and the cells;
+// `chart` is null when there is nothing to chart, which empties the key
+export function placeKey(box, chart) {
+  if (box) box.replaceChildren(...(chart ? [chart.legend('color')] : []));
+}
+
 // a label's width in px as the page's 12px type sets it, for labelMargin (a browser's canvas; null where there isn't one)
 export function textWidth(box) {
   const ctx = typeof document !== 'undefined' && document.createElement('canvas').getContext('2d');
