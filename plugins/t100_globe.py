@@ -320,6 +320,8 @@ async def home_page(datasette, request):
             "engines": await story(datasette, "engines_by_year", lambda rows: engine_story(rows, min_year, max_year)),
             "concentration": await story(datasette, "carrier_concentration", lambda rows: concentration_story(rows, min_year, max_year)),
             "carriers": await story(datasette, "top_carriers", carrier_shares, {"year": max_year}),
+            # each section ends with its own views line, none of them the page you're on
+            "section_views": {s: [{**v, "current": False} for v in views_for(f"/{s}")] for s in ("airports", "aircraft", "airlines")},
         },
         request=request,
     )

@@ -33,6 +33,18 @@ def test_home_page_tells_the_three_stories(ds, db_path):
     assert html.count('class="section"') == 3
 
 
+def test_each_front_page_section_ends_with_its_sections_views(ds):
+    from plugins.t100_globe import views_for
+    html = get(ds, "/").text
+    for section in ["airports", "aircraft", "airlines"]:
+        body = re.search(rf'aria-labelledby="{section}-heading">(.*?)</section>', html, re.S).group(1)
+        views = re.search(r'<nav class="views more"[^>]*>(.*?)</nav>', body, re.S).group(1)
+        links = re.findall(r'<a href="([^"]+)"[^>]*>([^<]+)</a>', views)
+        assert links == [(v["href"], v["label"]) for v in views_for(f"/{section}")], section
+        assert "aria-current" not in views and "<strong" not in views  # none is the page you're on
+    assert "→" not in html
+
+
 def test_home_page_without_data_still_renders(ds):
     r = get(ds, "/")
     assert r.status_code == 200

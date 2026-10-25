@@ -12,6 +12,7 @@
 <body data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
     {% include "_nav.html" %}
+    {% from "_views.html" import views_line %}
     <h1>US air traffic, {{ min_year }}–{{ max_year }}</h1>
     <p class="intro">
       Every scheduled and charter flight to, from and within the United States since {{ min_year }}, as reported by airlines to the
@@ -30,7 +31,7 @@
         <div id="map-tip" class="map-tip popover text" hidden></div>
         <p id="map-status" class="graphic-status">Loading map…</p>
       </div>
-      <p class="more"><a href="/airports">All airports →</a> · <a href="/airports/globe">Explore the map →</a></p>
+      <nav class="views more" aria-label="Airports views">{{ views_line(section_views.airports) }}</nav>
     </section>
 
     <section class="section" aria-labelledby="aircraft-heading">
@@ -40,7 +41,7 @@
         747s, DC-10s, TriStars. In {{ engines.last_year }} twin-engined jets flew {{ engines.last_twin }} of them.</p>
       {% endif %}
       <div class="graphic chart-box" id="engine-chart"><p class="graphic-status">Loading chart…</p></div>
-      <p class="more"><a href="/aircraft/engines">The long-haul story →</a> · <a href="/aircraft">All aircraft →</a></p>
+      <nav class="views more" aria-label="Aircraft views">{{ views_line(section_views.aircraft) }}</nav>
     </section>
 
     <section class="section" aria-labelledby="airlines-heading">
@@ -53,7 +54,7 @@
       <div class="graphic chart-box" id="passenger-chart"><p class="graphic-status">Loading chart…</p></div>
       {% if carriers %}<p class="story">The biggest in {{ max_year }}:
         {% for x in carriers %}{{ x.name }} {{ x.share }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
-      <p class="more"><a href="/airlines">All airlines →</a></p>
+      <nav class="views more" aria-label="Airlines views">{{ views_line(section_views.airlines) }}</nav>
     </section>
 
     <p class="note">

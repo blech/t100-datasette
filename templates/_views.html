@@ -1,0 +1,4 @@
+{# a subject's views, "Over time · Routes · Changes · Map": the header's views line, and each front-page section's last line #}
+{% macro views_line(views) -%}
+{%- for v in views %}{% if not loop.first %} · {% endif %}{% if v.current %}<strong aria-current="page">{{ v.label }}</strong>{% else %}<a href="{{ v.href }}"{% if v.id %} id="{{ v.id }}"{% endif %}>{{ v.label }}</a>{% endif %}{% endfor -%}
+{%- endmacro %}
