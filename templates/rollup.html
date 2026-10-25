@@ -13,7 +13,7 @@
   <main>
     {% include "_nav.html" %}
     <h1>{{ page.title }} over time</h1>
-    {% if kind == "airlines" %}{% include "_airline_search.html" %}{% endif %}
+    {% set find = {"airlines": "airline", "airports": "airport", "aircraft": "aircraft"}[kind] %}{% include "_find.html" %}
     <p class="intro">
       {% if kind == "airports" %}Every US airport in the data, counting flights departing from it, by year. Click an airport's code to see where it flies.
       {% elif kind == "aircraft" %}Every aircraft family in the data, by year. Click a <span aria-hidden="true">▸</span> to list a family's aircraft, a family's name to see its page, or an aircraft's name to see that one.

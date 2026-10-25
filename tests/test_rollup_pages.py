@@ -80,15 +80,6 @@ def test_carrier_routes_year_returns_one_years_pairs(ds, db_path):
     assert [r["dest"] for r in rows] == ["LAX", "TINY"]  # the page applies the minimum, so it can add members up first
 
 
-def test_airline_search_box_is_on_the_airlines_page_and_each_airline_page(ds, db_path):
-    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
-    for path in ["/airlines/over-time", "/airlines/delta"]:
-        html = get(ds, path).text
-        assert 'id="airline-search"' in html and 'id="airline-list"' in html and "/static/charts/airlinesearch.js" in html
-    assert 'id="airline-search"' not in get(ds, "/airlines").text
-    assert 'id="airline-search"' not in get(ds, "/aircraft").text
-
-
 def test_airline_map_has_two_handles_on_one_track_and_no_compare_menu(ds, db_path):
     put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
     html = get(ds, "/airlines/delta/globe").text

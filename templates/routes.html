@@ -13,6 +13,7 @@
   <main>
     {% include "_nav.html" %}
     <h1 id="title">{{ origin }}: destinations over time</h1>
+    {% set find = "airport" %}{% include "_find.html" %}
     <p class="intro" id="subtitle"></p>
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">

@@ -27,6 +27,11 @@ The aim is to make the site feel like one piece, in how it looks and in how it w
 
 ### 3. Navigation: done (merged, branch `navigation`)
 
+- **Find and filter: built** (branch `search-box`, no spec). A box that opens a subject's page and a box that narrows a table are kept apart:
+  - **Find:** "Find an airline", "Find an airport" or "Find an aircraft" (`templates/_find.html`, `static/charts/find.js`), under the title on each section's pages other than its tables. On the airline map it sits in the controls row, as the airport map's picker does, and opens the airline's map. The lists come from `airline_list`, `airport_list` and `aircraft_list`.
+  - **Filter:** the airlines and aircraft tables' own box, labelled "Filter", after their settings and just above the rows. The tables need no find box: filter, then open the name.
+  - The airport maps keep their picker; the busiest and most-dedicated airports tables have neither box.
+
 - **Placement:** the line of related links under the breadcrumb (`<p class="related">`) is written separately in each template, so what it offers is ad hoc. The busiest-airports page and the front page have none, which is why "Airports" never appears in it.
 - **Questions:**
   - Should it stay a subhead, move to a footer, or become a dropdown from the breadcrumb?

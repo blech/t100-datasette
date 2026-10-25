@@ -20,7 +20,6 @@
 .scale-choice label { white-space: nowrap; }
 #change-table { margin-top: 8px; }
 #size-chart svg, #pairs-chart svg { --plot-background: var(--bg); }
-.airline-search { margin: 0 0 12px; } .airline-search input { margin-left: 4px; min-width: 16em; max-width: 90%; }
 :is(#aircraft-table, #airline-table) { overflow-x: auto; }
 :is(#aircraft-table, #airline-table) :is(td, th).left { text-align: left; }
 :is(#aircraft-table, #airline-table) button.sort { all: unset; cursor: pointer; font-weight: 600; }

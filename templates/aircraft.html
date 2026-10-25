@@ -13,6 +13,7 @@
   <main>
     {% include "_nav.html" %}
     <h1>{{ name }} over time</h1>
+    {% set find = "aircraft" %}{% include "_find.html" %}
     <p class="intro" id="subtitle">
       {% if maker != "Unknown maker" %}Made by {{ maker }}. {% endif %}{% if kind != "Unknown" %}{{ kind }}. {% endif %}{% if first %}Flew {% if first == last %}in {{ first }}{% else %}from {{ first }} to {{ last }}{% endif %}. {% endif %}Part of the {% if family == "Unknown" %}Unknown{% else %}<a href="/aircraft/{{ family_slug }}">{{ family }}</a>{% endif %} family.
     </p>

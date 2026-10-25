@@ -22,6 +22,10 @@ select, input[type="search"] { font:inherit; color:var(--fg); background:transpa
 /* Safari draws its own search box over these unless told not to; wide enough for the placeholder, never wider than a phone */
 input[type="search"] { -webkit-appearance:none; appearance:none; width:20em; max-width:100%; }
 input[type="search"]::placeholder { color:var(--muted); }
+/* a section's find box, under the page's title; on a map it sits in the row of controls under the stats */
+.find { margin:0 0 12px; }
+.find input { margin-left:4px; }
+.picker-row .find { margin:0; }
 
 /* a table that scrolls sideways in its own box; positioned, so hidden text inside it can't widen the page */
 .scroll { overflow-x:auto; position:relative; }
