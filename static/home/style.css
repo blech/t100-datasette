@@ -1,5 +1,6 @@
 .story { max-width:42em; margin:0 0 8px; }
-.more { font-size:14px; margin:8px 0 0; }
+/* a section's views line: the header's, without its rule */
+.section .views.more { border-top:0; padding-top:0; margin:8px 0 0; }
 /* each graphic leaves room on screen for the next section to show */
 .graphic { position:relative; margin:12px 0 0; }
 /* the map's own shape (insets included), but never taller than the limit */
