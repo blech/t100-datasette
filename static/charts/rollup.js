@@ -190,7 +190,7 @@ function draw() {
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.cells.map((c) => ({ ...c, year: String(c.year) }));
   const width = Math.min(box.clientWidth || 900, 1200);
-  const marginLeft = kind === 'airports' ? 48 : 190; // airport codes are short; airline names and routes aren't
+  const marginLeft = labelMargin(res.dests.map(labelOf), textWidth(box)); // as wide as the longest label, from airport codes to airline names
   const chart = Plot.plot({
     width,
     height: res.dests.length * ROW_PX + 90,
