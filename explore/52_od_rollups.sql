@@ -1,7 +1,7 @@
 -- Rollups of the DB1C (monthly, 40%) and DB1B (quarterly, 10%) ticket samples at T100-like grains, for joining to
--- the site's data. See 50/51 for the record layouts and the trip-break rule: a trip breaks at an airport when the
--- directional break (TripBk19_7 / DB1B trip break) is set there. Counts are sample passengers: scale by 1/0.4 or
--- 1/0.1, or better to T100 (international itineraries are excluded, so both run ~10% short).
+-- the site's data. See 50 and 01_db1b_parquet.sh for the record layouts and the trip-break rule: a trip breaks at an
+-- airport when the directional break (TripBk19_7 / DB1B trip break) is set there. Counts are sample passengers: scale
+-- by 1/0.4 or 1/0.1, or better to T100 (international itineraries are excluded, so both run ~10% short).
 --
 --   od_segment_period  period x origin x dest x operating carrier: passengers, local = flew only this segment
 --                      (a trip starts and ends here), connecting_at_origin / connecting_at_dest
@@ -22,14 +22,8 @@ CREATE OR REPLACE TEMP VIEW od_itin AS
          [MktCarrier_1, MktCarrier_2, MktCarrier_3, MktCarrier_4, MktCarrier_5, MktCarrier_6, MktCarrier_7, MktCarrier_8, MktCarrier_9, MktCarrier_10, MktCarrier_11, MktCarrier_12, MktCarrier_13, MktCarrier_14, MktCarrier_15, MktCarrier_16, MktCarrier_17, MktCarrier_18, MktCarrier_19, MktCarrier_20, MktCarrier_21, MktCarrier_22, MktCarrier_23] AS mkt
   FROM 'explore/DB1C.PUBLIC.*.parquet'
   UNION ALL
-  SELECT 'DB1B', make_date(f[3][1:4]::int, f[3][5]::int * 3 - 2, 1), 3, f[5]::int, f[4]::int,
-         [f[6]] || list_transform(range(1, f[4]::int + 1), lambda k: f[11 * k + 6]),
-         [false] || list_transform(range(1, f[4]::int + 1), lambda k: trim(f[11 * k + 7]) <> ''),
-         list_transform(range(1, f[4]::int + 1), lambda k: f[11 * k]),
-         list_transform(range(1, f[4]::int + 1), lambda k: f[11 * k + 2])
-  FROM (SELECT string_split(line, '|') AS f
-        FROM read_csv('explore/db1b.public.*.asc', columns = {'line': 'VARCHAR'}, delim = chr(1), header = false,
-                      quote = '', escape = ''));
+  SELECT 'DB1B', quarter, 3, pax, nseg, apts, list_transform(trip_break, lambda x: x IS NOT NULL), op_carrier, tkt_carrier
+  FROM 'explore/db1b/*.parquet';
 
 CREATE OR REPLACE TABLE od_segment_period AS
   WITH c AS (

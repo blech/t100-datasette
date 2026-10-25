@@ -27,3 +27,7 @@ source_downloads/
 # explore/ scratch cubes (rebuild with explore/README.md steps)
 explore/cubes.duckdb
 !explore/leads/*.csv
+# explore/ source data: BTS DB1C parquet, DB1B text, and DB1B as parquet (01_db1b_parquet.sh)
+explore/*.parquet
+explore/*.asc
+explore/db1b/
