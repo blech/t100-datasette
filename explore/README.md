@@ -17,6 +17,9 @@ them after a change to those files will shift some rankings.
     duckdb explore/cubes.duckdb < explore/21_story_freight.sql   # view: long-haul freight by engine count, freighter vs belly
     duckdb explore/cubes.duckdb < explore/31_route_time_leads.sql   # like-for-like flight-time changes vs 2019 -> leads/route_time*.csv
     ./explore/30_leads.sh                                  # ranked movers -> explore/leads/*.csv
+    duckdb explore/cubes.duckdb < explore/50_db1c_connections.sql   # DB1C monthly -> db1c_airport_month (~6 min)
+    duckdb explore/cubes.duckdb < explore/51_db1b_connections.sql   # DB1B quarterly -> db1b_airport_quarter (~5 s)
+    duckdb -bail explore/cubes.duckdb < explore/52_od_rollups.sql   # DB1C+DB1B -> od_segment/route/trip_period, explore/od_rollups.db (~13 min)
 
 Conventions: passenger metrics use class F/L only; routes are unordered airport pairs; carriers are keyed on
 `airline_id` (stable across `carrier_entity` changes, but NOT across mergers: Northwest and Delta are different ids);
@@ -41,3 +44,20 @@ Aircraft families: `data/aircraft_families.csv` (at the repo root) is an ordered
 (first matching `priority` wins; edit it to re-map). Types no rule matches fall back to their BTS `ac_group`
 (0.18% of departures). `family_year` is the type cube rolled up to family. BTS lumps some variants into one type
 (e.g. "737-700/700LR/Max 7" is filed as 737 NG; "777-200ER/200LR"), so MAX 7 and 200LR cannot be separated.
+
+DB1C and DB1B (`50_db1c_connections.sql`, `51_db1b_connections.sql`) are BTS's ticket samples of domestic-only
+itineraries: DB1C is a 40% sample, monthly, `explore/DB1C.PUBLIC.*.parquet`, from July 2025; DB1B is the 10% sample it
+replaced, quarterly, `explore/db1b.public.*.asc`. Neither is committed; record layouts are the two PDFs in
+`source_downloads/`. Both reduce to boardings by airport, period and marketing (ticketed) carrier, with `conn_dir`
+= boardings that continue a trip (not the first coupon, no directional trip break there); DB1C also has `conn_8h`,
+which additionally breaks after stays over 8 hours. Against T100 domestic F/L enplanements the samples come to about
+0.09 (DB1B) and 0.36 (DB1C): the shortfall from 0.10 / 0.40 is itineraries with an international leg, which are
+excluded, so gateways (MIA, JFK, IAH, EWR) also understate connections. National `conn_dir` share is ~20.5% in both
+sources, so the series join up.
+
+`52_od_rollups.sql` rolls both samples up to T100-like grains in one table per grain (a `source` column, `period` =
+first day of the month or quarter): `od_segment_period` (origin x dest x operating carrier, with local vs connecting
+passengers), `od_route_period` (directional trip origin x destination x connecting airports x marketing carriers) and
+`od_trip_period` (origin x destination, nonstop vs connecting). The segment and trip tables are also written to
+`explore/od_rollups.db` (SQLite, ~33 MB for 2025 H1 + H2 + July 2026; not committed). Counts are sample passengers.
+Each itinerary is processed as lists rather than unnested to coupons, which keeps memory in bounds on a 16 GB machine.
