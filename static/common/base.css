@@ -1,42 +1,168 @@
-/* What every page shares, the scrolling pages and the maps alike; each page's own stylesheet comes after.
-   The colours are fallbacks for before static/nav/main.js paints the chosen theme from static/globe/src/themes.js,
-   and a test keeps them equal (static/common/test/base.test.js). */
-:root { --bg:#ffffff; --fg:#09090b; --muted:#71717a; --line:#d3d3d3; --rule:#909091; --panel:rgba(255,255,255,.85); --accent:#e36d2a; }
-@media (prefers-color-scheme: dark) { :root { --bg:#09090b; --fg:#fafafa; --muted:#a1a1aa; --line:#343436; --rule:#757577; --panel:rgba(9,9,11,.8); --accent:#ec863f; } }
+/* What every page shares, the scrolling pages and the maps alike; each
+   page's own stylesheet comes after.
+   The colours are fallbacks for before static/nav/main.js paints the
+   chosen theme from static/globe/src/themes.js, and a test keeps them
+   equal (static/common/test/base.test.js). */
 
-* { box-sizing:border-box; }
-[hidden] { display:none !important; }
-body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 "Helvetica Neue", "Helvetica", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
-a { color:var(--fg); }
+:root {
+  --bg: #ffffff;
+  --fg: #09090b;
+  --muted: #71717a;
+  --line: #d3d3d3;
+  --rule: #909091;
+  --panel: rgba(255, 255, 255, 0.85);
+  --accent: #e36d2a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #09090b;
+    --fg: #fafafa;
+    --muted: #a1a1aa;
+    --line: #343436;
+    --rule: #757577;
+    --panel: rgba(9, 9, 11, 0.8);
+    --accent: #ec863f;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    15px/1.5 "Helvetica Neue",
+    "Helvetica",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+}
+a {
+  color: var(--fg);
+}
 
 /* one title scale for every page, the maps' title included */
-h1, #title { font-size:32px; font-weight:600; letter-spacing:-.01em; }
-h1 { margin:0 0 8px; }
-h2 { font-size:18px; margin:0; }
-@media (max-width:600px) { h1, #title { font-size:26px; } }
+h1,
+#title {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+h1 {
+  margin: 0 0 8px;
+}
+h2 {
+  font-size: 18px;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  h1,
+  #title {
+    font-size: 26px;
+  }
+}
 
-main { max-width:1280px; margin:0 min(24px); padding:max(24px, env(safe-area-inset-top)) 16px 48px; }
-.intro { color:var(--muted); max-width:42em; }
-.note, #status { color:var(--muted); font-size:13px; }
-select, input[type="search"] { font:inherit; color:var(--fg); background:transparent; border:1px solid var(--muted); border-radius:8px; padding:3px 8px; }
+main {
+  max-width: 1280px;
+  margin: 0 min(24px);
+  padding: max(24px, env(safe-area-inset-top)) 16px 48px;
+}
+.intro {
+  color: var(--muted);
+  max-width: 42em;
+}
+.note,
+#status {
+  color: var(--muted);
+  font-size: 13px;
+}
+select,
+input[type="search"] {
+  font: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  padding: 3px 8px;
+}
 /* Safari draws its own search box over these unless told not to; wide enough for the placeholder, never wider than a phone */
-input[type="search"] { -webkit-appearance:none; appearance:none; width:20em; max-width:100%; }
-input[type="search"]::placeholder { color:var(--muted); }
+input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20em;
+  max-width: 100%;
+}
+input[type="search"]::placeholder {
+  color: var(--muted);
+}
 /* a section's find box, under the page's title; on a map it sits in the row of controls under the stats */
-.find { margin:0 0 12px; }
-.find input { margin-left:4px; }
-.picker-row .find { margin:0; }
+.find {
+  margin: 0 0 12px;
+}
+.find input {
+  margin-left: 4px;
+}
+.picker-row .find {
+  margin: 0;
+}
 
 /* a table that scrolls sideways in its own box; positioned, so hidden text inside it can't widen the page */
-.scroll { overflow-x:auto; position:relative; }
-table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
-th, td { padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
-th.num, td.num { text-align:right; }
-th { color:var(--muted); font-weight:500; }
+.scroll {
+  overflow-x: auto;
+  position: relative;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+th.num,
+td.num {
+  text-align: right;
+}
+th {
+  color: var(--muted);
+  font-weight: 500;
+}
 /* sortable column headers (the busiest-airports and aircraft tables) */
-th button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
-th button:hover { color:var(--fg); }
-th[aria-sort] { color:var(--fg); font-weight:600; }
-th[aria-sort] button::after { content:" ▾"; }
+th button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+th button:hover {
+  color: var(--fg);
+}
+th[aria-sort] {
+  color: var(--fg);
+  font-weight: 600;
+}
+th[aria-sort] button::after {
+  content: " ▾";
+}
 
-.visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
