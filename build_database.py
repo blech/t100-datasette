@@ -1,4 +1,5 @@
 """Build helpers for the T-100 database: schema, indexes, view, coordinate overrides."""
+import collections
 import csv
 import re
 import sqlite3
@@ -61,7 +62,8 @@ CREATE TABLE IF NOT EXISTS "carriers" (
 );
 CREATE TABLE IF NOT EXISTS "aircraft_types" (
    [ac_typeid] TEXT, [ac_group] TEXT, [ssd_name] TEXT, [manufacturer] TEXT,
-   [name] TEXT, [short_name] TEXT, [begin_date] TEXT
+   [name] TEXT, [short_name] TEXT, [begin_date] TEXT,
+   [maker] TEXT, [kind] TEXT
 );
 CREATE TABLE IF NOT EXISTS "openflights_airports" (
    "id" INTEGER, "name" TEXT, "city" TEXT, "country" TEXT, "iata_code" TEXT,
@@ -78,6 +80,12 @@ CREATE TABLE IF NOT EXISTS "airport_year_totals" (
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [origin])
 ) WITHOUT ROWID;
+-- Derived from the segment tables by rebuild_airport_carrier_year(): each airline group's yearly totals for the segments leaving each airport, so an airport's carrier mix needs no segment scan
+CREATE TABLE IF NOT EXISTS "airport_carrier_year" (
+   [year] INTEGER, [origin] TEXT, [origin_wac] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
 -- Aircraft type -> family/subfamily/class, from data/aircraft_families.csv rules by rebuild_aircraft_family()
 CREATE TABLE IF NOT EXISTS "aircraft_family" (
    [aircraft_type] TEXT PRIMARY KEY, [name] TEXT, [family] TEXT, [subfamily] TEXT, [aircraft_class] TEXT, [fallback] INTEGER
@@ -87,6 +95,12 @@ CREATE TABLE IF NOT EXISTS "family_year" (
    [year] INTEGER, [family] TEXT, [aircraft_class] TEXT, [domestic] INTEGER, [service_class] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [family], [domestic], [service_class])
+) WITHOUT ROWID;
+-- Yearly totals per aircraft type (service_class is the BTS class: F/L passenger, G/P cargo), by rebuild_type_year()
+CREATE TABLE IF NOT EXISTS "type_year" (
+   [year] INTEGER, [aircraft_type] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [aircraft_type], [domestic], [service_class])
 ) WITHOUT ROWID;
 -- Merger-aware carrier groups (data/carrier_groups.csv; unlisted airlines are their own group), by rebuild_carrier_groups()
 CREATE TABLE IF NOT EXISTS "carrier_group" (
@@ -101,6 +115,7 @@ CREATE TABLE IF NOT EXISTS "carrier_group_year" (
 CREATE TABLE IF NOT EXISTS "carrier_route_year" (
    [group_id] TEXT, [airline_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
+   [domestic_deps] INTEGER,
    PRIMARY KEY ([group_id], [airline_id], [year], [origin], [dest])
 ) WITHOUT ROWID;
 -- Yearly totals per aircraft family by subfamily and airline group (for a family's own page), by rebuild_family_detail_year()
@@ -109,15 +124,31 @@ CREATE TABLE IF NOT EXISTS "family_detail_year" (
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([family], [year], [subfamily], [group_id], [domestic], [service_class])
 ) WITHOUT ROWID;
+-- Yearly totals per aircraft (aircraft_types.ac_typeid) and airline group (for an aircraft's own page), by rebuild_aircraft_carrier_year()
+CREATE TABLE IF NOT EXISTS "aircraft_carrier_year" (
+   [aircraft] TEXT, [year] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([aircraft], [year], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
 -- Totals by BTS aircraft_group (6 twin jet, 7 tri-jet, 8 quad-jet...) and distance band (lower bound, miles), by rebuild_aircraft_group_band_year()
 CREATE TABLE IF NOT EXISTS "aircraft_group_band_year" (
    [year] INTEGER, [aircraft_group] TEXT, [distance_band] INTEGER, [domestic] INTEGER, [service_class] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [aircraft_group], [distance_band], [domestic], [service_class])
 ) WITHOUT ROWID;
+-- Yearly totals per airport pair in one direction, with the departures in the domestic table, by rebuild_route_year_totals()
+CREATE TABLE IF NOT EXISTS "route_year_totals" (
+   [year] INTEGER, [origin] TEXT, [dest] TEXT, [deps] INTEGER, [domestic_deps] INTEGER,
+   [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin], [dest])
+) WITHOUT ROWID;
 -- BTS's own name for each airport code ("Raleigh/Durham, NC"), derived by rebuild_airport_names()
 CREATE TABLE IF NOT EXISTS "airport_names" (
    [code] TEXT PRIMARY KEY, [name] TEXT
+) WITHOUT ROWID;
+-- BTS's city market for each airport code (JFK, LGA and EWR are all 31703, New York), derived by rebuild_airport_market()
+CREATE TABLE IF NOT EXISTS "airport_market" (
+   [code] TEXT PRIMARY KEY, [market_id] TEXT
 ) WITHOUT ROWID;
 """
 
@@ -137,7 +168,7 @@ def _view_sql():
 
 
 # derived tables that gained a column: an older copy is dropped (it is only ever rebuilt data) so the rebuild recreates it
-_ADDED_COLUMNS = [("carrier_group", "airline_name"), ("carrier_group_year", "airline_id"), ("carrier_route_year", "airline_id")]
+_ADDED_COLUMNS = [("carrier_group", "airline_name"), ("carrier_group_year", "airline_id"), ("carrier_route_year", "airline_id"), ("carrier_route_year", "domestic_deps")]
 
 
 def drop_outdated_derived_tables(conn: sqlite3.Connection) -> list:
@@ -187,6 +218,33 @@ def rebuild_airport_year_totals(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM airport_year_totals").fetchone()[0]
 
 
+def rebuild_airport_market(conn: sqlite3.Connection) -> int:
+    """Recompute airport_market: the newest BTS city market for each airport code, as airport_names chooses a name
+    (the latest year, then the market most rows give it), from both ends of every segment."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM airport_market")
+        conn.execute(
+            """
+            INSERT INTO airport_market (code, market_id)
+            SELECT code, market_id FROM (
+              SELECT code, market_id, ROW_NUMBER() OVER (PARTITION BY code ORDER BY year DESC, uses DESC, market_id) AS rank
+              FROM (
+                SELECT code, market_id, year, SUM(uses) AS uses FROM (
+                  SELECT origin AS code, origin_city_market_id AS market_id, year, COUNT(*) AS uses FROM t100 GROUP BY 1, 2, 3
+                  UNION ALL
+                  SELECT dest, dest_city_market_id, year, COUNT(*) FROM t100 GROUP BY 1, 2, 3
+                )
+                WHERE code IS NOT NULL AND market_id IS NOT NULL AND market_id NOT IN ('', 'NULL')
+                GROUP BY code, market_id, year
+              )
+            )
+            WHERE rank = 1
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM airport_market").fetchone()[0]
+
+
 def rebuild_airport_names(conn: sqlite3.Connection) -> int:
     """Recompute airport_names: the newest BTS city name for each airport code, trimmed.
 
@@ -219,33 +277,71 @@ def rebuild_airport_names(conn: sqlite3.Connection) -> int:
 # Distance bands for aircraft_group_band_year: each band starts at the number shown
 DISTANCE_BAND_STARTS = (0, 500, 1500, 3000, 5000)
 _BAND_SQL = "CASE WHEN COALESCE(distance, 0) < 500 THEN 0 WHEN distance < 1500 THEN 500 WHEN distance < 3000 THEN 1500 WHEN distance < 5000 THEN 3000 ELSE 5000 END"
-# aircraft_types.ac_group -> (family, class) for types no rule in data/aircraft_families.csv matches
-_GROUP_FALLBACK = {
-    "0": ("Other piston", "Piston"), "1": ("Other piston", "Piston"), "2": ("Other piston", "Piston"),
-    "3": ("Other helicopter", "Helicopter"), "4": ("Other turboprop", "Turboprop"), "5": ("Other turboprop", "Turboprop"),
-    "6": ("Other jet", "Other jet"), "7": ("Other tri-jet", "Other jet"), "8": ("Other quad-jet", "Other jet"),
-}
+# aircraft_types.ac_group -> class, for types no rule in data/aircraft_families.csv matches
+_GROUP_CLASS = {"0": "Piston", "1": "Piston", "2": "Piston", "3": "Helicopter", "4": "Turboprop", "5": "Turboprop", "6": "Other jet", "7": "Other jet", "8": "Other jet"}
 
 
 def rebuild_aircraft_family(conn: sqlite3.Connection, rules_path=None) -> int:
-    """Map every aircraft type to a family. The first rule (lowest priority) whose regex matches the type's name wins."""
+    """Map every aircraft type to a family. The first rule (lowest priority) whose regex matches the type's name wins.
+
+    A type no rule matches joins "<maker> (other models)" when two or more unmatched types share its maker, else
+    "Other <kind>" (the kind of its BTS group). Those rows are flagged `fallback`."""
     create_schema(conn)
     with open(rules_path or DATA_DIR / "aircraft_families.csv", newline="") as f:
         rules = sorted(csv.DictReader(f), key=lambda r: int(r["priority"]))
     compiled = [(re.compile(r["name_regex"], re.IGNORECASE), r["family"], r["subfamily"], r["class"]) for r in rules]
-    rows = []
-    for code, group, name in conn.execute("SELECT ac_typeid, ac_group, name FROM aircraft_types WHERE ac_typeid IS NOT NULL"):
+    rows, unmatched = [], []
+    for code, group, name, maker in conn.execute("SELECT ac_typeid, ac_group, name, maker FROM aircraft_types WHERE ac_typeid IS NOT NULL"):
         for pattern, family, subfamily, cls in compiled:
             if pattern.search(name or ""):
                 rows.append((code, name, family, subfamily, cls, 0))
                 break
         else:
-            family, cls = _GROUP_FALLBACK.get(group, ("Other jet", "Other jet"))
-            rows.append((code, name, family, "", cls, 1))
+            unmatched.append((code, name, group, maker or None))
+    per_maker = collections.Counter(maker for *_, maker in unmatched if maker)
+    named = []
+    for code, name, group, maker in unmatched:
+        if maker and per_maker[maker] > 1:
+            family = f"{maker} (other models)"
+        else:
+            family = "Other " + _KIND_BY_GROUP.get(group, "Jet, twin-engine").lower()
+        named.append((code, name, family, _GROUP_CLASS.get(group, "Other jet")))
+    # family_year keys a family on one class, so a family of mixed kinds takes its most common (then alphabetically first)
+    classes = collections.defaultdict(collections.Counter)
+    for _, _, family, cls in named:
+        classes[family][cls] += 1
+    family_class = {fam: min(c, key=lambda k: (-c[k], k)) for fam, c in classes.items()}
+    rows += [(code, name, family, "", family_class[family], 1) for code, name, family, _ in named]
     with conn:
         conn.execute("DELETE FROM aircraft_family")
         conn.executemany("INSERT OR REPLACE INTO aircraft_family VALUES (?, ?, ?, ?, ?, ?)", rows)
     return conn.execute("SELECT COUNT(*) FROM aircraft_family").fetchone()[0]
+
+
+# BTS's own aircraft group, as checked against the type names (explore/check_groups.sql); the first digit of ac_typeid is only a hint
+_KIND_BY_GROUP = {
+    "0": "Piston, single-engine", "1": "Piston, twin-engine", "2": "Piston, four-engine", "3": "Helicopter",
+    "4": "Turboprop, one or two engines", "5": "Turboprop, four-engine", "6": "Jet, twin-engine", "7": "Jet, three-engine", "8": "Jet, four-engine",
+}
+
+
+def rebuild_aircraft_type_labels(conn: sqlite3.Connection, rules_path=None) -> int:
+    """Fill aircraft_types.maker (from the type's name, by the first matching rule in data/aircraft_makers.csv) and .kind (from ac_group)."""
+    create_schema(conn)
+    columns = [r[1] for r in conn.execute("PRAGMA table_info(aircraft_types)")]
+    for column in ("maker", "kind"):
+        if column not in columns:
+            conn.execute(f"ALTER TABLE aircraft_types ADD COLUMN [{column}] TEXT")
+    with open(rules_path or DATA_DIR / "aircraft_makers.csv", newline="") as f:
+        rules = sorted(csv.DictReader(f), key=lambda r: int(r["priority"]))
+    compiled = [(re.compile(r["name_regex"], re.IGNORECASE), r["maker"] or None) for r in rules]
+    rows = []
+    for code, group, name in conn.execute("SELECT ac_typeid, ac_group, name FROM aircraft_types WHERE ac_typeid IS NOT NULL").fetchall():
+        maker = next((m for pattern, m in compiled if pattern.search(name or "")), None)
+        rows.append((maker, _KIND_BY_GROUP.get(group), code))
+    with conn:
+        conn.executemany("UPDATE aircraft_types SET maker = ?, kind = ? WHERE ac_typeid = ?", rows)
+    return len(rows)
 
 
 def rebuild_family_year(conn: sqlite3.Connection) -> int:
@@ -264,6 +360,24 @@ def rebuild_family_year(conn: sqlite3.Connection) -> int:
             """
         )
     return conn.execute("SELECT COUNT(*) FROM family_year").fetchone()[0]
+
+
+def rebuild_type_year(conn: sqlite3.Connection) -> int:
+    """Recompute type_year from the segment tables. Segments with no aircraft type are kept under 'unknown'."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM type_year")
+        conn.execute(
+            """
+            INSERT INTO type_year
+            SELECT year, COALESCE(NULLIF(aircraft_type, ''), 'unknown'), domestic, COALESCE(class, ''),
+                   SUM(departures_performed), SUM(seats), SUM(passengers), SUM(freight)
+            FROM t100
+            WHERE year IS NOT NULL
+            GROUP BY year, COALESCE(NULLIF(aircraft_type, ''), 'unknown'), domestic, COALESCE(class, '')
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM type_year").fetchone()[0]
 
 
 def rebuild_carrier_groups(conn: sqlite3.Connection, groups_path=None) -> int:
@@ -305,8 +419,48 @@ def rebuild_carrier_group_year(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM carrier_group_year").fetchone()[0]
 
 
+def rebuild_airport_carrier_year(conn: sqlite3.Connection) -> int:
+    """Recompute airport_carrier_year: each airline group's yearly totals for the segments leaving each airport. Carrier entities missing from the carriers table are kept as 'unknown'."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM airport_carrier_year")
+        conn.execute(
+            """
+            INSERT INTO airport_carrier_year
+            SELECT t.year, t.origin, MAX(t.origin_wac), COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, ''),
+                   SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight)
+            FROM t100 t
+            LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+            LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+            WHERE t.year IS NOT NULL AND t.origin IS NOT NULL
+            GROUP BY t.year, t.origin, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, '')
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM airport_carrier_year").fetchone()[0]
+
+
+def rebuild_aircraft_carrier_year(conn: sqlite3.Connection) -> int:
+    """Recompute aircraft_carrier_year: each aircraft's yearly totals by airline group. Unknown aircraft and carriers are kept."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM aircraft_carrier_year")
+        conn.execute(
+            """
+            INSERT INTO aircraft_carrier_year
+            SELECT COALESCE(t.aircraft_type, 'unknown'), t.year, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, ''),
+                   SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight)
+            FROM t100 t
+            LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+            LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+            WHERE t.year IS NOT NULL
+            GROUP BY COALESCE(t.aircraft_type, 'unknown'), t.year, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, '')
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM aircraft_carrier_year").fetchone()[0]
+
+
 def rebuild_carrier_route_year(conn: sqlite3.Connection) -> int:
-    """Recompute carrier_route_year: each airline group's yearly flying on each airport pair, by member airline, with the first and last month it flew."""
+    """Recompute carrier_route_year: each airline group's yearly flying on each airport pair, by member airline, with the first and last month it flew and how many departures were filed as domestic."""
     create_schema(conn)
     with conn:
         conn.execute("DELETE FROM carrier_route_year")
@@ -316,7 +470,8 @@ def rebuild_carrier_route_year(conn: sqlite3.Connection) -> int:
             SELECT COALESCE(g.group_id, 'unknown'), COALESCE(c.airline_id, 'unknown'), t.year,
                    MIN(t.origin, t.dest), MAX(t.origin, t.dest),
                    SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight),
-                   MIN(CASE WHEN t.departures_performed > 0 THEN t.month END), MAX(CASE WHEN t.departures_performed > 0 THEN t.month END)
+                   MIN(CASE WHEN t.departures_performed > 0 THEN t.month END), MAX(CASE WHEN t.departures_performed > 0 THEN t.month END),
+                   SUM(CASE WHEN t.domestic = 1 THEN t.departures_performed ELSE 0 END)
             FROM t100 t
             LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
             LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
@@ -325,6 +480,25 @@ def rebuild_carrier_route_year(conn: sqlite3.Connection) -> int:
             """
         )
     return conn.execute("SELECT COUNT(*) FROM carrier_route_year").fetchone()[0]
+
+
+def rebuild_route_year_totals(conn: sqlite3.Connection) -> int:
+    """Recompute route_year_totals: every origin-destination pair's yearly totals from both segment tables, keeping the domestic
+    table's share of departures so a query can call a route domestic as routes_by_year does (most departures domestic)."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM route_year_totals")
+        conn.execute(
+            """
+            INSERT INTO route_year_totals
+            SELECT year, origin, dest, SUM(departures_performed), SUM(CASE WHEN domestic = 1 THEN departures_performed ELSE 0 END),
+                   SUM(seats), SUM(passengers), SUM(freight)
+            FROM t100
+            WHERE year IS NOT NULL AND origin IS NOT NULL AND dest IS NOT NULL
+            GROUP BY year, origin, dest
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM route_year_totals").fetchone()[0]
 
 
 def rebuild_family_detail_year(conn: sqlite3.Connection) -> int:
@@ -372,13 +546,19 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
     return {
         "airport_year_totals": rebuild_airport_year_totals(conn),
         "airport_names": rebuild_airport_names(conn),
+        "airport_market": rebuild_airport_market(conn),
+        "aircraft_type_labels": rebuild_aircraft_type_labels(conn),
         "aircraft_family": rebuild_aircraft_family(conn),
         "family_year": rebuild_family_year(conn),
+        "type_year": rebuild_type_year(conn),
         "carrier_group": rebuild_carrier_groups(conn),
         "carrier_group_year": rebuild_carrier_group_year(conn),
+        "airport_carrier_year": rebuild_airport_carrier_year(conn),
         "aircraft_group_band_year": rebuild_aircraft_group_band_year(conn),
         "family_detail_year": rebuild_family_detail_year(conn),
+        "aircraft_carrier_year": rebuild_aircraft_carrier_year(conn),
         "carrier_route_year": rebuild_carrier_route_year(conn),
+        "route_year_totals": rebuild_route_year_totals(conn),
     }
 
 

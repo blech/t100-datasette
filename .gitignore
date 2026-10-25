@@ -15,10 +15,13 @@ wheels/
 # Don't commit databases or source CSVs
 *.db
 *.csv
+source_downloads/
+
 # SDD workspace scratch
 .superpowers/
 !data/airport_overrides.csv
 !data/aircraft_families.csv
+!data/aircraft_makers.csv
 !data/carrier_groups.csv
 
 # explore/ scratch cubes (rebuild with explore/README.md steps)

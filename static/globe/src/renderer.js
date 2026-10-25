@@ -1,5 +1,6 @@
 import { distPointSegment } from './geo.js';
-import { colourFor, widthFor } from './scale.js';
+import { colourFor, widthFor, dashFor } from './scale.js';
+import { fitView } from './camera.js';
 
 const ARC_SAMPLES = 24;
 
@@ -55,6 +56,11 @@ export class NetworkRenderer {
   degPerPx() { return 57.2958 / Math.max(1, this.R); }
 
   centre() { return [this.w / 2, this.mode === 'globe' ? this.h * 0.46 : this.h * 0.5]; }
+
+  // the globe view that frames `points` inside `box` (see fitView)
+  fit(points, box) {
+    return fitView(points, window.d3.geoOrthographic(), { centre: this.centre(), baseScale: this.baseScale, box });
+  }
 
   visible(lon, lat) {
     if (this.mode === 'flat') return true;
@@ -119,15 +125,20 @@ export class NetworkRenderer {
     const key = opts.widthKey || 'passengers';
     const order = routes.map((r, i) => i).sort((a, b) => Number(routes[b][key]) - Number(routes[a][key]));
     ctx.lineCap = 'round';
+    // while a route is highlighted the rest step back
+    const dim = opts.highlight >= 0 ? 0.6 : 1;
     for (const i of order) {
       const r = routes[i];
+      const s = opts.styles?.[i];
       ctx.beginPath();
       this.path({ type: 'LineString', coordinates: [r.from, r.to] });
-      ctx.strokeStyle = r.colour ?? colourFor(r.service);
-      ctx.globalAlpha = i === opts.highlight ? 1 : 0.65;
+      ctx.strokeStyle = s?.colour ?? colourFor(r.service, t.dark);
+      ctx.globalAlpha = i === opts.highlight ? 1 : (s?.alpha ?? 0.65) * dim;
       ctx.lineWidth = widthFor(r[key], opts.max) + (i === opts.highlight ? 1.5 : 0);
+      ctx.setLineDash(s?.dashed ? dashFor(ctx.lineWidth) : []);
       ctx.stroke();
     }
+    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
 
     ctx.font = '11px -apple-system, system-ui, sans-serif';
@@ -190,7 +201,7 @@ export class NetworkRenderer {
       if (!p) return;
       ctx.beginPath();
       ctx.arc(p[0], p[1], i === highlight ? 6.5 : 4, 0, Math.PI * 2);
-      ctx.fillStyle = i === highlight ? t.ui.fg : colourFor('international');
+      ctx.fillStyle = i === highlight ? t.ui.fg : colourFor('international', t.dark);
       ctx.globalAlpha = i === highlight ? 1 : 0.85;
       ctx.fill();
       ctx.lineWidth = 1;

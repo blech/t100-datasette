@@ -1,7 +1,11 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { buildHeatmap, buildCityHeatmap, HEAT_MEASURES } from '/static/charts/src/heatmap.js';
+import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
+import { setDataLink } from '/static/common/datalink.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, MATRIX_MEASURES, labelMargin, textWidth, pointerReach } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { attachPopover } from '/static/common/popover.js';
+import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 
 const origin = document.body.dataset.origin;
@@ -9,7 +13,7 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
-  measure: pick('measure', Object.keys(HEAT_MEASURES), 'passengers'),
+  measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '25')),
   group: pick('group', ['airport', 'city'], 'airport'),
@@ -47,9 +51,9 @@ function pushState() {
 }
 
 function drawAirports() {
-  const box = $('heatmap');
+  const box = $('matrix');
   box.replaceChildren();
-  const res = buildHeatmap(rows, { ...state, rankYear: rankYear() });
+  const res = buildMatrix(rows, { ...state, rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
     return;
@@ -59,44 +63,49 @@ function drawAirports() {
   const data = res.cells.map((c) => ({
     ...c,
     year: String(c.year),
-    label: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}\n${withShare(c, `${c.year}: ${Math.round(c.value).toLocaleString('en-US')} ${unit()}`)}`,
+    head: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}`,
+    rows: cellRows(c),
     href: routeYearHref(c.dest, c.year),
   }));
-  box.append(Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1100),
+  const width = Math.min(box.clientWidth || 900, 1100);
+  const marginLeft = 48;
+  const chart = Plot.plot({
+    width,
     height: res.dests.length * ROW_PX + 90,
-    marginLeft: 48,
+    marginLeft,
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.dests, axis: null },
-    color: colourScale(),
+    color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
-      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), title: 'label', href: 'href', tip: true }),
+      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: airportHref(d) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
     ],
-  }));
+  });
+  box.append(...attachPopover(chart, cellPopover('dest')));
 }
 
 const routeYearHref = (dest, year) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}`;
-const airportHref = (code) => `/airports/${encodeURIComponent(code)}`;
+const airportHref = (code) => `/airports/${encodeURIComponent(code)}/destinations`; // matrices lead to matrices
 const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination` });
-const colourScale = () => (relative()
+const colourScale = (max) => (relative()
   ? { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
-  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, label: HEAT_MEASURES[state.measure], tickFormat: '~s' });
-const withShare = (c, text) => ({
-  absolute: text,
-  year: `${text} (${fmtPct(c.share)} of the year)`,
-  busiest: `${text} (${fmtPct(c.peak)} of the year's top)`,
-}[state.scale]);
-const unit = () => HEAT_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
-const fmtValue = (v) => Math.round(v).toLocaleString('en-US');
+  : { type: 'sqrt', scheme: 'YlOrRd', legend: true, ...millionsAxis(max, MATRIX_MEASURES[state.measure]) });
+// a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
+const cellRows = (c) => [
+  { label: MATRIX_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
+  ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
+  ...(state.scale === 'busiest' ? [{ label: "Of the year's top", value: fmtPct(c.peak) }] : []),
+];
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
 
 function toggle(key) {
   state.open = state.open.includes(key) ? state.open.filter((k) => k !== key) : [...state.open, key];
@@ -105,9 +114,9 @@ function toggle(key) {
 }
 
 function drawCities() {
-  const box = $('heatmap');
+  const box = $('matrix');
   box.replaceChildren();
-  const res = buildCityHeatmap(rows, { ...state, rankYear: rankYear() });
+  const res = buildCityMatrix(rows, { ...state, rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
     return;
@@ -117,48 +126,52 @@ function drawCities() {
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.cells.map((c) => {
     const row = byKey.get(c.row);
-    const lines = c.parts ? c.parts.slice(0, 5).map((p) => `${p.dest}  ${fmtValue(p.value)}`) : [];
-    const more = c.parts && c.parts.length > 5 ? [`+${c.parts.length - 5} more`] : [];
+    const parts = c.parts ? c.parts.slice(0, 5).map((p) => ({ label: p.dest, value: formatCount(p.value) })) : [];
+    const more = c.parts && c.parts.length > 5 ? [{ label: `+${c.parts.length - 5} more`, value: '' }] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
-    const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.expandable ? `#toggle:${row.key}` : routeYearHref(row.codes[0], c.year);
-    return { ...c, year: String(c.year), href, title: [head, withShare(c, `${c.year}: ${fmtValue(c.value)} ${unit()}`), ...lines, ...more].join('\n') };
+    // a city's cell opens the route in that year when the city has one airport; a city with several opens into them
+    const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.codes.length === 1 ? routeYearHref(row.codes[0], c.year) : `#toggle:${row.key}`;
+    return { ...c, year: String(c.year), href, head, rows: [...cellRows(c), ...parts, ...more] };
   });
+  // a city is its name, opening into its airports (the links); an airport under it is its code, named on hover
   const labels = res.rows.map((r) => ({
     ...r,
-    text: r.kind === 'airport' ? `${r.code}${r.name ? ` · ${r.name}` : ''}` : `${r.expandable ? (r.open ? '▾' : '▸') : '\u2003'} ${r.label}`,
-    href: r.kind === 'airport' ? airportHref(r.code) : r.expandable ? `#toggle:${r.key}` : airportHref(r.codes[0]),
+    text: r.kind === 'airport' ? r.code : r.label,
+    href: r.kind === 'airport' ? airportHref(r.code) : `#toggle:${r.key}`,
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
-  box.append(Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1200),
+  const width = Math.min(box.clientWidth || 900, 1200);
+  const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box)) + ARROW_SLOT;
+  const chart = Plot.plot({
+    width,
     height: res.rows.length * ROW_PX + 90,
-    marginLeft: 280,
+    marginLeft,
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.rows.map((r) => r.key), axis: null },
-    color: colourScale(),
+    color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
-      Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), title: 'title', href: 'href', tip: true }),
+      Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), href: 'href' }),
+      Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(labels, {
-        y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
+        y: 'key', text: 'text', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8 - ARROW_SLOT,
         fontWeight: (d) => (d.kind === 'group' ? 600 : 400), fill: 'currentColor', fillOpacity: (d) => (d.kind === 'group' ? 1 : 0.65),
       }),
+      disclosureArrows(Plot, labels, (d) => `${d.open ? 'Hide' : 'List'} ${d.label}'s airports`),
     ],
-  }));
+  });
+  box.append(...attachPopover(chart, cellPopover('row')));
 }
 
-// Row labels carry their hover text in an SVG <title>; move it into our own tooltip so it shows at once
-// and the same way in every browser.
-function useLabelTips() {
-  for (const text of $('heatmap').querySelectorAll('svg text')) {
-    const title = text.querySelector(':scope > title');
-    if (!title) continue;
-    text.dataset.tip = title.textContent;
-    title.remove();
-  }
-}
+// a cell's popover: its row and year, its rows, and its link (a city group's toggle isn't a link to follow)
+const cellPopover = (y) => ({
+  content: (d) => ({ title: `${d.head} · ${d.year}`, rows: d.rows }),
+  at: (d) => [d.year, d[y]],
+  keyOf: () => ({ kind: 'none' }),
+  link: (d) => (d.href && !d.href.startsWith('#') ? d.href : null),
+});
 
 function draw() {
   const note = $('scale-note');
@@ -169,28 +182,18 @@ function draw() {
     busiest: `Colour compares each cell with ${origin}'s top ${state.group === 'city' ? 'city' : 'destination'} that year, the one with the most ${unit()}: the top one is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own, so colours show how a destination ranked then, not how much it carried. Hover over a cell for both.`,
   }[state.scale];
   const year = latestYear();
-  if (year !== null) $('heat-rank').options[1].textContent = `${year} only`;
+  if (year !== null) $('matrix-rank').options[1].textContent = `${year} only`;
   $('rank-note').textContent = rankYear() === null
     ? 'Destinations are ranked by the measure summed over all years.'
     : `Destinations are ranked by the measure in ${rankYear()} alone, so ones that did not fly then are not shown.`;
   if (state.group === 'city') drawCities();
   else drawAirports();
-  useLabelTips();
+  useLabelTips($('matrix'));
 }
 
-const labelTip = $('label-tip');
-$('heatmap').addEventListener('mousemove', (e) => {
-  const text = e.target.closest && e.target.closest('text[data-tip]');
-  $('heatmap').classList.toggle('over-label', Boolean(text));
-  if (!text) { labelTip.hidden = true; return; }
-  labelTip.textContent = text.dataset.tip;
-  labelTip.style.left = `${Math.min(e.clientX + 14, window.innerWidth - 320)}px`;
-  labelTip.style.top = `${e.clientY + 14}px`;
-  labelTip.hidden = false;
-});
-$('heatmap').addEventListener('mouseleave', () => { labelTip.hidden = true; $('heatmap').classList.remove('over-label'); });
+attachLabelTips($('matrix'), $('label-tip'));
 
-$('heatmap').addEventListener('click', (e) => {
+$('matrix').addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('a');
   const href = a && (a.getAttribute('href') || a.getAttribute('xlink:href'));
   if (href && href.startsWith('#toggle:')) {
@@ -200,6 +203,7 @@ $('heatmap').addEventListener('click', (e) => {
 });
 
 async function main() {
+  setDataLink('routes_by_year', { origin, min_deps: '' });
   fillControls();
   try {
     const [byYear, airports] = await Promise.all([
@@ -210,34 +214,34 @@ async function main() {
     cities = new Map(airports.rows.map((a) => [a.code, a.place]));
     airportInfo = new Map(airports.rows.map((a) => [a.code, a]));
     const here = airports.rows.find((a) => a.code === origin);
-    if (here) $('title').textContent = `${origin} (${here.place}): routes over time`;
+    if (here) $('title').textContent = `${origin} (${here.place}): destinations over time`;
     if (byYear.truncated) $('subtitle').textContent = 'Too many rows: some routes are missing from this chart.';
   } catch (err) {
     console.error(err);
-    $('heatmap').textContent = 'Could not load the chart data.';
+    $('matrix').textContent = 'Could not load the chart data.';
     return;
   }
-  if (!rows.length) { $('heatmap').textContent = `No flights from ${origin} in the data.`; return; }
+  if (!rows.length) { $('matrix').textContent = `No flights from ${origin} in the data.`; return; }
   draw();
 }
 
 function fillControls() {
-  const measure = $('heat-measure');
-  for (const [k, label] of Object.entries(HEAT_MEASURES)) measure.append(new Option(label.toLowerCase(), k)); // reads mid-sentence
+  const measure = $('matrix-measure');
+  for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k)); // reads mid-sentence
   measure.value = state.measure;
-  $('heat-service').value = state.service;
-  $('heat-n').value = String(state.n);
-  $('heat-group').value = state.group;
-  $('heat-rank').value = state.rank;
+  $('matrix-service').value = state.service;
+  $('matrix-n').value = String(state.n);
+  $('matrix-group').value = state.group;
+  $('matrix-rank').value = state.rank;
   for (const radio of document.querySelectorAll('input[name="scale"]')) {
     radio.checked = radio.value === state.scale;
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
   }
-  $('heat-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
-  $('heat-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
+  $('matrix-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
+  $('matrix-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
   measure.addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
-  $('heat-service').addEventListener('change', (e) => { state.service = e.target.value; pushState(); draw(); });
-  $('heat-n').addEventListener('change', (e) => { state.n = Number(e.target.value); pushState(); draw(); });
+  $('matrix-service').addEventListener('change', (e) => { state.service = e.target.value; pushState(); draw(); });
+  $('matrix-n').addEventListener('change', (e) => { state.n = Number(e.target.value); pushState(); draw(); });
 }
 
 main();

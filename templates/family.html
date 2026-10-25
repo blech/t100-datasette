@@ -4,25 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{ family }} over time · T-100</title>
-  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-family="{{ family }}">
+<body data-family="{{ family }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
     {% include "_nav.html" %}
-    <p class="related"><a href="/aircraft">All aircraft families</a></p>
     <h1>{{ family }} over time</h1>
     <p class="intro" id="subtitle"></p>
     <p class="chart-sentence">
       Show <select id="fam-measure" aria-label="Measure"></select>
       for <select id="fam-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
       on <select id="fam-service" aria-label="Routes"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>,
-      split by <select id="fam-split" aria-label="Split by"><option value="subfamily">version</option><option value="airline">airline</option><option value="service">domestic or international</option></select>.
+      split by <select id="fam-split" aria-label="Split by"><option value="subfamily">version</option><option value="airline">airline</option><option value="aircraft">aircraft</option><option value="all">nothing</option></select>,
+      over <select id="fam-span" aria-label="Years shown"><option value="flown">years flown</option><option value="all">all years</option></select>.
     </p>
+    <p class="note" id="highlight-line" hidden></p>
+    <p class="note" id="click-hint"></p>
     <div id="family-chart" aria-live="polite">Loading chart…</div>
-    <p class="note" id="family-note">Each bar is one year. Freight is in short tons (2,000 lb). Versions and families follow BTS's aircraft types, which lump a few variants together (for example "737 NG (incl. MAX 7)"). Airlines that merged are counted together throughout. More on <a href="/about#groupings">how things are grouped</a> and on <a href="/about#freight">freight-only and belly cargo</a>.</p>
+    <p class="note" id="family-note">Each bar is one year. Freight is in short tons (2,000 lb). Versions and families follow BTS's aircraft, which lump a few variants together (for example "737 NG (incl. MAX 7)"). Airlines that merged are counted together throughout. More on <a href="/about#groupings">how things are grouped</a> and on <a href="/about#freight">freight-only and belly cargo</a>.</p>
+    {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/charts/family.js"></script>
 </body>

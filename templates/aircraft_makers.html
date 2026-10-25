@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aircraft by maker · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body>
+  <main>
+    {% include "_nav.html" %}
+    <h1>Aircraft by maker</h1>
+    <p class="intro">Who built the aircraft that flew, year by year.</p>
+    <p class="chart-sentence">
+      Show <select id="mk-measure" aria-label="Measure"></select>
+      for <select id="mk-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
+      on <select id="mk-service" aria-label="Routes"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>
+      by <select id="mk-aircraft" aria-label="Type of aircraft"></select>.
+    </p>
+    <div id="maker-chart" aria-live="polite">Loading chart…</div>
+    <details class="note">
+      <summary>How makers are counted</summary>
+      <ul>
+        <li>The maker is read from the aircraft's name in the BTS data. Spelling variants are merged (Beech and Beechcraft, Gulfstream and Gulfstream Aerospace) and obvious typos corrected.</li>
+        <li>Takeovers are not followed. McDonnell Douglas, Boeing, Canadair and Bombardier, and Raytheon Beechcraft and Beechcraft, are separate makers. A DC-9 and an MD-11 share a maker; a DC-9 and a 737 do not.</li>
+        <li>A few generic float and land aircraft name no maker and are counted as "Unknown maker".</li>
+        <li>More on <a href="/about#groupings">how things are grouped</a>.</li>
+      </ul>
+    </details>
+    <p class="note">Each bar is one year. The eight biggest makers for the chosen flights are shown, the rest as Other. Freight is in short tons (2,000 lb).</p>
+    {% include "_footer.html" %}
+  </main>
+  <script type="module" src="/static/charts/makers.js"></script>
+</body>
+</html>

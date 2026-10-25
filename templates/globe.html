@@ -4,11 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% if origin %}{{ origin }} routes{% else %}Airport network{% endif %} · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/globe/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-origin="{{ origin }}"{% if foreign %} data-foreign="1"{% endif %}>
+<body data-origin="{{ origin }}" data-max-year="{{ max_year }}"{% if foreign %} data-foreign="1"{% endif %}>
   <canvas id="globe" aria-label="Map of routes from the selected airport"></canvas>
 
   <header id="header">
@@ -18,33 +19,40 @@
     <div class="picker-row">
       <input id="picker" list="airport-list" placeholder="Airport code or name" autocomplete="off" aria-label="Choose an airport">
       <datalist id="airport-list"></datalist>
-      {% if origin %}<a href="/airports/{{ origin }}" class="plain">Routes over time</a>{% endif %}
       <a href="/t100" class="plain">Data tables</a>
     </div>
   </header>
 
   <details id="chooser" hidden></details>
-  <div id="tooltip" hidden></div>
+  <div id="tooltip" class="popover text" hidden></div>
   <aside id="panel" hidden></aside>
   <div id="status" role="status"></div>
 
   <div id="controls">
     <div id="legend">
-      <span class="swatch" style="background:#ff5a00"></span> International
-      <span class="swatch" style="background:#2a9df4"></span> Domestic
+      <span id="legend-chips"></span>
       <span class="note">Routes with fewer than 12 departures a year are hidden. <a href="/about#direction">What a route means</a>.</span>
     </div>
     <div class="row">
       <button id="play" type="button" aria-label="Play through the years">▶</button>
-      <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      <div id="range">
+        <div id="range-fill"></div>
+        <input id="year-from" type="range" min="0" max="0" value="0" step="1" aria-label="Compare with this year">
+        <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      </div>
       <span id="year-label"></span>
     </div>
+    <div id="range-hint">Drag the hollow handle back to compare with an earlier year: new routes show green, dropped ones dashed pink. Click the legend to hide any kind of route.</div>
     <div class="row">
       <label class="check"><input id="month-toggle" type="checkbox"> Months</label>
       <input id="month" type="range" min="1" max="12" value="1" step="1" aria-label="Month" hidden>
       <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
-      <select id="service" aria-label="Service shown"><option value="all">All flights</option><option value="domestic">Domestic only</option><option value="international">International only</option></select>
+      <button id="centre" type="button">Centre {{ origin }}</button>
+      <button id="fit" type="button" title="Zoom to fit the routes shown">Fit routes</button>
+      <select id="colour" aria-label="Colour routes by"><option value="service">Colour: domestic or international</option><option value="change">Colour: kept, added or dropped</option></select>
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
+      <select id="theme" aria-label="Theme"></select>
+      <a id="data-link" class="data-link" href="" hidden>This map's data</a>
     </div>
     <div id="footnote"></div>
     <div id="foreign-note-box">{% include "_foreign_note.html" %}</div>

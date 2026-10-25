@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { colourFor, widthFor, maxOf, SERVICE_COLOURS } from '../src/scale.js';
+import { colourFor, widthFor, maxOf, dashFor } from '../src/scale.js';
 
 test('colours', () => {
-  assert.equal(colourFor('domestic'), '#2a9df4');
-  assert.equal(colourFor('international'), '#ff5a00');
-  assert.equal(colourFor('weird'), SERVICE_COLOURS.international);
+  assert.equal(colourFor('domestic'), '#0d9488');
+  assert.equal(colourFor('international'), '#e36d2a');
+  assert.equal(colourFor('domestic', true), '#2bb39a');
+  assert.equal(colourFor('weird'), colourFor('international'));
 });
 test('widthFor is bounded and never NaN', () => {
   assert.equal(widthFor(0, 100), 0.6);
@@ -25,4 +26,12 @@ test('maxOf and widthFor work on freight values', () => {
   const routes = [{ freight: 5_000_000 }, { freight: 20_000_000 }, { freight: 0 }];
   assert.equal(maxOf(routes, 'freight'), 20_000_000);
   assert.ok(widthFor(20_000_000, 20_000_000) > widthFor(5_000_000, 20_000_000));
+});
+
+test('dashFor leaves a visible gap at every line width, round caps and all', () => {
+  for (const w of [0.6, 2, 4.5, 6]) {
+    const [dash, gap] = dashFor(w);
+    assert.ok(gap - w >= 4 - 1e-9, `w=${w}: gap ${gap} closes to ${gap - w}`);
+    assert.ok(dash > 0);
+  }
 });

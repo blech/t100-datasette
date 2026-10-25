@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{ name }} network · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/globe/style.css">
   <link rel="stylesheet" href="/static/charts/airlineglobe.css">
   <link rel="stylesheet" href="/static/nav/style.css">
@@ -17,22 +18,17 @@
     <div id="title">{{ name }}</div>
     <div id="stats"></div>
     <div class="picker-row">
-      <a href="/airlines/{{ own }}" class="plain">All charts for this airline</a>
-      <a href="/airlines/{{ own }}#changes" class="plain" id="table-link">Routes dropped and added, as a table</a>
+      <a href="/airlines/{{ own }}/changes" class="plain" id="table-link">Routes dropped and added, as a table</a>
     </div>
   </header>
 
   <aside id="panel" hidden></aside>
-  <div id="tooltip" hidden></div>
+  <div id="tooltip" class="popover text" hidden></div>
   <div id="status" role="status"></div>
 
   <div id="controls">
     <div id="legend">
-      <span id="legend-service"><span class="swatch" style="background:#ff5a00"></span> International
-      <span class="swatch" style="background:#2a9df4"></span> Domestic</span>
-      <span id="legend-status" hidden><span class="swatch" style="background:#d62728"></span> Dropped
-      <span class="swatch" style="background:#2a9df4"></span> Kept
-      <span class="swatch" style="background:#2ca02c"></span> Added</span>
+      <span id="legend-chips"></span>
       <span class="note">Airport pairs flown at least <select id="min" aria-label="Minimum departures"><option value="1">once</option><option value="12">12 times</option><option value="52">52 times</option></select> in the year, both directions together. <a href="/about#groupings">How airlines are grouped</a>.</span>
     </div>
     <div class="row">
@@ -44,10 +40,13 @@
       </div>
       <span id="year-label"></span>
     </div>
-    <div id="range-hint">Drag the hollow handle back to compare with an earlier year: routes since dropped show red, new ones green.</div>
+    <div id="range-hint">Drag the hollow handle back to compare with an earlier year: new routes show green, dropped ones dashed pink. Click the legend to hide any kind of route.</div>
     <div class="row">
       <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
+      <select id="colour" aria-label="Colour routes by"><option value="service">Colour: domestic or international</option><option value="change">Colour: kept, added or dropped</option></select>
+      <select id="theme" aria-label="Theme"></select>
+      <a id="data-link" class="data-link" href="" hidden>This map's data</a>
     </div>
     <div id="footnote"></div>
   </div>

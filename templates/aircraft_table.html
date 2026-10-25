@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aircraft · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-latest-year="{{ latest_year }}">
+  <main>
+    {% include "_nav.html" %}
+    <h1>Aircraft</h1>
+    <p class="intro">Every aircraft BTS reports, gathered into families (a 737-300 and a 737-800 are both Boeing 737s) so that one aircraft's decline and the next one's rise read as one story. Open a family to see its aircraft, search for an aircraft by name, or open a family's own page for it over time.</p>
+    <p class="chart-sentence">
+      Show <select id="at-measure" aria-label="Measure"></select>
+      in <select id="at-year" aria-label="Year"></select>
+      for <select id="at-kind" aria-label="Type of aircraft"></select>
+      made by <select id="at-maker" aria-label="Maker"><option value="all">any maker</option></select>,
+      showing <select id="at-limit" aria-label="How many families"></select>.
+    </p>
+    <p><label>Search <input id="at-q" type="search" placeholder="Name, such as 737 or Cessna" autocomplete="off"></label></p>
+    <p class="note" id="at-status" aria-live="polite"></p>
+    <div id="aircraft-table">Loading table…</div>
+    <p class="note">Families group BTS's aircraft (a 737-300 and a 737-800 are both Boeing 737s). A family's maker and type are those of its busiest aircraft. The share is of the total for the chosen year, type and maker. Freight is in short tons (2,000 lb), and includes cargo in the holds of passenger aircraft. More on <a href="/about#groupings">how things are grouped</a>. Freight before 2003 leaves out most domestic FedEx and UPS flying, so freight figures jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.</p>
+    {% include "_footer.html" %}
+  </main>
+  <script type="module" src="/static/charts/aircrafttable.js"></script>
+</body>
+</html>

@@ -1,38 +1,61 @@
-:root { --bg:#f4f2ee; --fg:#1a1a1a; --muted:#777; --panel:rgba(244,242,238,.9); --accent:#111; }
-* { box-sizing: border-box; }
-[hidden] { display: none !important; }
-html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); overflow:hidden;
-  font:14px/1.4 "Helvetica Neue", "Helvetica", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+html, body { height:100%; overflow:hidden; font-size:14px; line-height:1.4; }
 #globe { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
 #globe:active { cursor:grabbing; }
-#header { position:fixed; top:max(12px, env(safe-area-inset-top)); left:16px; right:16px; pointer-events:none; }
+/* the header sits in the same centred column, at the same height, as on the scrolling pages, so the navigation
+   doesn't move when switching between a page and its map */
+#header { position:fixed; top:max(24px, env(safe-area-inset-top)); left:0; right:0; max-width:960px; margin:0 auto; padding:0 16px; pointer-events:none; }
 #header > * { pointer-events:auto; }
-#title { font-size:28px; font-weight:600; letter-spacing:-.01em; }
 #stats { color:var(--muted); font-variant-numeric:tabular-nums; min-height:1.4em; }
 .picker-row { display:flex; gap:12px; align-items:center; margin-top:6px; }
 #picker { font:inherit; color:var(--fg); background:var(--panel); border:1px solid var(--muted); border-radius:8px; padding:4px 10px; width:16em; max-width:60vw; }
 a.plain { color:var(--muted); }
-#chooser { position:fixed; top:var(--below-header, 110px); left:16px; right:16px; max-width:640px; background:var(--panel); border-radius:10px; padding:12px 16px; }
+#chooser { position:fixed; top:var(--below-header, 110px); left:max(16px, calc(50vw - 464px)); right:16px; max-width:640px; background:var(--panel); border-radius:10px; padding:12px 16px; }
 #chooser summary { cursor:pointer; }
 #chooser a { display:inline-block; margin:4px 10px 4px 0; color:var(--fg); }
-#tooltip { position:fixed; z-index:5; pointer-events:none; padding:6px 10px; border-radius:8px; background:var(--panel); box-shadow:0 2px 12px rgba(0,0,0,.25); white-space:pre; }
+#tooltip { z-index:5; white-space:pre; }
 #panel { position:fixed; right:16px; top:var(--below-header, 110px); width:min(300px, 80vw); background:var(--panel); border-radius:10px; padding:12px 14px; box-shadow:0 2px 12px rgba(0,0,0,.25); }
 #panel h2 { margin:0 0 4px; font-size:16px; } #panel h2 a { display:inline; margin:0; }
 #panel dl { margin:8px 0; display:grid; grid-template-columns:auto 1fr; gap:2px 12px; }
 #panel dt { color:var(--muted); } #panel dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; }
 #panel a { color:var(--fg); display:block; margin-top:4px; }
 #panel .close { float:right; }
-#status { position:fixed; top:50%; left:0; right:0; text-align:center; color:var(--muted); pointer-events:none; }
+/* the base stylesheet's .note and #status are 13px; on the map they keep the sizes around them */
+#status { position:fixed; top:50%; left:0; right:0; text-align:center; color:var(--muted); pointer-events:none; font-size:inherit; }
 #status.warn { top:auto; bottom:150px; color:#b45309; }
 #controls { position:fixed; left:0; right:0; bottom:0; padding:12px 16px max(12px, env(safe-area-inset-bottom));
   background:linear-gradient(transparent, var(--panel) 35%); display:flex; flex-direction:column; gap:8px; }
 .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-#year { flex:1; min-width:140px; }
 #year-label { font-variant-numeric:tabular-nums; font-weight:600; min-width:3.5em; }
-#legend { color:var(--muted); font-size:12px; } #legend .note { display:block; margin-top:2px; } .swatch { display:inline-block; width:18px; height:4px; border-radius:2px; vertical-align:middle; margin:0 4px 0 10px; }
+#legend { color:var(--muted); font-size:12px; } #legend .note { display:block; margin-top:2px; font-size:inherit; } .swatch { display:inline-block; width:18px; height:4px; border-radius:2px; vertical-align:middle; margin:0 4px 0 10px; }
 #footnote { color:var(--muted); font-size:12px; min-height:1em; }
+/* links in the map's small print take the note's muted colour, as the site footer's do */
+#legend a, #footnote a, #foreign-note-box a { color:inherit; }
 button, select { font:inherit; color:var(--fg); background:transparent; border:1px solid var(--muted); border-radius:8px; padding:4px 10px; cursor:pointer; }
 button:hover, select:hover { border-color:var(--accent); }
 .check { display:inline-flex; gap:4px; align-items:center; color:var(--muted); }
-@media (max-width:520px) { #title { font-size:22px; } #panel { top:auto; bottom:170px; right:12px; } }
+@media (max-width:520px) { #panel { top:auto; bottom:170px; right:12px; } }
 #foreign-note-box { color:var(--muted); font-size:12px; } #foreign-note-box p { margin:0; }
+/* two handles on one track: the solid one is the year shown, the hollow one the year it is compared with */
+#range { position: relative; flex: 1; min-width: 160px; height: 24px; }
+#range::before { content: ""; position: absolute; left: 8px; right: 8px; top: 11px; height: 2px; background: var(--muted); opacity: .45; }
+#range-fill { position: absolute; top: 10px; height: 4px; border-radius: 2px; background: var(--accent); opacity: .55; }
+#range input { position: absolute; left: 0; top: 0; width: 100%; height: 24px; margin: 0; background: transparent; pointer-events: none;
+  -webkit-appearance: none; appearance: none; }
+#range input::-webkit-slider-runnable-track { background: transparent; height: 24px; }
+#range input::-moz-range-track { background: transparent; height: 24px; }
+#range input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 16px; height: 16px; margin-top: 4px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--accent); cursor: pointer; }
+#range input::-moz-range-thumb { pointer-events: auto; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 2px solid var(--accent); cursor: pointer; }
+/* these two need the extra id to outweigh the rules above, or the hollow handle comes out filled */
+#range #year-from::-webkit-slider-thumb { background: var(--bg); }
+#range #year-from::-moz-range-thumb { background: var(--bg); }
+#range-hint { color: var(--muted); font-size: 12px; }
+/* legend chips: a toggle per category; the swatch shows the colour only for the dimension being coloured */
+#legend-chips { display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; }
+.legend-group { display:inline-flex; flex-wrap:wrap; gap:4px; }
+.chip { font-size:12px; padding:2px 8px; color:var(--fg); display:inline-flex; align-items:center; gap:2px; }
+.chip .count { color:var(--muted); font-variant-numeric:tabular-nums; }
+.chip[aria-pressed="false"] { opacity:.45; text-decoration:line-through; }
+.chip .swatch { margin:0 4px 0 0; background:var(--swatch, transparent); }
+.swatch.plain { border:1px solid var(--muted); height:2px; }
+.swatch.dashed { background:repeating-linear-gradient(90deg, var(--swatch, var(--muted)) 0 5px, transparent 5px 9px); }

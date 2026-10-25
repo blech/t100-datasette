@@ -1,0 +1,14 @@
+import { formatCount, formatTons, exactCount } from '../../common/numbers.js';
+
+// A route's figures for the map's side panel: each rounded, with the exact figure for hovering
+const unitless = (s) => (s.startsWith('–') ? '–' : s);
+
+export function routeFigures(r) {
+  const count = (label, n, noun) => ({ label, shown: formatCount(n), title: unitless(`${exactCount(n)} ${noun}`) });
+  return [
+    count('Departures', r.deps, 'departures'),
+    count('Seats', r.seats, 'seats'),
+    count('Passengers', r.passengers, 'passengers'),
+    { label: 'Freight', shown: formatTons(r.freight), title: unitless(`${exactCount(r.freight)} lb`) },
+  ];
+}

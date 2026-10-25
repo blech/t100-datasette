@@ -1,12 +1,16 @@
-export const SERVICE_COLOURS = { international: '#ff5a00', domestic: '#2a9df4' };
+import { palette } from '../../common/palette.js';
 
-export const colourFor = (service) => SERVICE_COLOURS[service] ?? SERVICE_COLOURS.international;
+// a route's colour by service, from the site palette; anything unknown counts as international
+export const colourFor = (service, dark = false) => palette(dark).service[service] ?? palette(dark).service.international;
 
 export function widthFor(value, max, lo = 0.6, hi = 4.5) {
   const v = Number(value);
   if (!(v > 0) || !(max > 0)) return lo;
   return lo + (hi - lo) * Math.sqrt(Math.min(1, v / max));
 }
+
+// dash and gap grow with the line, so its round caps never close the gap and a thick dropped route still reads as dashed
+export const dashFor = (width) => [5 + width, 4 + width];
 
 export function maxOf(routes, key) {
   let m = 0;

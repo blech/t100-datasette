@@ -1,0 +1,8 @@
+{# Datasette's own pages (database, tables, query results) include this too, by its name. There `crumbs` is Datasette's breadcrumb macros,
+   not the site's list of steps, and the site's scripts aren't loaded, so they get the credit and the about link without the theme menu or a data link #}
+<footer class="site-footer">
+  {% if crumbs is sequence %}<label>Theme <select id="theme" aria-label="Theme"></select></label> ·{% endif %}
+  Data: the US Department of Transportation's T-100 segment tables ·
+  {% if crumbs is sequence %}<span class="data-link" hidden><a id="data-link" href="">This page's data</a> · </span>{% endif %}
+  <a href="/about">About the data</a>
+</footer>

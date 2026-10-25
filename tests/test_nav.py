@@ -19,8 +19,12 @@ def test_landing_is_just_the_site_name(ds):
     assert crumbs(ds, "/") == [("t100.husk.org", None)]
 
 
+def test_airports_table_trail(ds):
+    assert crumbs(ds, "/airports") == [("t100.husk.org", "/"), ("airports", None)]
+
+
 def test_globe_trails(ds):
-    assert crumbs(ds, "/globe") == [("t100.husk.org", "/"), ("globe", None)]
+    assert crumbs(ds, "/airports/globe") == [("t100.husk.org", "/"), ("airports", "/airports"), ("globe", None)]
     assert crumbs(ds, "/airports/ATL/globe") == [
         ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("globe", None)]
 
@@ -42,9 +46,22 @@ def test_current_page_is_marked_and_the_trail_is_labelled(ds):
     assert re.search(r'<li aria-current="page">ATL</li>', html)
 
 
+SCROLLING = ["/", "/airports", "/aircraft", "/aircraft/engines", "/airlines", "/airlines/over-time", "/airports/ATL", "/airports/ATL/destinations", "/airports/ATL/changes", "/airports/ATL/LAX", "/about"]
+MAPS = ["/airports/globe", "/airports/ATL/globe"]
+
+
 def test_every_page_has_one_theme_chooser_and_the_shared_scripts(ds):
-    for path in ["/", "/globe", "/airports/ATL/globe", "/airports/ATL", "/airports/ATL/LAX"]:
+    for path in SCROLLING + MAPS:
         html = get(ds, path).text
         assert html.count('id="theme"') == 1, path
         assert "/static/nav/main.js" in html and "/static/nav/style.css" in html, path
 
+
+def test_the_theme_chooser_is_in_the_footer_or_on_a_map_in_its_controls(ds):
+    for path in SCROLLING:
+        footer = re.search(r'<footer class="site-footer".*?</footer>', get(ds, path).text, re.S)
+        assert footer and 'id="theme"' in footer.group(0), path
+    for path in MAPS:
+        html = get(ds, path).text
+        controls = html[html.index('<div id="controls">'):]
+        assert 'id="theme"' in controls and '<footer class="site-footer"' not in html, path

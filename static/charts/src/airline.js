@@ -1,4 +1,5 @@
 import { shortName, shortNames } from './names.js';
+import { compareYears } from '../../globe/src/compare.js';
 
 // Rows from carrier_route_changes (one per airport pair and member airline, with departures in years A and B) ->
 // one row per pair, the members' flying added up. `airlines` names the members who flew it in either year.
@@ -47,7 +48,12 @@ export function formatYearMonth(ym) {
   return `${MONTHS[(n % 100) - 1] || ''} ${Math.floor(n / 100)}`.trim();
 }
 
-export const STATUS_COLOURS = { kept: '#2a9df4', added: '#2ca02c', dropped: '#d62728' };
+// Domestic when more than half the departures on the pair that year were filed in the domestic data, as the airport map decides it;
+// rows without that count (an older table) fall back on both ends being US airports
+function serviceOf(t, from, to) {
+  if (t.domesticDeps === null) return from.isUs && to.isUs ? 'domestic' : 'international';
+  return t.domesticDeps * 2 > t.deps ? 'domestic' : 'international';
+}
 
 // The routes to draw for year B, optionally compared with year A: every airport pair either year has coordinates for.
 // Rows are carrier_routes_year rows (one per pair and member airline, which are added up); `airports` maps a code to { lon, lat, isUs }.
@@ -58,8 +64,9 @@ export function mapRoutes(rowsB, rowsA, airports, { min = 1 } = {}) {
     const out = new Map();
     for (const r of rows) {
       const key = `${r.origin}\u0000${r.dest}`;
-      const t = out.get(key) || { origin: r.origin, dest: r.dest, airlines: [], deps: 0, seats: 0, passengers: 0, freight: 0 };
+      const t = out.get(key) || { origin: r.origin, dest: r.dest, airlines: [], deps: 0, seats: 0, passengers: 0, freight: 0, domesticDeps: null };
       for (const f of ['deps', 'seats', 'passengers', 'freight']) t[f] += Number(r[f]) || 0;
+      if (r.domestic_deps != null) t.domesticDeps = (t.domesticDeps || 0) + Number(r.domestic_deps);
       if (r.airline && !t.airlines.includes(r.airline)) t.airlines.push(r.airline);
       out.set(key, t);
     }
@@ -67,22 +74,18 @@ export function mapRoutes(rowsB, rowsA, airports, { min = 1 } = {}) {
     return out;
   };
   const now = perYear(rowsB);
-  const then = compare ? perYear(rowsA) : new Map();
+  const then = compare ? perYear(rowsA) : null;
   const routes = [];
   const skipped = new Set();
-  for (const key of new Set([...now.keys(), ...then.keys()])) {
-    const b = now.get(key), a = then.get(key);
-    const shown = b || a;
-    const from = airports.get(shown.origin);
-    const to = airports.get(shown.dest);
-    if (!from || !to) { skipped.add(!from ? shown.origin : shown.dest); continue; }
-    const status = !compare ? null : a && b ? 'kept' : a ? 'dropped' : 'added';
+  for (const t of compareYears([...now.values()], then && [...then.values()], (x) => `${x.origin}\u0000${x.dest}`)) {
+    const from = airports.get(t.origin);
+    const to = airports.get(t.dest);
+    if (!from || !to) { skipped.add(!from ? t.origin : t.dest); continue; }
     routes.push({
-      origin: shown.origin, dest: shown.dest, status, from: [from.lon, from.lat], to: [to.lon, to.lat],
-      deps: shown.deps, seats: shown.seats, passengers: shown.passengers, freight: shown.freight,
-      depsThen: a ? a.deps : 0, depsNow: b ? b.deps : 0, airlines: shown.airlines,
-      service: from.isUs && to.isUs ? 'domestic' : 'international',
-      colour: status ? STATUS_COLOURS[status] : undefined,
+      origin: t.origin, dest: t.dest, status: t.status, from: [from.lon, from.lat], to: [to.lon, to.lat],
+      deps: t.deps, seats: t.seats, passengers: t.passengers, freight: t.freight,
+      depsThen: t.depsThen ?? 0, depsNow: t.depsNow ?? t.deps, airlines: t.airlines,
+      service: serviceOf(t, from, to),
     });
   }
   return { routes, skipped: [...skipped].sort() };

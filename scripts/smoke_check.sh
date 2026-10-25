@@ -15,24 +15,42 @@ check() {  # check <expected status> <path> [text the body must contain]
   echo "ok   $2 ($1)"
 }
 
-check 200 /                                                         "airports"
-check 200 /globe                                                    "data-origin"
-check 200 /airports/SFO                                             "heatmap"
+check 200 /                                                         "usa-map"
+check 200 /airports                                                 "Busiest"
+check 200 /airports/globe                                           "data-origin"
+check 200 /airports/over-time                                       "data-kind=\"airports\""
+check 200 /airports/SFO                                             "size-chart"
+check 200 /airports/SFO/destinations                                "matrix"
+check 200 /airports/SFO/changes                                     "change-table"
+check 301 "/airports/SFO?n=50"
 check 200 /airports/SFO/globe                                       "data-origin"
 check 200 /airports/SFO/LHR/2019                                    "route-chart"
+check 200 /airports/SFO/LHR/2019/table                              "route-table"
+check 200 /airlines/delta/changes                                   "change-table"
+check 301 /aircraft/table
+check 200 /-/derived                                              '"ok": true'
 check 200 /about                                                   "Known gaps"
-check 200 /aircraft                                                "heat-kind"
+check 200 /aircraft                                                "aircraft-table"
+check 200 /aircraft/over-time                                     "matrix-kind"
 check 200 /aircraft/engines                                         "engine-chart"
+check 200 /aircraft/makers                                          "maker-chart"
 check 200 /aircraft/boeing-737                                      "family-chart"
+check 200 /aircraft/boeing-737/boeing-737-800                        "aircraft_detail"
+check 404 /aircraft/boeing-737/no-such-plane
 check 404 /aircraft/no-such-plane
-check 200 /airlines                                                 "heat-kind"
+check 200 /airlines                                                 "airline-table"
+check 200 /airlines/over-time                                       "matrix-kind"
+check 301 "/airlines?scale=busiest"
 check 200 /airlines/delta                                          "size-chart"
+check 200 /airlines/delta/routes                                   "matrix"
 check 200 /airlines/delta/globe                                    'id="globe"'
 check 404 /airlines/no-such-airline
 check 301 /carriers
 check 301 /carriers/delta
 check 301 /routes/SFO
+check 301 /globe
 check 301 /globe/SFO
+check 301 "/?year=2019"
 check 301 /route/SFO/LHR/2019
 check 200 "/t100/airports.json?_shape=objects"                  '"Raleigh/Durham, NC"'
 check 200 "/t100/top_airports.json?year=2025&_shape=objects"        '"ATL"'
@@ -41,7 +59,17 @@ check 200 "/t100/route.json?origin=SFO&dest=LHR&_shape=objects"     '"carrier"'
 check 200 "/t100/family_by_year.json?_shape=objects"                '"Boeing 737"'
 check 200 "/t100/carrier_group_by_year.json?_shape=objects"         '"Delta (incl. Northwest)"'
 check 200 "/t100/engines_by_year.json?_shape=objects"               '"distance_band"'
+check 200 "/t100/carrier_concentration.json?_shape=objects"         '"top4"'
+check 200 "/t100/top_carrier_history.json?year=2025&_shape=objects"  '"Southwest Airlines Co."'
+check 200 "/t100/domestic_routes.json?year=2025&_shape=objects"      '"ATL"'
+check 200 "/t100/busiest_airports.json?year=2025&_shape=objects"    '"ATL"'
 check 200 "/t100/family_detail.json?family=Boeing+737&_shape=objects" '"737 NG"'
+check 200 "/t100/family_aircraft.json?family=Boeing+737&_shape=objects"   '"Boeing 737-800"'
+check 200 "/t100/aircraft_detail.json?aircraft=614&_shape=objects"      '"passenger"'
+check 200 "/t100/family_airlines.json?family=Boeing+747&year=2021&sort=freight&_shape=objects"  '"group_name"'
+check 200 "/t100/aircraft_by_year.json?_size=1&_shape=objects"           '"aircraft_name"'
+check 200 "/t100/type_table.json?year=2019&_shape=objects"          '"Boeing 737'
+check 200 "/t100/maker_by_year.json?_shape=objects"                 '"maker": "Boeing"'
 check 404 /airports/SFO/LH
 check 200 "/t100/airline_list.json?_shape=objects"                  '"Delta (incl. Northwest)"'
 check 200 "/t100/carrier_route_counts.json?group=delta&airline=&min=12&_shape=objects" '"pairs"'

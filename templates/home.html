@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>US air traffic, {{ min_year }}–{{ max_year }} · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/home/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
+  <main>
+    {% include "_nav.html" %}
+    <h1>US air traffic, {{ min_year }}–{{ max_year }}</h1>
+    <p class="intro">
+      Every scheduled and charter flight to, from and within the United States since {{ min_year }}, as reported by airlines to the
+      Department of Transportation: who flew it, between which airports, on what aircraft, and how many people and how much freight it carried.
+      <a href="/about">What the numbers mean</a>.
+    </p>
+
+    <section class="section" aria-labelledby="airports-heading">
+      <h2 id="airports-heading"><a href="/airports">Airports</a></h2>
+      {% if airports %}{% set a = airports.airports %}
+      <p class="story">The busiest airport in {{ max_year }} was {{ a[0].city }} ({{ a[0].code }}), where {{ a[0].passengers }} passengers boarded,
+        ahead of {{ a[1].city }} ({{ a[1].code }}) and {{ a[2].city }} ({{ a[2].code }}).</p>
+      {% endif %}
+      <div class="graphic map-box" id="map-box">
+        <canvas id="usa-map" aria-label="Map of the busiest US airports in {{ max_year }}"></canvas>
+        <div id="map-tip" class="map-tip popover text" hidden></div>
+        <p id="map-status" class="graphic-status">Loading map…</p>
+      </div>
+      <p class="more"><a href="/airports">All airports →</a> · <a href="/airports/globe">Explore the map →</a></p>
+    </section>
+
+    <section class="section" aria-labelledby="aircraft-heading">
+      <h2 id="aircraft-heading"><a href="/aircraft">Aircraft</a></h2>
+      {% if engines %}
+      <p class="story">In {{ engines.first_year }}, {{ engines.first_tri_quad }} of flights of 3,000 miles or more were flown by jets with three or four engines:
+        747s, DC-10s, TriStars. In {{ engines.last_year }} twin-engined jets flew {{ engines.last_twin }} of them.</p>
+      {% endif %}
+      <div class="graphic chart-box" id="engine-chart"><p class="graphic-status">Loading chart…</p></div>
+      <p class="more"><a href="/aircraft/engines">The long-haul story →</a> · <a href="/aircraft">All aircraft →</a></p>
+    </section>
+
+    <section class="section" aria-labelledby="airlines-heading">
+      <h2 id="airlines-heading"><a href="/airlines">Airlines</a></h2>
+      {% if concentration %}{% set c = concentration %}
+      <p class="story">In {{ c.first_year }} the four biggest airlines carried {{ c.first }} of all passengers.
+        {% if c.low_year %}As Southwest and other low-cost airlines grew, that fell to {{ c.low }} by {{ c.low_year }}; after a run of mergers it was {{ c.last }} in {{ c.last_year }}.
+        {% else %}By {{ c.last_year }} it was {{ c.last }}.{% endif %}</p>
+      {% endif %}
+      <div class="graphic chart-box" id="passenger-chart"><p class="graphic-status">Loading chart…</p></div>
+      {% if carriers %}<p class="story">The biggest in {{ max_year }}:
+        {% for x in carriers %}{{ x.name }} {{ x.share }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+      <p class="more"><a href="/airlines">All airlines →</a></p>
+    </section>
+
+    <p class="note">
+      Map: the 100 busiest US airports by passengers in {{ max_year }}; Guam, Saipan and American Samoa are not shown.
+      Long haul means flights of 3,000 miles or more, counted by departures.
+      T-100 counts the airline that operates each flight. Regional airlines such as SkyWest fly many flights sold under the big brands' names,
+      so those brands' real reach is larger than the airline chart shows. <a href="/about">More about the data</a>.
+    </p>
+    {% include "_footer.html" %}
+  </main>
+  <script src="/static/globe/vendor/d3-array.min.js"></script>
+  <script src="/static/globe/vendor/d3-geo.min.js"></script>
+  <script src="/static/globe/vendor/topojson-client.min.js"></script>
+  <script type="module" src="/static/home/main.js"></script>
+</body>
+</html>

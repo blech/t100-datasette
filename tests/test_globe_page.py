@@ -14,7 +14,7 @@ def test_lowercase_is_normalised(ds):
 
 
 def test_no_airport_shows_chooser_page(ds):
-    r = get(ds, "/globe")
+    r = get(ds, "/airports/globe")
     assert r.status_code == 200 and 'data-origin=""' in r.text
 
 
@@ -36,12 +36,17 @@ def test_width_menu_offers_freight(ds):
     assert '<option value="freight">' in get(ds, "/airports/ATL/globe").text
 
 
-def test_service_menu_offers_all_domestic_international(ds):
+def test_map_has_year_comparison_colour_choice_and_legend(ds):
     html = get(ds, "/airports/ATL/globe").text
-    for v in ("all", "domestic", "international"):
-        assert f'<option value="{v}">' in html
+    for el in ('id="year-from"', 'id="year"', 'id="range-fill"', 'id="colour"', 'id="legend-chips"'):
+        assert el in html, el
+    assert 'id="service"' not in html
 
 
 def test_chart_assets_are_served(ds):
     for path in ("/static/charts/routepage.js", "/static/charts/src/series.js", "/static/charts/vendor/plot.js"):
         assert get(ds, path).status_code == 200
+
+
+def test_chooser_knows_the_latest_year_for_its_routes(ds):
+    assert 'data-max-year="2025"' in get(ds, "/airports/globe").text

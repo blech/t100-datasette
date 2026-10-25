@@ -116,3 +116,34 @@ test('aggregateTable carries the airline group and aircraft family through, for 
   assert.equal(t[0].groupId, 'united');
   assert.equal(t[0].family, 'Boeing 777');
 });
+
+const tableRows = [
+  { carrier: 'Delta', aircraft: '737-800', group_id: 'delta', family: 'Boeing 737', deps: 10, total_seats: 1600, total_passengers: 1200, total_freight: 4000 },
+  { carrier: 'Delta', aircraft: 'A321', group_id: 'delta', family: 'Airbus A320', deps: 5, total_seats: 950, total_passengers: 900, total_freight: 0 },
+  { carrier: 'JetBlue', aircraft: 'A321', group_id: 'jetblue', family: 'Airbus A320', deps: 4, total_seats: 800, total_passengers: 700, total_freight: 2000 },
+];
+
+test('aggregateTable follows the split', () => {
+  assert.deepEqual(aggregateTable(tableRows, 'carrier').map((t) => [t.carrier, t.aircraft, t.deps]), [['Delta', null, 15], ['JetBlue', null, 4]]);
+  assert.deepEqual(aggregateTable(tableRows, 'aircraft').map((t) => [t.carrier, t.aircraft, t.deps]), [['A321', 9], ['737-800', 10]].map(([a, d]) => [null, a, d]));
+  assert.equal(aggregateTable(tableRows, 'both').length, 3);
+  const [all] = aggregateTable(tableRows, 'none');
+  assert.deepEqual([all.carrier, all.aircraft, all.deps, all.passengers, all.freight], [null, null, 19, 2800, 3]);
+  assert.equal(all.loadFactor, (2800 / 3350) * 100);
+});
+
+test('aggregateTable keeps the link targets that still apply', () => {
+  assert.equal(aggregateTable(tableRows, 'carrier')[0].groupId, 'delta');
+  assert.equal(aggregateTable(tableRows, 'carrier')[0].family, null);
+  assert.equal(aggregateTable(tableRows, 'aircraft')[0].family, 'Airbus A320');
+  assert.equal(aggregateTable(tableRows, 'aircraft')[0].groupId, null);
+});
+
+test('buildSeries makes room for a series asked for: it takes the last place, so colours stay distinct', () => {
+  const rows = Array.from({ length: 10 }, (_, i) => ({ year: 2019, carrier: `C${i}`, aircraft: 'A', deps: 1, total_seats: 1, total_passengers: 100 - i, total_freight: 0 }));
+  const plain = buildSeries(rows, { top: 8 });
+  assert.ok(!plain.series.includes('C9') && plain.series.includes('Other'));
+  const kept = buildSeries(rows, { top: 8, keep: new Set(['C9']) });
+  assert.deepEqual(kept.series, ['C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C9', 'Other'], 'eight named series at most');
+  assert.deepEqual(kept.points.filter((p) => p.series === 'Other').map((p) => p.value), [93 + 92], 'C7 and C8 fold into Other');
+});

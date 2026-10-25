@@ -1,5 +1,11 @@
 -- Generated from build_database.py (create_schema + create_indexes). Regenerate rather than edit by hand.
 
+CREATE TABLE "aircraft_carrier_year" (
+   [aircraft] TEXT, [year] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([aircraft], [year], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
+
 CREATE TABLE "aircraft_family" (
    [aircraft_type] TEXT PRIMARY KEY, [name] TEXT, [family] TEXT, [subfamily] TEXT, [aircraft_class] TEXT, [fallback] INTEGER
 ) WITHOUT ROWID;
@@ -12,8 +18,19 @@ CREATE TABLE "aircraft_group_band_year" (
 
 CREATE TABLE "aircraft_types" (
    [ac_typeid] TEXT, [ac_group] TEXT, [ssd_name] TEXT, [manufacturer] TEXT,
-   [name] TEXT, [short_name] TEXT, [begin_date] TEXT
+   [name] TEXT, [short_name] TEXT, [begin_date] TEXT,
+   [maker] TEXT, [kind] TEXT
 );
+
+CREATE TABLE "airport_carrier_year" (
+   [year] INTEGER, [origin] TEXT, [origin_wac] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
+
+CREATE TABLE "airport_market" (
+   [code] TEXT PRIMARY KEY, [market_id] TEXT
+) WITHOUT ROWID;
 
 CREATE TABLE "airport_names" (
    [code] TEXT PRIMARY KEY, [name] TEXT
@@ -43,6 +60,7 @@ CREATE TABLE "carrier_group_year" (
 CREATE TABLE "carrier_route_year" (
    [group_id] TEXT, [airline_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
+   [domestic_deps] INTEGER,
    PRIMARY KEY ([group_id], [airline_id], [year], [origin], [dest])
 ) WITHOUT ROWID;
 
@@ -70,6 +88,12 @@ CREATE TABLE "openflights_airports" (
    "icao_code" TEXT, "latitude" REAL, "longitude" REAL, "altitude" REAL,
    "timezone" TEXT, "dst" TEXT, "tz" TEXT, "type" TEXT, "source" TEXT
 );
+
+CREATE TABLE "route_year_totals" (
+   [year] INTEGER, [origin] TEXT, [dest] TEXT, [deps] INTEGER, [domestic_deps] INTEGER,
+   [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [origin], [dest])
+) WITHOUT ROWID;
 
 CREATE TABLE "t100_domestic" (
    [year] INTEGER,
@@ -132,6 +156,12 @@ CREATE TABLE "t100_international" (
    [air_time] INTEGER,
    [wac] INTEGER
 );
+
+CREATE TABLE "type_year" (
+   [year] INTEGER, [aircraft_type] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [aircraft_type], [domestic], [service_class])
+) WITHOUT ROWID;
 
 CREATE INDEX idx_aircraft_types_ac_typeid ON aircraft_types (ac_typeid);
 

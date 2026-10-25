@@ -1,12 +1,19 @@
-import { THEMES, resolveTheme } from './src/themes.js';
-import { defaultView, clamp } from './src/camera.js';
+import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from './src/themes.js';
+import { setDataLink } from '/static/common/datalink.js';
+import { defaultView, clamp, glide, rotationFor } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
-import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, forService, skippedFor, originProblem } from './src/adapter.js';
+import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
 import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
+import { colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
+import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
+import { renderLegend, syncRange } from './src/controls.js';
+import { routesByOrigin, chooserTap } from './src/chooser.js';
+import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
+import { routeFigures } from './src/panel.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -15,7 +22,6 @@ const state = parseState(location.search);
 new ResizeObserver(() => {
   document.documentElement.style.setProperty('--below-header', `${Math.ceil($('header').getBoundingClientRect().bottom) + 8}px`);
 }).observe($('header'));
-const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
 let airports = new Map();
 let yearRoutes = [];     // placed routes, all years
@@ -23,13 +29,24 @@ let monthRoutes = [];    // placed routes for the selected year, all months
 let years = [];
 let yearRaw = [];        // raw routes_by_year rows
 let monthRaw = [];       // raw routes_by_month rows for the selected year
+let periodRoutes = [];   // the period on screen, with kept/added/dropped when comparing
+let shown = [];          // periodRoutes after the legend's filters: what is drawn and hit-tested
+const range = { from: $('year-from'), to: $('year'), fill: $('range-fill') };
+const destKey = (r) => r.dest;
 let truncated = false;
 let loadError = '';
 const monthSeq = createLatest();
-let themeId = resolveTheme(location.search, localStorage.getItem('t100-theme'), matchMedia('(prefers-color-scheme: dark)').matches);
+function storedTheme() {
+  try { return localStorage.getItem('t100-theme'); } catch (e) { return null; }
+}
+let themeId = resolveTheme(location.search, storedTheme(), matchMedia('(prefers-color-scheme: dark)').matches);
+let themeChosen = themeChoice(location.search, storedTheme()); // 'auto' stays out of the URL
 let dirty = true;
 let hover = -1;
 let chooserPoints = []; // airport dots on the chooser page (no origin selected)
+let chooserRoutes = new Map(); // the latest year's domestic routes by origin, for the hovered dot
+const chooserPlaced = new Map(); // ...placed on the map, filled as dots are hovered
+const latestYear = document.body.dataset.maxYear;
 let selected = -1;
 let playTimer = null;
 const view = defaultView();
@@ -45,43 +62,52 @@ function setStatus(text, warn = false) {
 
 // the page chrome is themed by the shared header (static/nav/main.js); the canvas follows its choice
 function applyTheme(id) {
-  themeId = THEMES[id] ? id : 'paper';
+  themeId = THEMES[id] ? id : DEFAULT_THEME;
   if (renderer) renderer.setTheme(THEMES[themeId]);
   dirty = true;
 }
-document.addEventListener('t100:theme', (e) => { applyTheme(e.detail.id); pushState(); });
+document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); drawLegend(); pushState(); });
 
-function currentRoutes() {
-  if (state.year === null) return [];
-  const routes = state.month !== null ? forMonth(monthRoutes, state.month) : forYear(yearRoutes, state.year);
-  return forService(routes, state.service);
+function recompute() {
+  if (state.year === null) { periodRoutes = []; shown = []; return; }
+  periodRoutes = state.month !== null
+    ? compareYears(forMonth(monthRoutes, state.month), null, destKey)
+    : compareYears(forYear(yearRoutes, state.year), state.compare ? forYear(yearRoutes, state.compare) : null, destKey);
+  shown = visibleRoutes(periodRoutes, state.hide, Boolean(state.compare));
 }
 
 function pushState() {
-  const extra = themeId === 'paper' ? {} : { theme: themeId };
+  const extra = themeChosen === 'auto' ? {} : { theme: themeChosen };
   history.replaceState(null, '', `${location.pathname}${toSearch(state, extra)}`);
 }
 
 function updateStats() {
-  const routes = currentRoutes();
-  const pax = routes.reduce((s, r) => s + Number(r.passengers || 0), 0);
-  const deps = routes.reduce((s, r) => s + Number(r.deps || 0), 0);
-  const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : `${state.year}`;
-  $('stats').textContent = `${label} · ${routes.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${fmt(deps)} departures · ${fmt(pax)} passengers`;
+  const comparing = Boolean(state.compare);
+  const pax = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
+  const deps = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.deps || 0)), 0);
+  const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : comparing ? `${state.compare} → ${state.year}` : `${state.year}`;
+  const c = countStatuses(periodRoutes);
+  $('stats').textContent = comparing
+    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
+    : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${countLabel(deps)} departures · ${countLabel(pax)} passengers`;
   $('year-label').textContent = label;
-  const periodRows = state.month !== null ? monthRaw.filter((r) => r.month === state.month) : yearRaw.filter((r) => r.year === state.year);
-  const skipped = skippedFor(forService(periodRows, state.service), airports);
+  const periodRows = state.month !== null
+    ? monthRaw.filter((r) => r.month === state.month)
+    : yearRaw.filter((r) => r.year === state.year || r.year === state.compare);
+  const skipped = skippedFor(periodRows.filter((r) => !state.hide.includes(r.service)), airports);
   const notes = [];
   if (skipped.length) notes.push(`${skipped.length} destination${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}`);
   $('footnote').textContent = notes.join(' · ');
   if (loadError) setStatus(loadError, true);
   else if (truncated) setStatus('Too many rows: some routes are missing from this view.', true);
-  else if (!routes.length) setStatus('No flights from this airport in this period.');
+  else if (!periodRoutes.length) setStatus('No flights from this airport in this period.');
+  else if (!shown.length) setStatus('Every route here is hidden: click a legend entry to show it again.');
   else setStatus('');
 }
 
 function tooltipText(r) {
-  return `${r.dest} · ${r.destCity || ''}\n${fmt(r.passengers)} passengers · ${fmt(r.deps)} departures\n${r.service}`;
+  const change = changeText(r, state.compare);
+  return `${r.dest} · ${r.destCity || ''}\n${change || `${fmt(r.passengers)} passengers · ${fmt(r.deps)} departures`}\n${r.service}`;
 }
 
 function showPanel(r) {
@@ -100,12 +126,11 @@ function showPanel(r) {
   destLink.title = `Show routes from ${r.dest}`;
   h.append(`${origin} → `, destLink);
   const sub = document.createElement('div');
-  sub.textContent = `${r.destCity || ''} (${r.service})`;
+  sub.textContent = `${r.destCity || ''} (${r.service}${r.status ? `, ${r.status}` : ''})`;
   const dl = document.createElement('dl');
-  for (const [k, v] of [['Departures', fmt(r.deps)], ['Seats', fmt(r.seats)], ['Passengers', fmt(r.passengers)], ['Freight (lb)', fmt(r.freight)]]) {
-    const dt = document.createElement('dt'); dt.textContent = k;
-    const dd = document.createElement('dd'); dd.textContent = v;
-    dl.append(dt, dd);
+  for (const f of routeFigures(r)) {
+    const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
+    dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
   const a1 = document.createElement('a');
   a1.href = routePath;
@@ -141,12 +166,27 @@ async function loadMonths() {
   }
 }
 
+// the legend's chips, coloured for the current theme
+function drawLegend() {
+  const comparing = Boolean(state.compare);
+  const mode = colourMode(state.colour, comparing);
+  renderLegend($('legend-chips'), legendItems({ mode, comparing, hide: state.hide, routes: periodRoutes, dark: THEMES[themeId].dark }), (key) => { state.hide = toggleHide(state.hide, key); refresh(); });
+}
+
 function refresh() {
+  setDataLink('routes_by_year', { origin, min_deps: '' });
   hover = -1;
   selected = -1;
   $('panel').hidden = true;
   $('tooltip').hidden = true;
   $('month').hidden = state.month === null;
+  recompute();
+  const comparing = Boolean(state.compare);
+  const mode = colourMode(state.colour, comparing);
+  $('colour').value = mode;
+  $('colour').querySelector('option[value="change"]').disabled = !comparing;
+  drawLegend();
+  if (years.length) syncRange(range, years, state.year, state.compare);
   updateStats();
   pushState();
   dirty = true;
@@ -178,10 +218,39 @@ async function showChooser() {
     a.textContent = `${r.origin} ${r.origin_city_name}`;
     box.append(a);
   }
+  // the chooser's airports, over all years; the controls (where a map's data link sits) are hidden here, so it closes the list
+  setDataLink('top_us_airports', { year: '', sort_column: '' });
+  if ($('data-link')) box.append($('data-link'));
   box.hidden = false;
   $('title').textContent = 'US airport network';
   chooserPoints = placePoints(res.rows, airports);
   dirty = true;
+  // without these the dots still work; hovering just shows no routes
+  try {
+    chooserRoutes = routesByOrigin((await fetchRows(queryUrl('domestic_routes', { year: latestYear, _size: 'max' }))).rows);
+  } catch (e) {
+    console.error(e);
+  }
+  dirty = true;
+}
+
+// the hovered dot's domestic routes, as its own map draws them with international hidden
+function chooserRoutesFor(i) {
+  if (i < 0) return [];
+  const code = chooserPoints[i].code;
+  if (!chooserPlaced.has(code)) chooserPlaced.set(code, placeRoutes(chooserRoutes.get(code) || [], code, airports).routes);
+  return chooserPlaced.get(code);
+}
+
+function showChooserTip(i, x, y) {
+  const tip = $('tooltip');
+  if (i < 0) { tip.hidden = true; return; }
+  const p = chooserPoints[i];
+  const n = chooserRoutesFor(i).length; // the routes drawn: a destination without coordinates can't be
+  tip.textContent = chooserRoutes.size ? `${p.code} · ${p.city} · ${n} domestic route${n === 1 ? '' : 's'} in ${latestYear}` : `${p.code} · ${p.city}`;
+  tip.style.left = `${x + 14}px`;
+  tip.style.top = `${y + 14}px`;
+  tip.hidden = false;
 }
 
 function bindControls() {
@@ -190,36 +259,48 @@ function bindControls() {
   proj.addEventListener('change', () => {
     state.proj = proj.value === 'flat' ? 'flat' : 'globe';
     renderer.setMode(state.proj);
+    $('fit').hidden = state.proj === 'flat';
     pushState();
     dirty = true;
   });
-  const service = $('service');
-  service.value = state.service;
-  service.addEventListener('change', () => { state.service = service.value; hover = -1; selected = -1; $('panel').hidden = true; updateStats(); pushState(); dirty = true; });
   const width = $('width');
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
+  $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
+  const a = airports.get(origin);
+  $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: rotationFor(a.lon, a.lat), zoom: view.zoom }; });
+  // the flat map only turns east-west, so it can't frame routes north of its middle: fitting is for the globe
+  $('fit').hidden = state.proj === 'flat';
+  $('fit').addEventListener('click', () => {
+    const points = [[a.lon, a.lat], ...shown.map((r) => r.to)];
+    // the clear area between the header and the controls, with room for the labels
+    const box = { left: 24, right: innerWidth - 48, top: $('header').getBoundingClientRect().bottom + 24, bottom: $('controls').getBoundingClientRect().top - 8 };
+    const fit = renderer.fit(points, box);
+    if (fit) { view.vel = [0, 0]; view.target = fit; }
+  });
 
-  const slider = $('year');
-  slider.min = '0';
-  slider.max = String(years.length - 1);
-  slider.value = String(years.indexOf(state.year));
-  slider.addEventListener('input', async () => {
-    state.year = years[Number(slider.value)];
+  for (const el of [range.from, range.to]) { el.min = '0'; el.max = String(years.length - 1); }
+  const move = (which, el) => async () => {
+    Object.assign(state, moveRange(years, state, which, Number(el.value)));
+    $('month-toggle').checked = state.month !== null;
     if (state.month !== null && (await loadMonths()) === false) return;
     refresh();
-  });
+  };
+  range.to.addEventListener('input', move('year', range.to));
+  range.from.addEventListener('input', move('compare', range.from));
 
   $('play').addEventListener('click', () => {
     if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
     $('play').textContent = '⏸';
-    if (slider.value === slider.max) slider.value = '0';
+    state.month = null;
+    $('month-toggle').checked = false;
+    // play moves the solid handle on, keeping the hollow one where it is; from the end, start again from it
+    const base = state.compare;
+    if (state.year === years.at(-1)) { state.year = base ?? years[0]; state.compare = null; refresh(); }
     playTimer = setInterval(() => {
-      if (Number(slider.value) >= years.length - 1) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
-      slider.value = String(Number(slider.value) + 1);
-      state.year = years[Number(slider.value)];
-      state.month = null;
-      $('month-toggle').checked = false;
+      const step = playStep(years, state.year, base);
+      if (!step) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
+      Object.assign(state, step);
       refresh();
     }, 700);
   });
@@ -227,7 +308,10 @@ function bindControls() {
   const toggle = $('month-toggle');
   toggle.checked = state.month !== null;
   toggle.addEventListener('change', async () => {
+    // play steps through whole years, so a month view stops it
+    if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; }
     if (toggle.checked) {
+      state.compare = null;
       state.month = state.month ?? 1;
       $('month').value = String(state.month);
       if ((await loadMonths()) === false) return;
@@ -249,15 +333,10 @@ function bindCanvas() {
         const i = renderer.hitTestPoints(x, y, chooserPoints);
         if (i !== hover) { hover = i; dirty = true; }
         canvas.style.cursor = i >= 0 ? 'pointer' : '';
-        const tip = $('tooltip');
-        if (i < 0) { tip.hidden = true; return; }
-        tip.textContent = `${chooserPoints[i].code} · ${chooserPoints[i].city}`;
-        tip.style.left = `${x + 14}px`;
-        tip.style.top = `${y + 14}px`;
-        tip.hidden = false;
+        showChooserTip(i, x, y);
         return;
       }
-      const routes = currentRoutes();
+      const routes = shown;
       const i = renderer.hitTest(x, y, routes);
       if (i !== hover) { hover = i; dirty = true; }
       const tip = $('tooltip');
@@ -270,10 +349,14 @@ function bindCanvas() {
     onTap: (x, y) => {
       if (!origin) {
         const i = renderer.hitTestPoints(x, y, chooserPoints);
-        if (i >= 0) location.href = `/airports/${encodeURIComponent(chooserPoints[i].code)}/globe${toSearch(state)}`;
+        const action = chooserTap(hover, i);
+        if (action === 'open') { location.href = `/airports/${encodeURIComponent(chooserPoints[i].code)}/globe${toSearch(state)}`; return; }
+        hover = action === 'show' ? i : -1;
+        showChooserTip(hover, x, y);
+        dirty = true;
         return;
       }
-      const routes = currentRoutes();
+      const routes = shown;
       const i = renderer.hitTest(x, y, routes, 10);
       selected = i;
       if (i >= 0) showPanel(routes[i]); else $('panel').hidden = true;
@@ -287,20 +370,23 @@ function frame(last, now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   const moving = !view.dragging && (Math.abs(view.vel[0]) > 0.05 || Math.abs(view.vel[1]) > 0.05);
   applyInertia(view, dt);
-  if (moving) dirty = true;
+  if (glide(view, dt) || moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
-    const routes = currentRoutes();
+    const routes = origin ? shown : chooserRoutesFor(hover);
     const key = $('width').value;
-    const a = airports.get(origin);
+    // on the chooser the hovered airport is drawn as its own map draws it, routes and all
+    const code = origin || (hover >= 0 ? chooserPoints[hover].code : '');
+    const a = airports.get(code);
     renderer.draw(view, routes, {
       points: origin ? null : chooserPoints,
-      highlightPoint: origin ? -1 : hover,
-      origin: a ? { lon: a.lon, lat: a.lat, code: origin } : null,
+      highlightPoint: origin || a ? -1 : hover,
+      origin: a ? { lon: a.lon, lat: a.lat, code } : null,
       widthKey: key,
       max: maxOf(routes, key),
-      highlight: selected >= 0 ? selected : hover,
+      highlight: origin ? (selected >= 0 ? selected : hover) : -1,
       labels: 8,
+      styles: styleRoutes(routes, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: key }),
     });
   }
   requestAnimationFrame((n) => frame(now, n));
@@ -343,6 +429,7 @@ async function main() {
   yearRoutes = placeRoutes(res.rows, origin, airports).routes;
   years = yearsIn(res.rows);
   if (state.year === null || !years.includes(state.year)) state.year = years[years.length - 1];
+  if (!years.includes(state.compare) || state.compare >= state.year || state.month !== null) state.compare = null;
   if (state.month !== null) await loadMonths();
   if (a) view.rot = [-a.lon, clamp(-a.lat, -70, 70)];
   bindControls();

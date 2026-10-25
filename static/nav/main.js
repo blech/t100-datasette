@@ -1,4 +1,4 @@
-import { THEMES, THEME_ORDER, resolveTheme } from '../globe/src/themes.js';
+import { THEMES, THEME_ORDER, DEFAULT_THEME, themeChoice } from '../globe/src/themes.js';
 import { decorate, replaceSearch } from './src/state.js';
 
 const root = document.documentElement.style;
@@ -15,7 +15,9 @@ function paint(id) {
   root.setProperty('--panel', t.ui.panel);
   root.setProperty('--accent', t.ui.accent);
   root.setProperty('--line', `color-mix(in srgb, ${t.ui.fg} 18%, ${t.bg})`);
-  document.documentElement.style.colorScheme = id === 'night' || id === 'natural' || id === 'airtrailDark' ? 'dark' : 'light';
+  root.setProperty('--rule', `color-mix(in srgb, ${t.ui.fg} 45%, ${t.bg})`);
+  document.documentElement.style.colorScheme = t.dark ? 'dark' : 'light';
+  document.documentElement.dataset.scheme = t.dark ? 'dark' : 'light';
 }
 
 // Links keep the visitor's settings: refreshed just before they are used, so hover previews,
@@ -30,21 +32,33 @@ function carry(a) {
   a.dataset.carried = keys.join(',');
 }
 
-let themeId = resolveTheme(location.search, stored(), matchMedia('(prefers-color-scheme: dark)').matches);
-paint(themeId);
+// 'auto' follows the system's dark mode, live; a chosen theme is remembered and kept in the URL
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+let choice = themeChoice(location.search, stored());
+const current = () => (choice === 'auto' ? (systemDark.matches ? 'dark' : DEFAULT_THEME) : choice);
+paint(current());
+
+function apply() {
+  paint(current());
+  document.dispatchEvent(new CustomEvent('t100:theme', { detail: { id: current(), choice } }));
+  for (const a of document.querySelectorAll('a[href]')) carry(a);
+}
 
 const select = document.getElementById('theme');
+select.append(new Option('Auto', 'auto'));
 for (const id of THEME_ORDER) select.append(new Option(THEMES[id].label, id));
-select.value = themeId;
+select.value = choice;
 select.addEventListener('change', () => {
-  themeId = select.value;
-  paint(themeId);
-  try { localStorage.setItem('t100-theme', themeId); } catch (e) { /* storage may be unavailable */ }
-  const search = replaceSearch(location.search, ['theme'], themeId === 'paper' ? '' : `?theme=${themeId}`);
+  choice = select.value;
+  try {
+    if (choice === 'auto') localStorage.removeItem('t100-theme');
+    else localStorage.setItem('t100-theme', choice);
+  } catch (e) { /* storage may be unavailable */ }
+  const search = replaceSearch(location.search, ['theme'], choice === 'auto' ? '' : `?theme=${choice}`);
   history.replaceState(null, '', `${location.pathname}${search}`);
-  document.dispatchEvent(new CustomEvent('t100:theme', { detail: { id: themeId } }));
-  for (const a of document.querySelectorAll('a[href]')) carry(a);
+  apply();
 });
+systemDark.addEventListener('change', () => { if (choice === 'auto') apply(); });
 
 for (const a of document.querySelectorAll('a[href]')) carry(a);
 for (const type of ['pointerover', 'pointerdown', 'focusin', 'contextmenu']) {

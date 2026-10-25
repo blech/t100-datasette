@@ -1,7 +1,37 @@
-.site-header { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:0 0 12px; }
+/* sizes fixed here rather than inherited, so the header is identical on the scrolling pages (15px base) and the maps (14px) */
+.site-header { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:0 0 12px; font-size:15px; line-height:1.5; }
 .crumbs ol { display:flex; flex-wrap:wrap; list-style:none; margin:0; padding:0; font-size:18px; }
 .crumbs li + li::before { content:"/"; margin:0 .4em; color:var(--muted); }
 .crumbs a { color:var(--fg); text-decoration:none; }
 .crumbs a:hover, .crumbs a:focus-visible { text-decoration:underline; }
 .crumbs [aria-current] { font-weight:600; }
-.site-header select { font-size:13px; color:var(--muted); padding:2px 8px; }
+/* one popover for every chart, matrix cell, row label and map: static/common/popover.js */
+.popover { position:fixed; z-index:20; pointer-events:none; display:grid; grid-template-columns:auto auto auto; column-gap:6px; align-items:center;
+  padding:6px 9px; border-radius:6px; font-size:12px; line-height:1.4; white-space:nowrap;
+  background:var(--bg); color:var(--fg); border:1px solid var(--line); box-shadow:0 2px 8px rgba(0,0,0,.2); }
+.popover[hidden] { display:none; }
+.popover.with-extra { grid-template-columns:auto auto auto auto; }
+.popover.text { display:block; white-space:pre-line; max-width:320px; }
+.popover-title { grid-column:1 / -1; font-weight:600; }
+.popover .num { text-align:right; font-variant-numeric:tabular-nums; padding-left:8px; }
+.popover .extra { text-align:right; font-variant-numeric:tabular-nums; padding-left:8px; color:var(--muted); }
+.popover .key { width:10px; height:10px; border-radius:2px; }
+.popover .key-line { height:2px; background:currentColor; }
+.popover .key-other { background:currentColor; opacity:.25; }
+/* the site's sections, top right (their own line on a phone), and the views of this page's subject under a rule */
+.site-header { flex-wrap:wrap; }
+.sections ul { display:flex; gap:14px; list-style:none; margin:0; padding:0; font-size:15px; }
+.sections a { color:var(--muted); text-decoration:none; }
+.sections a:hover, .sections a:focus-visible { color:var(--fg); text-decoration:underline; }
+.sections strong { color:var(--fg); }
+.views { border-top:1px solid var(--rule); padding-top:6px; margin:0 0 16px; font-size:14px; line-height:1.5; color:var(--muted); }
+.views a { color:var(--muted); }
+.views strong { color:var(--fg); }
+@media (max-width:600px) { .site-header .sections { order:3; flex-basis:100%; } }
+/* the footer: the theme chooser and where the data comes from */
+.site-footer { border-top:1px solid var(--rule); margin:40px 0 0; padding:8px 0 24px; font-size:13px; color:var(--muted); }
+.site-footer a { color:var(--muted); }
+.site-footer select { font-size:13px; color:var(--muted); padding:2px 8px; }
+/* pointing at one series fades the others: static/common/highlight.js */
+.faded { opacity:.22; transition:opacity .12s; }
+.popover .current { font-weight:600; }

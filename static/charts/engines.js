@@ -1,6 +1,11 @@
 import * as Plot from '/static/charts/vendor/plot.js';
-import { buildEngineShares, ENGINE_BANDS, ENGINE_COLORS, ENGINE_SERIES } from '/static/charts/src/rollup.js';
+import { setDataLink } from '/static/common/datalink.js';
+import { buildEngineShares, ENGINE_BANDS, ENGINE_SERIES } from '/static/charts/src/rollup.js';
+import { palette, isDark } from '/static/common/palette.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
+import { periodRows, attachPopover } from '/static/common/popover.js';
+import { attachHighlight } from '/static/common/highlight.js';
+import { formatCount } from '/static/common/numbers.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -22,7 +27,6 @@ function pushState() {
   history.replaceState(null, '', `${location.pathname}${s ? `?${s}` : ''}`);
 }
 
-const fmt = (v) => Math.round(v).toLocaleString('en-US');
 
 function draw() {
   const box = $('engine-chart');
@@ -30,23 +34,30 @@ function draw() {
   const res = buildEngineShares(rows, state);
   if (!res.points.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const unit = MEASURES[state.measure];
-  const data = res.points.map((p) => ({ ...p, title: `${p.series}, ${p.year}\n${(p.share * 100).toFixed(1)}% of ${unit} (${fmt(p.amount)})` }));
-  box.append(Plot.plot({
+  const tips = periodRows(res.points, {
+    key: (p) => p.year, order: ENGINE_SERIES, value: (p) => p.share, top: () => 1,
+    format: (v) => `${(v * 100).toFixed(1)}%`, extra: (p) => formatCount(p.amount),
+  });
+  const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100),
     height: 380,
     marginLeft: 48,
     style: { background: 'transparent', fontSize: '12px' },
     x: { label: null, tickFormat: 'd' },
     y: { label: `Share of ${unit}`, tickFormat: '.0%', domain: [0, 1] },
-    color: { domain: ENGINE_SERIES, range: ENGINE_COLORS, legend: true },
+    color: { domain: ENGINE_SERIES, range: palette(isDark()).engines, legend: true },
     marks: [
-      Plot.areaY(data, { x: 'year', y: 'share', fill: 'series', order: ENGINE_SERIES, title: 'title', tip: true }),
+      Plot.areaY(res.points, { x: 'year', y: 'share', fill: 'series', order: ENGINE_SERIES }),
       Plot.ruleY([0]),
+      Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
-  }));
+  });
+  attachHighlight(chart);
+  box.append(...attachPopover(chart, { content: (d) => ({ title: String(d.period), rows: d.rows }), at: (d) => [d.period, 1] }));
 }
 
 async function main() {
+  setDataLink('engines_by_year', {});
   const measure = $('engine-measure');
   for (const [k, label] of Object.entries(MEASURES)) measure.append(new Option(label, k));
   for (const b of ENGINE_BANDS) $('engine-band').append(new Option(b.label, b.value));
@@ -56,6 +67,7 @@ async function main() {
   for (const [id, field] of [['engine-measure', 'measure'], ['engine-kind', 'kind'], ['engine-band', 'band']]) {
     $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });
   }
+  document.addEventListener('t100:theme', () => draw());
   try {
     rows = (await fetchRows(queryUrl('engines_by_year'))).rows;
   } catch (err) {

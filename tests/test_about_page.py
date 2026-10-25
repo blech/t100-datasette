@@ -6,7 +6,7 @@ from tests.helpers import add_segments, get
 from tests.test_rollup_queries import fam, put
 from tests.test_foreign_note import load
 
-SECTIONS = ["direction", "freight", "measures", "groupings", "breaks", "coverage", "source"]
+SECTIONS = ["direction", "freight", "measures", "groupings", "breaks", "coverage", "source", "privacy"]
 
 
 def test_about_page_renders_with_every_section_and_a_breadcrumb(ds):
@@ -35,8 +35,10 @@ def test_landing_page_links_to_about_in_its_prose(ds):
 
 
 @pytest.mark.parametrize("path, anchor", [
-    ("/", "measures"),
+    ("/airports", "measures"),
     ("/airports/ATL", "direction"),
+    ("/airports/ATL/destinations", "direction"),
+    ("/airports/ATL/changes", "direction"),
     ("/airports/ATL/LAX", "direction"),
     ("/airports/ATL/globe", "direction"),
     ("/aircraft", "groupings"),
@@ -64,3 +66,10 @@ def test_foreign_airport_note_links_to_the_direction_section(ds, db_path):
 def test_quad_jets_are_described_as_including_six_engined_aircraft(ds):
     assert "six-engine" in get(ds, "/about").text
     assert "six-engined" in get(ds, "/aircraft/engines").text
+
+
+def test_the_privacy_section_says_what_is_and_is_not_recorded(ds):
+    html = get(ds, "/about").text
+    section = html.split('id="privacy"')[1]
+    for phrase in ["page", "referring site", "anonymous", "IP address", "cookies", "theme"]:
+        assert phrase in section, phrase

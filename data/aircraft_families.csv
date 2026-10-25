@@ -5,49 +5,168 @@ priority,name_regex,family,subfamily,class
 4,737-(6|7|8|9)\d\d,Boeing 737,737 NG,Narrowbody jet
 5,737,Boeing 737,737 Classic,Narrowbody jet
 6,717,Boeing 717,717,Narrowbody jet
-7,727,Boeing 727,727,Narrowbody jet
-8,707,Boeing 707,707,Narrowbody jet
-9,757,Boeing 757,757,Narrowbody jet
-10,767,Boeing 767,767,Widebody jet
-11,777,Boeing 777,777,Widebody jet
-12,787,Boeing 787,787,Widebody jet
-13,747,Boeing 747,747,Widebody jet
-14,A-?318|A319|A320|A321,Airbus A320 family,A320 family,Narrowbody jet
-15,A200-100|A220,Airbus A220,A220,Narrowbody jet
-16,A300|A310,Airbus A300/A310,A300/A310,Widebody jet
-17,A330,Airbus A330,A330,Widebody jet
-18,A340,Airbus A340,A340,Widebody jet
-19,Airbus.*350|A350,Airbus A350,A350,Widebody jet
-20,A380,Airbus A380,A380,Widebody jet
-21,DC-8,McDonnell Douglas DC-8,DC-8,Narrowbody jet
-22,DC-10,McDonnell Douglas DC-10,DC-10,Widebody jet
-23,MD-11,McDonnell Douglas MD-11,MD-11,Widebody jet
-24,L-1011,Lockheed L-1011,L-1011,Widebody jet
-25,MD-90,DC-9 / MD-80 / MD-90,MD-90,Narrowbody jet
-26,Dc9 Super|MD-?8,DC-9 / MD-80 / MD-90,MD-80,Narrowbody jet
-27,DC-9,DC-9 / MD-80 / MD-90,DC-9,Narrowbody jet
-28,CRJ|Canadair RJ|Canadair CRJ,Bombardier CRJ,CRJ,Regional jet
-29,Dornier 328 Jet,Dornier 328 Jet,328 Jet,Regional jet
-30,EMB-?1[789]\d|Embraer 190|ERJ-175|Emb195|EmbraER-EMB-17,Embraer E-Jet,E-Jet,Regional jet
-31,EmbraER-1[34]\d|ERJ-1[34],Embraer ERJ,ERJ,Regional jet
-32,Fokker 100|F28,Fokker 100 / F28,Fokker jet,Regional jet
-33,BAE-146|Avroliner|Rj85,BAe 146 / Avro RJ,BAe 146,Regional jet
-34,ATR-,ATR 42/72,ATR,Turboprop
-35,Dhc8,Dash 8,Dash 8,Turboprop
-36,Dhc7,Dash 7,Dash 7,Turboprop
-37,SaAB-Fairchild 340|Saab 2000|Saab 340,Saab 340 / 2000,Saab,Turboprop
-38,EMB-120,Embraer EMB-120,EMB-120,Turboprop
-39,Beech 1900|Beech C99|King ?air|Beech 200|Turbo-?Commander,Beech turboprops,Beech,Turboprop
-40,Jetstream|BAE-Atp,British Aerospace Jetstream/ATP,Jetstream/ATP,Turboprop
-41,Caravan,Cessna Caravan,Caravan,Turboprop
-42,Metro|Fairchild Metro,Swearingen Metro,Metro,Turboprop
-43,Dornier 228|Dornier 328,Dornier 228/328,Dornier turboprop,Turboprop
-44,Shorts,Shorts,Shorts,Turboprop
-45,F-27|Friendship,Fokker F27,F27,Turboprop
-46,Convair|CV-,Convair,Convair,Turboprop
-47,Twin Otter,Twin Otter,Twin Otter,Turboprop
-48,PC-12,Pilatus PC-12,PC-12,Turboprop
-49,Electra|L100,Lockheed turboprops,Lockheed turboprop,Turboprop
-50,Gulfstream|Challenger|Global|Lear|Falcon|Citation|Hawker|Falcon,Business jets,Business jet,Business jet
-51,Sikorsky|BHT|Bell|Helicopter|Aerospatiale/.*Heli,Helicopters,Helicopter,Helicopter
-52,Cessna|Piper|Beech 18|Islander|Beaver|Otter|Gipps|Float|Navajo|Cherokee,Light piston / utility,Piston,Piston
+7,727-100,Boeing 727,727-100,Narrowbody jet
+8,727-200,Boeing 727,727-200,Narrowbody jet
+9,727,Boeing 727,727,Narrowbody jet
+10,707-(1|2)\d\d,Boeing 707,707-100/200,Narrowbody jet
+11,707-3,Boeing 707,707-300,Narrowbody jet
+12,707-4,Boeing 707,707-400,Narrowbody jet
+13,707,Boeing 707,707,Narrowbody jet
+14,757-300,Boeing 757,757-300,Narrowbody jet
+15,757-200,Boeing 757,757-200,Narrowbody jet
+16,757,Boeing 757,757,Narrowbody jet
+17,767-400,Boeing 767,767-400,Widebody jet
+18,767-300,Boeing 767,767-300,Widebody jet
+19,767-200,Boeing 767,767-200,Widebody jet
+20,767,Boeing 767,767,Widebody jet
+21,777-?F,Boeing 777,777F,Widebody jet
+22,777-300,Boeing 777,777-300,Widebody jet
+23,777-200,Boeing 777,777-200,Widebody jet
+24,777,Boeing 777,777,Widebody jet
+25,787-10,Boeing 787,787-10,Widebody jet
+26,787-?9,Boeing 787,787-9,Widebody jet
+27,787-?8,Boeing 787,787-8,Widebody jet
+28,787,Boeing 787,787,Widebody jet
+29,747-?8,Boeing 747,747-8,Widebody jet
+30,747-400,Boeing 747,747-400,Widebody jet
+31,747-(2|3)|747C,Boeing 747,747-200/300,Widebody jet
+32,747-100|747 ?SP,Boeing 747,747-100/SP,Widebody jet
+33,747,Boeing 747,747,Widebody jet
+34,(A319|A320|A321)-200N,Airbus A320 family,A320neo family,Narrowbody jet
+35,A-?318,Airbus A320 family,A318,Narrowbody jet
+36,A319,Airbus A320 family,A319,Narrowbody jet
+37,A320,Airbus A320 family,A320,Narrowbody jet
+38,A321,Airbus A320 family,A321,Narrowbody jet
+39,A-?318|A319|A320|A321,Airbus A320 family,A320 family,Narrowbody jet
+40,A220-300|BD-500-1A11,Airbus A220,A220-300,Narrowbody jet
+41,A200-100|BD-500-1A10,Airbus A220,A220-100,Narrowbody jet
+42,A200-100|A220,Airbus A220,A220,Narrowbody jet
+43,A300,Airbus A300/A310,A300,Widebody jet
+44,A310,Airbus A300/A310,A310,Widebody jet
+45,A300|A310,Airbus A300/A310,A300/A310,Widebody jet
+46,A330-9,Airbus A330,A330neo,Widebody jet
+47,A330-6,Airbus A330,A330-600 Beluga,Widebody jet
+48,A330-3,Airbus A330,A330-300,Widebody jet
+49,A330-2,Airbus A330,A330-200,Widebody jet
+50,A330,Airbus A330,A330,Widebody jet
+51,A340-200,Airbus A340,A340-200,Widebody jet
+52,A340-300,Airbus A340,A340-300,Widebody jet
+53,A340-500,Airbus A340,A340-500,Widebody jet
+54,A340-600,Airbus A340,A340-600,Widebody jet
+55,A340\s*$,Airbus A340,A340 (model not given),Widebody jet
+56,A340,Airbus A340,A340,Widebody jet
+57,350-1000,Airbus A350,A350-1000,Widebody jet
+58,350-900,Airbus A350,A350-900,Widebody jet
+59,Airbus.*350|A350,Airbus A350,A350,Widebody jet
+60,A380,Airbus A380,A380,Widebody jet
+61,DC-8-[1-5]0,McDonnell Douglas DC-8,DC-8 Series 10-50,Narrowbody jet
+62,DC-8-6\d,McDonnell Douglas DC-8,DC-8 Series 60,Narrowbody jet
+63,DC-8-7\d,McDonnell Douglas DC-8,DC-8 Series 70,Narrowbody jet
+64,DC-8,McDonnell Douglas DC-8,DC-8,Narrowbody jet
+65,DC-10-10,McDonnell Douglas DC-10,DC-10-10,Widebody jet
+66,DC-10-30,McDonnell Douglas DC-10,DC-10-30,Widebody jet
+67,DC-10-(20|40),McDonnell Douglas DC-10,DC-10-20/40,Widebody jet
+68,DC-10,McDonnell Douglas DC-10,DC-10,Widebody jet
+69,MD-11,McDonnell Douglas MD-11,MD-11,Widebody jet
+70,L-1011-0500,Lockheed L-1011,L-1011-500,Widebody jet
+71,L-1011,Lockheed L-1011,L-1011-1/100/200,Widebody jet
+72,L-1011,Lockheed L-1011,L-1011,Widebody jet
+73,MD-90,DC-9 / MD-80 / MD-90,MD-90,Narrowbody jet
+74,Dc9 Super|MD-?8,DC-9 / MD-80 / MD-90,MD-80,Narrowbody jet
+75,DC-9,DC-9 / MD-80 / MD-90,DC-9,Narrowbody jet
+76,CRJ ?1000,Bombardier CRJ,CRJ1000,Regional jet
+77,CRJ ?900,Bombardier CRJ,CRJ900,Regional jet
+78,RJ-?700|CRJ ?705|CRJ ?550,Bombardier CRJ,CRJ550/700/705,Regional jet
+79,RJ-?100|RJ-?200|RJ-440,Bombardier CRJ,CRJ100/200,Regional jet
+80,CRJ|Canadair RJ|Canadair CRJ,Bombardier CRJ,CRJ,Regional jet
+81,Dornier 328 Jet,Dornier 328 Jet,328 Jet,Regional jet
+82,Embraer 190|Emb195,Embraer E-Jet,E190/E195,Regional jet
+83,EMB-170|ERJ-175,Embraer E-Jet,E170/E175,Regional jet
+84,EMB-?1[789]\d|Embraer 190|ERJ-175|Emb195|EmbraER-EMB-17,Embraer E-Jet,E-Jet,Regional jet
+85,135|140,Embraer ERJ,ERJ-135/140,Regional jet
+86,145,Embraer ERJ,ERJ-145,Regional jet
+87,EmbraER-1[34]\d|ERJ-1[34],Embraer ERJ,ERJ,Regional jet
+88,F28,Fokker 100 / F28,F28,Regional jet
+89,Fokker 100,Fokker 100 / F28,Fokker 100,Regional jet
+90,Fokker 100|F28,Fokker 100 / F28,Fokker jet,Regional jet
+91,146-100,BAe 146 / Avro RJ,146-100,Regional jet
+92,146-300,BAe 146 / Avro RJ,146-300,Regional jet
+93,146-200|Avroliner,BAe 146 / Avro RJ,146-200 / RJ85,Regional jet
+94,BAE-146|Avroliner|Rj85,BAe 146 / Avro RJ,BAe 146,Regional jet
+95,ATR-72,ATR 42/72,ATR 72,Turboprop
+96,ATR-42,ATR 42/72,ATR 42,Turboprop
+97,ATR-,ATR 42/72,ATR,Turboprop
+98,Dhc8-100,Dash 8,Dash 8-100,Turboprop
+99,Dhc8-200,Dash 8,Dash 8-200,Turboprop
+100,Dhc8-300,Dash 8,Dash 8-300,Turboprop
+101,Dhc8-400,Dash 8,Dash 8-400,Turboprop
+102,Dhc8,Dash 8,Dash 8,Turboprop
+103,Dhc7,Dash 7,Dash 7,Turboprop
+104,Saab 2000,Saab 340 / 2000,Saab 2000,Turboprop
+105,Saab-?Fairchild 340|Saab 340,Saab 340 / 2000,Saab 340,Turboprop
+106,SaAB-Fairchild 340|Saab 2000|Saab 340,Saab 340 / 2000,Saab,Turboprop
+107,EMB-120,Embraer EMB-120,EMB-120,Turboprop
+108,King ?air.*Queen Air,Beech turboprops,Queen Air,Turboprop
+109,Turbo-?Commander,Beech turboprops,Turbo Commander,Turboprop
+110,Beech 1900,Beech turboprops,Beech 1900,Turboprop
+111,Beech C99,Beech turboprops,Beech C99,Turboprop
+112,King ?air|Beech 200,Beech turboprops,King Air,Turboprop
+113,Beech 1900|Beech C99|King ?air|Beech 200|Turbo-?Commander,Beech turboprops,Beech,Turboprop
+114,Jetstream 41,British Aerospace Jetstream/ATP,Jetstream 41,Turboprop
+115,BAE-Atp,British Aerospace Jetstream/ATP,ATP,Turboprop
+116,Jetstream,British Aerospace Jetstream/ATP,Jetstream 1/31,Turboprop
+117,Jetstream|BAE-Atp,British Aerospace Jetstream/ATP,Jetstream/ATP,Turboprop
+118,Grand Caravan|208B,Cessna Caravan,Grand Caravan,Turboprop
+119,Caravan Ii,Cessna Caravan,Caravan II (406),Turboprop
+120,Caravan,Cessna Caravan,Caravan 208,Turboprop
+121,Caravan,Cessna Caravan,Caravan,Turboprop
+122,Metro Merlin,Swearingen Metro,Metro Merlin,Turboprop
+123,Metro Ii\b,Swearingen Metro,Metro II,Turboprop
+124,Metro Iii|Metro 23,Swearingen Metro,Metro III / 23,Turboprop
+125,Metro|Fairchild Metro,Swearingen Metro,Metro,Turboprop
+126,Dornier 228,Dornier 228/328,Dornier 228,Turboprop
+127,Dornier 328,Dornier 228/328,Dornier 328,Turboprop
+128,Dornier 228|Dornier 328,Dornier 228/328,Dornier turboprop,Turboprop
+129,Skyvan|SC-7,Shorts,Skyvan,Turboprop
+130,Shorts 330,Shorts,Shorts 330,Turboprop
+131,Shorts 360,Shorts,Shorts 360,Turboprop
+132,Belfast,Shorts,Belfast,Turboprop
+133,Shorts,Shorts,Shorts,Turboprop
+134,F-27|Friendship,Fokker F27,F27,Turboprop
+135,Convair 880|Convair 990,Convair,Convair 880/990 jets,Turboprop
+136,CV-240|CV-340,Convair,Convair 240/340/440,Turboprop
+137,CV-,Convair,Convair turboprop conversions,Turboprop
+138,Convair|CV-,Convair,Convair,Turboprop
+139,DHC-6-400,Twin Otter,Twin Otter 400,Turboprop
+140,Twin Otter,Twin Otter,Twin Otter (earlier series),Turboprop
+141,Twin Otter,Twin Otter,Twin Otter,Turboprop
+142,PC-12,Pilatus PC-12,PC-12,Turboprop
+143,Electra,Lockheed turboprops,L-188 Electra,Turboprop
+144,L100,Lockheed turboprops,L-100 Hercules,Turboprop
+145,Electra|L100,Lockheed turboprops,Lockheed turboprop,Turboprop
+146,Gulfstream|Challenger|Global|Lear|Falcon|Citation|Hawker|Falcon,Business jets,Business jet,Business jet
+147,Bell B-47,Bell helicopters,Bell 47,Helicopter
+148,\bHU-1H\b|(\bBell\b|\bBHT\b).*\b20[45]\b,Bell helicopters,Bell 204 (Huey),Helicopter
+149,(\bBell\b|\bBHT\b).*\b206,Bell helicopters,Bell 206,Helicopter
+150,(\bBell\b|\bBHT\b).*\b212\b,Bell helicopters,Bell 212,Helicopter
+151,(\bBell\b|\bBHT\b).*\b407\b,Bell helicopters,Bell 407,Helicopter
+152,(\bBell\b|\bBHT\b).*\b412\b,Bell helicopters,Bell 412,Helicopter
+153,(\bBell\b|\bBHT\b),Bell helicopters,Bell (other models),Helicopter
+154,Sikorsky S-51,Sikorsky helicopters,S-51,Helicopter
+155,Sikorsky S-55,Sikorsky helicopters,S-55,Helicopter
+156,Sikorsky S-58,Sikorsky helicopters,S-58,Helicopter
+157,Sikorsky S-61,Sikorsky helicopters,S-61,Helicopter
+158,Sikorsky S-62,Sikorsky helicopters,S-62,Helicopter
+159,Sikorsky S-76,Sikorsky helicopters,S-76,Helicopter
+160,Sikorsky S-\d,Sikorsky helicopters,Sikorsky (other models),Helicopter
+161,\bAS-?350\b|Astar,Airbus helicopters,AS350 (Eurocopter),Helicopter
+162,\bBO-?105,Airbus helicopters,BO-105 (MBB),Helicopter
+163,Alouette,Airbus helicopters,Alouette (Sud Aviation),Helicopter
+164,Eurocop|Eurocomp|Air Bus Euro|Aerospatiale.*Heli,Airbus helicopters,Airbus (other models),Helicopter
+165,Agusta.*\bA-?119\b,Leonardo helicopters,Agusta A119,Helicopter
+166,\bAW-?139\b,Leonardo helicopters,AgustaWestland AW139,Helicopter
+167,Agusta,Leonardo helicopters,Leonardo (other models),Helicopter
+168,Robinson R-?44\b,Robinson helicopters,R44,Helicopter
+169,Robinson R-?\d,Robinson helicopters,Robinson (other models),Helicopter
+170,Hughes.*\b500\b,Hughes / MD helicopters,500/530,Helicopter
+171,Hughes.*\b300\b,Hughes / MD helicopters,300,Helicopter

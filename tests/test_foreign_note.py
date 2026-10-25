@@ -41,4 +41,4 @@ def test_globe_page_flags_foreign_airports_and_not_the_chooser(ds, db_path):
     load(db_path)
     assert 'data-foreign="1"' in get(ds, "/airports/LHR/globe").text and NOTE in get(ds, "/airports/LHR/globe").text
     assert NOTE not in get(ds, "/airports/ATL/globe").text
-    assert NOTE not in get(ds, "/globe").text
+    assert NOTE not in get(ds, "/airports/globe").text
