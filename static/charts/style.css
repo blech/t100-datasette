@@ -23,6 +23,8 @@
 .key-row .scale-choice { margin: 0; }
 .matrix-key:empty { display: none; }
 .matrix-key svg { display: block; }
+/* on a desktop, at the far end of the Colour choice's line */
+@media (min-width: 700px) { .matrix-key { margin-left: auto; } }
 #change-table { margin-top: 8px; }
 #size-chart svg, #pairs-chart svg { --plot-background: var(--bg); }
 :is(#aircraft-table, #airline-table) { overflow-x: auto; }
