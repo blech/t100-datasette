@@ -44,6 +44,11 @@
       T-100 only includes flights with a US airport at one end. For an airport outside the US, only its US routes appear: Heathrow's page lists its flights to and from the US, not to Paris. Flights between two foreign airports are not in the data at all, even by US airlines.
     </p>
 
+    <h2 id="foreign-airlines">US and foreign airlines</h2>
+    <p>
+      US airlines report every segment they operate, including flights between two foreign airports (a US airline's Frankfurt&ndash;Delhi leg is in the data). Foreign airlines report only segments with a US airport at one end, so what the data shows of a foreign airline is a sample of its network and its fleet: the aircraft it sends to the US, not the ones it keeps at home. Shares of traffic at US airports are complete for both. BTS marks foreign airlines with carrier group 0 in the airline lookup and on each segment; US airlines are groups 1 to 9. Foreign airlines never appear in the domestic table, and the <code>domestic</code> column on the <code>t100</code> view describes the flight, not the airline.
+    </p>
+
     <h2 id="freight">Freight-only and belly cargo</h2>
     <p>
       BTS gives each segment a service class. Scheduled and non-scheduled passenger flights (classes F and L) are <strong>passenger flights</strong>, and any cargo they carry in the hold is <strong>belly cargo</strong>. All-cargo flights (classes G and P) are <strong>freight-only</strong>, flown by freighter aircraft. The charts' "passenger flights", "freight flights" and "all flights" options mean exactly these. "Freight" totals on a passenger flight are belly cargo; a freight-only flight has essentially no passengers.
