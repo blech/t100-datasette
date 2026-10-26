@@ -1,9 +1,9 @@
 -- Generated from build_database.py (create_schema + create_indexes). Regenerate rather than edit by hand.
 
 CREATE TABLE "aircraft_carrier_year" (
-   [aircraft] TEXT, [year] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [aircraft] TEXT, [year] INTEGER, [group_id] TEXT, [airline_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
-   PRIMARY KEY ([aircraft], [year], [group_id], [domestic], [service_class])
+   PRIMARY KEY ([aircraft], [year], [group_id], [airline_id], [domestic], [service_class])
 ) WITHOUT ROWID;
 
 CREATE TABLE "aircraft_family" (

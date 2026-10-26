@@ -211,7 +211,7 @@ def test_carrier_route_by_year_sums_members_and_keeps_pairs_flown_12_times(ds, d
 
 def test_aircraft_detail_gives_one_aircrafts_years_by_airline_service_and_kind(ds, db_path):
     def row(year, aircraft, group, domestic, service_class, deps):
-        return dict(year=year, aircraft=aircraft, group_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
+        return dict(year=year, aircraft=aircraft, group_id=group, airline_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
                     deps=deps, seats=deps * 100, passengers=deps * 80, freight=deps * 1000)
     put(db_path, "aircraft_carrier_year", [row(2001, "614", "delta", 1, "F", 4), row(2019, "614", "delta", 1, "F", 10), row(2019, "614", "delta", 1, "L", 5),
                                            row(2019, "614", "united", 0, "G", 2), row(2019, "619", "delta", 1, "F", 99)])
@@ -224,7 +224,7 @@ def test_aircraft_detail_gives_one_aircrafts_years_by_airline_service_and_kind(d
 
 def test_family_aircraft_gives_each_aircraft_of_a_family_by_year_service_and_kind(ds, db_path):
     def row(year, aircraft, group, domestic, service_class, deps):
-        return dict(year=year, aircraft=aircraft, group_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
+        return dict(year=year, aircraft=aircraft, group_id=group, airline_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
                     deps=deps, seats=deps * 100, passengers=deps * 80, freight=deps * 1000)
     put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800"), dict(ac_typeid="619", ac_group="6", name="Boeing 737-300"),
                                     dict(ac_typeid="852", ac_group="8", name="DC-8-63F")])
@@ -260,7 +260,7 @@ def test_aircraft_by_year_gives_each_aircraft_with_its_family_maker_and_kind(ds,
 
 def _aircraft_years(db_path):
     def row(year, aircraft, deps):
-        return dict(year=year, aircraft=aircraft, group_id="delta", group_name="Delta", domestic=1, service_class="F",
+        return dict(year=year, aircraft=aircraft, group_id="delta", airline_id="delta", group_name="Delta", domestic=1, service_class="F",
                     deps=deps, seats=deps * 100, passengers=deps * 80, freight=0)
     put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800")])
     put(db_path, "aircraft_family", [dict(aircraft_type="614", name="Boeing 737-800", family="Boeing 737", subfamily="737-800", aircraft_class="Narrowbody jet", fallback=0)])
@@ -289,7 +289,7 @@ def test_the_family_descriptions_say_what_an_empty_year_does():
 def _airlines_2021(db_path):
     """Delta flies mostly passengers, Atlas only freight, Zeta both; two 737 aircraft and a DC-8."""
     def row(aircraft, group, domestic, service_class, deps, passengers, freight, year=2021):
-        return dict(year=year, aircraft=aircraft, group_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
+        return dict(year=year, aircraft=aircraft, group_id=group, airline_id=group, group_name=group.title(), domestic=domestic, service_class=service_class,
                     deps=deps, seats=passengers * 2, passengers=passengers, freight=freight)
     put(db_path, "aircraft_types", [dict(ac_typeid="614", ac_group="6", name="Boeing 737-800"), dict(ac_typeid="619", ac_group="6", name="Boeing 737-300"),
                                     dict(ac_typeid="852", ac_group="8", name="DC-8-63F")])
@@ -359,7 +359,7 @@ def test_the_family_descriptions_name_the_sorts():
 def test_an_airlines_aircraft_query_lists_its_groups_aircraft_with_their_family(ds, db_path):
     put(db_path, "aircraft_types", [dict(ac_typeid="614", name="Boeing 737-800", maker="Boeing", kind="Jet, twin engine")])
     put(db_path, "aircraft_family", [dict(aircraft_type="614", name="Boeing 737-800", family="Boeing 737", subfamily="737 NG", aircraft_class="jet", fallback=0)])
-    row = lambda group, aircraft, domestic, cls, pax: dict(aircraft=aircraft, year=2019, group_id=group, group_name=group, domestic=domestic, service_class=cls,
+    row = lambda group, aircraft, domestic, cls, pax: dict(aircraft=aircraft, year=2019, group_id=group, airline_id=group, group_name=group, domestic=domestic, service_class=cls,
                                                           deps=1, seats=pax, passengers=pax, freight=0)
     put(db_path, "aircraft_carrier_year", [row("delta", "614", 1, "F", 10), row("delta", "614", 1, "L", 5), row("delta", "614", 0, "F", 7),
                                            row("delta", "999", 1, "G", 0), row("united", "614", 1, "F", 99)])
@@ -368,3 +368,23 @@ def test_an_airlines_aircraft_query_lists_its_groups_aircraft_with_their_family(
         ("614", "Boeing 737-800", "Boeing 737", "Boeing", "domestic", "passenger", 15),
         ("614", "Boeing 737-800", "Boeing 737", "Boeing", "international", "passenger", 7),
         ("999", "Type 999", "Unknown", "Unknown maker", "domestic", "freight", 0)]
+
+
+def _alaska_and_virgin(db_path):
+    row = lambda airline, year, deps: dict(aircraft="694", year=year, group_id="alaska", airline_id=airline, group_name="Alaska (incl. Virgin America)",
+                                           domestic=1, service_class="F", deps=deps, seats=deps * 150, passengers=deps * 100, freight=0)
+    put(db_path, "aircraft_carrier_year", [row("21171", 2017, 10), row("21171", 2018, 2), row("19930", 2018, 8), row("19930", 2019, 6)])
+
+
+def test_an_airlines_aircraft_query_gives_the_whole_group_or_one_member(ds, db_path):
+    _alaska_and_virgin(db_path)
+    years = lambda airline: [(r["year"], r["deps"]) for r in get_json(ds, f"/t100/carrier_aircraft_by_year.json?_shape=objects&group=alaska&airline={airline}")["rows"]]
+    assert years("") == [(2017, 10), (2018, 10), (2019, 6)]
+    assert years("21171") == [(2017, 10), (2018, 2)]
+    assert years("19930") == [(2018, 8), (2019, 6)]
+
+
+def test_the_aircraft_queries_add_a_groups_members_together(ds, db_path):
+    _alaska_and_virgin(db_path)
+    rows = get_json(ds, "/t100/aircraft_detail.json?_shape=objects&aircraft=694&group=")["rows"]
+    assert [(r["year"], r["group_id"], r["deps"]) for r in rows] == [(2017, "alaska", 10), (2018, "alaska", 10), (2019, "alaska", 6)]
