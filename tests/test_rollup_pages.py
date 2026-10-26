@@ -232,3 +232,8 @@ def test_the_families_matrix_has_its_own_address_and_wording(ds):
     assert "Aircraft families over time" in html and "airline" not in html.split('<p class="intro">')[1].split("</p>")[0].lower()
     assert "Every airline" not in html and "Every US airport" not in html
     assert 'id="matrix-group"' not in html
+
+
+def test_the_groups_page_tells_the_long_haul_story_beneath_its_chart(ds):
+    html = get(ds, "/aircraft/groups").text
+    assert html.index('id="engine-chart"') < html.index("In 1990 most flights of 3,000 miles") < html.index("Freight tells a slower version")
