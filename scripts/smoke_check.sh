@@ -32,7 +32,8 @@ check 200 /-/derived                                              '"ok": true'
 check 200 /about                                                   "Known gaps"
 check 200 /aircraft                                                "aircraft-table"
 check 200 /aircraft/over-time                                     "matrix-kind"
-check 200 /aircraft/engines                                         "engine-chart"
+check 200 /aircraft/groups                                          "engine-chart"
+check 301 /aircraft/engines
 check 200 /aircraft/makers                                          "maker-chart"
 check 200 /aircraft/boeing-737                                      "family-chart"
 check 200 /aircraft/boeing-737/boeing-737-800                        "aircraft_detail"
@@ -43,6 +44,7 @@ check 200 /airlines/over-time                                       "matrix-kind
 check 301 "/airlines?scale=busiest"
 check 200 /airlines/delta                                          "size-chart"
 check 200 /airlines/delta/routes                                   "matrix"
+check 200 /airlines/delta/aircraft                                 'data-kind="fleet"'
 check 200 /airlines/delta/globe                                    'id="globe"'
 check 404 /airlines/no-such-airline
 check 301 /carriers
@@ -73,6 +75,7 @@ check 200 "/t100/maker_by_year.json?_shape=objects"                 '"maker": "B
 check 404 /airports/SFO/LH
 check 200 "/t100/airline_list.json?_shape=objects"                  '"Delta (incl. Northwest)"'
 check 200 "/t100/carrier_route_counts.json?group=delta&airline=&min=12&_shape=objects" '"pairs"'
+check 200 "/t100/carrier_aircraft_by_year.json?group=alaska&airline=21171&_shape=objects" '"aircraft_name"'
 check 403 "/t100/-/query.json?sql=select+1"
 check 403 /t100.db
 
