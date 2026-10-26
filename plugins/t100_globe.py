@@ -143,6 +143,23 @@ async def is_foreign(datasette, code):
     return bool(row) and row[0] is not None and not 1 <= row[0] <= 93
 
 
+async def airport_label(datasette, code):
+    """The line beneath an airport page's heading: its name and its city (BTS's name for it, else OpenFlights' city
+    and country), as the airports query has them; whichever we know, or empty."""
+    result = await datasette.get_database("t100").execute(
+        """SELECT a.name, COALESCE(n.name, a.city || ', ' || a.country)
+           FROM (SELECT 1) LEFT JOIN (
+             SELECT name, city, country FROM airport_overrides WHERE code = :code
+             UNION ALL
+             SELECT name, city, country FROM openflights_airports
+             WHERE iata_code = :code AND :code NOT IN (SELECT code FROM airport_overrides)
+           ) AS a LEFT JOIN airport_names AS n ON n.code = :code
+           LIMIT 1""",
+        {"code": code},
+    )
+    return " · ".join(part for part in result.first() if part)
+
+
 # --- front page stories: rows from the canned queries -> the numbers the prose quotes, or None without data
 
 def prose_count(n):
@@ -226,7 +243,8 @@ async def globe_page(datasette, request):
     steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
     html = await datasette.render_template(
         "globe.html",
-        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1]},
+        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1],
+         "label": await airport_label(datasette, origin) if origin else ""},
         request=request,
     )
     return Response.html(html)
@@ -360,6 +378,7 @@ def airport_view(template, crumb):
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
                 "crumbs": trail(datasette, *steps),
                 "foreign": await is_foreign(datasette, origin),
+                "label": await airport_label(datasette, origin),
             },
             request=request,
         )

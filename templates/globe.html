@@ -14,7 +14,8 @@
 
   <header id="header">
     {% include "_nav.html" %}
-    <div id="title"></div>
+    <div id="title">{% if origin %}{{ origin }}: route map{% endif %}</div>
+    {% if origin %}<div id="subtitle">{{ label }}</div>{% endif %}
     <div id="stats"></div>
     <div class="picker-row">
       <input id="picker" list="airport-list" placeholder="Airport code or name" autocomplete="off" aria-label="Choose an airport">

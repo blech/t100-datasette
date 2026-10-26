@@ -5,6 +5,7 @@ html, body { height:100%; overflow:hidden; font-size:14px; line-height:1.4; }
    doesn't move when switching between a page and its map */
 #header { position:fixed; top:max(24px, env(safe-area-inset-top)); left:0; right:0; max-width:960px; margin:0 auto; padding:0 16px; pointer-events:none; }
 #header > * { pointer-events:auto; }
+#subtitle { color:var(--muted); }
 #stats { color:var(--muted); font-variant-numeric:tabular-nums; min-height:1.4em; }
 .picker-row { display:flex; gap:12px; align-items:center; margin-top:6px; }
 #picker { font:inherit; color:var(--fg); background:var(--panel); border:1px solid var(--muted); border-radius:8px; padding:4px 10px; width:16em; max-width:60vw; }

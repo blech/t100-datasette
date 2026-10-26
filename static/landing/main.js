@@ -3,6 +3,7 @@ import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { SORTS, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel } from './src/table.js';
 import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
+import { airportTip, groupTip } from '/static/charts/src/labels.js';
 
 const ROWS_SHOWN = 20;
 const minYear = Number(document.body.dataset.minYear);
@@ -11,6 +12,7 @@ const state = parseState(location.search, minYear, maxYear);
 const $ = (id) => document.getElementById(id);
 
 let rows = [];
+let airportInfo = new Map(); // code -> name, ICAO code and city, for the hovers; until it loads they show the code alone
 const open = new Set(); // the cities opened to list their airports
 let loadSeq = 0;
 
@@ -27,10 +29,11 @@ const countCell = (n, noun) => cell(formatCount(n), 'num', `${exactCount(n)} ${n
 const tonsCell = (pounds) => cell(formatTons(pounds), 'num', `${exactCount(pounds)} lb`);
 const percentCell = (pct) => cell(pct === null ? '–' : `${pct.toFixed(1)}%`, 'num');
 
-function link(href, text) {
+function link(href, text, title) {
   const a = document.createElement('a');
   a.href = href;
   a.textContent = text;
+  if (title !== undefined) a.title = title;
   return a;
 }
 
@@ -47,7 +50,7 @@ function render() {
     const tr = document.createElement('tr');
     if (member) tr.className = 'member';
     const code = cell('', 'code');
-    code.append(link(airportHref(r.origin, state.sort), r.origin));
+    code.append(link(airportHref(r.origin, state.sort), r.origin, airportTip(r.origin, airportInfo)));
     const more = cell('', 'more');
     more.append(link(`/airports/${encodeURIComponent(r.origin)}/globe${state.year === 'all' ? '' : `?year=${state.year}`}`, 'Map →')); // all years: the map's latest
     tr.append(code, cell(r.origin_city_name || '', 'city'), countCell(r.passengers, 'passengers'), countCell(r.deps, 'departures'),
@@ -60,19 +63,20 @@ function render() {
   }
   // a city's row: a ▸ that opens it, its name, and its airports' totals (destinations counted once for the city)
   for (const c of topBy(groupCities(rows), state.sort, ROWS_SHOWN)) {
+    const tip = groupTip({ label: c.name, codes: c.airports.map((a) => a.origin) }, airportInfo);
     const tr = document.createElement('tr');
     tr.className = 'city-row';
     const isOpen = open.has(c.key);
     const toggle = Object.assign(document.createElement('button'), { type: 'button', className: 'twist', textContent: isOpen ? '▾' : '▸' });
     toggle.setAttribute('aria-expanded', String(isOpen));
     toggle.setAttribute('aria-label', `${isOpen ? 'Hide' : 'Show'} ${c.name}'s airports`);
-    toggle.title = c.airports.map((a) => a.origin).join(', ');
+    toggle.title = tip;
     toggle.addEventListener('click', () => { if (open.has(c.key)) open.delete(c.key); else open.add(c.key); render(); body.querySelector(`[data-key="${c.key}"]`)?.focus(); });
     toggle.dataset.key = c.key;
     const first = cell('', 'code');
     first.append(toggle);
     const name = cell(c.name, 'city');
-    name.title = c.airports.map((a) => a.origin).join(', ');
+    name.title = tip;
     tr.append(first, name, countCell(c.passengers, 'passengers'), countCell(c.deps, 'departures'), percentCell(loadFactor(c)),
       cell(exactCount(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
     body.append(tr);
@@ -121,3 +125,5 @@ for (const th of document.querySelectorAll('th[data-sort]')) {
 }
 
 load();
+// the names for the hovers come once, for every year; the table doesn't wait for them
+fetchRows(queryUrl('airports')).then((res) => { airportInfo = new Map(res.rows.map((a) => [a.code, a])); render(); }, (err) => console.error(err));
