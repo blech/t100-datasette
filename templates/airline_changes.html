@@ -19,6 +19,7 @@
       Flying in the data from {{ first_year }} to {{ last_year }}.
       {% if parent %}One of the airlines counted together as <a href="/airlines/{{ parent.id }}">{{ parent.name }}</a>.{% endif %}
     </p>
+    {% set what = "routes it flies elsewhere aren't listed" %}{% include "_foreign_airline_note.html" %}
 
 
     <p class="chart-sentence">Count airport pairs flown at least <select id="al-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> in the year, in either direction.</p>

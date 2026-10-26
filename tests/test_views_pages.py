@@ -106,7 +106,7 @@ def test_a_foreign_airlines_pages_say_the_data_is_only_its_us_flights(ds, db_pat
     for airline, group in [("19540", "british-airways"), ("19790", "delta")]:
         put(db_path, "carrier_group_year", [dict(year=2019, airline_id=airline, group_id=group, group_name=group, domestic=0,
                                                  service_class="F", deps=4, seats=400, passengers=300, freight=0)])
-    for tail in ["", "/routes", "/aircraft"]:
+    for tail in ["", "/routes", "/aircraft", "/changes", "/globe"]:
         assert 'id="foreign-airline-note"' in get(ds, f"/airlines/british-airways{tail}").text, tail
         assert 'id="foreign-airline-note"' in get(ds, f"/airlines/19540{tail}").text, tail
         assert 'id="foreign-airline-note"' not in get(ds, f"/airlines/delta{tail}").text, tail
