@@ -39,6 +39,7 @@ def register_routes():
         (r"^/airlines/over-time$", rollup_page("airlines")),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/changes$", airline_changes_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/routes$", airline_routes_page),
+        (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/aircraft$", airline_aircraft_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)$", airline_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/globe$", airline_globe_page),
         # the paths airlines had before the URL used the word the pages do
@@ -112,10 +113,11 @@ def views_for(path):
             return make(*aircraft, current=views.index(rest) if rest in views else -1)
         case ["airlines"] | ["airlines", "over-time"]:
             return make(("Airlines", "/airlines", None), ("Over time", "/airlines/over-time", None), current=len(parts) - 1)
-        case ["airlines", slug, *rest] if rest in ([], ["routes"], ["changes"], ["globe"]):
+        case ["airlines", slug, *rest] if rest in ([], ["routes"], ["aircraft"], ["changes"], ["globe"]):
             return make(("Over time", f"/airlines/{slug}", None), ("Routes", f"/airlines/{slug}/routes", None),
-                        ("Changes", f"/airlines/{slug}/changes", None), ("Map", f"/airlines/{slug}/globe", "map-link"),
-                        current=[[], ["routes"], ["changes"], ["globe"]].index(rest))
+                        ("Aircraft", f"/airlines/{slug}/aircraft", None), ("Changes", f"/airlines/{slug}/changes", None),
+                        ("Map", f"/airlines/{slug}/globe", "map-link"),
+                        current=[[], ["routes"], ["aircraft"], ["changes"], ["globe"]].index(rest))
     return []
 
 
@@ -591,6 +593,7 @@ def airline_view(template, tail):
 airline_page = airline_view("airline.html", ())
 airline_changes_page = airline_view("airline_changes.html", (("changes", None),))
 airline_routes_page = airline_view("airline_routes.html", (("routes", None),))
+airline_aircraft_page = airline_view("airline_aircraft.html", (("aircraft", None),))
 
 
 async def about_page(datasette, request):

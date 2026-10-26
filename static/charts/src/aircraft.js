@@ -121,6 +121,12 @@ export function carriedSearch({ measure, flights, service }) {
   return s ? `?${s}` : '';
 }
 
+// the same, from an airline's aircraft matrix: the family or aircraft page opens split by airline with this one picked out
+export function airlineSearch(group, settings) {
+  const carried = carriedSearch(settings);
+  return `${carried ? `${carried}&` : '?'}split=airline&highlight=airline:${group}`;
+}
+
 // the data behind one year's bar: the family's airlines (or one aircraft's) that year, sorted by the measure when it is one the
 // query sorts by, and narrowed to the chart's kind of flight and routes
 export function airlinesLink({ family, aircraft = '', year, measure, flights, service }) {
