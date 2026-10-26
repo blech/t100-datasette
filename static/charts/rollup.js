@@ -23,7 +23,7 @@ const KINDS = {
 const kind = document.body.dataset.kind;
 const page = KINDS[kind];
 const body = document.body.dataset;
-const queryParams = kind === 'routes' ? { group: body.group, airline: body.airline } : kind === 'fleet' ? { group: body.group } : {};
+const queryParams = kind === 'routes' ? { group: body.group, airline: body.airline } : kind === 'fleet' ? { group: body.group, airline: body.airline } : {};
 const aircraftLike = kind === 'aircraft' || kind === 'fleet';
 const latestFullYear = Number(document.body.dataset.latestYear);
 const $ = (id) => document.getElementById(id);

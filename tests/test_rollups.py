@@ -147,22 +147,22 @@ def test_family_detail_year_splits_by_subfamily_and_carrier_group(db_path):
     assert rows == [("737 MAX", "delta", 3, 45, 30, 0), ("737 NG", "delta", 14, 210, 140, 6)]
 
 
-def test_aircraft_carrier_year_gives_each_aircraft_its_airline_groups(db_path):
+def test_aircraft_carrier_year_gives_each_aircraft_its_airline_groups_and_their_member_airlines(db_path):
     add_types(db_path, *TYPES)
     add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."), ("19386", "B1", "Northwest Airlines Inc."))
     add_segments(db_path, "t100_domestic", [
         flight(aircraft_type="614", carrier_entity="A1", **{"class": "F"}, deps=10, pax=100, seats=150, freight=5),
         flight(aircraft_type="614", carrier_entity="B1", **{"class": "F"}, deps=4, pax=40, seats=60, freight=1),
         flight(aircraft_type="839", carrier_entity="A1", **{"class": "F"}, deps=3, pax=30, seats=45, freight=0)])
-    rows = query(db_path, "SELECT aircraft, group_id, deps, seats, passengers, freight FROM aircraft_carrier_year ORDER BY aircraft")
-    assert rows == [("614", "delta", 14, 210, 140, 6), ("839", "delta", 3, 45, 30, 0)]
+    rows = query(db_path, "SELECT aircraft, group_id, airline_id, deps, seats, passengers, freight FROM aircraft_carrier_year ORDER BY aircraft, airline_id")
+    assert rows == [("614", "delta", "19386", 4, 60, 40, 1), ("614", "delta", "19790", 10, 150, 100, 5), ("839", "delta", "19790", 3, 45, 30, 0)]
 
 
 def test_aircraft_carrier_year_totals_match_type_year_and_keep_unknowns(db_path):
     add_types(db_path, *TYPES)
     add_segments(db_path, "t100_domestic", [flight(aircraft_type="614", carrier_entity="NOPE", **{"class": "F"}, deps=2), flight(aircraft_type=None, carrier_entity="NOPE", **{"class": "G"}, deps=3)])
     assert query(db_path, "SELECT SUM(deps), SUM(freight) FROM aircraft_carrier_year") == query(db_path, "SELECT SUM(deps), SUM(freight) FROM type_year")
-    assert {r[0] for r in query(db_path, "SELECT group_id FROM aircraft_carrier_year")} == {"unknown"}
+    assert set(query(db_path, "SELECT group_id, airline_id FROM aircraft_carrier_year")) == {("unknown", "unknown")}
 
 
 def test_family_detail_year_totals_match_family_year(db_path):
@@ -385,3 +385,11 @@ def test_airport_carrier_year_adds_up_to_airport_year_totals(db_path):
     mine = query(db_path, "SELECT year, origin, SUM(deps), SUM(seats), SUM(passengers), SUM(freight) FROM airport_carrier_year GROUP BY year, origin")
     theirs = query(db_path, "SELECT year, origin, deps, seats, passengers, freight FROM airport_year_totals")
     assert mine == theirs and mine[0][2:] == (6, 750, 440, 12)
+
+
+def test_an_aircraft_carrier_year_from_before_member_airlines_is_recreated_with_them(tmp_path):
+    from build_database import create_schema
+    conn = sqlite3.connect(tmp_path / "old.db")
+    conn.execute("CREATE TABLE aircraft_carrier_year (aircraft TEXT, year INTEGER, group_id TEXT, group_name TEXT)")
+    create_schema(conn)
+    assert "airline_id" in [r[1] for r in conn.execute("PRAGMA table_info(aircraft_carrier_year)")]

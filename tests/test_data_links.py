@@ -22,7 +22,7 @@ def seed(db_path):
         put(db_path, "carrier_group", [dict(airline_id=airline, group_id=group, group_name=group_name, airline_name=name)])
         put(db_path, "family_detail_year", [dict(family="Boeing 737", year=2019, subfamily="737-800", group_id=group, group_name=group_name,
                                                  domestic=1, service_class="F", deps=10, seats=1000, passengers=800, freight=0)])
-        put(db_path, "aircraft_carrier_year", [dict(aircraft="622", year=2019, group_id=group, group_name=group_name, domestic=1, service_class="F",
+        put(db_path, "aircraft_carrier_year", [dict(aircraft="622", year=2019, group_id=group, airline_id=airline, group_name=group_name, domestic=1, service_class="F",
                                                     deps=10, seats=1000, passengers=800, freight=0)])
     put(db_path, "aircraft_types", [dict(ac_typeid="622", ac_group="6", name="Boeing 737-800")])
     add_segments(db_path, "t100_domestic", [

@@ -124,11 +124,11 @@ CREATE TABLE IF NOT EXISTS "family_detail_year" (
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([family], [year], [subfamily], [group_id], [domestic], [service_class])
 ) WITHOUT ROWID;
--- Yearly totals per aircraft (aircraft_types.ac_typeid) and airline group (for an aircraft's own page), by rebuild_aircraft_carrier_year()
+-- Yearly totals per aircraft (aircraft_types.ac_typeid), airline group and member airline (for an aircraft's own page and an airline's aircraft), by rebuild_aircraft_carrier_year()
 CREATE TABLE IF NOT EXISTS "aircraft_carrier_year" (
-   [aircraft] TEXT, [year] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [aircraft] TEXT, [year] INTEGER, [group_id] TEXT, [airline_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
-   PRIMARY KEY ([aircraft], [year], [group_id], [domestic], [service_class])
+   PRIMARY KEY ([aircraft], [year], [group_id], [airline_id], [domestic], [service_class])
 ) WITHOUT ROWID;
 -- Totals by BTS aircraft_group (6 twin jet, 7 tri-jet, 8 quad-jet...) and distance band (lower bound, miles), by rebuild_aircraft_group_band_year()
 CREATE TABLE IF NOT EXISTS "aircraft_group_band_year" (
@@ -168,7 +168,8 @@ def _view_sql():
 
 
 # derived tables that gained a column: an older copy is dropped (it is only ever rebuilt data) so the rebuild recreates it
-_ADDED_COLUMNS = [("carrier_group", "airline_name"), ("carrier_group_year", "airline_id"), ("carrier_route_year", "airline_id"), ("carrier_route_year", "domestic_deps")]
+_ADDED_COLUMNS = [("carrier_group", "airline_name"), ("carrier_group_year", "airline_id"), ("carrier_route_year", "airline_id"), ("carrier_route_year", "domestic_deps"),
+                  ("aircraft_carrier_year", "airline_id")]
 
 
 def drop_outdated_derived_tables(conn: sqlite3.Connection) -> list:
@@ -440,20 +441,22 @@ def rebuild_airport_carrier_year(conn: sqlite3.Connection) -> int:
 
 
 def rebuild_aircraft_carrier_year(conn: sqlite3.Connection) -> int:
-    """Recompute aircraft_carrier_year: each aircraft's yearly totals by airline group. Unknown aircraft and carriers are kept."""
+    """Recompute aircraft_carrier_year: each aircraft's yearly totals by airline group and member airline. Unknown aircraft and carriers are kept."""
     create_schema(conn)
     with conn:
         conn.execute("DELETE FROM aircraft_carrier_year")
         conn.execute(
             """
             INSERT INTO aircraft_carrier_year
-            SELECT COALESCE(t.aircraft_type, 'unknown'), t.year, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, ''),
+            SELECT COALESCE(t.aircraft_type, 'unknown'), t.year, COALESCE(g.group_id, 'unknown'), COALESCE(c.airline_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'),
+                   t.domestic, COALESCE(t.class, ''),
                    SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight)
             FROM t100 t
             LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
             LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
             WHERE t.year IS NOT NULL
-            GROUP BY COALESCE(t.aircraft_type, 'unknown'), t.year, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), t.domestic, COALESCE(t.class, '')
+            GROUP BY COALESCE(t.aircraft_type, 'unknown'), t.year, COALESCE(g.group_id, 'unknown'), COALESCE(c.airline_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'),
+                     t.domestic, COALESCE(t.class, '')
             """
         )
     return conn.execute("SELECT COUNT(*) FROM aircraft_carrier_year").fetchone()[0]

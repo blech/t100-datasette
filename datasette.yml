@@ -594,7 +594,7 @@ databases:
       # an airline's aircraft matrix: each aircraft by year, with its family, as the aircraft matrix has them for all airlines
       carrier_aircraft_by_year:
         title: "An airline's aircraft by year, with their family"
-        description: "One row per aircraft, year, service and kind for the airline group, with the aircraft's family, maker and BTS type. Counted for the whole group, not one member airline."
+        description: "One row per aircraft, year, service and kind for the airline group, with the aircraft's family, maker and BTS type. Leave airline empty for the whole group."
         sql: |
           SELECT
             a.year, a.aircraft,
@@ -608,7 +608,7 @@ databases:
           FROM aircraft_carrier_year a
             LEFT JOIN aircraft_types t ON t.ac_typeid = a.aircraft
             LEFT JOIN aircraft_family f ON f.aircraft_type = a.aircraft
-          WHERE a.group_id = :group
+          WHERE a.group_id = :group AND (:airline = '' OR a.airline_id = :airline)
           GROUP BY a.year, a.aircraft, aircraft_name, family, maker, aircraft_kind, service, kind
           ORDER BY a.year, a.aircraft
 

@@ -80,19 +80,21 @@ def test_an_airlines_aircraft_have_their_own_page(ds, db_path):
     assert r.status_code == 200
     assert 'id="matrix"' in r.text and 'data-kind="fleet"' in r.text and "/static/charts/rollup.js" in r.text
     assert 'id="matrix-kind"' in r.text and 'id="matrix-service"' in r.text and 'name="scale"' in r.text
-    assert 'data-group="delta"' in r.text and 'data-latest-year="2019"' in r.text
+    assert 'data-group="delta"' in r.text and 'data-airline=""' in r.text and 'data-latest-year="2019"' in r.text
     assert re.search(r'<li aria-current="page">aircraft</li>', r.text)
     assert re.search(r'<a href="/airlines/delta/routes">Routes</a> · <strong aria-current="page">Aircraft</strong>', r.text)
 
 
-def test_a_members_aircraft_page_shows_its_groups_aircraft_and_says_so(ds, db_path):
+def test_a_members_aircraft_page_shows_that_member_alone(ds, db_path):
     put(db_path, "carrier_group", [dict(airline_id="19386", group_id="delta", group_name="Delta (incl. Northwest)", airline_name="Northwest Airlines Inc.")])
     put(db_path, "carrier_group_year", [dict(year=2008, airline_id="19386", group_id="delta", group_name="Delta (incl. Northwest)", domestic=1,
                                              service_class="F", deps=4, seats=400, passengers=300, freight=0)])
     r = get(ds, "/airlines/19386/aircraft")
     assert r.status_code == 200
-    assert 'data-group="delta"' in r.text
-    assert re.search(r'counted for the whole of <a href="/airlines/delta/aircraft">Delta \(incl\. Northwest\)</a>', r.text)
+    assert 'data-group="delta"' in r.text and 'data-airline="19386"' in r.text and ">2008 only<" in r.text
+    assert 'One of the airlines counted together as <a href="/airlines/delta/aircraft">Delta (incl. Northwest)</a>' in r.text
+    assert "counted for the whole of" not in r.text
+    assert "with Delta (incl. Northwest) picked out" in r.text  # the family and aircraft pages pick out groups, not their members
 
 
 def test_an_unknown_airlines_aircraft_are_not_found(ds):
