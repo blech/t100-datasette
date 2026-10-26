@@ -12,9 +12,9 @@ FIND = {
     "airline": ["/airlines/over-time", "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/aircraft", "/airlines/delta/changes", "/airlines/delta/globe"],
     "airport": ["/airports/over-time", "/airports/SFO", "/airports/SFO/destinations", "/airports/SFO/changes", "/airports/SFO/JFK",
                 "/airports/SFO/JFK/table", "/airports/SFO/JFK/2019"],
-    "aircraft": ["/aircraft/over-time", "/aircraft/makers", "/aircraft/engines", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800"],
+    "aircraft": ["/aircraft/over-time", "/aircraft/makers", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800"],
 }
-NO_FIND = ["/", "/about", "/airlines", "/aircraft", "/airports", "/airports/dedicated", "/airports/globe", "/airports/SFO/globe"]
+NO_FIND = ["/", "/about", "/airlines", "/aircraft", "/aircraft/groups", "/airports", "/airports/dedicated", "/airports/globe", "/airports/SFO/globe"]
 
 
 def seed(db_path):

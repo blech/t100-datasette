@@ -45,8 +45,8 @@ def test_landing_page_links_to_about_in_its_prose(ds):
     ("/aircraft", "breaks"),
     ("/airlines", "groupings"),
     ("/airlines", "breaks"),
-    ("/aircraft/engines", "freight"),
-    ("/aircraft/engines", "breaks"),
+    ("/aircraft/groups", "freight"),
+    ("/aircraft/groups", "breaks"),
 ])
 def test_caveats_link_to_the_matching_section(ds, path, anchor):
     assert f'href="/about#{anchor}"' in get(ds, path).text
@@ -65,7 +65,7 @@ def test_foreign_airport_note_links_to_the_direction_section(ds, db_path):
 
 def test_quad_jets_are_described_as_including_six_engined_aircraft(ds):
     assert "six-engine" in get(ds, "/about").text
-    assert "six-engined" in get(ds, "/aircraft/engines").text
+    assert "six-engined" in get(ds, "/aircraft/groups").text
 
 
 def test_the_privacy_section_says_what_is_and_is_not_recorded(ds):

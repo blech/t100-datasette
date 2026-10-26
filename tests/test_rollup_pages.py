@@ -23,20 +23,23 @@ def test_settings_read_as_one_sentence(ds, path):
     assert 'id="matrix-scale"' in html
 
 
-def test_engine_story_has_its_own_page_and_the_aircraft_page_links_to_it(ds):
-    html = get(ds, "/aircraft/engines").text
-    for id_ in ["engine-chart", "engine-measure", "engine-kind", "engine-band"]:
+def test_the_groups_page_charts_a_range_of_distances_and_the_aircraft_page_links_to_it(ds):
+    html = get(ds, "/aircraft/groups").text
+    for id_ in ["engine-chart", "engine-measure", "engine-kind", "engine-from", "engine-to"]:
         assert f'id="{id_}"' in html
+    assert 'id="engine-band"' not in html
+    assert "<h1>Aircraft groups by distance</h1>" in html and "<title>Aircraft groups by distance · T-100</title>" in html
+    assert '<li aria-current="page">groups</li>' in html
     assert "/static/charts/engines.js" in html
     assert 'href="/aircraft"' in html
     aircraft = get(ds, "/aircraft").text
-    assert "engine-chart" not in aircraft and 'href="/aircraft/engines"' in aircraft
+    assert "engine-chart" not in aircraft and 'href="/aircraft/groups"' in aircraft
 
 
 def test_breadcrumbs_and_landing_links(ds):
     assert 'aria-current="page">aircraft<' in get(ds, "/aircraft").text
     landing = get(ds, "/").text
-    assert 'href="/aircraft"' in landing and 'href="/airlines"' in landing and 'href="/aircraft/engines"' in landing
+    assert 'href="/aircraft"' in landing and 'href="/airlines"' in landing and 'href="/aircraft/groups"' in landing
 
 
 def test_a_family_page_is_found_by_its_slug(ds, db_path):
@@ -50,7 +53,7 @@ def test_a_family_page_is_found_by_its_slug(ds, db_path):
 
 def test_an_unknown_family_is_404_and_engines_is_not_a_family(ds):
     assert get(ds, "/aircraft/no-such-plane").status_code == 404
-    assert "engine-chart" in get(ds, "/aircraft/engines").text
+    assert "engine-chart" in get(ds, "/aircraft/groups").text
 
 
 def test_airline_page_names_the_airline_and_unknown_ones_are_not_found(ds, db_path):
@@ -118,7 +121,7 @@ def test_aircraft_is_the_table_and_the_maker_chart_is_beside_it(ds):
 
 def test_the_aircraft_pages_link_to_each_other(ds):
     aircraft = get(ds, "/aircraft").text
-    assert 'href="/aircraft/makers"' in aircraft and 'href="/aircraft/engines"' in aircraft and 'href="/aircraft/table"' not in aircraft
+    assert 'href="/aircraft/makers"' in aircraft and 'href="/aircraft/groups"' in aircraft and 'href="/aircraft/table"' not in aircraft
     assert 'aria-current="page">aircraft<' in aircraft
     assert 'aria-current="page">makers<' in get(ds, "/aircraft/makers").text
     assert 'href="/aircraft"' in get(ds, "/aircraft/makers").text

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rollupRows, routeRows, buildEngineShares, ENGINE_BANDS } from '../src/rollup.js';
+import { rollupRows, routeRows, buildEngineShares, BAND_FROM, BAND_TO, bandRange, legacyBand } from '../src/rollup.js';
 import { buildMatrix } from '../src/matrix.js';
 
 const f = (year, family, deps, extra = {}) => ({ year, family, deps, seats: deps * 100, passengers: deps * 80, freight: 0, service: 'domestic', kind: 'passenger', ...extra });
@@ -21,34 +21,63 @@ test('rolled-up rows feed the matrix, merging passenger and freight rows of a fa
 
 const e = (year, aircraft_group, distance_band, deps, extra = {}) => ({ year, aircraft_group, distance_band, deps, seats: 0, passengers: deps * 10, freight: deps * 1000, service: 'international', kind: 'passenger', ...extra });
 
-test('engine shares are of each year, summed over the chosen distance band', () => {
+test('engine shares are of each year, summed over the distances from the lower bound up to any', () => {
   const rows = [e(1990, '6', 3000, 1), e(1990, '8', 3000, 3), e(1990, '8', 5000, 4), e(1990, '6', 0, 100)];
-  const res = buildEngineShares(rows, { measure: 'deps', kind: 'passenger', band: '3000' });
+  const res = buildEngineShares(rows, { measure: 'deps', kind: 'passenger', from: '3000', to: 'any' });
   const share = (s) => res.points.find((p) => p.year === 1990 && p.series === s).share;
   assert.equal(share('Two jet engines'), 1 / 8);
   assert.equal(share('Four or more jet engines'), 7 / 8);
 });
 
-test('a band of "all" counts every distance, and freight uses the freight measure', () => {
+test('0 to any counts every distance, and freight uses the freight measure', () => {
   const rows = [e(2000, '6', 0, 1, { kind: 'freight' }), e(2000, '8', 3000, 1, { kind: 'freight' }), e(2000, '6', 0, 50)];
-  const res = buildEngineShares(rows, { measure: 'freight', kind: 'freight', band: 'all' });
+  const res = buildEngineShares(rows, { measure: 'freight', kind: 'freight', from: '0', to: 'any' });
   assert.deepEqual(res.points.map((p) => [p.series, p.share]), [['Two jet engines', 0.5], ['Four or more jet engines', 0.5]]);
 });
 
 test('piston, helicopter and unlisted groups share one series; series come in a fixed order', () => {
   const rows = [e(2000, '0', 0, 1), e(2000, '3', 0, 1), e(2000, '4', 0, 1), e(2000, '5', 0, 1), e(2000, '8', 0, 1), e(2000, '6', 0, 1)];
-  const res = buildEngineShares(rows, { measure: 'deps', kind: 'passenger', band: 'all' });
+  const res = buildEngineShares(rows, { measure: 'deps', kind: 'passenger', from: '0', to: 'any' });
   assert.deepEqual(res.series, ['Two jet engines', 'Four or more jet engines', 'Turboprop', 'Piston and helicopter']);
   assert.equal(res.points.find((p) => p.series === 'Turboprop').amount, 2);
 });
 
 test('a year with nothing in the selection is left out', () => {
-  const res = buildEngineShares([e(2000, '6', 0, 1), e(2001, '6', 0, 0)], { measure: 'deps', kind: 'passenger', band: 'all' });
+  const res = buildEngineShares([e(2000, '6', 0, 1), e(2001, '6', 0, 0)], { measure: 'deps', kind: 'passenger', from: '0', to: 'any' });
   assert.deepEqual(res.years, [2000]);
 });
 
-test('the bands offered cover every distance once', () => {
-  assert.deepEqual(ENGINE_BANDS.map((b) => b.value), ['all', '0', '500', '1500', '3000']);
+test('a range takes the bands from its lower bound up to, not including, its upper one', () => {
+  const rows = [e(2000, '6', 0, 1), e(2000, '6', 500, 2), e(2000, '8', 1500, 4), e(2000, '8', 3000, 8), e(2000, '8', 5000, 16)];
+  const total = (from, to) => buildEngineShares(rows, { measure: 'deps', from, to }).points.reduce((a, p) => a + p.amount, 0);
+  assert.equal(total('500', '3000'), 6);
+  assert.equal(total('3000', '5000'), 8);
+  assert.equal(total('5000', 'any'), 16);
+  assert.equal(total('0', 'any'), 31);
+});
+
+test('the distance menus are the build\'s own cut points, from 0 and up to any', () => {
+  assert.deepEqual(BAND_FROM.map((b) => b.value), ['0', '500', '1500', '3000', '5000']);
+  assert.deepEqual(BAND_TO.map((b) => b.value), ['500', '1500', '3000', '5000', 'any']);
+  assert.deepEqual(BAND_TO.map((b) => b.label), ['500', '1,500', '3,000', '5,000', 'any distance']);
+});
+
+test('an upper bound at or below the lower one moves to the next cut point up', () => {
+  assert.deepEqual(bandRange('3000', 'any'), { from: '3000', to: 'any' });
+  assert.deepEqual(bandRange('500', '3000'), { from: '500', to: '3000' });
+  assert.deepEqual(bandRange('3000', '1500'), { from: '3000', to: '5000' });
+  assert.deepEqual(bandRange('1500', '1500'), { from: '1500', to: '3000' });
+  assert.deepEqual(bandRange('5000', '500'), { from: '5000', to: 'any' });
+  assert.deepEqual(bandRange('nonsense', 'x'), { from: '3000', to: 'any' }); // the long haul, as the page opens
+});
+
+test('an old single-band link opens as the same range', () => {
+  assert.deepEqual(legacyBand('3000'), { from: '3000', to: 'any' });
+  assert.deepEqual(legacyBand('all'), { from: '0', to: 'any' });
+  assert.deepEqual(legacyBand('0'), { from: '0', to: '500' });
+  assert.deepEqual(legacyBand('500'), { from: '500', to: '1500' });
+  assert.deepEqual(legacyBand('1500'), { from: '1500', to: '3000' });
+  assert.equal(legacyBand(null), null);
 });
 
 test('every series has a colour', async () => {
