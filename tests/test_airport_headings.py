@@ -70,3 +70,37 @@ def test_the_scripts_leave_the_heading_alone():
 def test_the_destinations_warning_has_its_own_place(ds):
     assert 'id="truncated"' in get(ds, "/airports/SFO/destinations").text
     assert "$('truncated')" in open("static/charts/routes.js").read()
+
+
+# a route's pages name both ends the same way, beneath the heading
+ROUTES = ["/airports/SFO/JFK", "/airports/SFO/JFK/2019", "/airports/SFO/JFK/table"]
+
+
+def jfk(db_path):
+    add_airports(db_path, [dict(iata_code="JFK", name="John F Kennedy International Airport", city="New York",
+                                country="United States", latitude=40.6, longitude=-73.8)])
+    _insert(db_path, "airport_names", [dict(code="JFK", name="New York, NY")])
+
+
+@pytest.mark.parametrize("path", ROUTES)
+def test_a_route_names_both_its_airports(ds, db_path, path):
+    sfo(db_path)
+    jfk(db_path)
+    html = get(ds, path).text
+    assert subtitle(html) == "San Francisco International Airport · San Francisco, CA to John F Kennedy International Airport · New York, NY"
+    assert re.search(r'id="title">[^<]*</h1>\s*<p[^>]*id="subtitle"', html), path
+
+
+def test_an_unknown_end_of_a_route_is_its_code(ds, db_path):
+    sfo(db_path)
+    assert subtitle(get(ds, "/airports/SFO/QQQ").text) == "San Francisco International Airport · San Francisco, CA to QQQ"
+
+
+def test_the_route_script_leaves_the_subtitle_alone():
+    assert "$('subtitle')" not in open("static/charts/routepage.js").read()
+
+
+def test_the_name_line_sits_close_under_the_heading():
+    css = open("static/common/base.css").read()
+    assert re.search(r"h1:has\(\+ #subtitle\)\s*\{\s*margin-bottom:\s*0;", css)
+    assert re.search(r"h1 \+ #subtitle\s*\{\s*margin-top:\s*0;", css)

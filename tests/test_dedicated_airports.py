@@ -74,7 +74,7 @@ def test_the_page_has_a_table_for_passengers_and_one_for_freight_linking_airport
     city(db_path, 2025, "BWI", "MEM")
     html = page(ds)
     assert "Passengers" in html and "Freight" in html
-    assert '<a href="/airports/BWI">BWI</a>' in html and '<a href="/airlines/southwest">southwest Air</a>' in html
+    assert '<a href="/airports/BWI" title="BWI">BWI</a>' in html and '<a href="/airlines/southwest">southwest Air</a>' in html
     assert "70.8%" in html and "98.0%" not in html and "99.0%" in html  # MEM freight: 4,000,000 of 4,040,000
 
 
@@ -116,8 +116,8 @@ def test_the_freight_tables_airports_open_the_airport_page_showing_freight_on_al
     city(db_path, 2025, "BWI", "MEM")
     html = page(ds)
     freight = html[html.index('id="freight-heading"'):]
-    assert '<a href="/airports/MEM?measure=freight&amp;flights=all">MEM</a>' in freight
-    assert '<a href="/airports/BWI">BWI</a>' in html[:html.index('id="freight-heading"')]  # passengers: the page's own defaults
+    assert '<a href="/airports/MEM?measure=freight&amp;flights=all" title="MEM">MEM</a>' in freight
+    assert '<a href="/airports/BWI" title="BWI">BWI</a>' in html[:html.index('id="freight-heading"')]  # passengers: the page's own defaults
 
 
 def test_the_tables_have_no_row_number_column(ds, db_path):
@@ -125,3 +125,11 @@ def test_the_tables_have_no_row_number_column(ds, db_path):
     html = page(ds)
     assert 'scope="col" class="num">#</th>' not in html
     assert re.findall(r'<tr>\s*<td class="code">', html), "the airport is the first cell of each row"
+
+
+def test_an_airports_code_shows_its_name_codes_and_city_on_hover(ds, db_path):
+    put(db_path, "airport_carrier_year", [cell(2025, "BWI", "southwest", 708, 0)])
+    city(db_path, 2025, "BWI")
+    put(db_path, "openflights_airports", [dict(iata_code="BWI", icao_code="KBWI", name="Baltimore/Washington International Airport", city="Baltimore", country="United States", latitude=39.2, longitude=-76.7)])
+    put(db_path, "airport_names", [dict(code="BWI", name="Baltimore, MD")])
+    assert '<a href="/airports/BWI" title="Baltimore/Washington International Airport\nBWI · KBWI\nBaltimore, MD">BWI</a>' in page(ds)

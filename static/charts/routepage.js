@@ -247,8 +247,6 @@ async function main() {
     return;
   }
   const years = [...new Set(allRows.map((r) => Number(r.year)))].sort((a, b) => a - b);
-  const first = allRows[0];
-  $('subtitle').textContent = `${first.origin_city_name || origin} to ${first.dest_city_name || dest}`;
   drawYears(years);
   if (year !== null && !viewRows.length) {
     $('status').textContent = `No flights from ${origin} to ${dest} in ${year}.`;
