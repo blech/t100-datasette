@@ -591,6 +591,27 @@ databases:
           HAVING SUM(r.deps) >= 12
           ORDER BY r.year, r.origin, r.dest
 
+      # an airline's aircraft matrix: each aircraft by year, with its family, as the aircraft matrix has them for all airlines
+      carrier_aircraft_by_year:
+        title: "An airline's aircraft by year, with their family"
+        description: "One row per aircraft, year, service and kind for the airline group, with the aircraft's family, maker and BTS type. Counted for the whole group, not one member airline."
+        sql: |
+          SELECT
+            a.year, a.aircraft,
+            COALESCE(t.name, CASE a.aircraft WHEN 'unknown' THEN 'Type not reported' ELSE 'Type ' || a.aircraft END) AS aircraft_name,
+            COALESCE(f.family, 'Unknown') AS family,
+            COALESCE(t.maker, 'Unknown maker') AS maker,
+            COALESCE(t.kind, 'Unknown') AS aircraft_kind,
+            CASE WHEN a.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN a.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(a.deps) AS deps, SUM(a.seats) AS seats, SUM(a.passengers) AS passengers, SUM(a.freight) AS freight
+          FROM aircraft_carrier_year a
+            LEFT JOIN aircraft_types t ON t.ac_typeid = a.aircraft
+            LEFT JOIN aircraft_family f ON f.aircraft_type = a.aircraft
+          WHERE a.group_id = :group
+          GROUP BY a.year, a.aircraft, aircraft_name, family, maker, aircraft_kind, service, kind
+          ORDER BY a.year, a.aircraft
+
       carrier_route_changes:
         title: "An airline's airport pairs in two years"
         description: "One row per airport pair and airline flown in either year, with the first and last month flown. Leave airline empty for the whole group."

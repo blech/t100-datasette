@@ -9,7 +9,7 @@ from tests.test_views_pages import delta
 
 # Each section's pages other than its tables carry one find box, which opens a subject's page; the tables filter their own rows instead
 FIND = {
-    "airline": ["/airlines/over-time", "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/changes", "/airlines/delta/globe"],
+    "airline": ["/airlines/over-time", "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/aircraft", "/airlines/delta/changes", "/airlines/delta/globe"],
     "airport": ["/airports/over-time", "/airports/SFO", "/airports/SFO/destinations", "/airports/SFO/changes", "/airports/SFO/JFK",
                 "/airports/SFO/JFK/table", "/airports/SFO/JFK/2019"],
     "aircraft": ["/aircraft/over-time", "/aircraft/makers", "/aircraft/engines", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800"],

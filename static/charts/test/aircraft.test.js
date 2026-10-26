@@ -192,3 +192,10 @@ test('an aircraft page gives the aircraft too; departures and seats leave the so
   const q = new URLSearchParams(airlinesLink({ family: 'Boeing 747', aircraft: '614', year: 1999, measure: 'deps', flights: 'passenger', service: 'all' }).split('?')[1]);
   assert.deepEqual([q.get('aircraft'), q.get('sort'), q.get('kind'), q.get('service')], ['614', '', 'passenger', '']);
 });
+
+import { airlineSearch } from '../src/aircraft.js';
+
+test('an airline\'s aircraft matrix opens a family or aircraft split by airline, with that airline picked out', () => {
+  assert.equal(airlineSearch('delta', { measure: 'passengers', flights: 'passenger', service: 'all' }), '?split=airline&highlight=airline:delta');
+  assert.equal(airlineSearch('19540', { measure: 'freight', flights: 'all', service: 'all' }), '?measure=freight&flights=all&split=airline&highlight=airline:19540');
+});

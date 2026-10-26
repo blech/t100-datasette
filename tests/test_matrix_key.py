@@ -6,7 +6,7 @@ from tests.test_views_pages import delta
 
 def test_each_matrix_page_puts_the_colour_key_beside_the_colour_choice(ds, db_path):
     delta(db_path)
-    for path in ["/airports/over-time", "/airlines/over-time", "/aircraft/over-time", "/airlines/delta/routes", "/airports/SFO/destinations"]:
+    for path in ["/airports/over-time", "/airlines/over-time", "/aircraft/over-time", "/airlines/delta/routes", "/airlines/delta/aircraft", "/airports/SFO/destinations"]:
         html = get(ds, path).text
         row = re.search(r'<div class="key-row">(.*?)</div>\s*<p class="note" id="scale-note"', html, re.S)
         assert row, path
