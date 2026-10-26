@@ -72,7 +72,7 @@
         The ten of the {{ t.pool }} busiest US airports by passengers whose biggest airline carries the largest share of them. Passengers are those boarding there, on flights leaving the airport, domestic and international.
         {%- else -%}
         The ten of the {{ t.pool }} biggest US airports by freight whose biggest airline carries the largest share of it. Only a few dozen airports handle much freight, so the pool is smaller than for passengers. Freight is in short tons (2,000 lb).
-        {%- if year < 2003 %} Freight before 2003 leaves out most domestic FedEx and UPS flying, so these shares are not reliable: see <a href="/about#breaks">known gaps in the data</a>.{% endif %}
+        {%- if year < 2003 %} Domestic cargo airlines such as FedEx, and airlines flying small aircraft, are only in the data from October 2002 (UPS from 2001), so these shares are not reliable: see <a href="/about#breaks">known gaps in the data</a>.{% endif %}
         {%- endif %}
       </p>
     </section>

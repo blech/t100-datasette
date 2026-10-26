@@ -1,3 +1,5 @@
+import { exactCount } from '../../common/numbers.js';
+
 // Rows from the family_by_year / carrier_group_by_year queries -> the shape the matrix reads
 // (one row per "dest" and year), so the /aircraft and /airlines pages reuse buildMatrix as it is.
 export function rollupRows(rows, { key, kind = 'all' }) {
@@ -14,13 +16,29 @@ export function routeRows(rows) {
   }));
 }
 
-export const ENGINE_BANDS = [
-  { value: 'all', label: 'any distance' },
-  { value: '0', label: 'under 500 miles' },
-  { value: '500', label: '500 to 1,500 miles' },
-  { value: '1500', label: '1,500 to 3,000 miles' },
-  { value: '3000', label: '3,000 miles or more' },
-];
+// the distance bands' lower bounds in miles, as build_database.py cuts them; a range runs from one to a later one, or to any
+const BAND_EDGES = ['0', '500', '1500', '3000', '5000'];
+const miles = exactCount;
+export const BAND_FROM = BAND_EDGES.map((v) => ({ value: v, label: miles(v) }));
+export const BAND_TO = [...BAND_EDGES.slice(1).map((v) => ({ value: v, label: miles(v) })), { value: 'any', label: 'any distance' }];
+const LONG_HAUL = { from: '3000', to: 'any' };
+
+// a range from the URL or the menus: an unknown lower bound opens the long haul, and an upper bound at or below the
+// lower one moves to the next cut point up
+export function bandRange(from, to) {
+  if (!BAND_EDGES.includes(from)) return { ...LONG_HAUL };
+  const above = BAND_TO.map((b) => b.value).filter((v) => v === 'any' || Number(v) > Number(from));
+  return { from, to: above.includes(to) ? to : above[0] };
+}
+
+// the page's single band menu before it had a range (?eband=), as the same range
+export function legacyBand(band) {
+  if (band === null || band === undefined) return null;
+  if (band === 'all') return { from: '0', to: 'any' };
+  if (band === '3000') return { from: '3000', to: 'any' };
+  const i = BAND_EDGES.indexOf(band);
+  return i < 0 ? null : { from: band, to: BAND_EDGES[i + 1] };
+}
 
 // BTS aircraft groups, in the order they are stacked
 export const ENGINE_SERIES = ['Two jet engines', 'Three jet engines', 'Four or more jet engines', 'Turboprop', 'Piston and helicopter'];
@@ -30,14 +48,14 @@ const seriesOf = (group) => SERIES_OF[Number(group)] || 'Piston and helicopter';
 
 const LB_PER_SHORT_TON = 2000;
 
-// Rows from engines_by_year -> each aircraft group's share of one measure in each year, for the chosen
-// distance band (the 3,000+ band includes the 5,000+ rows).
-export function buildEngineShares(rows, { measure = 'deps', kind = 'passenger', band = 'all', service = 'all' } = {}) {
+// Rows from engines_by_year -> each aircraft group's share of one measure in each year, for the distance bands from
+// `from` up to, not including, `to` ('any' for no upper bound).
+export function buildEngineShares(rows, { measure = 'deps', kind = 'passenger', from = '0', to = 'any', service = 'all' } = {}) {
   const amounts = new Map(); // year -> series -> amount
   for (const r of rows) {
     if (kind !== 'all' && r.kind !== kind) continue;
     if (service !== 'all' && r.service !== service) continue;
-    if (band !== 'all' && Math.min(Number(r.distance_band), 3000) !== Number(band)) continue;
+    if (Number(r.distance_band) < Number(from) || (to !== 'any' && Number(r.distance_band) >= Number(to))) continue;
     const v = (Number(r[measure]) || 0) / (measure === 'freight' ? LB_PER_SHORT_TON : 1);
     const byYear = amounts.get(Number(r.year)) || new Map();
     amounts.set(Number(r.year), byYear);

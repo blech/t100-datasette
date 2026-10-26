@@ -45,8 +45,8 @@ def test_landing_page_links_to_about_in_its_prose(ds):
     ("/aircraft", "breaks"),
     ("/airlines", "groupings"),
     ("/airlines", "breaks"),
-    ("/aircraft/engines", "freight"),
-    ("/aircraft/engines", "breaks"),
+    ("/aircraft/groups", "freight"),
+    ("/aircraft/groups", "breaks"),
 ])
 def test_caveats_link_to_the_matching_section(ds, path, anchor):
     assert f'href="/about#{anchor}"' in get(ds, path).text
@@ -65,7 +65,7 @@ def test_foreign_airport_note_links_to_the_direction_section(ds, db_path):
 
 def test_quad_jets_are_described_as_including_six_engined_aircraft(ds):
     assert "six-engine" in get(ds, "/about").text
-    assert "six-engined" in get(ds, "/aircraft/engines").text
+    assert "six-engined" in get(ds, "/aircraft/groups").text
 
 
 def test_the_privacy_section_says_what_is_and_is_not_recorded(ds):
@@ -73,3 +73,20 @@ def test_the_privacy_section_says_what_is_and_is_not_recorded(ds):
     section = html.split('id="privacy"')[1]
     for phrase in ["page", "referring site", "anonymous", "IP address", "cookies", "theme"]:
         assert phrase in section, phrase
+
+
+# BTS widened T-100 in October 2002 to small aircraft and domestic all-cargo airlines; UPS appears earlier, for no reason given
+def test_the_breaks_section_gives_the_october_2002_expansion_and_its_source(ds):
+    section = get(ds, "/about").text.split('id="breaks"')[1].split("</ul>")[0]
+    for phrase in ["October 2002", "60 seats", "18,000", "all-cargo", "https://www.transtats.bts.gov/data_elements.aspx", "January 2001"]:
+        assert phrase in section, phrase
+    assert "does not say why" not in section
+
+
+NOTED = ["/aircraft/groups", "/aircraft", "/airlines", "/airlines/over-time", "/airports/over-time", "/aircraft/over-time"]
+
+
+@pytest.mark.parametrize("path", NOTED)
+def test_the_chart_notes_date_the_break_to_october_2002(ds, path):
+    html = get(ds, path).text
+    assert "October 2002" in html and "before 2003" not in html

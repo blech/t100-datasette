@@ -47,7 +47,8 @@ def register_routes():
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)$", moved("/airlines/{slug}")),
         (r"^/carriers/(?P<slug>[A-Za-z0-9_-]+)/globe$", moved("/airlines/{slug}/globe")),
         (r"^/aircraft/over-time$", rollup_page("aircraft")),
-        (r"^/aircraft/engines$", engines_page),
+        (r"^/aircraft/groups$", groups_page),
+        (r"^/aircraft/engines$", moved("/aircraft/groups")),  # the page's address when it showed only the long haul
         (r"^/aircraft/makers$", aircraft_makers_page),
         (r"^/aircraft/table$", moved("/aircraft")),  # the table's address before it became /aircraft
         (r"^/aircraft/(?P<slug>[a-z0-9-]+)$", family_page),
@@ -107,9 +108,9 @@ def views_for(path):
             return make(("Over time", base, None), ("Table", f"{base}/table", None), current=1 if rest and rest[-1] == "table" else 0)
         case ["aircraft", *rest] if len(rest) < 3:
             aircraft = [("Families", "/aircraft", None), ("Over time", "/aircraft/over-time", None), ("Makers", "/aircraft/makers", None),
-                        ("Long-haul engines", "/aircraft/engines", None)]
+                        ("Groups", "/aircraft/groups", None)]
             # a family or one of its aircraft is a page of the section but not one of these views: none is current
-            views = [[], ["over-time"], ["makers"], ["engines"]]
+            views = [[], ["over-time"], ["makers"], ["groups"]]
             return make(*aircraft, current=views.index(rest) if rest in views else -1)
         case ["airlines"] | ["airlines", "over-time"]:
             return make(("Airlines", "/airlines", None), ("Over time", "/airlines/over-time", None), current=len(parts) - 1)
@@ -444,10 +445,10 @@ async def airline_table_page(datasette, request):
     return Response.html(html)
 
 
-async def engines_page(datasette, request):
+async def groups_page(datasette, request):
     html = await datasette.render_template(
         "engines.html",
-        {"crumbs": trail(datasette, ("aircraft", "/aircraft"), ("engines", None))},
+        {"crumbs": trail(datasette, ("aircraft", "/aircraft"), ("groups", None))},
         request=request,
     )
     return Response.html(html)

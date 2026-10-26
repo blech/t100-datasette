@@ -19,6 +19,8 @@ OLD = [
     ("/routes", "/airports"),
     ("/routes?theme=night", "/airports?theme=night"),
     ("/aircraft/table?year=2019", "/aircraft?year=2019"),
+    ("/aircraft/engines", "/aircraft/groups"),
+    ("/aircraft/engines?eband=500&ekind=freight", "/aircraft/groups?eband=500&ekind=freight"),
     ("/airlines?scale=busiest&n=25", "/airlines/over-time?scale=busiest&n=25"),
     ("/airlines?n=10", "/airlines/over-time?n=10"),
     ("/airlines?rank=latest&measure=deps", "/airlines/over-time?rank=latest&measure=deps"),

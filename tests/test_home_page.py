@@ -27,7 +27,7 @@ def test_home_page_tells_the_three_stories(ds, db_path):
     assert "Atlanta, GA (ATL)" in html and "51.5 million" in html and "Chicago, IL (ORD)" in html
     assert "81%" in html and "94%" in html
     assert "Alpha Airlines 60.0%" in html
-    for href in ["/airports", "/airports/globe", "/aircraft/engines", "/aircraft", "/airlines", "/about"]:
+    for href in ["/airports", "/airports/globe", "/aircraft/groups", "/aircraft", "/airlines", "/about"]:
         assert f'href="{href}"' in html, href
     assert "/static/home/main.js" in html and 'data-max-year="2025"' in html
     assert html.count('class="section"') == 3

@@ -99,8 +99,8 @@ async function showMap() {
 const pct = (v) => `${(v * 100).toFixed(1)}%`;
 const width = (box) => Math.min(box.clientWidth || 900, 1100);
 
-// the long-haul cut the /aircraft/engines page opens with
-const ENGINE_STATE = { measure: 'deps', kind: 'passenger', band: '3000' };
+// the long-haul cut the /aircraft/groups page opens with
+const ENGINE_STATE = { measure: 'deps', kind: 'passenger', from: '3000', to: 'any' };
 
 async function showEngines() {
   const box = $('engine-chart');

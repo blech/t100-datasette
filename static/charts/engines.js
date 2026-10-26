@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildEngineShares, ENGINE_BANDS, ENGINE_SERIES } from '/static/charts/src/rollup.js';
+import { buildEngineShares, BAND_FROM, BAND_TO, bandRange, legacyBand, ENGINE_SERIES } from '/static/charts/src/rollup.js';
 import { palette, isDark } from '/static/common/palette.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
@@ -14,13 +14,15 @@ const MEASURES = { deps: 'departures', passengers: 'passengers', seats: 'seats',
 const state = {
   measure: pick('emeasure', Object.keys(MEASURES), 'deps'),
   kind: pick('ekind', ['passenger', 'freight', 'all'], 'passenger'),
-  band: pick('eband', ENGINE_BANDS.map((b) => b.value), '3000'),
+  // a link from before the range (?eband=) opens as the same range
+  ...(legacyBand(params.get('eband')) || bandRange(params.get('efrom') ?? '3000', params.get('eto') ?? 'any')),
 };
 let rows = [];
 
 function pushState() {
   const q = new URLSearchParams(location.search);
-  for (const [key, value, fallback] of [['emeasure', state.measure, 'deps'], ['ekind', state.kind, 'passenger'], ['eband', state.band, '3000']]) {
+  q.delete('eband');
+  for (const [key, value, fallback] of [['emeasure', state.measure, 'deps'], ['ekind', state.kind, 'passenger'], ['efrom', state.from, '3000'], ['eto', state.to, 'any']]) {
     if (value === fallback) q.delete(key); else q.set(key, value);
   }
   const s = q.toString();
@@ -60,12 +62,22 @@ async function main() {
   setDataLink('engines_by_year', {});
   const measure = $('engine-measure');
   for (const [k, label] of Object.entries(MEASURES)) measure.append(new Option(label, k));
-  for (const b of ENGINE_BANDS) $('engine-band').append(new Option(b.label, b.value));
+  for (const b of BAND_FROM) $('engine-from').append(new Option(b.label, b.value));
+  for (const b of BAND_TO) $('engine-to').append(new Option(b.label, b.value));
+  const showRange = () => { $('engine-from').value = state.from; $('engine-to').value = state.to; };
   measure.value = state.measure;
   $('engine-kind').value = state.kind;
-  $('engine-band').value = state.band;
-  for (const [id, field] of [['engine-measure', 'measure'], ['engine-kind', 'kind'], ['engine-band', 'band']]) {
+  showRange();
+  for (const [id, field] of [['engine-measure', 'measure'], ['engine-kind', 'kind']]) {
     $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });
+  }
+  for (const id of ['engine-from', 'engine-to']) {
+    $(id).addEventListener('change', () => {
+      Object.assign(state, bandRange($('engine-from').value, $('engine-to').value));
+      showRange();
+      pushState();
+      draw();
+    });
   }
   document.addEventListener('t100:theme', () => draw());
   try {

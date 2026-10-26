@@ -64,7 +64,7 @@ def test_a_data_page_is_titled_by_its_query_not_its_sql(ds):
 
 
 SCROLLING = ["/airports", "/airports/SFO", "/airports/SFO/destinations", "/airports/SFO/changes", "/airports/SFO/JFK", "/airports/SFO/JFK/2019/table",
-             "/aircraft", "/aircraft/makers", "/aircraft/engines", "/aircraft/boeing-737", "/airlines", "/airlines/over-time", "/airports/over-time", "/aircraft/over-time",
+             "/aircraft", "/aircraft/makers", "/aircraft/groups", "/aircraft/boeing-737", "/airlines", "/airlines/over-time", "/airports/over-time", "/aircraft/over-time",
              "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/aircraft", "/airlines/delta/changes"]
 FOOTER_LINK = '<span class="data-link" hidden><a id="data-link" href="">This page\'s data</a> · </span>'
 

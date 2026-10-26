@@ -9,7 +9,7 @@ from tests.test_rollup_pages import fam, put
 
 @pytest.mark.parametrize("path, section", [
     ("/", None), ("/airports", "airports"), ("/airports/globe", "airports"), ("/airports/ATL/LAX/2024", "airports"),
-    ("/aircraft", "aircraft"), ("/aircraft/engines", "aircraft"), ("/aircraft/boeing-737", "aircraft"),
+    ("/aircraft", "aircraft"), ("/aircraft/groups", "aircraft"), ("/aircraft/boeing-737", "aircraft"),
     ("/airlines", "airlines"), ("/airlines/delta/globe", "airlines"), ("/about", "about"),
     ("/t100/airports", None), ("/-/derived", None),
 ])
@@ -40,7 +40,7 @@ def test_a_route_has_over_time_and_table_views_keeping_the_year():
 
 
 def test_aircraft_and_airline_views():
-    AIRCRAFT = [("Families", "/aircraft"), ("Over time", "/aircraft/over-time"), ("Makers", "/aircraft/makers"), ("Long-haul engines", "/aircraft/engines")]
+    AIRCRAFT = [("Families", "/aircraft"), ("Over time", "/aircraft/over-time"), ("Makers", "/aircraft/makers"), ("Groups", "/aircraft/groups")]
     for i, (_, path) in enumerate(AIRCRAFT):
         assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(AIRCRAFT)], path
     A = [("Over time", "/airlines/delta"), ("Routes", "/airlines/delta/routes"), ("Aircraft", "/airlines/delta/aircraft"), ("Changes", "/airlines/delta/changes"), ("Map", "/airlines/delta/globe")]
@@ -75,10 +75,10 @@ PAGES = {
     "/airports/ATL/globe": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
     "/airports/ATL/LAX": ("airports", ["Over time", "Table"]),
     "/airports/ATL/LAX/table": ("airports", ["Over time", "Table"]),
-    "/aircraft": ("aircraft", ["Families", "Over time", "Makers", "Long-haul engines"]),
-    "/aircraft/over-time": ("aircraft", ["Families", "Over time", "Makers", "Long-haul engines"]),
-    "/aircraft/engines": ("aircraft", ["Families", "Over time", "Makers", "Long-haul engines"]),
-    "/aircraft/makers": ("aircraft", ["Families", "Over time", "Makers", "Long-haul engines"]),
+    "/aircraft": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),
+    "/aircraft/over-time": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),
+    "/aircraft/groups": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),
+    "/aircraft/makers": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),
     "/airlines": ("airlines", ["Airlines", "Over time"]),
     "/airlines/over-time": ("airlines", ["Airlines", "Over time"]),
     "/about": ("about", []),
@@ -139,7 +139,7 @@ def test_the_airlines_table_and_matrix_are_two_views_of_the_section():
 
 
 def test_family_and_aircraft_pages_show_the_aircraft_views_with_none_current():
-    AIRCRAFT = [("Families", "/aircraft", False), ("Over time", "/aircraft/over-time", False), ("Makers", "/aircraft/makers", False), ("Long-haul engines", "/aircraft/engines", False)]
+    AIRCRAFT = [("Families", "/aircraft", False), ("Over time", "/aircraft/over-time", False), ("Makers", "/aircraft/makers", False), ("Groups", "/aircraft/groups", False)]
     assert views("/aircraft/boeing-737") == AIRCRAFT
     assert views("/aircraft/boeing-737/boeing-737-800") == AIRCRAFT
     assert views("/aircraft/boeing-737/boeing-737-800/extra") == []
