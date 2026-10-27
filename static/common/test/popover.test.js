@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { periodRows, tapAction } from '../popover.js';
+import { periodRows, tapAction, popoverPosition } from '../popover.js';
 
 const pts = [
   { year: 2019, series: 'Delta', value: 430000 },
@@ -46,4 +46,14 @@ test('tapAction: a new target shows, the same one follows its link, nothing hide
   assert.equal(tapAction('2019', '2019', true), 'follow');
   assert.equal(tapAction('2019', '2019', false), 'show');
   assert.equal(tapAction('2019', null, true), 'hide');
+});
+
+test('popoverPosition puts the box beside the point, flips it left at the right edge and keeps it on screen', () => {
+  const view = { width: 300, height: 200, vw: 1000, vh: 800 };
+  assert.deepEqual(popoverPosition({ x: 100, y: 100, ...view }), { left: 112, top: 90 });
+  assert.deepEqual(popoverPosition({ x: 900, y: 100, ...view }), { left: 588, top: 90 });
+  assert.deepEqual(popoverPosition({ x: 100, y: 780, ...view }), { left: 112, top: 596 });
+  assert.deepEqual(popoverPosition({ x: 100, y: 0, ...view, dy: -10 }), { left: 112, top: 4 });
+  assert.deepEqual(popoverPosition({ x: 200, y: 100, ...view, vw: 400 }), { left: 4, top: 90 });
+  assert.deepEqual(popoverPosition({ x: 100, y: 100, ...view, dx: 14, dy: 14 }), { left: 114, top: 114 });
 });

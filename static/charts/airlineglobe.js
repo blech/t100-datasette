@@ -1,5 +1,6 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
+import { placePopover } from '/static/common/popover.js';
 import { defaultView, clamp } from '/static/globe/src/camera.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -230,9 +231,7 @@ function bindCanvas() {
       const tip = $('tooltip');
       if (i < 0) { tip.hidden = true; return; }
       tip.textContent = tooltipText(shown[i]);
-      tip.style.left = `${x + 14}px`;
-      tip.style.top = `${y + 14}px`;
-      tip.hidden = false;
+      placePopover(tip, x, y, { dx: 14, dy: 14 });
     },
     onTap: (x, y) => {
       selected = renderer.hitTest(x, y, shown, 10);

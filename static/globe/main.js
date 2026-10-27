@@ -1,5 +1,6 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from './src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
+import { placePopover } from '/static/common/popover.js';
 import { defaultView, clamp, glide, rotationFor } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
@@ -254,9 +255,7 @@ function showChooserTip(i, x, y) {
   const p = chooserPoints[i];
   const n = chooserRoutesFor(i).length; // the routes drawn: a destination without coordinates can't be
   tip.textContent = chooserRoutes.size ? `${p.code} · ${p.city} · ${n} domestic route${n === 1 ? '' : 's'} in ${latestYear}` : `${p.code} · ${p.city}`;
-  tip.style.left = `${x + 14}px`;
-  tip.style.top = `${y + 14}px`;
-  tip.hidden = false;
+  placePopover(tip, x, y, { dx: 14, dy: 14 });
 }
 
 function bindControls() {
@@ -348,9 +347,7 @@ function bindCanvas() {
       const tip = $('tooltip');
       if (i < 0) { tip.hidden = true; return; }
       tip.textContent = tooltipText(routes[i]);
-      tip.style.left = `${x + 14}px`;
-      tip.style.top = `${y + 14}px`;
-      tip.hidden = false;
+      placePopover(tip, x, y, { dx: 14, dy: 14 });
     },
     onTap: (x, y) => {
       if (!origin) {
