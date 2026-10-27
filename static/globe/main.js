@@ -68,11 +68,14 @@ function applyTheme(id) {
 }
 document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); drawLegend(); pushState(); });
 
+// routes (placed or raw) of the years strictly between the two being compared; none when not comparing
+const inBetween = (routes) => (state.compare ? routes.filter((r) => r.year > state.compare && r.year < state.year) : []);
+
 function recompute() {
   if (state.year === null) { periodRoutes = []; shown = []; return; }
   periodRoutes = state.month !== null
     ? compareYears(forMonth(monthRoutes, state.month), null, destKey)
-    : compareYears(forYear(yearRoutes, state.year), state.compare ? forYear(yearRoutes, state.compare) : null, destKey);
+    : compareYears(forYear(yearRoutes, state.year), state.compare ? forYear(yearRoutes, state.compare) : null, destKey, inBetween(yearRoutes));
   shown = visibleRoutes(periodRoutes, state.hide, Boolean(state.compare));
 }
 
@@ -88,12 +91,12 @@ function updateStats() {
   const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : comparing ? `${state.compare} → ${state.year}` : `${state.year}`;
   const c = countStatuses(periodRoutes);
   $('stats').textContent = comparing
-    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
+    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added${c.between ? ` · ${c.between} added then dropped` : ''}`
     : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${countLabel(deps)} departures · ${countLabel(pax)} passengers`;
   $('year-label').textContent = label;
   const periodRows = state.month !== null
     ? monthRaw.filter((r) => r.month === state.month)
-    : yearRaw.filter((r) => r.year === state.year || r.year === state.compare);
+    : [...yearRaw.filter((r) => r.year === state.year || r.year === state.compare), ...inBetween(yearRaw)];
   const skipped = skippedFor(periodRows.filter((r) => !state.hide.includes(r.service)), airports);
   const notes = [];
   if (skipped.length) notes.push(`${skipped.length} destination${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}`);
@@ -126,7 +129,10 @@ function showPanel(r) {
   destLink.title = `Show routes from ${r.dest}`;
   h.append(`${origin} → `, destLink);
   const sub = document.createElement('div');
-  sub.textContent = `${r.destCity || ''} (${r.service}${r.status ? `, ${r.status}` : ''})`;
+  // a route added then dropped shows its busiest year, so the figures and the month-by-month link are that year's
+  const figuresYear = r.status === 'between' ? r.peakYear : state.year;
+  const status = r.status === 'between' ? `added then dropped, figures for ${figuresYear}` : r.status;
+  sub.textContent = `${r.destCity || ''} (${r.service}${status ? `, ${status}` : ''})`;
   const dl = document.createElement('dl');
   for (const f of routeFigures(r)) {
     const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
@@ -136,8 +142,8 @@ function showPanel(r) {
   a1.href = routePath;
   a1.textContent = 'This route over time →';
   const a2 = document.createElement('a');
-  a2.href = `${routePath}/${state.year}`;
-  a2.textContent = `Month by month in ${state.year} →`;
+  a2.href = `${routePath}/${figuresYear}`;
+  a2.textContent = `Month by month in ${figuresYear} →`;
   p.append(close, h, sub, dl, a1, a2);
   p.hidden = false;
 }

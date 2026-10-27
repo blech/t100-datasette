@@ -21,7 +21,8 @@ test('the values the spec fixes', () => {
   assert.equal(PALETTE.light.series[0], '#7f1d1d');
   assert.equal(PALETTE.dark.series[0], '#c53a2a');
   assert.deepEqual(PALETTE.light.service, { domestic: '#0d9488', international: '#e36d2a' });
-  assert.deepEqual(PALETTE.dark.change, PALETTE.light.change);
+  assert.deepEqual([PALETTE.dark.change.added, PALETTE.dark.change.dropped], [PALETTE.light.change.added, PALETTE.light.change.dropped]);
+  assert.deepEqual([PALETTE.light.change.between, PALETTE.dark.change.between], ['#3f3f46', '#e4e4e7']);
   assert.equal(palette(true), PALETTE.dark);
   assert.equal(palette(false), PALETTE.light);
 });
