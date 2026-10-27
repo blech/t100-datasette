@@ -65,8 +65,7 @@ export function styleRoutes(routes, { mode, theme, widthKey }) {
 }
 
 // The legend's chips: one group per dimension, the coloured one with swatches. Counts are before hiding,
-// so a hidden chip still says how many routes it would bring back. "Added, then dropped" is left out when there are none
-// (always, on the airline maps, which only load the two years).
+// so a hidden chip still says how many routes it would bring back. "Added, then dropped" is left out when there are none.
 export function legendItems({ mode, comparing, hide, routes, dark = false }) {
   const item = (key, field, colour) => ({
     key, label: LABELS[key], count: routes.filter((r) => r[field] === key).length,

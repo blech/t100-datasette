@@ -52,6 +52,19 @@ test('mapRoutes adds up the domestic count over members and draws a dropped pair
   assert.equal(by.DEN.service, 'domestic');
 });
 
+test('mapRoutes marks pairs flown only in the years between as added then dropped, adding up members within each year', () => {
+  const between = [
+    { ...mrow('SFO', 'MEX', 'VX', 10), year: 2017 }, { ...mrow('SFO', 'MEX', 'AS', 30), year: 2017 },
+    { ...mrow('SFO', 'MEX', 'AS', 25), year: 2019 }, { ...mrow('SFO', 'DEN', 'AS', 5), year: 2018 },
+  ];
+  const { routes } = mapRoutes([pair('SFO', 'LAX', 20)], [pair('SFO', 'LAX', 15)], airports, { min: 12, between });
+  assert.deepEqual(routes.map((r) => [r.dest, r.status]), [['MEX', 'between'], ['LAX', 'kept']]);
+  const mex = routes[0];
+  assert.deepEqual([mex.deps, mex.firstYear, mex.lastYear, mex.peakYear, mex.depsThen, mex.depsNow], [40, 2017, 2019, 2017, 0, 0]);
+  assert.deepEqual(mex.airlines.sort(), ['AS', 'VX']);
+  assert.equal(mex.service, 'international');
+});
+
 test('mapRoutes leaves out pairs with an unknown airport and says which', () => {
   const { routes, skipped } = mapRoutes([pair('SFO', 'ZZZ', 10)], null, airports);
   assert.equal(routes.length, 0);
