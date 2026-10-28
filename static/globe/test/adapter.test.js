@@ -63,8 +63,8 @@ test('forService keeps only the chosen service, or everything for all', () => {
 
 test('placePoints turns listed airports into dots, skipping those with no coordinates', () => {
   const rows = [
-    { origin: 'ATL', origin_city_name: 'Atlanta, GA', total_passengers: 51 },
-    { origin: 'SEL', origin_city_name: 'Seoul, Korea', total_passengers: 7 },
+    { airport: 'ATL', city: 'Atlanta, GA', passengers: 51 },
+    { airport: 'SEL', city: 'Seoul, Korea', passengers: 7 },
   ];
   const pts = placePoints(rows, airports);
   assert.equal(pts.length, airports.has('SEL') ? 2 : 1);

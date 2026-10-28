@@ -203,7 +203,7 @@ def airport_story(rows):
     """busiest_airports rows (busiest first) -> the top three airports."""
     if len(rows) < 3:
         return None
-    return {"airports": [{"code": r["origin"], "city": r["origin_city_name"], "passengers": prose_count(r["total_passengers"])}
+    return {"airports": [{"code": r["airport"], "city": r["city"], "passengers": prose_count(r["passengers"])}
                          for r in rows[:3]]}
 
 
@@ -284,7 +284,7 @@ async def airports_index(datasette, request):
     min_year, max_year = year_range(datasette)
     html = await datasette.render_template(
         "airports.html",
-        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None))},
+        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None)), **airport_direction(request)},
         request=request,
     )
     return Response.html(html)
@@ -302,7 +302,7 @@ LB_PER_SHORT_TON = 2000
 def dedicated_rows(rows, measure):
     """dedicated_airports rows -> table rows with the shares and totals as the page prints them (freight in short tons, not pounds)."""
     scale = LB_PER_SHORT_TON if measure == "freight" else 1
-    return [{"code": r["origin"], "city": r["origin_city_name"], "size_rank": r["size_rank"],
+    return [{"code": r["airport"], "city": r["city"], "size_rank": r["size_rank"],
              "airline": short_airline_name(r["group_name"]), "airline_id": r["group_id"],
              "share": percent(r["share"], 1), "airline_total": prose_count(r["airline_total"] / scale), "total": prose_count(r["total"] / scale)}
             for r in rows]
@@ -475,6 +475,7 @@ def rollup_page(kind):
                 "page": page,
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
                 "crumbs": trail(datasette, (page["crumb"], f"/{kind}"), ("over time", None)),
+                **(airport_direction(request) if kind == "airports" else {}),
             },
             request=request,
         )

@@ -211,17 +211,17 @@ function fillPicker() {
 }
 
 async function showChooser() {
-  const res = await fetchRows(queryUrl('top_us_airports', { year: '', sort_column: '' }));
+  const res = await fetchRows(queryUrl('globe_chooser'));
   const box = $('chooser');
   box.append(Object.assign(document.createElement('summary'), { textContent: 'Pick an airport on the map, or choose from a list' }));
   for (const r of res.rows.slice(0, 24)) {
     const a = document.createElement('a');
-    a.href = `/airports/${r.origin}/globe`;
-    a.textContent = `${r.origin} ${r.origin_city_name}`;
+    a.href = `/airports/${r.airport}/globe`;
+    a.textContent = `${r.airport} ${r.city}`;
     box.append(a);
   }
   // the chooser's airports, over all years; the controls (where a map's data link sits) are hidden here, so it closes the list
-  setDataLink('top_us_airports', { year: '', sort_column: '' });
+  setDataLink('globe_chooser', {});
   if ($('data-link')) box.append($('data-link'));
   box.hidden = false;
   $('title').textContent = 'US airport network';

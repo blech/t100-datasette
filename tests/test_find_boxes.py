@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from tests.helpers import get, get_json
+from tests.helpers import get, get_json, put_airport_years
 from tests.test_rollup_pages import aircraft_fixtures
 from tests.test_rollup_queries import put
 from tests.test_views_pages import delta
@@ -49,7 +49,7 @@ def test_the_tables_filter_their_rows_and_say_so(ds):
 
 
 def test_airport_list_names_every_airport_flown_from_busiest_first(ds, db_path):
-    put(db_path, "airport_year_totals", [dict(year=y, origin=o, origin_city_name=c, origin_wac=w, deps=d, seats=0, passengers=0, freight=0)
+    put_airport_years(db_path, [dict(year=y, origin=o, origin_city_name=c, origin_wac=w, deps=d, seats=0, passengers=0, freight=0)
                                          for y, o, c, w, d in ((2019, "SFO", "San Francisco, CA", 91, 50), (2023, "SFO", "San Francisco, CA", 91, 60),
                                                                (2019, "LHR", "London, United Kingdom", 493, 70))])
     put(db_path, "airport_names", [dict(code="SFO", name="San Francisco, CA")])
@@ -64,3 +64,8 @@ def test_aircraft_list_names_each_aircraft_with_its_family_and_years(ds, db_path
     rows = get_json(ds, "/t100/aircraft_list.json?_shape=objects")["rows"]
     assert {(r["family"], r["name"], r["first_year"], r["last_year"]) for r in rows} == {
         ("Boeing 737", "Boeing 737-800", 2001, 2019), ("Unknown", "Type 999", 2019, 2019)}  # never flown: not offered
+
+
+def test_airport_list_offers_an_airport_only_flown_to(ds, db_path):
+    put_airport_years(db_path, [dict(year=2020, origin="ARR", origin_city_name="Arrivals, ST", origin_wac=34, deps=0, arrs=9)])
+    assert [(r["code"], r["deps"]) for r in get_json(ds, "/t100/airport_list.json?_shape=objects")["rows"]] == [("ARR", 9)]

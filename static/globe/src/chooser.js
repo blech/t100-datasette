@@ -1,10 +1,15 @@
 // The all-airports map: each airport's domestic routes, shown while it is hovered (or, on touch, after one tap).
+// domestic_routes gives each pair once, both ways together (a before b): file it under both, the other end as dest.
 
 export function routesByOrigin(rows) {
   const m = new Map();
+  const add = (code, r) => {
+    if (!m.has(code)) m.set(code, []);
+    m.get(code).push(r);
+  };
   for (const r of rows) {
-    if (!m.has(r.origin)) m.set(r.origin, []);
-    m.get(r.origin).push(r);
+    add(r.a, { ...r, origin: r.a, dest: r.b });
+    add(r.b, { ...r, origin: r.b, dest: r.a });
   }
   return m;
 }

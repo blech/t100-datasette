@@ -1,9 +1,10 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { SORTS, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel } from './src/table.js';
+import { sortLabels, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel } from './src/table.js';
 import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
+import { parseDir, setDir } from '/static/common/direction.js';
 
 const ROWS_SHOWN = 20;
 const minYear = Number(document.body.dataset.minYear);
@@ -37,12 +38,16 @@ function link(href, text, title) {
   return a;
 }
 
+const dir = parseDir(location.search);
+const word = sortLabels(dir).deps.toLowerCase();
+$('dir').addEventListener('change', (e) => setDir(e.target.value));
+
 function render() {
   for (const th of document.querySelectorAll('th[data-sort]')) {
     if (th.dataset.sort === state.sort) th.setAttribute('aria-sort', 'descending');
     else th.removeAttribute('aria-sort');
   }
-  $('heading').textContent = `Busiest ${state.group === 'city' ? 'cities' : 'airports'} by ${SORTS[state.sort].toLowerCase()}, ${yearLabel(state.year, minYear, maxYear)}`;
+  $('heading').textContent = `Busiest ${state.group === 'city' ? 'cities' : 'airports'} by ${sortLabels(dir)[state.sort].toLowerCase()}, ${yearLabel(state.year, minYear, maxYear)}`;
   const body = document.querySelector('#airports tbody');
   body.replaceChildren();
   // an airport's row: its code (to its page), name, figures and map; under an opened city it's indented
@@ -50,10 +55,10 @@ function render() {
     const tr = document.createElement('tr');
     if (member) tr.className = 'member';
     const code = cell('', 'code');
-    code.append(link(airportHref(r.origin, state.sort), r.origin, airportTip(r.origin, airportInfo)));
+    code.append(link(airportHref(r.airport, state.sort), r.airport, airportTip(r.airport, airportInfo)));
     const more = cell('', 'more');
-    more.append(link(`/airports/${encodeURIComponent(r.origin)}/globe${state.year === 'all' ? '' : `?year=${state.year}`}`, 'Map →')); // all years: the map's latest
-    tr.append(code, cell(r.origin_city_name || '', 'city'), countCell(r.passengers, 'passengers'), countCell(r.deps, 'departures'),
+    more.append(link(`/airports/${encodeURIComponent(r.airport)}/globe${state.year === 'all' ? '' : `?year=${state.year}`}`, 'Map →')); // all years: the map's latest
+    tr.append(code, cell(r.city || '', 'city'), countCell(r.passengers, 'passengers'), countCell(r.deps, word),
       percentCell(loadFactor(r)), cell(exactCount(r.dests), 'num'), tonsCell(r.freight), more);
     return tr;
   };
@@ -63,7 +68,7 @@ function render() {
   }
   // a city's row: a ▸ that opens it, its name, and its airports' totals (destinations counted once for the city)
   for (const c of topBy(groupCities(rows), state.sort, ROWS_SHOWN)) {
-    const tip = groupTip({ label: c.name, codes: c.airports.map((a) => a.origin) }, airportInfo);
+    const tip = groupTip({ label: c.name, codes: c.airports.map((a) => a.airport) }, airportInfo);
     const tr = document.createElement('tr');
     tr.className = 'city-row';
     const isOpen = open.has(c.key);
@@ -77,7 +82,7 @@ function render() {
     first.append(toggle);
     const name = cell(c.name, 'city');
     name.title = tip;
-    tr.append(first, name, countCell(c.passengers, 'passengers'), countCell(c.deps, 'departures'), percentCell(loadFactor(c)),
+    tr.append(first, name, countCell(c.passengers, 'passengers'), countCell(c.deps, word), percentCell(loadFactor(c)),
       cell(exactCount(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
     body.append(tr);
     if (isOpen) for (const a of c.airports) body.append(airportRow(a, true));
@@ -93,11 +98,11 @@ function pushState() {
 }
 
 async function load() {
-  setDataLink('top_airports', { year: state.year });
+  setDataLink('top_airports', { year: state.year, dir });
   const id = ++loadSeq;
   $('status').textContent = 'Loading…';
   try {
-    const res = await fetchRows(queryUrl('top_airports', { year: state.year }));
+    const res = await fetchRows(queryUrl('top_airports', { year: state.year, dir }));
     if (id !== loadSeq) return;
     rows = res.rows;
     $('status').textContent = rows.length ? '' : `No data for ${yearLabel(state.year, minYear, maxYear)}.`;

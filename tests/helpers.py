@@ -39,6 +39,26 @@ def rebuild_airport_rollups(db_path):
     conn.close()
 
 
+def _dir_columns(r):
+    """An old one-way rollup row's figures as departures, with any arrivals the row also gives (arrs, seats_in, ...)."""
+    return dict(deps=r.get("deps", 0), arrs=r.get("arrs", 0), seats_out=r.get("seats", 0), seats_in=r.get("seats_in", 0),
+                passengers_out=r.get("passengers", 0), passengers_in=r.get("passengers_in", 0),
+                freight_out=r.get("freight", 0), freight_in=r.get("freight_in", 0))
+
+
+def put_airport_years(db_path, rows):
+    """airport_year_totals-shaped rows (origin, origin_city_name, origin_wac, deps, ...) into airport_dir_year."""
+    _insert(db_path, "airport_dir_year", [dict(year=r["year"], airport=r["origin"], city_name=r.get("origin_city_name"), wac=r.get("origin_wac"),
+                                               **_dir_columns(r)) for r in rows])
+
+
+def put_airport_carriers(db_path, rows):
+    """airport_carrier_year-shaped rows into airport_carrier_dir_year."""
+    _insert(db_path, "airport_carrier_dir_year", [dict(year=r["year"], airport=r["origin"], wac=r.get("origin_wac"), group_id=r["group_id"],
+                                                       group_name=r["group_name"], domestic=r["domestic"], service_class=r["service_class"],
+                                                       **_dir_columns(r)) for r in rows])
+
+
 def rolled_json(ds, path):
     """get_json for a query on the rollups: rebuilds them from the segments first."""
     rebuild_airport_rollups(ds.databases["t100"].path)

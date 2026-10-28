@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES as MEASURES, matrixMeasures } from '/static/charts/src/matrix.js';
 import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, carriedSearch, airlineSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
@@ -12,21 +12,26 @@ import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
+import { parseDir, setDir } from '/static/common/direction.js';
 
 const KINDS = {
   airlines: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
   routes: { query: 'carrier_route_by_year', key: 'route', noun: 'route' },
-  airports: { query: 'airport_by_year', key: 'origin', noun: 'airport' },
+  airports: { query: 'airport_by_year', key: 'airport', noun: 'airport' },
   aircraft: { query: 'aircraft_by_year', key: 'family', noun: 'family' },
   fleet: { query: 'carrier_aircraft_by_year', key: 'family', noun: 'family' }, // one airline's aircraft, drawn as the aircraft matrix is
 };
 const kind = document.body.dataset.kind;
+const dir = parseDir(location.search); // only the airports matrix offers a direction
+const MATRIX_MEASURES = kind === 'airports' ? matrixMeasures(dir) : MEASURES;
 const page = KINDS[kind];
 const body = document.body.dataset;
-const queryParams = kind === 'routes' ? { group: body.group, airline: body.airline } : kind === 'fleet' ? { group: body.group, airline: body.airline } : {};
+const queryParams = kind === 'routes' ? { group: body.group, airline: body.airline } : kind === 'fleet' ? { group: body.group, airline: body.airline }
+  : kind === 'airports' ? { dir } : {};
 const aircraftLike = kind === 'aircraft' || kind === 'fleet';
 const latestFullYear = Number(document.body.dataset.latestYear);
 const $ = (id) => document.getElementById(id);
+$('dir')?.addEventListener('change', (e) => setDir(e.target.value));
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
@@ -96,15 +101,15 @@ function familyHref(name) {
   const id = rows.find((r) => r.group_name === name)?.group_id;
   return id ? `/airlines/${id}` : undefined;
 }
-const airportTitle = (code) => (airportInfo.has(code) ? airportTip(code, airportInfo) : `${code} · ${rows.find((r) => r.origin === code)?.city || ''}`);
+const airportTitle = (code) => (airportInfo.has(code) ? airportTip(code, airportInfo) : `${code} · ${rows.find((r) => r.airport === code)?.city || ''}`);
 const titleOf = (name) => (kind === 'routes' ? pairOf(name).map(place).join(' – ') : kind === 'airports' ? airportTitle(name) : name);
 
 // the grouped matrices: a city is its name, opening into its airports (each a link to its destinations matrix); a family is
 // its name, opening into its aircraft (each a link to that aircraft's page). Both feed buildCityMatrix rows named dest and market_id
-const cityOf = () => new Map(rows.map((r) => [r.origin, r.city]));
+const cityOf = () => new Map(rows.map((r) => [r.airport, r.city]));
 let aircraftInfo = new Map(); // aircraft id -> its maker, BTS type and name, for hover text
 function groupedRows() {
-  if (!aircraftLike) return rows.map((r) => ({ ...r, dest: r.origin }));
+  if (!aircraftLike) return rows.map((r) => ({ ...r, dest: r.airport }));
   return rows
     .filter((r) => state.flights === 'all' || r.kind === state.flights)
     .map((r) => ({ ...r, dest: r.aircraft, market_id: slugify(r.family), group_label: r.family, city: r.aircraft_name }));
