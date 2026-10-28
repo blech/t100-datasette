@@ -9,7 +9,7 @@ from datasette.utils.asgi import NotFound, Response
 
 # Datasette loads each plugin from its file, not as a package, so a shared module is imported from beside this one
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from t100_direction import DIRECTION_CHOICES_ROUTE, count_word, parse_dir, route_heading  # noqa: E402
+from t100_direction import DIRECTION_CHOICES_ROUTE, parse_dir, route_count_word, route_heading  # noqa: E402
 
 
 CODE = r"[A-Za-z0-9]{3}"
@@ -433,7 +433,7 @@ def route_view(template, table):
             template,
             {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
              "view": "table" if table else "", "crumbs": trail(datasette, *steps),
-             "dir": dir, "heading": route_heading(origin, dest, dir), "count_word": count_word(dir),
+             "dir": dir, "heading": route_heading(origin, dest, dir), "count_word": route_count_word(dir),
              # the same direction at the reversed address is the other way: /B/A?dir=out is B → A
              "other_way": route_heading(dest, origin, dir) if dir else "",
              "dir_choices": DIRECTION_CHOICES_ROUTE(origin, dest),

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDir, countWord, routeHeading, cutoff, pairLabel } from '../direction.js';
+import { parseDir, countWord, routeCountWord, routeHeading, cutoff, pairLabel } from '../direction.js';
 
 test('parseDir accepts out and in, and treats anything else as both', () => {
   assert.equal(parseDir('?dir=out'), 'out');
@@ -30,4 +30,8 @@ test('an empty route names what was asked for', async () => {
   assert.equal(noFlights('ATL', 'LAX', ''), 'No flights between ATL and LAX');
   assert.equal(noFlights('ATL', 'LAX', 'out'), 'No flights from ATL to LAX');
   assert.equal(noFlights('ATL', 'LAX', 'in'), 'No flights from LAX to ATL');
+});
+
+test('a route counts departures from whichever airport leads the heading', () => {
+  assert.deepEqual(['', 'out', 'in'].map(routeCountWord), ['Flights', 'Departures', 'Departures']);
 });

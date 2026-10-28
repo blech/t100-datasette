@@ -44,6 +44,8 @@ The fix: **route and airport pages count both directions by default, and each of
 
 "Movements" is not used; it's airport-industry jargon.
 
+On a route page either one-way choice counts **Departures**, from the airport the heading starts with: LHR → LAX counts departures from LHR, not arrivals at LAX. Arrivals only appear on airport pages.
+
 ### Route pages (`/airports/LAX/LHR`, its year and table views)
 
 - **Address order:** stays as the visitor followed it. The route lives under the airport, so someone coming from LAX's page sees LAX first.

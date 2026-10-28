@@ -9,7 +9,7 @@ import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight, parseHighlight, highlightedSeries, highlightMessage } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { parseDir, countWord, noFlights, setDir } from '/static/common/direction.js';
+import { parseDir, routeCountWord, noFlights, setDir } from '/static/common/direction.js';
 
 // the tallest stack, which sets the y axis's scale
 const stackMax = (points, key, value = (p) => p.value) => {
@@ -23,7 +23,7 @@ const year = yearText ? Number(yearText) : null;
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 // the server wrote the headings for this direction; changing it reloads the page
-const measures = { ...MEASURES, deps: countWord(dir) };
+const measures = { ...MEASURES, deps: routeCountWord(dir) };
 const state = {
   measure: Object.hasOwn(measures, params.get('measure')) ? params.get('measure') : 'passengers',
   split: Object.hasOwn(SPLITS, params.get('split')) ? params.get('split') : 'carrier',
@@ -177,7 +177,7 @@ function linkCell(text, href, title) {
 // the table follows the chart's split: its name columns, and its heading
 const TABLE_NAMES = { carrier: ['Carrier'], aircraft: ['Aircraft'], both: ['Carrier', 'Aircraft'], none: [''] };
 const TABLE_HEADINGS = { carrier: 'Carriers', aircraft: 'Aircraft', both: 'Carriers and aircraft', none: 'Totals' };
-const NUMBER_COLUMNS = [countWord(dir), 'Seats', 'Passengers', 'Load factor', 'Freight'];
+const NUMBER_COLUMNS = [routeCountWord(dir), 'Seats', 'Passengers', 'Load factor', 'Freight'];
 
 function th(text, className) {
   const el = Object.assign(document.createElement('th'), { scope: 'col', className, textContent: text });

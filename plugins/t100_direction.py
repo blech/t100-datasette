@@ -15,6 +15,11 @@ def count_word(dir):
     return _WORDS[dir]
 
 
+def route_count_word(dir):
+    """A route's one-way count is departures from the airport its heading starts with, whichever way that is."""
+    return "Flights" if dir == "" else "Departures"
+
+
 def route_heading(a, b, dir):
     """LAX ↔ LHR, LAX → LHR or LHR → LAX, for the route at /airports/a/b."""
     return {"": f"{a} ↔ {b}", "out": f"{a} → {b}", "in": f"{b} → {a}"}[dir]

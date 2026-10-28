@@ -1,4 +1,4 @@
-from plugins.t100_direction import DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, cutoff, parse_dir, route_heading
+from plugins.t100_direction import DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, cutoff, route_count_word, parse_dir, route_heading
 
 
 def test_parse_dir_accepts_out_and_in():
@@ -21,3 +21,7 @@ def test_cutoff_doubles_for_both():
 def test_choices():
     assert DIRECTION_CHOICES_ROUTE("LAX", "LHR") == [("", "LAX ↔ LHR"), ("out", "LAX → LHR"), ("in", "LHR → LAX")]
     assert DIRECTION_CHOICES_AIRPORT == [("", "Both directions"), ("out", "Departing"), ("in", "Arriving")]
+
+
+def test_a_route_counts_departures_from_whichever_airport_leads():
+    assert [route_count_word(d) for d in ("", "out", "in")] == ["Flights", "Departures", "Departures"]

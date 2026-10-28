@@ -11,6 +11,9 @@ export function parseDir(search) {
 
 export const countWord = (dir) => WORDS[dir];
 
+// a route's one-way count is departures from the airport its heading starts with, whichever way that is
+export const routeCountWord = (dir) => (dir === '' ? 'Flights' : 'Departures');
+
 // LAX ↔ LHR, LAX → LHR or LHR → LAX, for the route at /airports/a/b
 export const routeHeading = (a, b, dir) => ({ '': `${a} ↔ ${b}`, out: `${a} → ${b}`, in: `${b} → ${a}` })[dir];
 
