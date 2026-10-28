@@ -1,3 +1,4 @@
+import { yearDomain } from './span.js';
 export const MATRIX_MEASURES = { passengers: 'Passengers', deps: 'Departures', seats: 'Seats', freight: 'Freight (short tons)' };
 
 const LB_PER_SHORT_TON = 2000;
@@ -40,7 +41,7 @@ export function buildMatrix(rows, { measure = 'passengers', service = 'all', n =
     if (top.has(dest) && value > 0) cells.push({ dest, year: Number(year), value, share: value / yearTotals[year], peak: value / yearMax[year] });
   }
   cells.sort((a, b) => a.year - b.year || dests.indexOf(a.dest) - dests.indexOf(b.dest));
-  return { dests, years: [...yearSet].sort((a, b) => a - b), cells, yearTotals, yearMax };
+  return { dests, years: yearDomain([...yearSet]), cells, yearTotals, yearMax };
 }
 
 // the row labels' column: wide enough for the longest label, from three-letter codes to the 280px the city labels had
@@ -140,5 +141,5 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
   }
   const order = new Map(outRows.map((r, i) => [r.key, i]));
   cells.sort((x, y) => x.year - y.year || order.get(x.row) - order.get(y.row));
-  return { rows: outRows, years: [...yearSet].sort((a, b) => a - b), cells, yearTotals, yearMax };
+  return { rows: outRows, years: yearDomain([...yearSet]), cells, yearTotals, yearMax };
 }

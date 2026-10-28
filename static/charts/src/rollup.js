@@ -1,4 +1,5 @@
 import { exactCount } from '../../common/numbers.js';
+import { yearDomain } from './span.js';
 
 // Rows from the family_by_year / carrier_group_by_year queries -> the shape the matrix reads
 // (one row per "dest" and year), so the /aircraft and /airlines pages reuse buildMatrix as it is.
@@ -137,5 +138,5 @@ export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', 
     return { year: Number(year), series, value };
   }).sort((a, b) => a.year - b.year);
   const series = folded ? [...kept, 'Other'] : kept;
-  return { points, series, years: [...new Set(points.map((p) => p.year))].sort((a, b) => a - b) };
+  return { points, series, years: yearDomain(points.map((p) => p.year)) };
 }

@@ -10,6 +10,7 @@ import { attachHighlight } from '/static/common/highlight.js';
 import { palette, seriesColours, isDark } from '/static/common/palette.js';
 import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
+import { yearDomain } from '/static/charts/src/span.js';
 
 // the airport's two new views share this script: over time (how big, how many places) and what changed
 const origin = document.body.dataset.origin;
@@ -36,8 +37,9 @@ const stackMax = (points) => {
   for (const p of points) sums.set(p.year, (sums.get(p.year) || 0) + p.value);
   return Math.max(0, ...sums.values());
 };
+// both charts run over the airport's whole span, every year in it, so they line up even when a setting leaves years empty
 function yearAxis(years) {
-  const shown = [...new Set(years)].sort((a, b) => a - b).map(String);
+  const shown = yearDomain(years, { span: 'all', min: firstYear, max: lastYear }).map(String);
   const every = shown.length <= 15 ? 1 : 5;
   return { type: 'band', domain: shown, label: null, tickFormat: (d) => (Number(d) % every === 0 ? d : '') };
 }
