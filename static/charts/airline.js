@@ -57,6 +57,8 @@ function yearAxis(years) {
 
 function drawSize() {
   const measure = $('al-measure').value, kind = $('al-kind').value, split = $('al-split').value;
+  // the October 2002 note, for an airline whose data show it: while the chart counts all-cargo flights, whatever it measures
+  if ($('reporting-note')) $('reporting-note').hidden = kind === 'passenger';
   const data = [];
   const years = [];
   const seriesOf = (r) => (split === 'kind' ? r.kind : r.service);

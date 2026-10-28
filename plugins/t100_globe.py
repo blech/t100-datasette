@@ -639,6 +639,64 @@ def airline_direction(request):
             "min_choices": [(1, "once")] + [(cutoff("out" if each else "", v), f"{cutoff('out' if each else '', v)} times") for v in (12, 52, 365)]}
 
 
+# --- the October 2002 reporting change: from that month BTS required domestic all-cargo flights to be reported, so most
+# before then are missing. Only the airlines whose own flying shows it get the note (see docs/cargo-2002-note.md)
+
+# each airline's domestic all-cargo departures in January-September 2002, October-December 2002 and 2003
+REPORTING_2002_SQL = """
+SELECT COALESCE(c.airline_id, 'unknown') AS airline_id, MAX(g.airline_name) AS name,
+  SUM(CASE WHEN t.year = 2002 AND t.month <= 9 THEN t.departures_performed ELSE 0 END) AS before,
+  SUM(CASE WHEN t.year = 2002 AND t.month >= 10 THEN t.departures_performed ELSE 0 END) AS after,
+  SUM(CASE WHEN t.year = 2003 THEN t.departures_performed ELSE 0 END) AS next_year
+FROM t100 t
+LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+WHERE t.year IN (2002, 2003) AND t.domestic = 1 AND t.class IN ('G', 'P')
+GROUP BY 1
+"""
+
+
+def reporting_2002(rows):
+    """Rows of REPORTING_2002_SQL -> {airline_id: {name, before, after}} (monthly rates) for the airlines whose flying shows
+    the change: October-December 2002 at 1.5 times their monthly rate before it or more, still there through 2003 (so a
+    busy fourth quarter alone doesn't count), and at least 10 a month in both (so a handful of flights doesn't, nor an
+    airline that only started in 2003)."""
+    found = {}
+    for airline_id, name, before, after, next_year in rows:
+        was, now, then = before / 9, after / 3, next_year / 12
+        if airline_id != "unknown" and min(now, then) >= max(10, 1.5 * was):
+            found[airline_id] = {"name": short_airline_name(name or airline_id), "before": was, "after": now}
+    return found
+
+
+async def reporting_2002_airlines(datasette):
+    """reporting_2002 for the database, worked out once (about a second) and kept: the 2002 and 2003 data don't change."""
+    if not hasattr(datasette, "_t100_reporting_2002"):
+        rows = (await datasette.get_database("t100").execute(REPORTING_2002_SQL, custom_time_limit=30_000)).rows
+        datasette._t100_reporting_2002 = reporting_2002([tuple(r) for r in rows])
+    return datasette._t100_reporting_2002
+
+
+def monthly(rate):
+    return "none" if rate == 0 else "almost none" if rate < 0.5 else f"about {prose_count(round(rate))}"
+
+
+async def reporting_note(datasette, info):
+    """The note for an airline page: its airlines (the group's members, or the one airline) whose data show the October 2002
+    change, as "Federal Express went from none to about 24,800 a month"; None when none do."""
+    found = await reporting_2002_airlines(datasette)
+    if info["airline"]:
+        ids = [info["airline"]]
+    else:
+        ids = [r[0] for r in (await datasette.get_database("t100").execute("SELECT airline_id FROM carrier_group WHERE group_id = ?", [info["group"]])).rows]
+    shown = sorted((found[i] for i in ids if i in found), key=lambda a: -a["after"])
+    if not shown:
+        return None
+    first, *rest = shown
+    return ", and ".join([f"{first['name']} went from {monthly(first['before'])} to {monthly(first['after'])} a month",
+                          *(f"{a['name']} from {monthly(a['before'])} to {monthly(a['after'])}" for a in rest)])
+
+
 def airline_view(template, tail):
     """An airline's page, in one of its views: over time (its size and airport pairs) or what changed between two years."""
 
@@ -650,6 +708,7 @@ def airline_view(template, tail):
                 **info, "own": info["airline"] or info["group"],
                 "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
                 "crumbs": airline_crumbs(datasette, info, *tail),
+                "reporting_2002": await reporting_note(datasette, info) if template == "airline.html" else None,
                 **airline_direction(request),
             },
             request=request,
