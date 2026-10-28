@@ -199,7 +199,7 @@ function drawTable() {
     ];
     tr.append(
       ...names,
-      countCell(t.deps, 'departures'),
+      countCell(t.deps, routeCountWord(dir).toLowerCase()),
       countCell(t.seats, 'seats'),
       countCell(t.passengers, 'passengers'),
       cell(t.loadFactor === null ? '–' : `${t.loadFactor.toFixed(1)}%`, 'num'),

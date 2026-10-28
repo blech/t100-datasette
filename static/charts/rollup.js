@@ -23,7 +23,8 @@ const KINDS = {
 };
 const kind = document.body.dataset.kind;
 const dir = parseDir(location.search); // only the airports matrix offers a direction
-const MATRIX_MEASURES = kind === 'airports' ? matrixMeasures(dir) : MEASURES;
+// the flight count's name: the airports matrix's direction, or an airline's pairs (flights both ways) or each direction (departures)
+const MATRIX_MEASURES = kind === 'airports' ? matrixMeasures(dir) : kind === 'routes' ? matrixMeasures(new URLSearchParams(location.search).get('dir') === 'each' ? 'out' : '') : MEASURES;
 const page = KINDS[kind];
 const body = document.body.dataset;
 // an airline's routes: pairs both ways together, or with dir=each each direction as flown

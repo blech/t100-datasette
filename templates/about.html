@@ -17,7 +17,7 @@
       Everything here comes from the US Bureau of Transportation Statistics' T-100 segment data, {{ min_year }}&ndash;{{ max_year }}. It is easy to read more into it than it says, so this page sets out what each number means and where the data has gaps.
     </p>
     <nav aria-label="Contents"><ul class="contents">
-      <li><a href="#direction">Routes are one-way</a></li>
+      <li><a href="#direction">Directions</a></li>
       <li><a href="#freight">Freight-only and belly cargo</a></li>
       <li><a href="#measures">What the numbers measure</a></li>
       <li><a href="#groupings">How things are grouped</a></li>
@@ -27,9 +27,17 @@
       <li><a href="#privacy">Privacy</a></li>
     </ul></nav>
 
-    <h2 id="direction">Routes are one-way</h2>
+    <h2 id="direction">Directions</h2>
     <p>
-      Each row of T-100 is one nonstop flight segment in one direction, from an origin airport to a destination airport. A route page for ATL&ndash;LAX shows flights from ATL to LAX; the flights back are the route LAX&ndash;ATL. An airport's page counts flights <em>from</em> that airport, and its passenger figure is people departing it, not arriving.
+      Each row of T-100 is one nonstop flight segment in one direction, from an origin airport to a destination airport. The pages add the two directions together unless you choose one:
+    </p>
+    <ul>
+      <li><strong>Route pages.</strong> ATL &harr; LAX counts flights both ways between the two airports, as <strong>Flights</strong>. Choose ATL &rarr; LAX or LAX &rarr; ATL to see one way, counted as <strong>Departures</strong> from the airport that leads.</li>
+      <li><strong>Airport pages and lists.</strong> An airport's figures count flights to and from it by default, so its passengers are people boarding or leaving there. Choose departing to count <strong>Departures</strong> and the people boarding, or arriving to count <strong>Arrivals</strong> and the people leaving.</li>
+      <li><strong>Airline pages.</strong> An airline's airport pairs count both directions together; its routes and what changed can show each direction as a row of its own instead.</li>
+    </ul>
+    <p>
+      A cut-off for leaving out small routes is twice as high when both directions are counted, so it keeps its meaning of roughly monthly service each way: a route is shown with at least 24 flights a year both ways, or 12 one way.
     </p>
     <p>
       Nearly every busy route has a return: of airport pairs with at least 100 departures in a year, 99% also have flights the other way. Counting every pair, however small, only about 71% do. The ones without a return are mostly:

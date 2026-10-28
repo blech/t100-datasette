@@ -1,4 +1,4 @@
-// An airport's pages: departures from it, by year (airport_size, routes_by_year) and between two years (airport_changes)
+// An airport's pages: flights at it, both ways or one, by year (airport_size, routes_by_year) and between two years (airport_changes)
 import { buildSeries } from './series.js';
 
 const LB_PER_SHORT_TON = 2000;
