@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { matrixMeasures } from '/static/charts/src/matrix.js';
+import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
 import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList, changeSort, sortChanges } from '/static/charts/src/airport.js';
 import { formatYearMonth } from '/static/charts/src/airline.js';
 import { airportGone, flownText, mostText } from '/static/charts/src/gone.js';
@@ -91,7 +92,7 @@ function drawSize() {
   const idOf = new Map([...res.links].map(([name, id]) => [nameOf.get(name), id]));
   const q = new URLSearchParams();
   if (measure !== 'passengers') q.set('measure', measure);
-  if (flights !== 'passenger') q.set('flights', flights);
+  if (flights !== defaultFlights(measure)) q.set('flights', flights);
   const search = q.size ? `?${q}` : '';
   for (const sw of chart.querySelectorAll('[class*="-swatch"]:not([class*="-swatches"])')) {
     const id = idOf.get(sw.textContent.trim());
@@ -123,11 +124,11 @@ function drawPlaces() {
 async function overTime() {
   for (const [k, label] of Object.entries(MATRIX_MEASURES)) $('ap-measure').append(new Option(label.toLowerCase(), k));
   $('ap-measure').value = pick('measure', Object.keys(MATRIX_MEASURES), 'passengers');
-  $('ap-flights').value = pick('flights', ['passenger', 'freight', 'all'], 'passenger');
+  $('ap-flights').value = pick('flights', FLIGHTS, defaultFlights($('ap-measure').value));
   $('ap-split').value = pick('split', ['service', 'kind', 'airline'], 'service');
   $('ap-min').value = pick('min', ['1', '12', '52', '365'], '12');
   const save = () => remember(['measure', 'flights', 'split', 'min'], {
-    measure: [$('ap-measure').value, 'passengers'], flights: [$('ap-flights').value, 'passenger'],
+    measure: [$('ap-measure').value, 'passengers'], flights: [$('ap-flights').value, defaultFlights($('ap-measure').value)],
     split: [$('ap-split').value, 'service'], min: [$('ap-min').value, '12'],
   });
   setDataLink('airport_size', { origin, group: '', dir });
@@ -144,6 +145,11 @@ async function overTime() {
   }
   drawSize();
   drawPlaces();
+  let measure = $('ap-measure').value;
+  $('ap-measure').addEventListener('change', () => {
+    $('ap-flights').value = flightsAfter($('ap-flights').value, measure, $('ap-measure').value);
+    measure = $('ap-measure').value;
+  });
   for (const id of ['ap-measure', 'ap-flights', 'ap-split']) $(id).addEventListener('change', () => { save(); drawSize(); });
   $('ap-min').addEventListener('change', () => { save(); drawPlaces(); });
   document.addEventListener('t100:theme', () => { drawSize(); drawPlaces(); });

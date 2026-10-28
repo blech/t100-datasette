@@ -1,6 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { pairsGone, flownText, mostText } from '/static/charts/src/gone.js';
 import { shortName } from '/static/charts/src/names.js';
@@ -204,7 +205,7 @@ async function main() {
     // the same names as the airport page's chart, whose airline links carry them
     const pick = (key, allowed, fallback) => (allowed.includes(qs.get(key)) ? qs.get(key) : fallback);
     $('al-measure').value = pick('measure', Object.keys(MATRIX_MEASURES), 'passengers');
-    $('al-kind').value = pick('flights', ['passenger', 'freight', 'all'], 'passenger');
+    $('al-kind').value = pick('flights', FLIGHTS, defaultFlights($('al-measure').value));
     $('al-split').value = pick('split', ['service', 'kind'], 'service');
     $('al-span').value = parseSpan(qs.get('span'));
   }
@@ -236,10 +237,20 @@ async function main() {
     if (hasChanges) loadChanges();
   });
   if (hasSize) {
-    const settings = { 'al-measure': ['measure', 'passengers'], 'al-kind': ['flights', 'passenger'], 'al-split': ['split', 'service'] };
-    for (const [id, [key, fallback]] of Object.entries(settings)) {
-      $(id).addEventListener('change', () => { remember(key, $(id).value, fallback); drawSize(); });
-    }
+    // the flights left at their default follow the measure, so both are kept whenever either changes
+    let measure = $('al-measure').value;
+    const keep = () => {
+      remember('measure', $('al-measure').value, 'passengers');
+      remember('flights', $('al-kind').value, defaultFlights($('al-measure').value));
+      drawSize();
+    };
+    $('al-measure').addEventListener('change', () => {
+      $('al-kind').value = flightsAfter($('al-kind').value, measure, $('al-measure').value);
+      measure = $('al-measure').value;
+      keep();
+    });
+    $('al-kind').addEventListener('change', keep);
+    $('al-split').addEventListener('change', () => { remember('split', $('al-split').value, 'service'); drawSize(); });
     $('al-span').addEventListener('change', () => { remember('span', $('al-span').value, 'flown'); drawSize(); drawPairs(); });
     drawSize();
     document.addEventListener('t100:theme', () => { drawSize(); drawPairs(); });
