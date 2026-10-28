@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
-import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList } from '/static/charts/src/airport.js';
+import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList, changeSort, sortChanges } from '/static/charts/src/airport.js';
 import { formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -138,24 +138,42 @@ async function overTime() {
 // --- what changed ---
 
 let changes = [];
+let sortChoice = null; // the column last asked for; each status falls back to its own default where it can't sort by it
 
 const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
 const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} departures`; return td; };
-const head = (labels) => {
+// a header row; a column with a sort key is a button (the busiest-airports table's), marked when the list is sorted by it
+const head = (labels, { sortable = [], sorted = null, onSort = () => {} } = {}) => {
   const tr = document.createElement('tr');
-  for (const [text, cls] of labels) { const th = document.createElement('th'); th.textContent = text; th.className = cls; tr.append(th); }
+  for (const [text, cls, key] of labels) {
+    const th = document.createElement('th');
+    th.className = cls;
+    th.scope = 'col';
+    if (key && sortable.includes(key)) {
+      const button = Object.assign(document.createElement('button'), { type: 'button', textContent: text });
+      button.addEventListener('click', () => onSort(key));
+      th.append(button);
+      if (key === sorted) th.setAttribute('aria-sort', 'descending');
+    } else th.textContent = text;
+    tr.append(th);
+  }
   return tr;
 };
+
+let saveChanges = () => {};
 
 function drawTable() {
   const show = $('ap-show').value, status = $('ap-status').value, min = Number($('ap-min').value);
   const a = $('ap-a').value, b = $('ap-b').value;
-  const shown = classifyChanges(changes, { min, show }).filter((x) => x.status === status);
+  const sorted = changeSort(status, sortChoice);
+  const shown = sortChanges(classifyChanges(changes, { min, show }).filter((x) => x.status === status), status, sorted);
   const table = $('change-table');
   const when = status === 'added' ? 'First flown' : 'Last flown';
   const third = show === 'airlines' ? 'Destinations' : 'Airlines';
-  table.tHead.replaceChildren(head([[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} departures`, 'num'], [`${b} departures`, 'num'],
-    [third, show === 'airlines' ? 'num' : 'left'], [show === 'airlines' ? `${when} here` : when, 'left']]));
+  const sortable = ['a', 'b', 'when'].filter((k) => changeSort(status, k) === k);
+  const columns = [[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} departures`, 'num', 'a'], [`${b} departures`, 'num', 'b'],
+    [third, show === 'airlines' ? 'num' : 'left'], [show === 'airlines' ? `${when} here` : when, 'left', 'when']];
+  table.tHead.replaceChildren(head(columns, { sortable, sorted, onSort: (key) => { sortChoice = key; saveChanges(); drawTable(); } }));
   table.tBodies[0].replaceChildren(...shown.map((x) => {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
@@ -209,10 +227,14 @@ async function whatChanged() {
   $('ap-min').value = pick('min', ['1', '12', '52', '365'], '12');
   $('ap-show').value = pick('show', ['destinations', 'airlines'], 'destinations');
   $('ap-status').value = pick('status', ['dropped', 'added', 'kept'], 'dropped');
-  const save = () => remember(['min', 'from', 'to', 'show', 'status'], {
+  sortChoice = pick('sort', ['a', 'b', 'when'], null);
+  // the sort is kept in the address only where it isn't the status's own default
+  const save = () => remember(['min', 'from', 'to', 'show', 'status', 'sort'], {
     min: [$('ap-min').value, '12'], from: [$('ap-a').value, defaultFrom], to: [$('ap-b').value, String(lastYear)],
     show: [$('ap-show').value, 'destinations'], status: [$('ap-status').value, 'dropped'],
+    sort: [changeSort($('ap-status').value, sortChoice), changeSort($('ap-status').value, null)],
   });
+  saveChanges = save;
   for (const id of ['ap-a', 'ap-b']) $(id).addEventListener('change', () => { save(); loadChanges(); });
   $('ap-min').addEventListener('change', () => { save(); summarise(); drawTable(); });
   for (const id of ['ap-show', 'ap-status']) $(id).addEventListener('change', () => { save(); drawTable(); });

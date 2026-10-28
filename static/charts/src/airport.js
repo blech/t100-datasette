@@ -75,6 +75,17 @@ export function classifyChanges(rows, { min = 12, show = 'destinations' } = {}) 
   return out.sort((x, y) => countOf(y) - countOf(x));
 }
 
+// The columns a status's list can be sorted by, the default first: the departures of the year that counts (either year,
+// for kept ones; the other year's are all nothing) and when it changed (first flown, for added; last flown, for dropped)
+const CHANGE_SORTS = { added: ['b', 'when'], dropped: ['a', 'when'], kept: ['a', 'b'] };
+export const changeSort = (status, sort) => (CHANGE_SORTS[status].includes(sort) ? sort : CHANGE_SORTS[status][0]);
+
+// classifyChanges' items of one status, by a column, biggest or latest first; ties go to the busier
+export function sortChanges(items, status, sort) {
+  const key = { a: (x) => x.deps_a, b: (x) => x.deps_b, when: (x) => x.ym ?? x.year }[changeSort(status, sort)];
+  return [...items].sort((x, y) => key(y) - key(x) || countOf(y) - countOf(x));
+}
+
 export function summariseChanges(items) {
   const counts = { kept: 0, dropped: 0, added: 0 };
   for (const it of items) counts[it.status] += 1;
