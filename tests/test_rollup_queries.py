@@ -399,15 +399,14 @@ def pairs_year(ds, each, year=2019):
     return sorted((r["origin"], r["dest"], r["deps"]) for r in get_json(ds, f"/t100/carrier_routes_year.json?_shape=objects&group=dl&airline=&year={year}&each={each}")["rows"])
 
 
-def test_merged_pairs_match_old_table(ds, db_path):
-    from build_database import rebuild_carrier_pair_year, rebuild_carrier_route_year
+def test_merged_pairs_add_both_directions_in_alphabetical_order(ds, db_path):
+    from build_database import rebuild_carrier_pair_year
     from tests.test_routes_by_year import seg
     add_segments(db_path, "t100_domestic", [seg("ATL", "LGA", 2019, 30, 300), seg("LGA", "ATL", 2019, 25, 250, month=2), seg("BOS", "ATL", 2019, 12, 100, month=3)])
     conn = sqlite3.connect(db_path)
-    rebuild_carrier_route_year(conn)
     rebuild_carrier_pair_year(conn)
-    old = conn.execute("SELECT airline_id, origin, dest, deps, seats, passengers, freight, domestic_deps FROM carrier_route_year WHERE year = 2019 ORDER BY origin, dest").fetchall()
     conn.close()
+    old = [("unknown", "ATL", "BOS", 12, 100, 100, 0, 12), ("unknown", "ATL", "LGA", 55, 200, 550, 0, 55)]  # what airline pages always showed
     rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=unknown&airline=&year=2019&each=")["rows"]
     assert sorted((r["airline_id"], r["origin"], r["dest"], r["deps"], r["seats"], r["passengers"], r["freight"], r["domestic_deps"]) for r in rows) == old
 

@@ -65,7 +65,7 @@ def test_rebuild_derived_tables_fills_both_derived_tables(db_path):
     conn = sqlite3.connect(db_path)
     rebuild_derived_tables(conn)
     assert conn.execute("SELECT COUNT(*) FROM airport_names").fetchone()[0] == 2
-    assert conn.execute("SELECT COUNT(*) FROM airport_year_totals").fetchone()[0] >= 1
+    assert conn.execute("SELECT COUNT(*) FROM airport_dir_year").fetchone()[0] >= 1
     conn.close()
 
 

@@ -1,6 +1,6 @@
 import sqlite3
 
-from build_database import rebuild_airport_dir_year, rebuild_airport_year_totals, rebuild_route_year_totals
+from build_database import rebuild_airport_dir_year, rebuild_route_year_totals
 from tests.helpers import add_segments as _add, get_json
 from tests.test_routes_by_year import seg
 
@@ -94,9 +94,9 @@ def test_rebuild_combines_both_tables_and_is_repeatable(db_path):
     _add(db_path, "t100_international", [intl])
     conn = sqlite3.connect(db_path)
     for _ in range(2):  # a second rebuild replaces rather than adds
-        rebuild_airport_year_totals(conn)
+        rebuild_airport_dir_year(conn)
         assert conn.execute(
-            "SELECT origin, origin_city_name, origin_wac, year, deps, seats, passengers, freight FROM airport_year_totals"
+            "SELECT airport, city_name, wac, year, deps, seats_out, passengers_out, freight_out FROM airport_dir_year WHERE airport = 'ATL'"
         ).fetchall() == [("ATL", "Atlanta, GA", 33, 2025, 12, 240, 120, 3500)]
 
 
@@ -104,9 +104,9 @@ def test_totals_match_the_view_for_every_airport_and_year(db_path):
     _add(db_path, "t100_domestic", [us("ATL", 2024, 3, 30), us("ATL", 2025, 4, 40), us("BOS", 2025, 5, 50)])
     _add(db_path, "t100_international", [us("BOS", 2025, 1, 10)])
     conn = sqlite3.connect(db_path)
-    rebuild_airport_year_totals(conn)
+    rebuild_airport_dir_year(conn)
     expected = conn.execute("SELECT origin, year, SUM(departures_performed), SUM(passengers) FROM t100 GROUP BY origin, year ORDER BY 1, 2").fetchall()
-    got = conn.execute("SELECT origin, year, deps, passengers FROM airport_year_totals ORDER BY 1, 2").fetchall()
+    got = conn.execute("SELECT airport, year, deps, passengers_out FROM airport_dir_year WHERE deps > 0 ORDER BY 1, 2").fetchall()
     assert got == expected
 
 

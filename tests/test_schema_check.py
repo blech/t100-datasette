@@ -25,10 +25,10 @@ def test_a_complete_database_reports_ok(ds):
 
 def test_a_missing_table_is_reported(db_path):
     conn = sqlite3.connect(db_path)
-    conn.execute("DROP TABLE carrier_route_year")
+    conn.execute("DROP TABLE carrier_pair_year")
     conn.commit()
     body = get_json(make_datasette(db_path), "/-/derived")
-    assert body["ok"] is False and body["problems"] == ["missing table carrier_route_year"]
+    assert body["ok"] is False and body["problems"] == ["missing table carrier_pair_year"]
     assert "rebuild_derived_tables" in body["fix"]
 
 

@@ -34,14 +34,14 @@ So an update must **replace** every month the file covers. Appending would doubl
 - Prints rows removed and added per month.
 - Sanity check: refuse if a month in the file has under half the rows already stored for it, unless overridden. Catches truncated downloads and a wrong table.
 - `--dry-run` prints the report without writing.
-- After loading: create any missing indexes, call `rebuild_derived_tables` (`airport_year_totals`, `airport_names`, and the rollups below), `ANALYZE`.
+- After loading: create any missing indexes, call `rebuild_derived_tables` (`airport_dir_year`, `airport_carrier_dir_year`, `carrier_pair_year`, `route_year_totals`, `airport_names`, `airport_market` and the rollups below), `ANALYZE`.
 - Tests first, against small fixture databases: replacement of overlapping months, rollback on failure, header and headerless files, the half-rows guard.
 
 ## Rollup tables must be rebuilt too
 
-Added on the `feature/aircraft-carrier-charts` branch (2026-10-14), and applied to the production volume by hand that day: `aircraft_family`, `family_year`, `family_detail_year`, `carrier_group`, `carrier_group_year` and `aircraft_group_band_year`. They are all derived from the segment tables by `build_database.rebuild_derived_tables`, which reads the rules in `data/aircraft_families.csv` and `data/carrier_groups.csv`. They behave like `airport_year_totals`: after any month is replaced they are stale until rebuilt, and nothing warns about it. The `/aircraft`, `/aircraft/<family>` and `/carriers` pages and the long-haul engine chart read them.
+Added on the `feature/aircraft-carrier-charts` branch (2026-10-14), and applied to the production volume by hand that day: `aircraft_family`, `family_year`, `family_detail_year`, `carrier_group`, `carrier_group_year` and `aircraft_group_band_year`. They are all derived from the segment tables by `build_database.rebuild_derived_tables`, which reads the rules in `data/aircraft_families.csv` and `data/carrier_groups.csv`. They behave like `airport_dir_year`: after any month is replaced they are stale until rebuilt, and nothing warns about it. The `/aircraft`, `/aircraft/<family>` and `/carriers` pages and the long-haul engine chart read them.
 
-`airport_carrier_year` (added 2026-10-24 on the `feature/airport-carrier-year` branch, and loaded onto the production volume by hand that day) is the same kind of rollup: each airline group's yearly totals for the segments leaving each airport. It goes stale in the same way, and the `/airports/dedicated` page and its `dedicated_airports` query read it. It has 464,593 rows and takes about 45 seconds to build, so it adds under a minute to the rebuild. Its totals must equal `airport_year_totals` (both summed to 28,453,168,929 passengers on 2026-10-24).
+The direction rollups (added 2026-10-28 on the `bidirectional` branch, and loaded onto the production volume by hand that day) replaced `airport_year_totals`, `airport_carrier_year` and `carrier_route_year`: `airport_dir_year` (each airport's yearly departures and arrivals), `airport_carrier_dir_year` (the same by airline group; the `/airports/dedicated` page and the airport charts read it) and `carrier_pair_year` (each airline's pairs as flown). They go stale in the same way. They are 56,309, 521,967 and 1,931,147 rows (about 127MB together), and their passenger totals must agree: `airport_dir_year` and `airport_carrier_dir_year` each sum to 56,906,337,858 passengers both ways, twice `carrier_pair_year`'s 28,453,168,929.
 
 - The update script must call `rebuild_derived_tables` as a whole, not just the airport tables, and its report should print the row counts it returns.
 - Rebuilding takes about two minutes locally (130 seconds for everything), so the shared-CPU machine would be slower. Option 1 below already needs `build_database.py` and `data/` in the image; `data/` is not copied by the Dockerfile today, so add it.
@@ -56,7 +56,7 @@ With data to July 2026, 2026 is a seven-month year. If the site treats the lates
 
 Recommendation: default to the latest **complete** year, include the partial year in menus labelled "2026 (to July)", and derive the cut-off from the database rather than the hard-coded `plugins: t100_globe: min_year/max_year` in `datasette.yml`. The alternative, defaulting to the latest year with a label, is worse because the first view would be misleading.
 
-Things that assume a full year: the aircraft, carrier and engine charts (their "latest year" ranking option uses `max_year`), landing table ranking and year select, the globe year slider and its play-through, `routes_by_year` year columns, `top_airports` (reads `airport_year_totals`), and the route chart's yearly bars.
+Things that assume a full year: the aircraft, carrier and engine charts (their "latest year" ranking option uses `max_year`), landing table ranking and year select, the globe year slider and its play-through, `routes_by_year` year columns, `top_airports` (reads `airport_dir_year`), and the route chart's yearly bars.
 
 ## Production update
 
