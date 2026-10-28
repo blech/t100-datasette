@@ -118,6 +118,27 @@ CREATE TABLE IF NOT EXISTS "carrier_route_year" (
    [domestic_deps] INTEGER,
    PRIMARY KEY ([group_id], [airline_id], [year], [origin], [dest])
 ) WITHOUT ROWID;
+-- Yearly totals per airport, departing (deps, *_out: segments with the airport as origin) and arriving (arrs, *_in: as dest), so a page can count either direction or both; every airport on either end has a row, by rebuild_airport_dir_year()
+CREATE TABLE IF NOT EXISTS "airport_dir_year" (
+   [year] INTEGER, [airport] TEXT, [city_name] TEXT, [wac] INTEGER,
+   [deps] INTEGER, [arrs] INTEGER, [seats_out] INTEGER, [seats_in] INTEGER, [passengers_out] INTEGER, [passengers_in] INTEGER,
+   [freight_out] INTEGER, [freight_in] INTEGER,
+   PRIMARY KEY ([year], [airport])
+) WITHOUT ROWID;
+-- airport_dir_year split by airline group, BTS file (domestic) and service class, by rebuild_airport_carrier_dir_year()
+CREATE TABLE IF NOT EXISTS "airport_carrier_dir_year" (
+   [year] INTEGER, [airport] TEXT, [wac] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
+   [deps] INTEGER, [arrs] INTEGER, [seats_out] INTEGER, [seats_in] INTEGER, [passengers_out] INTEGER, [passengers_in] INTEGER,
+   [freight_out] INTEGER, [freight_in] INTEGER,
+   PRIMARY KEY ([year], [airport], [group_id], [domestic], [service_class])
+) WITHOUT ROWID;
+-- Yearly totals per airline group, member airline and airport pair in the direction flown (origin -> dest, never reordered), by rebuild_carrier_pair_year()
+CREATE TABLE IF NOT EXISTS "carrier_pair_year" (
+   [group_id] TEXT, [airline_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
+   [domestic_deps] INTEGER,
+   PRIMARY KEY ([group_id], [airline_id], [year], [origin], [dest])
+) WITHOUT ROWID;
 -- Yearly totals per aircraft family by subfamily and airline group (for a family's own page), by rebuild_family_detail_year()
 CREATE TABLE IF NOT EXISTS "family_detail_year" (
    [family] TEXT, [year] INTEGER, [subfamily] TEXT, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
@@ -485,6 +506,77 @@ def rebuild_carrier_route_year(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM carrier_route_year").fetchone()[0]
 
 
+# each segment twice, once from each end: the airport it leaves (out) and the airport it reaches (in)
+_BOTH_ENDS_SQL = """
+    SELECT t.year, t.origin AS airport, t.origin_city_name AS city_name, t.origin_wac AS wac, t.carrier_entity, t.domestic, t.class,
+           t.departures_performed AS deps, 0 AS arrs, t.seats AS seats_out, 0 AS seats_in, t.passengers AS passengers_out, 0 AS passengers_in,
+           t.freight AS freight_out, 0 AS freight_in
+    FROM t100 t WHERE t.year IS NOT NULL AND t.origin IS NOT NULL
+    UNION ALL
+    SELECT t.year, t.dest, t.dest_city_name, t.dest_wac, t.carrier_entity, t.domestic, t.class,
+           0, t.departures_performed, 0, t.seats, 0, t.passengers, 0, t.freight
+    FROM t100 t WHERE t.year IS NOT NULL AND t.dest IS NOT NULL
+"""
+_DIR_SUMS_SQL = "SUM(deps), SUM(arrs), SUM(seats_out), SUM(seats_in), SUM(passengers_out), SUM(passengers_in), SUM(freight_out), SUM(freight_in)"
+
+
+def rebuild_airport_dir_year(conn: sqlite3.Connection) -> int:
+    """Recompute airport_dir_year: each airport's yearly departures and arrivals, from both segment tables."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM airport_dir_year")
+        conn.execute(
+            f"""
+            INSERT INTO airport_dir_year
+            SELECT year, airport, MAX(city_name), MAX(wac), {_DIR_SUMS_SQL}
+            FROM ({_BOTH_ENDS_SQL})
+            GROUP BY year, airport
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM airport_dir_year").fetchone()[0]
+
+
+def rebuild_airport_carrier_dir_year(conn: sqlite3.Connection) -> int:
+    """Recompute airport_carrier_dir_year: airport_dir_year by airline group. Carrier entities missing from the carriers table are kept as 'unknown'."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM airport_carrier_dir_year")
+        conn.execute(
+            f"""
+            INSERT INTO airport_carrier_dir_year
+            SELECT e.year, e.airport, MAX(e.wac), COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), e.domestic, COALESCE(e.class, ''),
+                   {_DIR_SUMS_SQL}
+            FROM ({_BOTH_ENDS_SQL}) e
+            LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = e.carrier_entity
+            LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+            GROUP BY e.year, e.airport, COALESCE(g.group_id, 'unknown'), COALESCE(g.group_name, 'Unknown carrier'), e.domestic, COALESCE(e.class, '')
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM airport_carrier_dir_year").fetchone()[0]
+
+
+def rebuild_carrier_pair_year(conn: sqlite3.Connection) -> int:
+    """Recompute carrier_pair_year: carrier_route_year with each direction kept apart, as flown."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM carrier_pair_year")
+        conn.execute(
+            """
+            INSERT INTO carrier_pair_year
+            SELECT COALESCE(g.group_id, 'unknown'), COALESCE(c.airline_id, 'unknown'), t.year, t.origin, t.dest,
+                   SUM(t.departures_performed), SUM(t.seats), SUM(t.passengers), SUM(t.freight),
+                   MIN(CASE WHEN t.departures_performed > 0 THEN t.month END), MAX(CASE WHEN t.departures_performed > 0 THEN t.month END),
+                   SUM(CASE WHEN t.domestic = 1 THEN t.departures_performed ELSE 0 END)
+            FROM t100 t
+            LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
+            LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
+            WHERE t.year IS NOT NULL
+            GROUP BY COALESCE(g.group_id, 'unknown'), COALESCE(c.airline_id, 'unknown'), t.year, t.origin, t.dest
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM carrier_pair_year").fetchone()[0]
+
+
 def rebuild_route_year_totals(conn: sqlite3.Connection) -> int:
     """Recompute route_year_totals: every origin-destination pair's yearly totals from both segment tables, keeping the domestic
     table's share of departures so a query can call a route domestic as routes_by_year does (most departures domestic)."""
@@ -562,6 +654,9 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "aircraft_carrier_year": rebuild_aircraft_carrier_year(conn),
         "carrier_route_year": rebuild_carrier_route_year(conn),
         "route_year_totals": rebuild_route_year_totals(conn),
+        "airport_dir_year": rebuild_airport_dir_year(conn),
+        "airport_carrier_dir_year": rebuild_airport_carrier_dir_year(conn),
+        "carrier_pair_year": rebuild_carrier_pair_year(conn),
     }
 
 
