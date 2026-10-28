@@ -215,21 +215,21 @@ def test_rebuilding_twice_gives_the_same_tables(db_path):
     assert {"aircraft_family", "family_year", "carrier_group", "carrier_group_year", "aircraft_group_band_year", "family_detail_year", "aircraft_carrier_year"} <= set(first)
 
 
-def test_carrier_route_year_joins_both_directions_and_both_merged_airlines(db_path):
+def test_carrier_pair_year_keeps_each_direction_under_the_merged_group(db_path):
     add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."), ("19386", "B1", "Northwest Airlines Inc."))
     add_segments(db_path, "t100_domestic", [
         flight("SFO", "DEN", carrier_entity="A1", **{"class": "F"}, deps=10),
         flight("DEN", "SFO", carrier_entity="B1", **{"class": "F"}, deps=4)])
-    rows = query(db_path, "SELECT group_id, airline_id, year, origin, dest, deps FROM carrier_route_year ORDER BY airline_id")
-    assert rows == [("delta", "19386", 2019, "DEN", "SFO", 4), ("delta", "19790", 2019, "DEN", "SFO", 10)]
+    rows = query(db_path, "SELECT group_id, airline_id, year, origin, dest, deps FROM carrier_pair_year ORDER BY airline_id")
+    assert rows == [("delta", "19386", 2019, "DEN", "SFO", 4), ("delta", "19790", 2019, "SFO", "DEN", 10)]
 
 
-def test_carrier_route_year_counts_the_departures_filed_as_domestic(db_path):
+def test_carrier_pair_year_counts_the_departures_filed_as_domestic(db_path):
     # a pair can sit in both BTS files; the airport map's rule needs how many of the departures were filed domestic
     add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."))
     add_segments(db_path, "t100_domestic", [flight("HNL", "GUM", carrier_entity="A1", **{"class": "F"}, deps=3)])
-    add_segments(db_path, "t100_international", [flight("GUM", "HNL", carrier_entity="A1", **{"class": "F"}, deps=9)])
-    assert query(db_path, "SELECT deps, domestic_deps FROM carrier_route_year") == [(12, 3)]
+    add_segments(db_path, "t100_international", [flight("HNL", "GUM", carrier_entity="A1", **{"class": "F"}, deps=9)])
+    assert query(db_path, "SELECT deps, domestic_deps FROM carrier_pair_year") == [(12, 3)]
 
 
 def test_an_older_shape_of_a_derived_table_is_dropped_and_rebuilt(db_path):
@@ -353,38 +353,39 @@ def test_airport_market_gives_each_code_its_newest_bts_city_market(db_path):
     assert got == {"JFK": "31703", "LGA": "31703", "EWR": "31703", "XYZ": "20002"}
 
 
-def test_airport_carrier_year_counts_passengers_at_the_airport_they_leave(db_path):
+def test_airport_carrier_dir_year_counts_passengers_leaving_and_arriving(db_path):
     add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."))
     add_segments(db_path, "t100_domestic", [flight("ATL", "LAX", carrier_entity="A1", **{"class": "F"}, deps=10, pax=100)])
-    assert query(db_path, "SELECT origin, group_id, passengers FROM airport_carrier_year") == [("ATL", "delta", 100)]
+    assert query(db_path, "SELECT airport, group_id, passengers_out, passengers_in FROM airport_carrier_dir_year ORDER BY airport") == [
+        ("ATL", "delta", 100, 0), ("LAX", "delta", 0, 100)]
 
 
-def test_airport_carrier_year_merges_airlines_into_their_group(db_path):
+def test_airport_carrier_dir_year_merges_airlines_into_their_group(db_path):
     add_carriers(db_path, ("19393", "W1", "Southwest Airlines Co."), ("20437", "T1", "AirTran Airways Corporation"))
     add_segments(db_path, "t100_domestic", [flight("BWI", "MCO", carrier_entity="W1", **{"class": "F"}, pax=700), flight("BWI", "ATL", carrier_entity="T1", **{"class": "F"}, pax=100)])
-    assert query(db_path, "SELECT group_id, group_name, passengers FROM airport_carrier_year") == [("southwest", "Southwest (incl. AirTran)", 800)]
+    assert query(db_path, "SELECT group_id, group_name, passengers_out FROM airport_carrier_dir_year WHERE airport = 'BWI'") == [("southwest", "Southwest (incl. AirTran)", 800)]
 
 
-def test_airport_carrier_year_keeps_domestic_and_international_apart(db_path):
+def test_airport_carrier_dir_year_keeps_domestic_and_international_apart(db_path):
     add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."))
     add_segments(db_path, "t100_domestic", [flight("ATL", "LAX", carrier_entity="A1", **{"class": "F"}, pax=100)])
     add_segments(db_path, "t100_international", [flight("ATL", "LHR", carrier_entity="A1", **{"class": "F"}, pax=30)])
-    assert query(db_path, "SELECT domestic, passengers FROM airport_carrier_year ORDER BY domestic") == [(0, 30), (1, 100)]
+    assert query(db_path, "SELECT domestic, passengers_out FROM airport_carrier_dir_year WHERE airport = 'ATL' ORDER BY domestic") == [(0, 30), (1, 100)]
 
 
-def test_airport_carrier_year_keeps_a_carrier_missing_from_the_lookup_as_unknown(db_path):
+def test_airport_carrier_dir_year_keeps_a_carrier_missing_from_the_lookup_as_unknown(db_path):
     add_segments(db_path, "t100_domestic", [flight("ATL", "LAX", carrier_entity="ZZ", **{"class": "F"}, pax=5)])
-    assert query(db_path, "SELECT group_id, group_name, passengers FROM airport_carrier_year") == [("unknown", "Unknown carrier", 5)]
+    assert query(db_path, "SELECT group_id, group_name, passengers_out FROM airport_carrier_dir_year WHERE airport = 'ATL'") == [("unknown", "Unknown carrier", 5)]
 
 
-def test_airport_carrier_year_adds_up_to_airport_year_totals(db_path):
+def test_airport_carrier_dir_year_adds_up_to_airport_dir_year(db_path):
     add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."), ("19393", "W1", "Southwest Airlines Co."))
     add_segments(db_path, "t100_domestic", [flight("ATL", "LAX", carrier_entity="A1", **{"class": "F"}, deps=3, seats=300, pax=200, freight=7),
                                             flight("ATL", "DEN", carrier_entity="W1", **{"class": "F"}, deps=2, seats=200, pax=150, freight=1)])
     add_segments(db_path, "t100_international", [flight("ATL", "LHR", carrier_entity="A1", **{"class": "F"}, deps=1, seats=250, pax=90, freight=4)])
-    mine = query(db_path, "SELECT year, origin, SUM(deps), SUM(seats), SUM(passengers), SUM(freight) FROM airport_carrier_year GROUP BY year, origin")
-    theirs = query(db_path, "SELECT year, origin, deps, seats, passengers, freight FROM airport_year_totals")
-    assert mine == theirs and mine[0][2:] == (6, 750, 440, 12)
+    mine = query(db_path, "SELECT year, airport, SUM(deps), SUM(arrs), SUM(seats_out), SUM(passengers_out), SUM(passengers_in), SUM(freight_out) FROM airport_carrier_dir_year GROUP BY year, airport ORDER BY airport")
+    theirs = query(db_path, "SELECT year, airport, deps, arrs, seats_out, passengers_out, passengers_in, freight_out FROM airport_dir_year ORDER BY airport")
+    assert mine == theirs and [r for r in mine if r[1] == "ATL"][0][2:] == (6, 0, 750, 440, 0, 12)
 
 
 def test_an_aircraft_carrier_year_from_before_member_airlines_is_recreated_with_them(tmp_path):

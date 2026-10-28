@@ -159,7 +159,7 @@ databases:
           LIMIT 100
 
       # the most dedicated airports: of the biggest US airports by passengers (100) or freight (25) in one year, the ten whose
-      # biggest airline group carries the largest share of what leaves the airport. Reads airport_carrier_year, so it is
+      # biggest airline group carries the largest share of what boards or leaves there. Reads airport_carrier_dir_year, so it is
       # a small query whatever the year; measure is 'passengers' or 'freight' (anything else counts as passengers)
       dedicated_airports:
         title: "Airports dominated by one airline"

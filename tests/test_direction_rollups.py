@@ -37,10 +37,3 @@ def test_carrier_pair_year_keeps_direction(db_path):
                                             flight("ATL", "LGA", carrier_entity="A1", deps=2, month=9)])
     rows = query(db_path, "SELECT origin, dest, deps, first_month, last_month FROM carrier_pair_year ORDER BY origin")
     assert rows == [("ATL", "LGA", 6, 5, 9), ("LGA", "ATL", 10, 3, 3)]
-
-
-def test_old_tables_still_built(db_path):
-    add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."))
-    add_segments(db_path, "t100_domestic", [flight("LGA", "ATL", carrier_entity="A1", deps=10), flight("ATL", "LGA", carrier_entity="A1", deps=4)])
-    assert query(db_path, "SELECT origin, dest, deps FROM carrier_route_year") == [("ATL", "LGA", 14)]
-    assert query(db_path, "SELECT origin, deps FROM airport_year_totals ORDER BY origin") == [("ATL", 4), ("LGA", 10)]

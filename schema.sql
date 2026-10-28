@@ -29,12 +29,6 @@ CREATE TABLE "airport_carrier_dir_year" (
    PRIMARY KEY ([year], [airport], [group_id], [domestic], [service_class])
 ) WITHOUT ROWID;
 
-CREATE TABLE "airport_carrier_year" (
-   [year] INTEGER, [origin] TEXT, [origin_wac] INTEGER, [group_id] TEXT, [group_name] TEXT, [domestic] INTEGER, [service_class] TEXT,
-   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
-   PRIMARY KEY ([year], [origin], [group_id], [domestic], [service_class])
-) WITHOUT ROWID;
-
 CREATE TABLE "airport_dir_year" (
    [year] INTEGER, [airport] TEXT, [city_name] TEXT, [wac] INTEGER,
    [deps] INTEGER, [arrs] INTEGER, [seats_out] INTEGER, [seats_in] INTEGER, [passengers_out] INTEGER, [passengers_in] INTEGER,
@@ -55,12 +49,6 @@ CREATE TABLE "airport_overrides" (
    [latitude] REAL, [longitude] REAL
 );
 
-CREATE TABLE "airport_year_totals" (
-   [year] INTEGER, [origin] TEXT, [origin_city_name] TEXT, [origin_wac] INTEGER,
-   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
-   PRIMARY KEY ([year], [origin])
-) WITHOUT ROWID;
-
 CREATE TABLE "carrier_group" (
    [airline_id] TEXT PRIMARY KEY, [group_id] TEXT, [group_name] TEXT, [airline_name] TEXT
 ) WITHOUT ROWID;
@@ -72,13 +60,6 @@ CREATE TABLE "carrier_group_year" (
 ) WITHOUT ROWID;
 
 CREATE TABLE "carrier_pair_year" (
-   [group_id] TEXT, [airline_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
-   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
-   [domestic_deps] INTEGER,
-   PRIMARY KEY ([group_id], [airline_id], [year], [origin], [dest])
-) WITHOUT ROWID;
-
-CREATE TABLE "carrier_route_year" (
    [group_id] TEXT, [airline_id] TEXT, [year] INTEGER, [origin] TEXT, [dest] TEXT,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [first_month] INTEGER, [last_month] INTEGER,
    [domestic_deps] INTEGER,
