@@ -677,24 +677,35 @@ async def reporting_2002_airlines(datasette):
     return datasette._t100_reporting_2002
 
 
+# notes written by hand, by airline_id, for breaks the test above doesn't find because they come at another date
+REPORTING_NOTES = {
+    "19917": "UPS freight tonnage grew after January 2001, which appears to be early compliance with the October 2002 reporting change requirement for domestic cargo.",
+}
+
+
 def monthly(rate):
     return "none" if rate == 0 else "almost none" if rate < 0.5 else f"about {prose_count(round(rate))}"
 
 
 async def reporting_note(datasette, info):
-    """The note for an airline page: its airlines (the group's members, or the one airline) whose data show the October 2002
-    change, as "Federal Express went from none to about 24,800 a month"; None when none do."""
+    """The note for an airline page, about its airlines (the group's members, or the one airline): those whose data show the
+    October 2002 change, as "Federal Express went from none to about 24,800 a month", then any written by hand
+    (REPORTING_NOTES); None when there is nothing to say."""
     found = await reporting_2002_airlines(datasette)
     if info["airline"]:
         ids = [info["airline"]]
     else:
         ids = [r[0] for r in (await datasette.get_database("t100").execute("SELECT airline_id FROM carrier_group WHERE group_id = ?", [info["group"]])).rows]
+    parts = []
     shown = sorted((found[i] for i in ids if i in found), key=lambda a: -a["after"])
-    if not shown:
-        return None
-    first, *rest = shown
-    return ", and ".join([f"{first['name']} went from {monthly(first['before'])} to {monthly(first['after'])} a month",
-                          *(f"{a['name']} from {monthly(a['before'])} to {monthly(a['after'])}" for a in rest)])
+    if shown:
+        first, *rest = shown
+        went = ", and ".join([f"{first['name']} went from {monthly(first['before'])} to {monthly(first['after'])} a month",
+                              *(f"{a['name']} from {monthly(a['before'])} to {monthly(a['after'])}" for a in rest)])
+        parts.append("Airlines only had to report domestic all-cargo flights from October 2002, so most before then are missing. "
+                     f"{went} at the end of 2002: that jump is the reporting, not new flying.")
+    parts += [REPORTING_NOTES[i] for i in ids if i in REPORTING_NOTES]
+    return " ".join(parts) or None
 
 
 def airline_view(template, tail):
@@ -708,7 +719,7 @@ def airline_view(template, tail):
                 **info, "own": info["airline"] or info["group"],
                 "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
                 "crumbs": airline_crumbs(datasette, info, *tail),
-                "reporting_2002": await reporting_note(datasette, info) if template == "airline.html" else None,
+                "reporting_note": await reporting_note(datasette, info) if template == "airline.html" else None,
                 **airline_direction(request),
             },
             request=request,

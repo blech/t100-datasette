@@ -50,3 +50,15 @@ def test_the_note_names_the_airlines_on_the_page_that_show_the_change(ds, db_pat
     assert "reporting-note" in get(ds, "/airlines/19386").text  # and so does the member's own page
     assert "reporting-note" not in get(ds, "/airlines/19790").text  # Delta Air Lines itself shows no change
     assert "reporting-note" not in get(ds, "/airlines/20107/changes").text  # only the over-time page has the chart
+
+
+def test_ups_gets_its_note_written_by_hand(ds, db_path):
+    add_carriers(db_path, ("19917", "5X", "United Parcel Service"))
+    add_segments(db_path, "t100_domestic", [flight("SDF", "ONT", 2001, deps=9000, pax=0, seats=0, freight=10**8, carrier_entity="5X", month=1, **{"class": "G"})])
+    conn = sqlite3.connect(db_path)
+    rebuild_carrier_groups(conn)
+    rebuild_carrier_group_year(conn)
+    conn.close()
+    page = html.unescape(get(ds, "/airlines/19917").text)
+    assert 'id="reporting-note" hidden>UPS freight tonnage grew after January 2001, which appears to be early compliance' in page
+    assert "only had to report" not in page  # its data don't show the October 2002 change

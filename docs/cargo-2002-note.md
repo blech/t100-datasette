@@ -45,7 +45,7 @@ Airlines are counted by `airline_id`, as the pages group them. In the current da
 The small Alaskan carriers arrive with the same October 2002 change, which also brought in aircraft of 60 seats or fewer.
 
 Not affected:
-- **UPS:** steady through 2002. Its domestic flying appears in January 2001, which the about page notes separately.
+- **UPS:** steady through 2002, so the test leaves it out. Its domestic all-cargo flying appears in January 2001 (3 departures a month late in 2000, about 9,000 from then on) and doesn't jump again in October 2002, which suggests it reported early. It gets a note written by hand instead (`REPORTING_NOTES` in the plugin): "UPS freight tonnage grew after January 2001, which appears to be early compliance with the October 2002 reporting change requirement for domestic cargo." The about page says the same.
 - **Airborne (ABX):** its domestic flying appears in January 2005 (see Related).
 
 ## How it works

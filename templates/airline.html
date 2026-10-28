@@ -36,7 +36,7 @@
       over <select id="al-span" aria-label="Years shown"><option value="flown">years flown</option><option value="all">all years</option></select>.
     </p>
     <div id="size-chart" aria-live="polite">Loading chart…</div>
-    {% if reporting_2002 %}<p class="note" id="reporting-note" hidden>Airlines only had to report domestic all-cargo flights from October 2002, so most before then are missing. {{ reporting_2002 }} at the end of 2002: that jump is the reporting, not new flying. <a href="/about#breaks">More on gaps and breaks</a>.</p>{% endif %}
+    {% if reporting_note %}<p class="note" id="reporting-note" hidden>{{ reporting_note }} <a href="/about#breaks">More on gaps and breaks</a>.</p>{% endif %}
 
     <h2>How many places</h2>
     <p class="chart-sentence">
