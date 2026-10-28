@@ -21,14 +21,14 @@
       Compare <select id="ap-a" aria-label="From year"></select> with <select id="ap-b" aria-label="To year"></select>.
     </p>
     <p id="change-summary" class="intro"></p>
-    <p class="chart-sentence">Show <select id="ap-show" aria-label="Destinations or airlines"><option value="destinations">destinations</option><option value="airlines">airlines</option></select> that were <select id="ap-status" aria-label="Which ones"><option value="dropped">dropped</option><option value="added">added</option><option value="kept">kept</option></select>.</p>
+    <p class="chart-sentence">Show <select id="ap-show" aria-label="Destinations or airlines"><option value="destinations">destinations</option><option value="airlines">airlines</option></select> that were <select id="ap-status" aria-label="Which ones"><option value="dropped">dropped</option><option value="gone">dropped at any point</option><option value="added">added</option><option value="kept">kept</option></select>.</p>
     <div class="scroll">
       <table id="change-table">
         <thead></thead>
         <tbody></tbody>
       </table>
     </div>
-    <p class="note">Every count is of flights departing <em>from</em> {{ origin }}: <a href="/about#direction">routes are one-way</a>. A destination is dropped when flights to it stopped or fell below the minimum, not when a particular flight number ended. Airlines are counted as groups, so a merged airline's flying is counted together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
+    <p class="note">Every count is of flights departing <em>from</em> {{ origin }}: <a href="/about#direction">routes are one-way</a>. A destination is dropped when flights to it stopped or fell below the minimum, not when a particular flight number ended. "Dropped at any point" adds those added and dropped again between the two years, with the years they were flown and their busiest year. Airlines are counted as groups, so a merged airline's flying is counted together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
     {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/charts/airport.js"></script>

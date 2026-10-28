@@ -60,3 +60,29 @@ def test_airport_changes_agrees_with_the_matrix(ds, db_path):
     for (dest, _), r in changes(ds).items():
         totals[dest] = totals.get(dest, 0) + r["deps_a"]
     assert totals == {d: n for (d, y), n in matrix.items() if y == 2019} | {"BOS": 0}
+
+
+def gone(ds, **q):
+    params = {"origin": "SFO", "a": 2015, "b": 2023, "min": 1, "show": "destinations", **q}
+    body = get_json(ds, "/t100/airport_gone.json?_shape=objects&" + "&".join(f"{k}={v}" for k, v in params.items()))
+    assert body["truncated"] is False
+    return body["rows"]
+
+
+def test_airport_gone_lists_the_destinations_flown_from_a_up_to_b_but_not_in_b_with_their_busiest_year(ds, db_path):
+    seed(db_path)
+    rows = {(r["code"], r["member"]): r for r in gone(ds)}
+    assert sorted(rows) == [("NRT", "United (incl. Continental)"), ("SEA", "United (incl. Continental)")]  # LAX is still flown in 2023
+    sea = rows[("SEA", "United (incl. Continental)")]  # dropped: flown in 2015, busiest then, last flown in 2019
+    assert (sea["deps_a"], sea["first_year"], sea["last_year"], sea["peak_year"], sea["peak_deps"], sea["member_deps"]) == (9, 2015, 2019, 2015, 9, 9)
+    assert sea["name"] == "Seattle, WA"
+    nrt = rows[("NRT", "United (incl. Continental)")]  # added and dropped again in between
+    assert (nrt["deps_a"], nrt["first_year"], nrt["last_year"], nrt["peak_year"]) == (0, 2019, 2019, 2019)
+
+
+def test_airport_gone_counts_each_year_at_the_minimum_and_can_list_airlines_instead(ds, db_path):
+    seed(db_path)
+    rows = gone(ds, min=5)
+    assert [(r["code"], r["last_year"]) for r in rows] == [("SEA", 2015)]  # 2019's 4 departures and NRT's 3 don't reach it
+    airlines = gone(ds, show="airlines")
+    assert [(r["code"], r["member"], r["first_year"]) for r in airlines] == [("unknown", "SEA", 2019)]  # United still flies from SFO in 2023

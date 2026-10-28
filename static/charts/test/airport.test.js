@@ -147,10 +147,18 @@ test('each status sorts only by the columns that mean something for it, the depa
   assert.equal(changeSort('dropped', null), 'a');
   assert.equal(changeSort('kept', 'b'), 'b');
   assert.equal(changeSort('kept', 'when'), 'a');
+  assert.equal(changeSort('gone', 'a'), 'peak');
+  assert.equal(changeSort('gone', 'when'), 'when');
 });
 
 test('airlines sort by the year they started or stopped here', () => {
   const rows = [c('LAX', 'united', 'United', 0, 30, 199001, 202512), c('SFO', 'delta', 'Delta', 0, 40, 201501, 202512)];
   const out = classifyChanges(rows, { min: 12, show: 'airlines' });
   assert.deepEqual(sortChanges(out, 'added', 'when').map((x) => x.id), ['delta', 'united']);
+});
+
+test('those dropped at any point sort by their busiest year, or by the last year they flew', () => {
+  const items = [{ code: 'SJC', peakDeps: 351, lastYear: 2023 }, { code: 'ANC', peakDeps: 365, lastYear: 2006 }, { code: 'CHS', peakDeps: 58, lastYear: 2019 }];
+  assert.deepEqual(sortChanges(items, 'gone', 'peak').map((x) => x.code), ['ANC', 'SJC', 'CHS']);
+  assert.deepEqual(sortChanges(items, 'gone', 'when').map((x) => x.code), ['SJC', 'CHS', 'ANC']);
 });

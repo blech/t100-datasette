@@ -3,6 +3,7 @@ import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList, changeSort, sortChanges } from '/static/charts/src/airport.js';
 import { formatYearMonth } from '/static/charts/src/airline.js';
+import { airportGone, flownText, mostText } from '/static/charts/src/gone.js';
 import { shortName } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
@@ -162,50 +163,103 @@ const head = (labels, { sortable = [], sorted = null, onSort = () => {} } = {}) 
 
 let saveChanges = () => {};
 
-function drawTable() {
+// "dropped at any point" (airport_gone), fetched the first time it's wanted for the years, minimum and view on screen
+const gone = new Map();
+const goneParams = (show) => ({ origin, a: $('ap-a').value, b: $('ap-b').value, min: $('ap-min').value, show });
+function goneRows(show) {
+  const params = goneParams(show);
+  const key = JSON.stringify(params);
+  if (!gone.has(key)) {
+    gone.set(key, fetchRows(queryUrl('airport_gone', params)).then((res) => res.rows, (err) => { gone.delete(key); throw err; }));
+  }
+  return gone.get(key);
+}
+
+// the name cell: an airline group (linked unless unknown), or a destination with its city
+function nameCell(show, id, name) {
+  const td = cell('', 'left');
+  if (show === 'airlines') {
+    if (id === 'unknown') td.textContent = shortName(name);
+    else td.append(Object.assign(document.createElement('a'), { href: `/airlines/${id}`, textContent: shortName(name), title: name }));
+  } else {
+    td.append(Object.assign(document.createElement('a'), { href: `/airports/${origin}/${id}`, textContent: id }),
+      Object.assign(document.createElement('small'), { textContent: name ? ` ${name}` : '' }));
+  }
+  return td;
+}
+
+let drawing = 0;
+async function drawTable() {
+  const id = ++drawing;
   const show = $('ap-show').value, status = $('ap-status').value, min = Number($('ap-min').value);
   const a = $('ap-a').value, b = $('ap-b').value;
-  const sorted = changeSort(status, sortChoice);
-  const shown = sortChanges(classifyChanges(changes, { min, show }).filter((x) => x.status === status), status, sorted);
   const table = $('change-table');
-  const when = status === 'added' ? 'First flown' : 'Last flown';
+  const sorted = changeSort(status, sortChoice);
   const third = show === 'airlines' ? 'Destinations' : 'Airlines';
-  const sortable = ['a', 'b', 'when'].filter((k) => changeSort(status, k) === k);
-  const columns = [[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} departures`, 'num', 'a'], [`${b} departures`, 'num', 'b'],
-    [third, show === 'airlines' ? 'num' : 'left'], [show === 'airlines' ? `${when} here` : when, 'left', 'when']];
+  let items, columns, row;
+  if (status === 'gone') {
+    setDataLink('airport_gone', goneParams(show));
+    try {
+      items = airportGone(await goneRows(show), { min });
+    } catch (err) {
+      console.error(err);
+      if (id === drawing) table.tBodies[0].innerHTML = '<tr><td class="left" colspan="5">Could not load the data.</td></tr>';
+      return;
+    }
+    if (id !== drawing) return;
+    columns = [[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} departures`, 'num'], ['Most in a year', 'num', 'peak'],
+      [third, show === 'airlines' ? 'num' : 'left'], [show === 'airlines' ? 'Flown here' : 'Flown', 'left', 'when']];
+    row = (x) => {
+      const most = cell(mostText(x), 'num');
+      most.title = `${exactCount(x.peakDeps)} departures in ${x.peakYear}`;
+      return [nameCell(show, x.code, x.name), deps(x.deps_a), most,
+        show === 'airlines' ? cell(exactCount(x.places), 'num') : cell(airlineList(x.members.map(shortName)), 'left'), cell(flownText(x), 'left')];
+    };
+  } else {
+    setDataLink('airport_changes', { origin, a, b, group: '' });
+    items = classifyChanges(changes, { min, show }).filter((x) => x.status === status);
+    const when = status === 'added' ? 'First flown' : 'Last flown';
+    columns = [[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} departures`, 'num', 'a'], [`${b} departures`, 'num', 'b'],
+      [third, show === 'airlines' ? 'num' : 'left'], [show === 'airlines' ? `${when} here` : when, 'left', 'when']];
+    row = (x) => (show === 'airlines'
+      ? [nameCell(show, x.id, x.name), deps(x.deps_a), deps(x.deps_b), cell(exactCount(x.places), 'num'), cell(String(x.year), 'left')]
+      : [nameCell(show, x.code, x.city), deps(x.deps_a), deps(x.deps_b), cell(airlineList(x.airlines.map(shortName)), 'left'), cell(formatYearMonth(x.ym), 'left')]);
+  }
+  const shown = sortChanges(items, status, sorted);
+  const sortable = ['a', 'b', 'peak', 'when'].filter((k) => changeSort(status, k) === k);
   table.tHead.replaceChildren(head(columns, { sortable, sorted, onSort: (key) => { sortChoice = key; saveChanges(); drawTable(); } }));
   table.tBodies[0].replaceChildren(...shown.map((x) => {
     const tr = document.createElement('tr');
-    const td = document.createElement('td');
-    td.className = 'left';
-    if (show === 'airlines') {
-      const name = shortName(x.name);
-      if (x.id === 'unknown') td.textContent = name;
-      else td.append(Object.assign(document.createElement('a'), { href: `/airlines/${x.id}`, textContent: name, title: x.name }));
-      tr.append(td, deps(x.deps_a), deps(x.deps_b), cell(exactCount(x.places), 'num'), cell(String(x.year), 'left'));
-    } else {
-      const small = Object.assign(document.createElement('small'), { textContent: x.city ? ` ${x.city}` : '' });
-      td.append(Object.assign(document.createElement('a'), { href: `/airports/${origin}/${x.code}`, textContent: x.code }), small);
-      tr.append(td, deps(x.deps_a), deps(x.deps_b), cell(airlineList(x.airlines.map(shortName)), 'left'), cell(formatYearMonth(x.ym), 'left'));
-    }
+    tr.append(...row(x));
     return tr;
   }));
   if (!shown.length) table.tBodies[0].innerHTML = '<tr><td class="left" colspan="5">None.</td></tr>';
 }
 
-function summarise() {
+// the comparison in a sentence, and how many destinations came and went in between (from airport_gone)
+async function summarise() {
   const a = $('ap-a').value, b = $('ap-b').value, min = $('ap-min').value;
   const c = summariseChanges(classifyChanges(changes, { min: Number(min), show: 'destinations' }));
   const total = c.kept + c.dropped;
   const times = min === '1' ? 'once' : `${min} times`;
-  $('change-summary').textContent = total
+  const text = total
     ? `In ${a} ${origin} had flights to ${exactCount(total)} destination${total === 1 ? '' : 's'} at least ${times}. By ${b}, ${exactCount(c.kept)} were still served, ${exactCount(c.dropped)} were dropped and ${exactCount(c.added)} new ones had been added.`
     : `No destinations were flown to ${times} in ${a}.`;
+  $('change-summary').textContent = text;
+  const key = JSON.stringify(goneParams('destinations'));
+  let between = 0;
+  try {
+    between = airportGone(await goneRows('destinations'), { min: Number(min) }).filter((x) => x.status === 'between').length;
+  } catch (err) {
+    console.error(err);
+  }
+  if (between && key === JSON.stringify(goneParams('destinations'))) {
+    $('change-summary').textContent = `${text} ${exactCount(between)} more ${between === 1 ? 'was' : 'were'} added and dropped again in between.`;
+  }
 }
 
 async function loadChanges() {
   const a = $('ap-a').value, b = $('ap-b').value;
-  setDataLink('airport_changes', { origin, a, b, group: '' });
   try {
     changes = (await fetchRows(queryUrl('airport_changes', { origin, a, b }))).rows;
   } catch (err) {
@@ -226,8 +280,8 @@ async function whatChanged() {
   $('ap-a').value = within(params.get('from'), defaultFrom);
   $('ap-min').value = pick('min', ['1', '12', '52', '365'], '12');
   $('ap-show').value = pick('show', ['destinations', 'airlines'], 'destinations');
-  $('ap-status').value = pick('status', ['dropped', 'added', 'kept'], 'dropped');
-  sortChoice = pick('sort', ['a', 'b', 'when'], null);
+  $('ap-status').value = pick('status', ['dropped', 'gone', 'added', 'kept'], 'dropped');
+  sortChoice = pick('sort', ['a', 'b', 'peak', 'when'], null);
   // the sort is kept in the address only where it isn't the status's own default
   const save = () => remember(['min', 'from', 'to', 'show', 'status', 'sort'], {
     min: [$('ap-min').value, '12'], from: [$('ap-a').value, defaultFrom], to: [$('ap-b').value, String(lastYear)],
