@@ -24,3 +24,10 @@ test('an airline pair is alphabetical together and as flown when split', () => {
   assert.equal(pairLabel('LGA', 'ATL', false), 'ATL ↔ LGA');
   assert.equal(pairLabel('LGA', 'ATL', true), 'LGA → ATL');
 });
+
+test('an empty route names what was asked for', async () => {
+  const { noFlights } = await import('../direction.js');
+  assert.equal(noFlights('ATL', 'LAX', ''), 'No flights between ATL and LAX');
+  assert.equal(noFlights('ATL', 'LAX', 'out'), 'No flights from ATL to LAX');
+  assert.equal(noFlights('ATL', 'LAX', 'in'), 'No flights from LAX to ATL');
+});

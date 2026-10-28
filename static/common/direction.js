@@ -27,3 +27,6 @@ export function setDir(dir) {
   const s = q.toString();
   location.search = s ? `?${s}` : '';
 }
+
+// the start of the message for a route with nothing to show, in the direction asked for
+export const noFlights = (a, b, dir) => (dir === '' ? `No flights between ${a} and ${b}` : `No flights from ${dir === 'in' ? `${b} to ${a}` : `${a} to ${b}`}`);

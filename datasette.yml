@@ -670,7 +670,7 @@ databases:
 
       route:
         title: "Every carrier and aircraft on a route, by year"
-        description: "One row per year, carrier and aircraft, for departures from the origin to the destination. Leave group empty for every airline."
+        description: "One row per year, carrier and aircraft, for flights between the origin and the destination: both directions, or set dir to out (origin to destination) or in (the reverse). Leave group empty for every airline."
         sql: >
           WITH cn AS (
             -- BTS lists an airline's entity once per name and start date, and often repeats a row, so joining on the entity
@@ -711,8 +711,8 @@ databases:
             LEFT JOIN carrier_group g ON g.airline_id = cp.airline_id
             LEFT JOIN aircraft_family f ON f.aircraft_type = t.aircraft_type
           WHERE
-            origin = :origin
-            AND dest = :dest
+            -- both directions unless dir says one: out is origin to dest, in the reverse
+            ((origin = :origin AND dest = :dest AND :dir IN ('', 'out')) OR (origin = :dest AND dest = :origin AND :dir IN ('', 'in')))
             AND (:group = '' OR g.group_id = :group)
           GROUP BY
             year,
@@ -726,7 +726,7 @@ databases:
 
       route_year:
         title: "Every carrier and aircraft on a route, by month, in one year"
-        description: "One row per month, carrier and aircraft, for departures from the origin to the destination in the year. Leave group empty for every airline. Give a year."
+        description: "One row per month, carrier and aircraft, for flights between the origin and the destination in the year: both directions, or set dir to out (origin to destination) or in (the reverse). Leave group empty for every airline. Give a year."
         sql: >
           WITH cn AS (
             -- BTS lists an airline's entity once per name and start date, and often repeats a row, so joining on the entity
@@ -768,8 +768,8 @@ databases:
             LEFT JOIN carrier_group g ON g.airline_id = cp.airline_id
             LEFT JOIN aircraft_family f ON f.aircraft_type = t.aircraft_type
           WHERE
-            origin = :origin
-            AND dest = :dest
+            -- both directions unless dir says one: out is origin to dest, in the reverse
+            ((origin = :origin AND dest = :dest AND :dir IN ('', 'out')) OR (origin = :dest AND dest = :origin AND :dir IN ('', 'in')))
             AND year = :year
             AND (:group = '' OR g.group_id = :group)
           ORDER BY
