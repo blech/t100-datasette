@@ -81,7 +81,7 @@ function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
   if (!line) return;
   const name = highlight && allRows.find((r) => r.group_id === highlight.id)?.group_name;
-  const msg = highlightMessage({ highlight, name, byAirline, splitLabel: SPLITS[state.split].toLowerCase(), shown: wanted.size > 0 });
+  const msg = highlightMessage({ highlight, name, byAirline, splitLabel: SPLITS[state.split].toLowerCase(), shown: wanted.size > 0, dir });
   line.hidden = !msg;
   if (!msg) return;
   const clear = Object.assign(document.createElement('a'), { href: '#', textContent: 'clear' });
@@ -95,8 +95,8 @@ function highlightLine(highlight, wanted, byAirline) {
     drawChart();
   });
   // the other way, with the highlight: the reverse-direction link in the sentence below carries the query
-  const other = Object.assign(document.createElement('a'), { href: $('reverse-link').href, textContent: `${dest} → ${origin}` });
-  line.replaceChildren(msg.text, ...(msg.reverse ? ['; try the other way, ', other] : []), ' · ', clear);
+  const other = () => Object.assign(document.createElement('a'), { href: $('reverse-link').href, textContent: $('reverse-link').textContent });
+  line.replaceChildren(msg.text, ...(msg.reverse ? ['; try the other way, ', other()] : []), ' · ', clear);
 }
 
 function drawChart() {

@@ -87,12 +87,11 @@ export function highlightedSeries(rows, highlight, labelOf) {
   return out;
 }
 
-// What the highlight line says, or null for no line. An airline's pages link airport pairs (both directions counted
-// together), so a link can land on the direction the airline never flew: then the airline isn't in the rows at all,
-// its name is unknown, and the line offers the other way.
-export function highlightMessage({ highlight, name, byAirline, splitLabel, shown }) {
+// What the highlight line says, or null for no line. When the airline isn't in the rows at all its name is unknown: on a
+// route shown one way (dir), it may only fly the other way, so the line offers that; shown both ways, it never flew here.
+export function highlightMessage({ highlight, name, byAirline, splitLabel, shown, dir = '' }) {
   if (!highlight) return null;
-  if (!name) return { text: "This airline doesn't fly this way", reverse: true };
+  if (!name) return dir ? { text: "This airline doesn't fly this way", reverse: true } : { text: "This airline doesn't fly between these airports", reverse: false };
   if (!byAirline) return { text: `${name} isn't shown when split by ${splitLabel}`, reverse: false };
   return { text: shown ? `Highlighting ${name}` : `${name} doesn't appear here`, reverse: false };
 }

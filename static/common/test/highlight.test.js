@@ -31,10 +31,15 @@ test('highlightedSeries finds every series an airline group appears in', () => {
 
 test('highlightMessage says what the highlight line shows, and offers the other way when the airline is not on this one', () => {
   assert.equal(highlightMessage({ highlight: null }), null);
-  assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'fedex' }, name: undefined, byAirline: true, shown: false }),
+  assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'fedex' }, name: undefined, byAirline: true, shown: false, dir: 'in' }),
     { text: "This airline doesn't fly this way", reverse: true });  // an airline's pages link pairs, which may be the direction it never flew
   assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'delta' }, name: 'Delta', byAirline: true, shown: true }), { text: 'Highlighting Delta', reverse: false });
   assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'delta' }, name: 'Delta', byAirline: true, shown: false }), { text: "Delta doesn't appear here", reverse: false });
   assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'delta' }, name: 'Delta', byAirline: false, splitLabel: 'aircraft', shown: false }),
     { text: "Delta isn't shown when split by aircraft", reverse: false });
+});
+
+test('with both directions shown, an airline missing from the route never flew it either way', () => {
+  assert.deepEqual(highlightMessage({ highlight: { kind: 'airline', id: 'fedex' }, name: undefined, byAirline: true, shown: false, dir: '' }),
+    { text: "This airline doesn't fly between these airports", reverse: false });
 });

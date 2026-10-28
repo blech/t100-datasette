@@ -9,7 +9,7 @@ from datasette.utils.asgi import NotFound, Response
 
 # Datasette loads each plugin from its file, not as a package, so a shared module is imported from beside this one
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from t100_direction import DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, parse_dir, route_count_word, route_heading  # noqa: E402
+from t100_direction import DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, cutoff, parse_dir, route_count_word, route_heading  # noqa: E402
 
 
 CODE = r"[A-Za-z0-9]{3}"
@@ -629,6 +629,15 @@ async def airline_globe_page(datasette, request):
     return Response.html(html)
 
 
+def airline_direction(request):
+    """An airline page counts each airport pair with both directions together, or with dir=each each direction on its own;
+    its "at least" choices are counted one way and double for a pair (roughly monthly each way)."""
+    each = request.args.get("dir") == "each"
+    base = 12 if each else 24
+    return {"each": each, "min_default": base,
+            "min_choices": [(1, "once")] + [(cutoff("out" if each else "", v), f"{cutoff('out' if each else '', v)} times") for v in (12, 52, 365)]}
+
+
 def airline_view(template, tail):
     """An airline's page, in one of its views: over time (its size and airport pairs) or what changed between two years."""
 
@@ -640,6 +649,7 @@ def airline_view(template, tail):
                 **info, "own": info["airline"] or info["group"],
                 "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
                 "crumbs": airline_crumbs(datasette, info, *tail),
+                **airline_direction(request),
             },
             request=request,
         )

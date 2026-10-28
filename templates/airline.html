@@ -39,7 +39,7 @@
 
     <h2>How many places</h2>
     <p class="chart-sentence">
-      Airport pairs flown at least <select id="al-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> in the year, in either direction.
+      Airport pairs flown at least {% include "_airline_min.html" %} in the year, both directions together.
     </p>
     <div id="pairs-chart" aria-live="polite">Loading chart…</div>
 

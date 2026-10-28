@@ -168,9 +168,9 @@ test('rollupRows keeps rows that have no kind of flight, whatever kind is asked 
 
 test('routeRows names each airport pair and keeps its measures and service', () => {
   const out = routeRows([{ origin: 'ATL', dest: 'LGA', year: 2019, deps: 30, seats: 3000, passengers: 2400, freight: 30000, service: 'domestic' }]);
-  assert.deepEqual(out, [{ route: 'ATL – LGA', origin: 'ATL', dest: 'LGA', year: 2019, service: 'domestic', deps: 30, seats: 3000, passengers: 2400, freight: 30000 }]);
+  assert.deepEqual(out, [{ route: 'ATL ↔ LGA', origin: 'ATL', dest: 'LGA', year: 2019, service: 'domestic', deps: 30, seats: 3000, passengers: 2400, freight: 30000 }]);
   const res = buildMatrix(rollupRows(out, { key: 'route', kind: 'passenger' }), { measure: 'deps', n: 5 });
-  assert.deepEqual(res.dests, ['ATL – LGA']);
+  assert.deepEqual(res.dests, ['ATL ↔ LGA']);
 });
 
 test('splitting by nothing gives one series of all the flights, domestic and international together', () => {
@@ -196,4 +196,10 @@ test('a family series runs over every year from its first to its last, empty yea
   const { buildFamilySeries } = await import('../src/rollup.js');
   const row = (year) => ({ year, family: 'F', subfamily: 'S', group_name: 'G', deps: 10, seats: 100, passengers: 80, freight: 0, kind: 'passenger', service: 'domestic' });
   assert.deepEqual(buildFamilySeries([row(2001), row(2004)]).years, [2001, 2002, 2003, 2004]);
+});
+
+test('routeRows names a pair with both directions together, or one direction as flown', () => {
+  const row = { origin: 'LGA', dest: 'ATL', year: 2019, deps: 1, seats: 0, passengers: 0, freight: 0, service: 'domestic' };
+  assert.equal(routeRows([row])[0].route, 'ATL ↔ LGA');
+  assert.equal(routeRows([row], { each: true })[0].route, 'LGA → ATL');
 });

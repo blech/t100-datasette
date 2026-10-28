@@ -78,8 +78,8 @@ def test_airline_map_page_renders_and_links_back_to_the_airline(ds, db_path):
 
 def test_carrier_routes_year_returns_one_years_pairs(ds, db_path):
     row = lambda year, dest, deps: dict(group_id="vx", airline_id="21171", year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=deps, freight=0, first_month=1, last_month=12)
-    put(db_path, "carrier_route_year", [row(2017, "LAX", 900), row(2017, "TINY", 3), row(2018, "DEN", 300)])
-    rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=vx&year=2017")["rows"]
+    put(db_path, "carrier_pair_year", [row(2017, "LAX", 900), row(2017, "TINY", 3), row(2018, "DEN", 300)])
+    rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=vx&year=2017&each=each")["rows"]
     assert [r["dest"] for r in rows] == ["LAX", "TINY"]  # the page applies the minimum, so it can add members up first
 
 
@@ -237,3 +237,24 @@ def test_the_families_matrix_has_its_own_address_and_wording(ds):
 def test_the_groups_page_tells_the_long_haul_story_beneath_its_chart(ds):
     html = get(ds, "/aircraft/groups").text
     assert html.index('id="engine-chart"') < html.index("In 1990 most flights of 3,000 miles") < html.index("Freight tells a slower version")
+
+
+def test_airline_cutoffs_count_both_directions(ds, db_path):
+    delta(db_path)
+    html = get(ds, "/airlines/delta").text
+    choice = re.search(r'<select id="al-min"[^>]*>(.*?)</select>', html, re.S).group(1)
+    assert re.findall(r'<option value="(\d+)"[^>]*>([^<]+)</option>', choice) == [("1", "once"), ("24", "24 times"), ("104", "104 times"), ("730", "730 times")]
+
+
+def test_airline_routes_and_changes_can_split_each_direction(ds, db_path):
+    delta(db_path)
+    for path in ("/airlines/delta/routes", "/airlines/delta/changes"):
+        html = get(ds, path).text
+        choice = re.search(r'<select id="each"[^>]*>(.*?)</select>', html, re.S)
+        assert choice and "Pairs together" in choice.group(1) and "Each direction separately" in choice.group(1), path
+        assert '<option value="each" selected>' in get(ds, f"{path}?dir=each").text, path
+
+
+def delta(db_path):
+    put(db_path, "carrier_group", [dict(airline_id="19790", group_id="delta", group_name="Delta", airline_name="Delta Air Lines Inc.")])
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
