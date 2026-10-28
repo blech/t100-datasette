@@ -9,7 +9,7 @@ from datasette.utils.asgi import NotFound, Response
 
 # Datasette loads each plugin from its file, not as a package, so a shared module is imported from beside this one
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from t100_direction import DIRECTION_CHOICES_ROUTE, parse_dir, route_count_word, route_heading  # noqa: E402
+from t100_direction import DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, parse_dir, route_count_word, route_heading  # noqa: E402
 
 
 CODE = r"[A-Za-z0-9]{3}"
@@ -256,13 +256,19 @@ def carrier_shares(rows):
         return None
     return [{"name": short_airline_name(r["airline_name"]), "share": percent(r["share"], 1)} for r in rows]
 
+def airport_direction(request):
+    """What an airport page needs to say which way it counts: the direction, its word for the flight count and the choices."""
+    dir = parse_dir(request.args.get("dir"))
+    return {"dir": dir, "count_word": count_word(dir), "dir_choices": DIRECTION_CHOICES_AIRPORT}
+
+
 async def globe_page(datasette, request):
     origin = (request.url_vars.get("origin") or "").upper()
     steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
     html = await datasette.render_template(
         "globe.html",
         {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1],
-         "label": airport_label(await airport_info(datasette, [origin]), origin) if origin else ""},
+         "label": airport_label(await airport_info(datasette, [origin]), origin) if origin else "", **airport_direction(request)},
         request=request,
     )
     return Response.html(html)
@@ -375,9 +381,9 @@ MATRIX_SETTINGS = ("n", "group", "rank", "scale", "open")  # the destinations ma
 
 
 async def airport_years(datasette, code):
-    """The first and last years with departures from the airport, or (None, None) when it has none."""
+    """The first and last years with flights from or to the airport, or (None, None) when it has none."""
     result = await datasette.get_database("t100").execute(
-        "SELECT MIN(year), MAX(year) FROM airport_year_totals WHERE origin = ? AND deps > 0", [code])
+        "SELECT MIN(year), MAX(year) FROM airport_dir_year WHERE airport = ? AND deps + arrs > 0", [code])
     first, last = result.first()
     return first, last
 
@@ -401,6 +407,7 @@ def airport_view(template, crumb):
                 "crumbs": trail(datasette, *steps),
                 "foreign": await is_foreign(datasette, origin),
                 "label": airport_label(await airport_info(datasette, [origin]), origin),
+                **airport_direction(request),
             },
             request=request,
         )

@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { matrixMeasures } from '/static/charts/src/matrix.js';
 import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList } from '/static/charts/src/airport.js';
 import { formatYearMonth } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
@@ -11,11 +11,18 @@ import { palette, seriesColours, isDark } from '/static/common/palette.js';
 import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { yearDomain } from '/static/charts/src/span.js';
+import { parseDir, countWord, cutoff, setDir } from '/static/common/direction.js';
 
 // the airport's two new views share this script: over time (how big, how many places) and what changed
 const origin = document.body.dataset.origin;
 const firstYear = Number(document.body.dataset.firstYear) || null;
 const lastYear = Number(document.body.dataset.lastYear) || null;
+const dir = parseDir(location.search);
+const MATRIX_MEASURES = matrixMeasures(dir);
+const flown = { '': 'to and from', out: 'to', in: 'from' }[dir];
+// the "at least" choices are counted one way; both ways doubles them, once stays once
+const atLeast = (v) => (Number(v) === 1 ? 1 : cutoff(dir, Number(v)));
+const timesWord = (v) => (Number(v) === 1 ? 'once' : `${atLeast(v)} times`);
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
@@ -91,7 +98,7 @@ function drawSize() {
 }
 
 function drawPlaces() {
-  const counts = placeCounts(places, { min: Number($('ap-min').value) });
+  const counts = placeCounts(places, { min: atLeast($('ap-min').value) });
   const box = $('places-chart');
   if (!counts.length) { box.textContent = 'No destinations at that level.'; return; }
   const series = ['domestic', 'international'].filter((s) => counts.some((c) => c.service === s));
@@ -118,11 +125,11 @@ async function overTime() {
     measure: [$('ap-measure').value, 'passengers'], flights: [$('ap-flights').value, 'passenger'],
     split: [$('ap-split').value, 'service'], min: [$('ap-min').value, '12'],
   });
-  setDataLink('airport_size', { origin, group: '' });
+  setDataLink('airport_size', { origin, group: '', dir });
   try {
     const [s, p] = await Promise.all([
-      fetchRows(queryUrl('airport_size', { origin })),
-      fetchRows(queryUrl('routes_by_year', { origin, min_deps: 1 })),
+      fetchRows(queryUrl('airport_size', { origin, dir })),
+      fetchRows(queryUrl('routes_by_year', { origin, min_deps: 1, dir })),
     ]);
     size = s.rows;
     places = p.rows;
@@ -142,7 +149,8 @@ async function overTime() {
 let changes = [];
 
 const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
-const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} departures`; return td; };
+const word = countWord(dir).toLowerCase();
+const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} ${word}`; return td; };
 const head = (labels) => {
   const tr = document.createElement('tr');
   for (const [text, cls] of labels) { const th = document.createElement('th'); th.textContent = text; th.className = cls; tr.append(th); }
@@ -150,13 +158,13 @@ const head = (labels) => {
 };
 
 function drawTable() {
-  const show = $('ap-show').value, status = $('ap-status').value, min = Number($('ap-min').value);
+  const show = $('ap-show').value, status = $('ap-status').value, min = atLeast($('ap-min').value);
   const a = $('ap-a').value, b = $('ap-b').value;
   const shown = classifyChanges(changes, { min, show }).filter((x) => x.status === status);
   const table = $('change-table');
   const when = status === 'added' ? 'First flown' : 'Last flown';
   const third = show === 'airlines' ? 'Destinations' : 'Airlines';
-  table.tHead.replaceChildren(head([[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} departures`, 'num'], [`${b} departures`, 'num'],
+  table.tHead.replaceChildren(head([[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} ${word}`, 'num'], [`${b} ${word}`, 'num'],
     [third, show === 'airlines' ? 'num' : 'left'], [show === 'airlines' ? `${when} here` : when, 'left']]));
   table.tBodies[0].replaceChildren(...shown.map((x) => {
     const tr = document.createElement('tr');
@@ -179,19 +187,19 @@ function drawTable() {
 
 function summarise() {
   const a = $('ap-a').value, b = $('ap-b').value, min = $('ap-min').value;
-  const c = summariseChanges(classifyChanges(changes, { min: Number(min), show: 'destinations' }));
+  const c = summariseChanges(classifyChanges(changes, { min: atLeast(min), show: 'destinations' }));
   const total = c.kept + c.dropped;
-  const times = min === '1' ? 'once' : `${min} times`;
+  const times = timesWord(min);
   $('change-summary').textContent = total
-    ? `In ${a} ${origin} had flights to ${exactCount(total)} destination${total === 1 ? '' : 's'} at least ${times}. By ${b}, ${exactCount(c.kept)} were still served, ${exactCount(c.dropped)} were dropped and ${exactCount(c.added)} new ones had been added.`
-    : `No destinations were flown to ${times} in ${a}.`;
+    ? `In ${a} ${origin} had flights ${flown} ${exactCount(total)} airport${total === 1 ? '' : 's'} at least ${times}. By ${b}, ${exactCount(c.kept)} were still served, ${exactCount(c.dropped)} were dropped and ${exactCount(c.added)} new ones had been added.`
+    : `No airports were flown ${dir ? flown : "to or from"} ${times} in ${a}.`;
 }
 
 async function loadChanges() {
   const a = $('ap-a').value, b = $('ap-b').value;
-  setDataLink('airport_changes', { origin, a, b, group: '' });
+  setDataLink('airport_changes', { origin, a, b, group: '', dir });
   try {
-    changes = (await fetchRows(queryUrl('airport_changes', { origin, a, b }))).rows;
+    changes = (await fetchRows(queryUrl('airport_changes', { origin, a, b, dir }))).rows;
   } catch (err) {
     $('change-summary').textContent = 'Could not load the data.';
     return;
@@ -221,9 +229,12 @@ async function whatChanged() {
   await loadChanges();
 }
 
+$('dir').addEventListener('change', (e) => setDir(e.target.value));
+for (const o of $('ap-min').options) o.textContent = timesWord(o.value);
+
 if (!firstYear) {
   const box = $('size-chart') ? $('size-chart') : $('change-summary');
-  box.textContent = `No flights from ${origin} in the data.`;
+  box.textContent = `No flights ${dir ? flown : "to or from"} ${origin} in the data.`;
   if ($('places-chart')) $('places-chart').textContent = '';
 } else if ($('size-chart')) {
   overTime();

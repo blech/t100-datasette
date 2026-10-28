@@ -1,5 +1,9 @@
 import { yearDomain } from './span.js';
+import { countWord } from '../../common/direction.js';
+
 export const MATRIX_MEASURES = { passengers: 'Passengers', deps: 'Departures', seats: 'Seats', freight: 'Freight (short tons)' };
+// the same, with the flight count named for the direction an airport page counts
+export const matrixMeasures = (dir) => ({ ...MATRIX_MEASURES, deps: countWord(dir) });
 
 const LB_PER_SHORT_TON = 2000;
 const valueOf = (row, measure) => {

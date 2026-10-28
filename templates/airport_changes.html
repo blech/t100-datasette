@@ -9,14 +9,15 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}"{% if foreign %} data-foreign="1"{% endif %}>
+<body data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
   <main>
     {% include "_nav.html" %}
     <h1 id="title">{{ origin }}: what changed</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
     {% set find = "airport" %}{% include "_find.html" %}
     {% include "_foreign_note.html" %}
-    <p class="chart-sentence">Count destinations flown to at least <select id="ap-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> in a year.</p>
+    <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
+    <p class="chart-sentence">Count other airports flown {{ {"out": "to", "in": "from"}.get(dir, "to or from") }} at least <select id="ap-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> in a year.</p>
     <p class="chart-sentence">
       Compare <select id="ap-a" aria-label="From year"></select> with <select id="ap-b" aria-label="To year"></select>.
     </p>
@@ -28,7 +29,7 @@
         <tbody></tbody>
       </table>
     </div>
-    <p class="note">Every count is of flights departing <em>from</em> {{ origin }}: <a href="/about#direction">routes are one-way</a>. A destination is dropped when flights to it stopped or fell below the minimum, not when a particular flight number ended. Airlines are counted as groups, so a merged airline's flying is counted together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
+    <p class="note">{% include "_dir_note.html" %} A destination is dropped when flights to it stopped or fell below the minimum, not when a particular flight number ended. Airlines are counted as groups, so a merged airline's flying is counted together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
     {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/charts/airport.js"></script>

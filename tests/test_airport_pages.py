@@ -11,7 +11,7 @@ VIEWS = [("Over time", "/airports/SFO"), ("Destinations", "/airports/SFO/destina
 
 
 def years(db_path):
-    put(db_path, "airport_year_totals", [dict(year=y, origin="SFO", deps=d) for y, d in ((1994, 0), (1995, 10), (2025, 20))])
+    put(db_path, "airport_dir_year", [dict(year=y, airport="SFO", deps=d, arrs=0) for y, d in ((1994, 0), (1995, 10), (2025, 20))])
 
 
 def test_the_charts_are_the_airports_default_page(ds, db_path):
@@ -99,3 +99,20 @@ def test_a_routes_note_offers_the_airports_charts_and_matrix_by_their_names(ds):
         html = get(ds, path).text
         assert 'More from ATL: <a href="/airports/ATL">over time</a> · <a href="/airports/ATL/destinations">destinations</a> · ' in html, path
         assert "routes over time" not in html, path
+
+
+@pytest.mark.parametrize("path", ["/airports/ATL", "/airports/ATL/destinations", "/airports/ATL/changes", "/airports/ATL/globe"])
+def test_airport_pages_offer_a_direction_and_say_which_they_count(ds, path):
+    page = get(ds, path).text
+    choice = re.search(r'<select id="dir"[^>]*>(.*?)</select>', page, re.S)
+    assert choice and choice.group(1).count("<option") == 3
+    assert 'data-dir=""' in page and "to and from ATL" in page and "departing <em>from</em>" not in page
+    page = get(ds, f"{path}?dir=in").text
+    assert 'data-dir="in"' in page and "arriving at ATL" in page and '<option value="in" selected>' in page
+    assert "departing ATL" in get(ds, f"{path}?dir=out").text
+
+
+def test_an_airport_with_only_arrivals_has_years(ds, db_path):
+    put(db_path, "airport_dir_year", [dict(year=2001, airport="LHR", deps=0, arrs=5), dict(year=2003, airport="LHR", deps=0, arrs=2)])
+    page = get(ds, "/airports/LHR").text
+    assert 'data-first-year="2001"' in page and 'data-last-year="2003"' in page
