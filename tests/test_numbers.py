@@ -19,6 +19,6 @@ def test_a_missing_count_is_a_dash(value):
 
 
 def test_airport_story_rounds_to_three_figures():
-    rows = [{"origin": c, "origin_city_name": c, "total_passengers": n} for c, n in
+    rows = [{"airport": c, "city": c, "passengers": n} for c, n in
             [("ATL", 123_456_789), ("DFW", 51_512_883), ("DEN", 999_999)]]
     assert [a["passengers"] for a in airport_story(rows)["airports"]] == ["123 million", "51.5 million", "1 million"]

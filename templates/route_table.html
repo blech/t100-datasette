@@ -3,24 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %} · table · T-100</title>
+  <title>{{ heading }}{% if year %} in {{ year }}{% endif %} · table · T-100</title>
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-origin="{{ origin }}" data-dest="{{ dest }}" data-year="{{ year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
+<body data-origin="{{ origin }}" data-dest="{{ dest }}" data-dir="{{ dir }}" data-year="{{ year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
     {% include "_nav.html" %}
-    <h1 id="title">{{ origin }} → {{ dest }}{% if year %} in {{ year }}{% endif %}</h1>
+    <h1 id="title">{{ heading }}{% if year %} in {{ year }}{% endif %}</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
     {% set find = "airport" %}{% include "_find.html" %}
     <nav id="years" aria-label="Years"></nav>
-    <p class="note">Each direction is a route of its own; the other way is <a href="/airports/{{ dest }}/{{ origin }}{% if year %}/{{ year }}{% endif %}{% if view %}/{{ view }}{% endif %}" id="reverse-link">{{ dest }} → {{ origin }}</a>. More from {{ origin }}: <a href="/airports/{{ origin }}">over time</a> · <a href="/airports/{{ origin }}/destinations">destinations</a> · <a href="/airports/{{ origin }}/globe" id="map-link">map</a>.</p>
+    <p class="note">{% if dir %}Only one direction is shown; the other way is <a href="/airports/{{ dest }}/{{ origin }}{% if year %}/{{ year }}{% endif %}{% if view %}/{{ view }}{% endif %}?dir={{ dir }}" id="reverse-link">{{ other_way }}</a>. {% endif %}More from {{ origin }}: <a href="/airports/{{ origin }}">over time</a> · <a href="/airports/{{ origin }}/destinations">destinations</a> · <a href="/airports/{{ origin }}/globe" id="map-link">map</a>.</p>
 
 
     <section id="route-table" hidden>
       <div class="chart-controls">
+        <label>Direction <select id="chart-dir" aria-label="Direction">{% for value, text in dir_choices %}<option value="{{ value }}"{% if value == dir %} selected{% endif %}>{{ text }}</option>{% endfor %}</select></label>
         <label>Split by <select id="chart-split" aria-label="Split by"></select></label>
       </div>
       <h2 id="table-heading">Carriers and aircraft</h2>
@@ -30,7 +31,7 @@
           <tbody></tbody>
         </table>
       </div>
-      <p class="note">Freight is in short tons (2,000 lb). Hover over a number for the exact figure. This is one direction only: <a href="/about#direction">what a route means</a>.</p>
+      <p class="note">Freight is in short tons (2,000 lb). Hover over a number for the exact figure. {% if dir %}This is one direction only{% else %}{{ count_word }}, passengers, seats and freight count both directions{% endif %}: <a href="/about#direction">what a route means</a>.</p>
     </section>
     <p id="status" role="status"></p>
     {% include "_footer.html" %}

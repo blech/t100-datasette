@@ -1,4 +1,8 @@
+import { countWord } from '../../common/direction.js';
+
 export const SORTS = { passengers: 'Passengers', deps: 'Departures', dests: 'Destinations', freight: 'Freight' };
+// the same, with the flight count named for the direction counted
+export const sortLabels = (dir) => ({ ...SORTS, deps: countWord(dir) });
 
 // passengers as a percentage of seats, or null with no seats (an all-freight airport)
 export const loadFactor = (r) => (Number(r.seats) > 0 ? (Number(r.passengers) / Number(r.seats)) * 100 : null);
@@ -6,7 +10,7 @@ export const loadFactor = (r) => (Number(r.seats) > 0 ? (Number(r.passengers) / 
 // descending by `key`, ties by airport code; does not modify `rows`
 export function topBy(rows, key, n) {
   return [...rows]
-    .sort((a, b) => (Number(b[key]) || 0) - (Number(a[key]) || 0) || String(a.origin).localeCompare(String(b.origin)))
+    .sort((a, b) => (Number(b[key]) || 0) - (Number(a[key]) || 0) || String(a.airport).localeCompare(String(b.airport)))
     .slice(0, n);
 }
 
@@ -58,22 +62,22 @@ export const tableSearch = (s) => {
 export function groupCities(rows) {
   const cities = new Map();
   for (const r of rows) {
-    const key = r.market_id ? String(r.market_id) : `solo:${r.origin}`;
+    const key = r.market_id ? String(r.market_id) : `solo:${r.airport}`;
     const c = cities.get(key) || { key, airports: [], passengers: 0, deps: 0, seats: 0, freight: 0, dests: Number(r.market_id ? r.market_dests : r.dests) || 0 };
     c.airports.push(r);
     for (const k of ['passengers', 'deps', 'seats', 'freight']) c[k] += Number(r[k]) || 0;
     cities.set(key, c);
   }
   return [...cities.values()].map((c) => {
-    const airports = [...c.airports].sort((a, b) => (Number(b.passengers) || 0) - (Number(a.passengers) || 0) || String(a.origin).localeCompare(String(b.origin)));
+    const airports = [...c.airports].sort((a, b) => (Number(b.passengers) || 0) - (Number(a.passengers) || 0) || String(a.airport).localeCompare(String(b.airport)));
     // named by the city name its airports carry most between them: DCA and IAD's "Washington, DC" over BWI's "Baltimore, MD"
     const carried = new Map();
     for (const a of airports) {
-      const name = a.origin_city_name || a.origin;
+      const name = a.city || a.airport;
       carried.set(name, (carried.get(name) || 0) + (Number(a.passengers) || Number(a.deps) || 0));
     }
     const name = [...carried].sort((x, y) => y[1] - x[1])[0][0];
-    return { ...c, airports, origin: airports[0].origin, name };
+    return { ...c, airports, airport: airports[0].airport, name };
   });
 }
 

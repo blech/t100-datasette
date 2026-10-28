@@ -14,6 +14,7 @@ import { renderLegend, syncRange } from './src/controls.js';
 import { routesByOrigin, chooserTap } from './src/chooser.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
+import { countWord, setDir } from '/static/common/direction.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -89,7 +90,7 @@ function updateStats() {
   const c = countStatuses(periodRoutes);
   $('stats').textContent = comparing
     ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
-    : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${countLabel(deps)} departures · ${countLabel(pax)} passengers`;
+    : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${countLabel(deps)} ${countWord(state.dir).toLowerCase()} · ${countLabel(pax)} passengers`;
   $('year-label').textContent = label;
   const periodRows = state.month !== null
     ? monthRaw.filter((r) => r.month === state.month)
@@ -100,19 +101,20 @@ function updateStats() {
   $('footnote').textContent = notes.join(' · ');
   if (loadError) setStatus(loadError, true);
   else if (truncated) setStatus('Too many rows: some routes are missing from this view.', true);
-  else if (!periodRoutes.length) setStatus('No flights from this airport in this period.');
+  else if (!periodRoutes.length) setStatus(`No flights ${{ '': 'to or from', out: 'from', in: 'to' }[state.dir]} this airport in this period.`);
   else if (!shown.length) setStatus('Every route here is hidden: click a legend entry to show it again.');
   else setStatus('');
 }
 
 function tooltipText(r) {
   const change = changeText(r, state.compare);
-  return `${r.dest} · ${r.destCity || ''}\n${change || `${fmt(r.passengers)} passengers · ${fmt(r.deps)} departures`}\n${r.service}`;
+  return `${r.dest} · ${r.destCity || ''}\n${change || `${fmt(r.passengers)} passengers · ${fmt(r.deps)} ${countWord(state.dir).toLowerCase()}`}\n${r.service}`;
 }
 
 function showPanel(r) {
   const p = $('panel');
   const routePath = `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(r.dest)}`;
+  const keepDir = state.dir ? `?dir=${state.dir}` : ''; // departing here is the route's out, arriving its in
   p.innerHTML = '';
   const close = document.createElement('button');
   close.className = 'close';
@@ -124,19 +126,19 @@ function showPanel(r) {
   destLink.href = `/airports/${encodeURIComponent(r.dest)}/globe${toSearch(state)}`;
   destLink.textContent = r.dest;
   destLink.title = `Show routes from ${r.dest}`;
-  h.append(`${origin} → `, destLink);
+  h.append(`${origin} ${{ '': '↔', out: '→', in: '←' }[state.dir]} `, destLink);
   const sub = document.createElement('div');
   sub.textContent = `${r.destCity || ''} (${r.service}${r.status ? `, ${r.status}` : ''})`;
   const dl = document.createElement('dl');
-  for (const f of routeFigures(r)) {
+  for (const f of routeFigures(r, state.dir)) {
     const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
     dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
   const a1 = document.createElement('a');
-  a1.href = routePath;
+  a1.href = `${routePath}${keepDir}`;
   a1.textContent = 'This route over time →';
   const a2 = document.createElement('a');
-  a2.href = `${routePath}/${state.year}`;
+  a2.href = `${routePath}/${state.year}${keepDir}`;
   a2.textContent = `Month by month in ${state.year} →`;
   p.append(close, h, sub, dl, a1, a2);
   p.hidden = false;
@@ -149,7 +151,7 @@ async function loadMonths() {
   monthRaw = [];
   setStatus('Loading months…');
   try {
-    const res = await fetchRows(queryUrl('routes_by_month', { origin, year: state.year }));
+    const res = await fetchRows(queryUrl('routes_by_month', { origin, year: state.year, dir: state.dir }));
     if (!monthSeq.isCurrent(id)) return false;
     truncated = res.truncated;
     monthRaw = res.rows;
@@ -174,7 +176,7 @@ function drawLegend() {
 }
 
 function refresh() {
-  setDataLink('routes_by_year', { origin, min_deps: '' });
+  setDataLink('routes_by_year', { origin, min_deps: '', dir: state.dir });
   hover = -1;
   selected = -1;
   $('panel').hidden = true;
@@ -209,17 +211,17 @@ function fillPicker() {
 }
 
 async function showChooser() {
-  const res = await fetchRows(queryUrl('top_us_airports', { year: '', sort_column: '' }));
+  const res = await fetchRows(queryUrl('globe_chooser'));
   const box = $('chooser');
   box.append(Object.assign(document.createElement('summary'), { textContent: 'Pick an airport on the map, or choose from a list' }));
   for (const r of res.rows.slice(0, 24)) {
     const a = document.createElement('a');
-    a.href = `/airports/${r.origin}/globe`;
-    a.textContent = `${r.origin} ${r.origin_city_name}`;
+    a.href = `/airports/${r.airport}/globe`;
+    a.textContent = `${r.airport} ${r.city}`;
     box.append(a);
   }
   // the chooser's airports, over all years; the controls (where a map's data link sits) are hidden here, so it closes the list
-  setDataLink('top_us_airports', { year: '', sort_column: '' });
+  setDataLink('globe_chooser', {});
   if ($('data-link')) box.append($('data-link'));
   box.hidden = false;
   $('title').textContent = 'US airport network';
@@ -266,6 +268,7 @@ function bindControls() {
   const width = $('width');
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
+  $('dir')?.addEventListener('change', (e) => setDir(e.target.value)); // only an airport's map has one; a new direction reloads
   $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
   const a = airports.get(origin);
   $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: rotationFor(a.lon, a.lat), zoom: view.zoom }; });
@@ -416,7 +419,7 @@ async function main() {
   if (!origin) { setStatus(''); $('controls').hidden = true; await showChooser(); return; }
 
   const a = airports.get(origin);
-  const res = await fetchRows(queryUrl('routes_by_year', { origin }));
+  const res = await fetchRows(queryUrl('routes_by_year', { origin, dir: state.dir }));
   truncated = res.truncated;
   const problem = originProblem(res.rows, airports, origin);
   if (problem) {

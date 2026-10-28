@@ -1,4 +1,4 @@
-from tests.helpers import add_segments, get, make_datasette
+from tests.helpers import add_segments, get, make_datasette, rebuild_airport_rollups
 from tests.test_routes_by_year import seg
 
 PUBLIC = {"default_allow_sql": False, "allow_download": False, "default_cache_ttl": 86400}
@@ -6,12 +6,13 @@ PUBLIC = {"default_allow_sql": False, "allow_download": False, "default_cache_tt
 
 def test_arbitrary_sql_is_blocked_but_canned_queries_work(db_path):
     add_segments(db_path, "t100_international", [seg("ATL", "LHR", 2019, 12, 2000)])
+    rebuild_airport_rollups(db_path)
     # control: without the public settings, arbitrary SQL is allowed
     assert get(make_datasette(db_path), "/t100/-/query.json?sql=select+1").status_code == 200
     ds = make_datasette(db_path, settings=PUBLIC)
     assert get(ds, "/t100/-/query.json?sql=select+1").status_code == 403
     assert get(ds, "/t100/-/query?sql=select+1").status_code == 403
-    ok = get(ds, "/t100/routes_by_year.json?origin=ATL&_shape=objects")
+    ok = get(ds, "/t100/routes_by_year.json?origin=ATL&dir=out&_shape=objects")
     assert ok.status_code == 200 and len(ok.json()["rows"]) == 1
 
 

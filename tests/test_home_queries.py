@@ -1,7 +1,7 @@
 # tests/test_home_queries.py
 import pytest
 
-from tests.helpers import get_json
+from tests.helpers import get_json, put_airport_years
 from tests.test_rollup_queries import put
 
 
@@ -15,13 +15,13 @@ def carrier(year, airline_id, passengers, domestic=1):
 
 
 def test_busiest_airports_are_us_only_and_ordered_by_passengers(ds, db_path):
-    put(db_path, "airport_year_totals", [
+    put_airport_years(db_path, [
         apt(2025, "ATL", "Atlanta, GA", 34, 500), apt(2025, "DFW", "Dallas/Fort Worth, TX", 74, 400),
         apt(2025, "LHR", "London, United Kingdom", 493, 900), apt(2025, "SJU", "San Juan, PR", 3, 400),
         apt(2025, "XXX", "Nowhere, TX", 74, 0), apt(2024, "ORD", "Chicago, IL", 41, 999)])
     rows = get_json(ds, "/t100/busiest_airports.json?_shape=objects&year=2025")["rows"]
-    assert [(r["origin"], r["total_passengers"]) for r in rows] == [("ATL", 500), ("DFW", 400), ("SJU", 400)]
-    assert rows[0]["origin_city_name"] == "Atlanta, GA"
+    assert [(r["airport"], r["passengers"]) for r in rows] == [("ATL", 500), ("DFW", 400), ("SJU", 400)]
+    assert rows[0]["city"] == "Atlanta, GA"
 
 
 def test_carrier_concentration_sums_each_airline_and_ranks_ties_by_id(ds, db_path):

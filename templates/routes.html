@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-origin="{{ origin }}" data-latest-year="{{ latest_year }}"{% if foreign %} data-foreign="1"{% endif %}>
+<body data-origin="{{ origin }}" data-latest-year="{{ latest_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
   <main>
     {% include "_nav.html" %}
     <h1 id="title">{{ origin }}: destinations over time</h1>
@@ -24,6 +24,7 @@
       <select id="matrix-group" aria-label="Group rows by"><option value="airport">airports</option><option value="city">cities (BTS markets)</option></select>,
       ranked by <select id="matrix-rank" aria-label="Year used to rank destinations"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
     </p>
+    <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
     <div class="key-row">
       <fieldset id="matrix-scale" class="scale-choice">
         <legend>Colour</legend>
@@ -35,7 +36,7 @@
     </div>
     <p class="note" id="scale-note" hidden></p>
     <div id="matrix" aria-live="polite">Loading chart…</div>
-    <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> Each cell is one destination in one year; click a cell to see that route in that year, or a row's code to see where it flies. In city view, click a row to open it into its airports. Routes with fewer than 12 departures a year are hidden. Each destination counts flights <em>from</em> {{ origin }} only: <a href="/about#direction">routes are one-way</a>.</p>
+    <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> Each cell is one destination in one year; click a cell to see that route in that year, or a row's code to see where it flies. In city view, click a row to open it into its airports. Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}</p>
     {% include "_footer.html" %}
   </main>
   <div id="label-tip" class="popover text" role="tooltip" hidden></div>

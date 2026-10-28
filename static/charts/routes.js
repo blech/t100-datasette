@@ -1,14 +1,17 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, MATRIX_MEASURES, labelMargin, textWidth, pointerReach, placeKey } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, matrixMeasures, labelMargin, textWidth, pointerReach, placeKey } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
+import { parseDir, setDir } from '/static/common/direction.js';
 
 const origin = document.body.dataset.origin;
+const dir = parseDir(location.search);
+const MATRIX_MEASURES = matrixMeasures(dir);
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
@@ -92,8 +95,10 @@ function drawAirports() {
   box.append(...attachPopover(chart, cellPopover('dest')));
 }
 
-const routeYearHref = (dest, year) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}`;
-const airportHref = (code) => `/airports/${encodeURIComponent(code)}/destinations`; // matrices lead to matrices
+// links keep the direction: departing here is the route's out, arriving its in
+const keepDir = dir ? `?dir=${dir}` : '';
+const routeYearHref = (dest, year) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}${keepDir}`;
+const airportHref = (code) => `/airports/${encodeURIComponent(code)}/destinations${keepDir}`; // matrices lead to matrices
 const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
@@ -206,12 +211,14 @@ $('matrix').addEventListener('click', (e) => {
   }
 });
 
+$('dir').addEventListener('change', (e) => setDir(e.target.value));
+
 async function main() {
-  setDataLink('routes_by_year', { origin, min_deps: '' });
+  setDataLink('routes_by_year', { origin, min_deps: '', dir });
   fillControls();
   try {
     const [byYear, airports] = await Promise.all([
-      fetchRows(queryUrl('routes_by_year', { origin })),
+      fetchRows(queryUrl('routes_by_year', { origin, dir })),
       fetchRows(queryUrl('airports')),
     ]);
     rows = byYear.rows;
@@ -223,7 +230,7 @@ async function main() {
     $('matrix').textContent = 'Could not load the chart data.';
     return;
   }
-  if (!rows.length) { $('matrix').textContent = `No flights from ${origin} in the data.`; return; }
+  if (!rows.length) { $('matrix').textContent = `No flights ${{ '': 'to or from', out: 'from', in: 'to' }[dir]} ${origin} in the data.`; return; }
   draw();
 }
 

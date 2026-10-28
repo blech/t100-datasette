@@ -1,4 +1,4 @@
-from tests.helpers import add_segments, get_json, make_datasette
+from tests.helpers import add_segments, get_json, make_datasette, rolled_json
 
 
 def seg(origin, dest, year, deps, pax, seats=100, freight=0, month=1):
@@ -6,9 +6,9 @@ def seg(origin, dest, year, deps, pax, seats=100, freight=0, month=1):
                 passengers=pax, seats=seats, freight=freight)
 
 
-def rows(ds, origin="ATL", min_deps=None):
+def rows(ds, origin="ATL", min_deps=None, dir="out"):
     extra = "" if min_deps is None else f"&min_deps={min_deps}"
-    body = get_json(ds, f"/t100/routes_by_year.json?origin={origin}{extra}&_shape=objects")
+    body = rolled_json(ds, f"/t100/routes_by_year.json?origin={origin}&dir={dir}{extra}&_shape=objects")
     assert body["truncated"] is False
     return {(r["dest"], r["year"]): r for r in body["rows"]}
 
@@ -54,14 +54,14 @@ def test_other_origins_and_unknown_or_lowercase_origin(ds, db_path):
 
 def test_ordered_by_year_then_dest(ds, db_path):
     add_segments(db_path, "t100_international", [seg("ATL", "ZZZ", 2000, 12, 1), seg("ATL", "AAA", 2001, 12, 1), seg("ATL", "AAA", 2000, 12, 1)])
-    body = get_json(ds, "/t100/routes_by_year.json?origin=ATL&_shape=objects")
+    body = rolled_json(ds, "/t100/routes_by_year.json?origin=ATL&dir=out&_shape=objects")
     assert [(r["year"], r["dest"]) for r in body["rows"]] == [(2000, "AAA"), (2000, "ZZZ"), (2001, "AAA")]
 
 
 def test_truncation_flag_is_reported(db_path):
     add_segments(db_path, "t100_international", [seg("ATL", f"D{i:02d}", 2019, 12, 1) for i in range(5)])
     ds = make_datasette(db_path, settings={"max_returned_rows": 3})
-    body = get_json(ds, "/t100/routes_by_year.json?origin=ATL&_shape=objects")
+    body = rolled_json(ds, "/t100/routes_by_year.json?origin=ATL&dir=out&_shape=objects")
     assert body["truncated"] is True and len(body["rows"]) == 3
 
 
@@ -105,3 +105,23 @@ def test_rows_carry_the_bts_market_id_and_city_name(ds, db_path):
 def test_missing_market_id_comes_back_null(ds, db_path):
     add_segments(db_path, "t100_international", [seg("ATL", "DOH", 2025, 12, 100)])
     assert rows(ds)[("DOH", 2025)]["market_id"] is None
+
+
+def test_routes_by_year_sums_both_directions(ds, db_path):
+    add_segments(db_path, "t100_domestic", [seg("ATL", "LAX", 2019, 30, 1), seg("LAX", "ATL", 2019, 20, 1)])
+    assert [rows(ds, dir=d, min_deps=0)[("LAX", 2019)]["deps"] for d in ("out", "in", "")] == [30, 20, 50]
+
+
+def test_cutoff_boundary(ds, db_path):
+    add_segments(db_path, "t100_domestic", [seg("ATL", "XYZ", 2019, 12, 1), seg("XYZ", "ATL", 2019, 11, 1)])
+    assert ("XYZ", 2019) in rows(ds, dir="out")
+    assert ("XYZ", 2019) not in rows(ds, dir="in")
+    assert ("XYZ", 2019) not in rows(ds, dir="")  # 23 both ways
+    add_segments(db_path, "t100_domestic", [seg("XYZ", "ATL", 2019, 1, 1, month=2)])
+    assert rows(ds, dir="")[("XYZ", 2019)]["deps"] == 24
+
+
+def test_service_is_majority_over_counted_directions(ds, db_path):
+    add_segments(db_path, "t100_international", [seg("ATL", "YYZ", 2019, 20, 1)])
+    add_segments(db_path, "t100_domestic", [seg("YYZ", "ATL", 2019, 30, 1)])
+    assert [rows(ds, dir=d)[("YYZ", 2019)]["service"] for d in ("out", "in", "")] == ["international", "domestic", "domestic"]

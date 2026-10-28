@@ -1,0 +1,1 @@
+<select id="al-min" aria-label="Minimum flights">{% for value, text in min_choices %}<option value="{{ value }}"{% if value == min_default %} selected{% endif %}>{{ text }}</option>{% endfor %}</select>

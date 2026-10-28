@@ -9,13 +9,13 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-kind="{{ kind }}" data-latest-year="{{ latest_year }}">
+<body data-kind="{{ kind }}" data-latest-year="{{ latest_year }}"{% if kind == "airports" %} data-dir="{{ dir }}"{% endif %}>
   <main>
     {% include "_nav.html" %}
     <h1>{{ page.title }} over time</h1>
     {% set find = {"airlines": "airline", "airports": "airport", "aircraft": "aircraft"}[kind] %}{% include "_find.html" %}
     <p class="intro">
-      {% if kind == "airports" %}Every US airport in the data, counting flights departing from it, by year. Click an airport's code to see where it flies.
+      {% if kind == "airports" %}Every US airport in the data, counting flights {{ {"out": "departing it", "in": "arriving at it"}.get(dir, "to and from it") }}, by year. Click an airport's code to see where it flies.
       {% elif kind == "aircraft" %}Every aircraft family in the data, by year. Click a <span aria-hidden="true">▸</span> to list a family's aircraft, a family's name to see its page, or an aircraft's name to see that one.
       {% else %}Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.{% endif %}
     </p>
@@ -26,6 +26,7 @@
       {% endif %}      for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
       {% if kind == "airports" %}<select id="matrix-group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>{% else %}{{ page.noun }}{% endif %}, ranked by <select id="matrix-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ latest_year }} only</option></select>.
     </p>
+    {% if kind == "airports" %}<p class="chart-sentence">{% include "_dir_choice.html" %}</p>{% endif %}
     <div class="key-row">
       <fieldset id="matrix-scale" class="scale-choice">
         <legend>Colour</legend>
@@ -39,7 +40,7 @@
     <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note" id="rank-note"></p>
     <p class="note" id="about-note">
-      {% if kind == "airports" %}Each airport counts flights <em>from</em> it only: <a href="/about#direction">routes are one-way</a>. Airports with fewer than 365 departures in every year are left out.
+      {% if kind == "airports" %}Airports with fewer than {{ "730 flights, both ways," if dir == "" else "365 " ~ count_word|lower }} in every year are left out: <a href="/about#direction">more on directions</a>.
       {% elif kind == "aircraft" %}How aircraft are <a href="/about#groupings">grouped</a> into families. Aircraft the rules do not place are grouped by their maker.
       {% else %}How airlines are <a href="/about#groupings">grouped</a>.{% endif %}
       Domestic cargo airlines such as FedEx, and airlines flying small aircraft, are only in the data from October 2002 (UPS from 2001), so shares jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.

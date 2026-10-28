@@ -9,13 +9,14 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}"{% if foreign %} data-foreign="1"{% endif %}>
+<body data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
   <main>
     {% include "_nav.html" %}
     <h1 id="title">{{ origin }}: over time</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
     {% set find = "airport" %}{% include "_find.html" %}
     {% include "_foreign_note.html" %}
+    <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
     <h2>How big</h2>
     <p class="chart-sentence">
       Show <select id="ap-measure" aria-label="Measure"></select>
@@ -25,10 +26,10 @@
     <div id="size-chart" aria-live="polite">Loading chart…</div>
     <h2>How many places</h2>
     <p class="chart-sentence">
-      Destinations flown to at least <select id="ap-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> each year.
+      Other airports flown {{ {"out": "to", "in": "from"}.get(dir, "to or from") }} at least {% include "_ap_min.html" %} each year.
     </p>
     <div id="places-chart" aria-live="polite">Loading chart…</div>
-    <p class="note">Every count is of flights departing <em>from</em> {{ origin }}: <a href="/about#direction">routes are one-way</a>. Airlines are counted as groups, so a merged airline's flying is shown together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
+    <p class="note">{% include "_dir_note.html" %} Airlines are counted as groups, so a merged airline's flying is shown together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
     {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/charts/airport.js"></script>

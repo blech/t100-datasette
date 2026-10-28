@@ -23,13 +23,13 @@ export function placeRoutes(rows, origin, airports) {
   return { routes, skipped: [...skipped].sort(), originMissing: false };
 }
 
-// airports listed by top_us_airports as map dots; those without coordinates are left out
+// airports listed by globe_chooser or busiest_airports as map dots; those without coordinates are left out
 export function placePoints(rows, airports) {
   const pts = [];
   for (const r of rows) {
-    const a = airports.get(r.origin);
+    const a = airports.get(r.airport);
     if (!a) continue;
-    pts.push({ code: r.origin, city: r.origin_city_name, pos: [a.lon, a.lat], passengers: r.total_passengers });
+    pts.push({ code: r.airport, city: r.city, pos: [a.lon, a.lat], passengers: r.passengers });
   }
   return pts;
 }

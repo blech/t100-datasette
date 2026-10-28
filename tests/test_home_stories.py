@@ -3,7 +3,7 @@ from plugins.t100_globe import airport_story, carrier_shares, concentration_stor
 
 
 def test_airport_story_names_the_top_three():
-    rows = [dict(origin=c, origin_city_name=f"{c} city", total_passengers=p) for c, p in [("ATL", 51_508_668), ("DFW", 41_309_075), ("ORD", 40_755_119), ("DEN", 1)]]
+    rows = [dict(airport=c, city=f"{c} city", passengers=p) for c, p in [("ATL", 51_508_668), ("DFW", 41_309_075), ("ORD", 40_755_119), ("DEN", 1)]]
     story = airport_story(rows)
     assert [a["code"] for a in story["airports"]] == ["ATL", "DFW", "ORD"]
     assert story["airports"][0] == {"code": "ATL", "city": "ATL city", "passengers": "51.5 million"}
@@ -45,7 +45,7 @@ def test_short_airline_name_drops_legal_endings_only():
 
 def test_stories_with_a_missing_year_are_none():
     assert airport_story([]) is None
-    assert airport_story([dict(origin="ATL", origin_city_name="Atlanta, GA", total_passengers=1)]) is None
+    assert airport_story([dict(airport="ATL", city="Atlanta, GA", passengers=1)]) is None
     assert engine_story([eng(1990, "6", 3000, 1)], 1990, 2026) is None
     assert concentration_story([dict(year=1990, top4=0.5)], 1990, 2026) is None
     assert carrier_shares([]) is None

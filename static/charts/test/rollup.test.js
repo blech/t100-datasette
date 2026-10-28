@@ -102,7 +102,7 @@ test('a family is split by subfamily in the order the subfamilies first appear',
   const res = buildFamilySeries(rows, { measure: 'deps', kind: 'passenger', split: 'subfamily' });
   assert.deepEqual(res.series, ['Classic', 'NG', 'MAX']);
   assert.equal(res.points.find((p) => p.year === 2015 && p.series === 'NG').value, 1);
-  assert.deepEqual(res.years, [1995, 2005, 2015]);
+  assert.deepEqual([res.years[0], res.years.at(-1), res.years.length], [1995, 2015, 21]);  // every year between, flown or not
 });
 
 test('airlines beyond the top n are folded into Other, listed last', () => {
@@ -168,9 +168,9 @@ test('rollupRows keeps rows that have no kind of flight, whatever kind is asked 
 
 test('routeRows names each airport pair and keeps its measures and service', () => {
   const out = routeRows([{ origin: 'ATL', dest: 'LGA', year: 2019, deps: 30, seats: 3000, passengers: 2400, freight: 30000, service: 'domestic' }]);
-  assert.deepEqual(out, [{ route: 'ATL – LGA', origin: 'ATL', dest: 'LGA', year: 2019, service: 'domestic', deps: 30, seats: 3000, passengers: 2400, freight: 30000 }]);
+  assert.deepEqual(out, [{ route: 'ATL ↔ LGA', origin: 'ATL', dest: 'LGA', year: 2019, service: 'domestic', deps: 30, seats: 3000, passengers: 2400, freight: 30000 }]);
   const res = buildMatrix(rollupRows(out, { key: 'route', kind: 'passenger' }), { measure: 'deps', n: 5 });
-  assert.deepEqual(res.dests, ['ATL – LGA']);
+  assert.deepEqual(res.dests, ['ATL ↔ LGA']);
 });
 
 test('splitting by nothing gives one series of all the flights, domestic and international together', () => {
@@ -190,4 +190,16 @@ test('splitting by aircraft gives a series for each, by total, with the smaller 
   const res = buildFamilySeries(rows, { measure: 'passengers', kind: 'passenger', split: 'aircraft' });
   assert.deepEqual(res.series, ['Plane 10', 'Plane 9', 'Plane 8', 'Plane 7', 'Plane 6', 'Plane 5', 'Plane 4', 'Plane 3', 'Other']);
   assert.equal(res.points.find((p) => p.series === 'Other').value, 300);
+});
+
+test('a family series runs over every year from its first to its last, empty years included', async () => {
+  const { buildFamilySeries } = await import('../src/rollup.js');
+  const row = (year) => ({ year, family: 'F', subfamily: 'S', group_name: 'G', deps: 10, seats: 100, passengers: 80, freight: 0, kind: 'passenger', service: 'domestic' });
+  assert.deepEqual(buildFamilySeries([row(2001), row(2004)]).years, [2001, 2002, 2003, 2004]);
+});
+
+test('routeRows names a pair with both directions together, or one direction as flown', () => {
+  const row = { origin: 'LGA', dest: 'ATL', year: 2019, deps: 1, seats: 0, passengers: 0, freight: 0, service: 'domestic' };
+  assert.equal(routeRows([row])[0].route, 'ATL ↔ LGA');
+  assert.equal(routeRows([row], { each: true })[0].route, 'LGA → ATL');
 });

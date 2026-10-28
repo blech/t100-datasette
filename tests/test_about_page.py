@@ -90,3 +90,13 @@ NOTED = ["/aircraft/groups", "/aircraft", "/airlines", "/airlines/over-time", "/
 def test_the_chart_notes_date_the_break_to_october_2002(ds, path):
     html = get(ds, path).text
     assert "October 2002" in html and "before 2003" not in html
+
+
+def test_the_direction_section_says_pages_count_both_ways(ds):
+    page = get(ds, "/about").text
+    section = page[page.index('<h2 id="direction">'):]
+    section = section[:section.index("<h2", 5)]
+    assert '<h2 id="direction">Directions</h2>' in section
+    for term in ["both directions", "Flights", "Departures", "Arrivals"]:
+        assert term in section, term
+    assert "Routes are one-way" not in page

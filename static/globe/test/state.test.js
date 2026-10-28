@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseState, toSearch } from '../src/state.js';
 
-const DEFAULTS = { year: null, compare: null, month: null, proj: 'globe', width: 'passengers', colour: null, hide: [] };
+const DEFAULTS = { year: null, compare: null, month: null, proj: 'globe', width: 'passengers', dir: '', colour: null, hide: [] };
 
 test('defaults', () => {
   assert.deepEqual(parseState(''), DEFAULTS);
@@ -29,4 +29,11 @@ test('the old service filter becomes a hidden service and is not written back', 
   assert.deepEqual(parseState('?service=domestic').hide, ['international']);
   assert.deepEqual(parseState('?service=both').hide, []);
   assert.equal(toSearch(parseState('?year=2019&service=domestic')), '?year=2019&hide=international');
+});
+
+test('the direction survives a round trip through the address, and both ways is left out', () => {
+  assert.equal(parseState('?dir=in').dir, 'in');
+  assert.equal(parseState('?dir=sideways').dir, '');
+  assert.equal(toSearch(parseState('?dir=out&year=2019')), '?year=2019&dir=out');
+  assert.equal(toSearch(parseState('?year=2019')), '?year=2019');
 });

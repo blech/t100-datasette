@@ -1,9 +1,15 @@
 import json
 import logging
 import re
+import sys
+from pathlib import Path
 
 from datasette import hookimpl
 from datasette.utils.asgi import NotFound, Response
+
+# Datasette loads each plugin from its file, not as a package, so a shared module is imported from beside this one
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from t100_direction import DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, cutoff, parse_dir, route_count_word, route_heading  # noqa: E402
 
 
 CODE = r"[A-Za-z0-9]{3}"
@@ -197,7 +203,7 @@ def airport_story(rows):
     """busiest_airports rows (busiest first) -> the top three airports."""
     if len(rows) < 3:
         return None
-    return {"airports": [{"code": r["origin"], "city": r["origin_city_name"], "passengers": prose_count(r["total_passengers"])}
+    return {"airports": [{"code": r["airport"], "city": r["city"], "passengers": prose_count(r["passengers"])}
                          for r in rows[:3]]}
 
 
@@ -250,13 +256,19 @@ def carrier_shares(rows):
         return None
     return [{"name": short_airline_name(r["airline_name"]), "share": percent(r["share"], 1)} for r in rows]
 
+def airport_direction(request):
+    """What an airport page needs to say which way it counts: the direction, its word for the flight count and the choices."""
+    dir = parse_dir(request.args.get("dir"))
+    return {"dir": dir, "count_word": count_word(dir), "dir_choices": DIRECTION_CHOICES_AIRPORT}
+
+
 async def globe_page(datasette, request):
     origin = (request.url_vars.get("origin") or "").upper()
     steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
     html = await datasette.render_template(
         "globe.html",
         {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1],
-         "label": airport_label(await airport_info(datasette, [origin]), origin) if origin else ""},
+         "label": airport_label(await airport_info(datasette, [origin]), origin) if origin else "", **airport_direction(request)},
         request=request,
     )
     return Response.html(html)
@@ -272,7 +284,7 @@ async def airports_index(datasette, request):
     min_year, max_year = year_range(datasette)
     html = await datasette.render_template(
         "airports.html",
-        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None))},
+        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None)), **airport_direction(request)},
         request=request,
     )
     return Response.html(html)
@@ -290,7 +302,7 @@ LB_PER_SHORT_TON = 2000
 def dedicated_rows(rows, measure):
     """dedicated_airports rows -> table rows with the shares and totals as the page prints them (freight in short tons, not pounds)."""
     scale = LB_PER_SHORT_TON if measure == "freight" else 1
-    return [{"code": r["origin"], "city": r["origin_city_name"], "size_rank": r["size_rank"],
+    return [{"code": r["airport"], "city": r["city"], "size_rank": r["size_rank"],
              "airline": short_airline_name(r["group_name"]), "airline_id": r["group_id"],
              "share": percent(r["share"], 1), "airline_total": prose_count(r["airline_total"] / scale), "total": prose_count(r["total"] / scale)}
             for r in rows]
@@ -369,9 +381,9 @@ MATRIX_SETTINGS = ("n", "group", "rank", "scale", "open")  # the destinations ma
 
 
 async def airport_years(datasette, code):
-    """The first and last years with departures from the airport, or (None, None) when it has none."""
+    """The first and last years with flights from or to the airport, or (None, None) when it has none."""
     result = await datasette.get_database("t100").execute(
-        "SELECT MIN(year), MAX(year) FROM airport_year_totals WHERE origin = ? AND deps > 0", [code])
+        "SELECT MIN(year), MAX(year) FROM airport_dir_year WHERE airport = ? AND deps + arrs > 0", [code])
     first, last = result.first()
     return first, last
 
@@ -395,6 +407,7 @@ def airport_view(template, crumb):
                 "crumbs": trail(datasette, *steps),
                 "foreign": await is_foreign(datasette, origin),
                 "label": airport_label(await airport_info(datasette, [origin]), origin),
+                **airport_direction(request),
             },
             request=request,
         )
@@ -421,11 +434,17 @@ def route_view(template, table):
         if table:
             steps.append(("table", None))
         info = await airport_info(datasette, [origin, dest])
+        dir = parse_dir(request.args.get("dir"))
+        names = [airport_label(info, origin) or origin, airport_label(info, dest) or dest]
         html = await datasette.render_template(
             template,
             {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
              "view": "table" if table else "", "crumbs": trail(datasette, *steps),
-             "label": f"{airport_label(info, origin) or origin} to {airport_label(info, dest) or dest}"},
+             "dir": dir, "heading": route_heading(origin, dest, dir), "count_word": route_count_word(dir),
+             # the same direction at the reversed address is the other way: /B/A?dir=out is B → A
+             "other_way": route_heading(dest, origin, dir) if dir else "",
+             "dir_choices": DIRECTION_CHOICES_ROUTE(origin, dest),
+             "label": {"": f"{names[0]} and {names[1]}", "out": f"{names[0]} to {names[1]}", "in": f"{names[1]} to {names[0]}"}[dir]},
             request=request,
         )
         return Response.html(html)
@@ -456,6 +475,7 @@ def rollup_page(kind):
                 "page": page,
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
                 "crumbs": trail(datasette, (page["crumb"], f"/{kind}"), ("over time", None)),
+                **(airport_direction(request) if kind == "airports" else {}),
             },
             request=request,
         )
@@ -609,6 +629,15 @@ async def airline_globe_page(datasette, request):
     return Response.html(html)
 
 
+def airline_direction(request):
+    """An airline page counts each airport pair with both directions together, or with dir=each each direction on its own;
+    its "at least" choices are counted one way and double for a pair (roughly monthly each way)."""
+    each = request.args.get("dir") == "each"
+    base = 12 if each else 24
+    return {"each": each, "min_default": base,
+            "min_choices": [(1, "once")] + [(cutoff("out" if each else "", v), f"{cutoff('out' if each else '', v)} times") for v in (12, 52, 365)]}
+
+
 def airline_view(template, tail):
     """An airline's page, in one of its views: over time (its size and airport pairs) or what changed between two years."""
 
@@ -620,6 +649,7 @@ def airline_view(template, tail):
                 **info, "own": info["airline"] or info["group"],
                 "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
                 "crumbs": airline_crumbs(datasette, info, *tail),
+                **airline_direction(request),
             },
             request=request,
         )

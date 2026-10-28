@@ -1,6 +1,6 @@
 import sqlite3
 
-from build_database import rebuild_airport_year_totals, rebuild_route_year_totals
+from build_database import rebuild_airport_dir_year, rebuild_airport_year_totals, rebuild_route_year_totals
 from tests.helpers import add_segments as _add, get_json
 from tests.test_routes_by_year import seg
 
@@ -18,15 +18,15 @@ def us(origin, year, deps, pax, seats=100, freight=0, city=None, dest="ZZZ"):
 
 def rebuilt(db_path):
     conn = sqlite3.connect(db_path)
-    rebuild_airport_year_totals(conn)
+    rebuild_airport_dir_year(conn)
     rebuild_route_year_totals(conn)
     conn.close()
 
 
-def top(ds, year=2025):
-    body = get_json(ds, f"/t100/top_airports.json?year={year}&_shape=objects")
+def top(ds, year=2025, dir=""):
+    body = get_json(ds, f"/t100/top_airports.json?year={year}&dir={dir}&_shape=objects")
     assert body["truncated"] is False
-    return {r["origin"]: r for r in body["rows"]}
+    return {r["airport"]: r for r in body["rows"]}
 
 
 def test_includes_every_us_airport_of_the_year_for_the_page_to_rank(ds, db_path):
@@ -41,7 +41,7 @@ def test_includes_every_us_airport_of_the_year_for_the_page_to_rank(ds, db_path)
 def test_airports_in_several_top_twenties_appear_once(ds, db_path):
     add_segments(db_path, "t100_domestic", [us("ATL", 2025, 500, 9000, seats=9000, freight=50), us("XYZ", 2025, 5, 10)])
     body = get_json(ds, "/t100/top_airports.json?year=2025&_shape=objects")
-    assert [r["origin"] for r in body["rows"]].count("ATL") == 1
+    assert [r["airport"] for r in body["rows"]].count("ATL") == 1
 
 
 def test_row_totals_cities_and_ordering(ds, db_path):
@@ -51,9 +51,9 @@ def test_row_totals_cities_and_ordering(ds, db_path):
         us("BOS", 2025, 1, 500, seats=600, freight=10, city="Boston, MA"),
     ])
     body = get_json(ds, "/t100/top_airports.json?year=2025&_shape=objects")
-    assert [r["origin"] for r in body["rows"]] == ["BOS", "ATL"]   # by passengers, descending
+    assert [r["airport"] for r in body["rows"]] == ["BOS", "ATL"]   # by passengers, descending
     atl = top(ds)["ATL"]
-    assert (atl["origin_city_name"], atl["deps"], atl["seats"], atl["passengers"], atl["freight"]) == ("Atlanta, GA", 15, 300, 150, 4000)
+    assert (atl["city"], atl["deps"], atl["seats"], atl["passengers"], atl["freight"]) == ("Atlanta, GA", 15, 300, 150, 4000)
 
 
 def test_destinations_count_routes_with_twelve_departures_that_year(ds, db_path):
@@ -64,7 +64,7 @@ def test_destinations_count_routes_with_twelve_departures_that_year(ds, db_path)
         us("ATL", 2024, 50, 100, dest="SEA"),  # another year
         us("BOS", 2025, 11, 100, dest="ATL"),  # none at all
     ])
-    got = top(ds)
+    got = top(ds, dir="out")
     assert got["ATL"]["dests"] == 2
     assert got["BOS"]["dests"] == 0
 
@@ -118,6 +118,20 @@ def test_all_years_adds_up_every_year_and_counts_destinations_flown_12_times_in_
         us("ATL", 2025, 12, 10, seats=20, dest="SEA", city="Atlanta, Georgia"),  # the newest name is the one shown
     ])
     for year in ("all", ""):
-        atl = top(ds, year)["ATL"]
+        atl = top(ds, year, dir="out")["ATL"]
         assert (atl["deps"], atl["passengers"], atl["seats"], atl["dests"]) == (50, 460, 720, 2), year
-        assert atl["origin_city_name"] == "Atlanta, Georgia"
+        assert atl["city"] == "Atlanta, Georgia"
+
+
+def arriving(origin, airport, year, deps, pax):
+    row = seg(origin, airport, year, deps, pax)
+    row.update(dest_wac=33, dest_city_name=f"{airport} City")
+    return row
+
+
+def test_top_airports_ranks_on_both_by_default(ds, db_path):
+    add_segments(db_path, "t100_domestic", [us("X", 2025, 10, 10, dest="Q"), arriving("Q", "X", 2025, 100, 100), us("Y", 2025, 60, 60, dest="Q")])
+    assert list(top(ds))[:2] == ["X", "Y"]
+    assert list(top(ds, dir="out"))[:2] == ["Y", "X"]
+    assert top(ds)["X"]["passengers"] == 110 and top(ds, dir="in")["X"]["passengers"] == 100
+    assert [top(ds, dir=d)["X"]["dests"] for d in ("", "out", "in")] == [1, 0, 1]   # Q: 110 both ways (24+), 10 out (under 12), 100 in

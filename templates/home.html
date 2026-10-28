@@ -23,7 +23,7 @@
     <section class="section" aria-labelledby="airports-heading">
       <h2 id="airports-heading"><a href="/airports">Airports</a></h2>
       {% if airports %}{% set a = airports.airports %}
-      <p class="story">The busiest airport in {{ max_year }} was {{ a[0].city }} ({{ a[0].code }}), where {{ a[0].passengers }} passengers boarded,
+      <p class="story">The busiest airport in {{ max_year }} was {{ a[0].city }} ({{ a[0].code }}), where {{ a[0].passengers }} passengers boarded or left,
         ahead of {{ a[1].city }} ({{ a[1].code }}) and {{ a[2].city }} ({{ a[2].code }}).</p>
       {% endif %}
       <div class="graphic map-box" id="map-box">

@@ -110,3 +110,16 @@ test('a map hiding one service carries the other as the service setting', () => 
   assert.deepEqual(carryParams('?hide=kept', 'routes'), {});
   assert.deepEqual(carryParams('?hide=domestic&service=domestic', 'routes'), { service: 'domestic' });
 });
+
+test('a chosen direction is carried between route and airport pages', () => {
+  for (const target of ['route', 'routes', 'airport', 'changes', 'globe']) {
+    assert.equal(carryParams('?dir=in', target).dir, 'in', target);
+    assert.equal(carryParams('?dir=out', target).dir, 'out', target);
+  }
+});
+
+test('the airline split and unknown directions are not carried, nor is any direction home', () => {
+  assert.equal(carryParams('?dir=each', 'route').dir, undefined);
+  assert.equal(carryParams('?dir=both', 'airport').dir, undefined);
+  assert.equal(carryParams('?dir=out', 'home').dir, undefined);
+});

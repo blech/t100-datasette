@@ -37,8 +37,8 @@ def test_domestic_routes_match_each_airports_routes_with_international_hidden(ds
     load(db_path)
     got = domestic(ds)
     for origin in ["ATL", "DEN"]:
-        page = {r["dest"]: r for (dest, year), r in routes_by_year(ds, origin).items() if year == 2025 and r["service"] == "domestic"}
-        mine = {r["dest"]: r for r in got if r["origin"] == origin}
+        page = {r["dest"]: r for (dest, year), r in routes_by_year(ds, origin, dir="").items() if year == 2025 and r["service"] == "domestic"}
+        mine = {r["b"] if r["a"] == origin else r["a"]: r for r in got if origin in (r["a"], r["b"])}
         assert set(mine) == set(page), origin
         for dest, r in mine.items():
             assert (r["deps"], r["seats"], r["passengers"], r["freight"], r["service"]) == (
@@ -47,7 +47,7 @@ def test_domestic_routes_match_each_airports_routes_with_international_hidden(ds
 
 def test_domestic_routes_are_for_one_year(ds, db_path):
     load(db_path)
-    assert [(r["origin"], r["dest"], r["deps"]) for r in domestic(ds, 2024)] == [("ATL", "LAX", 50)]
+    assert [(r["a"], r["b"], r["deps"]) for r in domestic(ds, 2024)] == [("ATL", "LAX", 50)]
 
 
 def test_rebuild_derived_tables_builds_route_year_totals(db_path):
@@ -56,3 +56,11 @@ def test_rebuild_derived_tables_builds_route_year_totals(db_path):
     counts = rebuild_derived_tables(conn)
     conn.close()
     assert counts["route_year_totals"] == 7
+
+
+def test_domestic_routes_is_both_ways_pairs(ds, db_path):
+    add_segments(db_path, "t100_domestic", [seg("ATL", "LAX", 2025, 12, 1), seg("LAX", "ATL", 2025, 12, 1), seg("BOS", "DEN", 2025, 12, 1), seg("DEN", "BOS", 2025, 11, 1)])
+    conn = sqlite3.connect(db_path)
+    rebuild_route_year_totals(conn)
+    conn.close()
+    assert [(r["a"], r["b"], r["deps"]) for r in domestic(ds)] == [("ATL", "LAX", 24)]
