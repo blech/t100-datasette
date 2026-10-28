@@ -311,3 +311,44 @@ test('the colour key is drawn into its own box, and emptied when there is nothin
   assert.deepEqual(box.children, []);
   placeKey(null, chart);                                                    // a page without a key box draws none
 });
+
+// ---- which destinations: ever flown, first flown after the data's first year, or dropped by its last ----
+const lives = [
+  r('OLD', 1990, 900), r('OLD', 2025, 800), // flown throughout
+  r('NEW', 2010, 500), r('NEW', 2025, 600), // first flown after 1990
+  r('GON', 1990, 700), r('GON', 2000, 700), // dropped
+  r('SJC', 2016, 400), r('SJC', 2023, 300), // first flown after 1990 and dropped by 2025
+];
+const span = { firstYear: 1990, lastYear: 2025 };
+
+test('every destination ever flown is the default', () => {
+  assert.deepEqual(buildMatrix(lives, { n: 10 }).dests, ['OLD', 'GON', 'NEW', 'SJC']);
+  assert.deepEqual(buildMatrix(lives, { n: 10, flown: 'ever', ...span }).dests, ['OLD', 'GON', 'NEW', 'SJC']);
+});
+
+test('first flown after the first year leaves out what flew then; dropped leaves out what still flies; one can be both', () => {
+  assert.deepEqual(buildMatrix(lives, { n: 10, flown: 'after', ...span }).dests, ['NEW', 'SJC']);
+  assert.deepEqual(buildMatrix(lives, { n: 10, flown: 'dropped', ...span }).dests, ['GON', 'SJC']);
+});
+
+test('the top n is taken after the filter, and each destination keeps its whole history', () => {
+  const res = buildMatrix(lives, { n: 1, flown: 'dropped', ...span });
+  assert.deepEqual(res.dests, ['GON']);
+  assert.deepEqual(res.cells.map((x) => x.year), [1990, 2000]);
+});
+
+test('the filter reads the service chosen: a destination still flown only as domestic is dropped as international', () => {
+  const mixed = [r('MIX', 2000, 500), r('MIX', 2025, 500, { service: 'domestic' })];
+  assert.deepEqual(buildMatrix(mixed, { n: 10, flown: 'dropped', ...span }).dests, []);
+  assert.deepEqual(buildMatrix(mixed, { n: 10, service: 'international', flown: 'dropped', ...span }).dests, ['MIX']);
+});
+
+test('city view: a market is dropped only when none of its airports still flies, and its airports open as they are', () => {
+  const ms = [
+    c('XXX', 2000, 500, 'M1', 'One, US'), c('YYY', 2025, 300, 'M1', 'One, US'), // one airport closed, the other flies
+    c('ZZZ', 2000, 900, 'M2', 'Two, US'), c('WWW', 2010, 100, 'M2', 'Two, US'), // both stopped
+  ];
+  const res = buildCityMatrix(ms, { n: 10, flown: 'dropped', open: ['M2'], ...span });
+  assert.deepEqual(res.rows.map((x) => x.key), ['M2', 'M2/ZZZ', 'M2/WWW']);
+  assert.deepEqual(buildCityMatrix(ms, { n: 10, flown: 'after', ...span }).rows.map((x) => x.key), ['M2', 'M1']);
+});

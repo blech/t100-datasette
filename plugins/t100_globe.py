@@ -365,7 +365,7 @@ async def home_page(datasette, request):
     return Response.html(html)
 
 
-MATRIX_SETTINGS = ("n", "group", "rank", "scale", "open")  # the destinations matrix's settings, which mean nothing to the charts that took its address
+MATRIX_SETTINGS = ("n", "group", "rank", "flown", "scale", "open")  # the destinations matrix's settings, which mean nothing to the charts that took its address
 
 
 async def airport_years(datasette, code):
@@ -392,6 +392,7 @@ def airport_view(template, crumb):
                 "first_year": first,
                 "last_year": last,
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
+                "min_year": year_range(datasette)[0],
                 "crumbs": trail(datasette, *steps),
                 "foreign": await is_foreign(datasette, origin),
                 "label": airport_label(await airport_info(datasette, [origin]), origin),
