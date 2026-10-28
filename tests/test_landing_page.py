@@ -24,5 +24,5 @@ def test_airport_and_city_names_carry_the_matrix_hovers():
     js = open("static/landing/main.js").read()
     assert "import { airportTip, groupTip } from '/static/charts/src/labels.js'" in js
     assert "queryUrl('airports')" in js
-    assert "airportTip(r.origin, airportInfo)" in js and "groupTip(" in js
-    assert "c.airports.map((a) => a.origin).join(', ')" not in js
+    assert "airportTip(r.airport, airportInfo)" in js and "groupTip(" in js
+    assert "c.airports.map((a) => a.airport).join(', ')" not in js

@@ -1,14 +1,14 @@
 import re
 import sqlite3
 
-from tests.helpers import get
+from tests.helpers import get, put_airport_years
 from tests.test_home_queries import apt, carrier
 from tests.test_home_stories import eng
 from tests.test_rollup_queries import put
 
 
 def load(db_path):
-    put(db_path, "airport_year_totals", [apt(2025, "ATL", "Atlanta, GA", 34, 51_508_668), apt(2025, "DFW", "Dallas/Fort Worth, TX", 74, 41_309_075),
+    put_airport_years(db_path, [apt(2025, "ATL", "Atlanta, GA", 34, 51_508_668), apt(2025, "DFW", "Dallas/Fort Worth, TX", 74, 41_309_075),
                                          apt(2025, "ORD", "Chicago, IL", 41, 40_755_119)])
     put(db_path, "aircraft_group_band_year", [
         dict(year=y, aircraft_group=g, distance_band=3000, domestic=0, service_class="F", deps=d, seats=0, passengers=0, freight=0)

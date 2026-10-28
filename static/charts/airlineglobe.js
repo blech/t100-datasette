@@ -20,13 +20,13 @@ const group = document.body.dataset.group;
 const airline = document.body.dataset.airline; // '' for a whole group, else one member of a merged group
 const own = airline || group;
 const params = new URLSearchParams(location.search);
-const MINS = ['1', '12', '52'];
+const MINS = ['1', '24', '104']; // both directions together: the one-way 12 and 52 doubled
 const state = {
   year: Number(params.get('year')) || null,
   compare: Number(params.get('compare')) || null,
   proj: params.get('proj') === 'flat' ? 'flat' : 'globe',
   width: ['passengers', 'deps', 'freight'].includes(params.get('width')) ? params.get('width') : 'passengers',
-  min: MINS.includes(params.get('min')) ? params.get('min') : '12',
+  min: MINS.includes(params.get('min')) ? params.get('min') : '24',
   ...parseStyle(location.search),
 };
 
@@ -74,7 +74,7 @@ function pushState() {
   if (state.compare) q.set('compare', state.compare);
   if (state.proj === 'flat') q.set('proj', 'flat');
   if (state.width !== 'passengers') q.set('width', state.width);
-  if (state.min !== '12') q.set('min', state.min);
+  if (state.min !== '24') q.set('min', state.min);
   for (const [k, v] of Object.entries(styleParams(state))) q.set(k, v);
   if (themeChosen !== 'auto') q.set('theme', themeChosen);
   const s = q.toString();
@@ -123,7 +123,7 @@ function drawLegend() {
 function tableQuery() {
   const q = new URLSearchParams();
   if (state.compare) { q.set('from', state.compare); q.set('to', state.year); }
-  if (state.min !== '12') q.set('min', state.min);
+  if (state.min !== '24') q.set('min', state.min);
   return q.size ? `?${q}` : '';
 }
 

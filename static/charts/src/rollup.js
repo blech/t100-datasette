@@ -1,4 +1,6 @@
 import { exactCount } from '../../common/numbers.js';
+import { yearDomain } from './span.js';
+import { pairLabel } from '../../common/direction.js';
 
 // Rows from the family_by_year / carrier_group_by_year queries -> the shape the matrix reads
 // (one row per "dest" and year), so the /aircraft and /airlines pages reuse buildMatrix as it is.
@@ -8,10 +10,11 @@ export function rollupRows(rows, { key, kind = 'all' }) {
     .map((r) => ({ dest: r[key], year: r.year, service: r.service, deps: r.deps, seats: r.seats, passengers: r.passengers, freight: r.freight }));
 }
 
-// Rows from carrier_route_by_year -> rows named by their airport pair ("ATL – LGA"), both directions together
-export function routeRows(rows) {
+// Rows from carrier_route_by_year -> rows named by their airport pair: "ATL ↔ LGA" with both directions together, or with
+// each direction its own row, "ATL → LGA" as flown
+export function routeRows(rows, { each = false } = {}) {
   return rows.map((r) => ({
-    route: `${r.origin} – ${r.dest}`, origin: r.origin, dest: r.dest, year: r.year, service: r.service,
+    route: pairLabel(r.origin, r.dest, each), origin: r.origin, dest: r.dest, year: r.year, service: r.service,
     deps: r.deps, seats: r.seats, passengers: r.passengers, freight: r.freight,
   }));
 }
@@ -137,5 +140,5 @@ export function buildFamilySeries(rows, { measure = 'passengers', kind = 'all', 
     return { year: Number(year), series, value };
   }).sort((a, b) => a.year - b.year);
   const series = folded ? [...kept, 'Other'] : kept;
-  return { points, series, years: [...new Set(points.map((p) => p.year))].sort((a, b) => a - b) };
+  return { points, series, years: yearDomain(points.map((p) => p.year)) };
 }

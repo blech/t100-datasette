@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildMatrix, MATRIX_MEASURES } from '../src/matrix.js';
+import { buildMatrix, MATRIX_MEASURES, matrixMeasures } from '../src/matrix.js';
 
 const r = (dest, year, passengers, extra = {}) => ({ dest, year, passengers, deps: passengers / 10, seats: passengers * 2, freight: 4000, service: 'international', ...extra });
 
@@ -351,4 +351,16 @@ test('city view: a market is dropped only when none of its airports still flies,
   const res = buildCityMatrix(ms, { n: 10, flown: 'dropped', open: ['M2'], ...span });
   assert.deepEqual(res.rows.map((x) => x.key), ['M2', 'M2/ZZZ', 'M2/WWW']);
   assert.deepEqual(buildCityMatrix(ms, { n: 10, flown: 'after', ...span }).rows.map((x) => x.key), ['M2', 'M1']);
+});
+
+test('a year with no rows at all still gets its column, so the years run without gaps', async () => {
+  const gappy = [r('LHR', 2016, 300), r('LHR', 2019, 400)];
+  assert.deepEqual(buildMatrix(gappy, { measure: 'passengers', n: 10 }).years, [2016, 2017, 2018, 2019]);
+  const { buildCityMatrix } = await import('../src/matrix.js');
+  assert.deepEqual(buildCityMatrix(gappy.map((x) => ({ ...x, market_id: '1', city: 'London' })), { measure: 'passengers', n: 10 }).years, [2016, 2017, 2018, 2019]);
+});
+
+test('the flight count is named for the direction counted', () => {
+  assert.deepEqual(['', 'out', 'in'].map((d) => matrixMeasures(d).deps), ['Flights', 'Departures', 'Arrivals']);
+  assert.equal(matrixMeasures('in').passengers, 'Passengers');
 });

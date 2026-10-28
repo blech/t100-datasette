@@ -2,9 +2,9 @@ from tests.helpers import add_segments, get_json
 from tests.test_routes_by_year import seg
 
 
-def fetch(ds, origin="ATL", year=2019, min_deps=None):
+def fetch(ds, origin="ATL", year=2019, min_deps=None, dir="out"):
     extra = "" if min_deps is None else f"&min_deps={min_deps}"
-    body = get_json(ds, f"/t100/routes_by_month.json?origin={origin}&year={year}{extra}&_shape=objects")
+    body = get_json(ds, f"/t100/routes_by_month.json?origin={origin}&year={year}&dir={dir}{extra}&_shape=objects")
     assert body["truncated"] is False
     return body["rows"]
 

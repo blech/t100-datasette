@@ -1,4 +1,4 @@
-from tests.helpers import add_segments, get_json
+from tests.helpers import add_segments, get_json, rolled_json
 from tests.test_rollup_queries import put
 from tests.test_rollups import add_carriers, flight
 
@@ -20,14 +20,14 @@ def seed(db_path):
     ])
 
 
-def size(ds, origin="SFO"):
-    body = get_json(ds, f"/t100/airport_size.json?origin={origin}&_shape=objects")
+def size(ds, origin="SFO", dir="out"):
+    body = rolled_json(ds, f"/t100/airport_size.json?origin={origin}&dir={dir}&_shape=objects")
     assert body["truncated"] is False
     return body["rows"]
 
 
-def changes(ds, a=2019, b=2023):
-    body = get_json(ds, f"/t100/airport_changes.json?origin=SFO&a={a}&b={b}&_shape=objects")
+def changes(ds, a=2019, b=2023, origin="SFO", dir="out"):
+    body = rolled_json(ds, f"/t100/airport_changes.json?origin={origin}&a={a}&b={b}&dir={dir}&_shape=objects")
     return {(r["dest"], r["group_id"]): r for r in body["rows"]}
 
 
@@ -55,16 +55,29 @@ def test_airport_changes_gives_each_destination_and_group_both_years_and_its_spa
 
 def test_airport_changes_agrees_with_the_matrix(ds, db_path):
     seed(db_path)
-    matrix = {(r["dest"], r["year"]): r["deps"] for r in get_json(ds, "/t100/routes_by_year.json?origin=SFO&min_deps=1&_shape=objects")["rows"]}
+    matrix = {(r["dest"], r["year"]): r["deps"] for r in rolled_json(ds, "/t100/routes_by_year.json?origin=SFO&min_deps=1&dir=out&_shape=objects")["rows"]}
     totals = {}
     for (dest, _), r in changes(ds).items():
         totals[dest] = totals.get(dest, 0) + r["deps_a"]
     assert totals == {d: n for (d, y), n in matrix.items() if y == 2019} | {"BOS": 0}
 
 
+def test_airport_size_counts_arrivals_at_a_destination_only_airport(ds, db_path):
+    add_segments(db_path, "t100_international", [flight("ATL", "LHR", 2019, deps=7, carrier_entity="X9", **{"class": "F"})])
+    assert size(ds, "LHR", dir="out") == []
+    assert [r["deps"] for r in size(ds, "LHR", dir="in")] == [7]
+    assert [r["deps"] for r in size(ds, "LHR", dir="")] == [7]
+
+
+def test_airport_changes_reads_the_other_airport(ds, db_path):
+    add_segments(db_path, "t100_domestic", [flight("LAX", "ATL", 2019, deps=4, carrier_entity="X9", **{"class": "F"})])
+    found = changes(ds, origin="ATL", dir="in")
+    assert ("LAX", "unknown") in found and found[("LAX", "unknown")]["deps_a"] > 0
+
+
 def gone(ds, **q):
-    params = {"origin": "SFO", "a": 2015, "b": 2023, "min": 1, "show": "destinations", **q}
-    body = get_json(ds, "/t100/airport_gone.json?_shape=objects&" + "&".join(f"{k}={v}" for k, v in params.items()))
+    params = {"origin": "SFO", "a": 2015, "b": 2023, "min": 1, "show": "destinations", "dir": "out", **q}
+    body = rolled_json(ds, "/t100/airport_gone.json?_shape=objects&" + "&".join(f"{k}={v}" for k, v in params.items()))
     assert body["truncated"] is False
     return body["rows"]
 
@@ -86,3 +99,14 @@ def test_airport_gone_counts_each_year_at_the_minimum_and_can_list_airlines_inst
     assert [(r["code"], r["last_year"]) for r in rows] == [("SEA", 2015)]  # 2019's 4 departures and NRT's 3 don't reach it
     airlines = gone(ds, show="airlines")
     assert [(r["code"], r["member"], r["first_year"]) for r in airlines] == [("unknown", "SEA", 2019)]  # United still flies from SFO in 2023
+
+
+def test_airport_gone_counts_the_direction_asked_for(ds, db_path):
+    seed(db_path)
+    arriving = {r["code"]: r for r in gone(ds, dir="in")}
+    assert list(arriving) == ["LAX"]  # only the arrivals from LAX, in 2019: added and dropped again as an arrival
+    assert (arriving["LAX"]["first_year"], arriving["LAX"]["last_year"], arriving["LAX"]["peak_deps"]) == (2019, 2019, 50)
+    both = {r["code"] for r in gone(ds, dir="")}
+    assert both == {"SEA", "NRT"}  # LAX is flown both ways in 2023, counting the departures
+    # 24 both ways when empty: SEA's 9 and NRT's 3 don't reach it, and LAX falls below it (60 in 2019, 5 in 2023)
+    assert [r["code"] for r in gone(ds, dir="", min="")] == ["LAX"]

@@ -1,0 +1,1 @@
+<select id="ap-min" aria-label="Minimum {{ count_word|lower }}">{% for v in (1, 12, 52, 365) %}<option value="{{ v }}"{% if v == 12 %} selected{% endif %}>{% if v == 1 %}once{% else %}{{ v * 2 if dir == "" else v }} times{% endif %}</option>{% endfor %}</select>

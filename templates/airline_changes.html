@@ -21,7 +21,8 @@
     </p>
 
 
-    <p class="chart-sentence">Count airport pairs flown at least <select id="al-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> in the year, in either direction.</p>
+    <p class="chart-sentence">{% include "_each_choice.html" %}</p>
+    <p class="chart-sentence">Count airport pairs flown at least {% include "_airline_min.html" %} in the year, {{ "in that direction" if each else "both directions together" }}.</p>
     <h2 id="changes">What changed</h2>
     <p class="chart-sentence">
       Compare <select id="al-a" aria-label="From year"></select> with <select id="al-b" aria-label="To year"></select>.
@@ -34,7 +35,7 @@
         <tbody></tbody>
       </table>
     </div>
-    <p class="note">A route is an airport pair, with both directions counted together, so "dropped" means the airline stopped flying between the two airports in either direction (or fell below the threshold), not that a particular flight number ended. "Dropped at any point" adds the routes added and dropped again between the two years, with the years they were flown and their busiest year. Where the airline flies a route under a different name after a merger the flying is counted together. Flying done for the airline by a regional partner, such as SkyWest for Alaska or United, is reported under the regional's own name and is not included. More on <a href="/about#groupings">how airlines are grouped</a>.</p>
+    <p class="note">{% if each %}Each direction of an airport pair is its own row, so "dropped" means the airline stopped flying that way (or fell below the threshold){% else %}A route is an airport pair, with both directions counted together, so "dropped" means the airline stopped flying between the two airports in either direction (or fell below the threshold){% endif %}, not that a particular flight number ended. "Dropped at any point" adds the routes added and dropped again between the two years, with the years they were flown and their busiest year. <a href="/about#direction">More on directions</a>. Where the airline flies a route under a different name after a merger the flying is counted together. Flying done for the airline by a regional partner, such as SkyWest for Alaska or United, is reported under the regional's own name and is not included. More on <a href="/about#groupings">how airlines are grouped</a>.</p>
     {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/charts/airline.js"></script>

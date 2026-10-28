@@ -9,6 +9,7 @@ import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight, parseHighlight, highlightedSeries, highlightMessage } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { setDataLink } from '/static/common/datalink.js';
+import { parseDir, routeCountWord, noFlights, setDir } from '/static/common/direction.js';
 
 // the tallest stack, which sets the y axis's scale
 const stackMax = (points, key, value = (p) => p.value) => {
@@ -17,12 +18,14 @@ const stackMax = (points, key, value = (p) => p.value) => {
   return Math.max(0, ...sums.values());
 };
 
-const { origin, dest, year: yearText } = document.body.dataset;
+const { origin, dest, year: yearText, dir } = document.body.dataset;
 const year = yearText ? Number(yearText) : null;
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+// the server wrote the headings for this direction; changing it reloads the page
+const measures = { ...MEASURES, deps: routeCountWord(dir) };
 const state = {
-  measure: Object.hasOwn(MEASURES, params.get('measure')) ? params.get('measure') : 'passengers',
+  measure: Object.hasOwn(measures, params.get('measure')) ? params.get('measure') : 'passengers',
   split: Object.hasOwn(SPLITS, params.get('split')) ? params.get('split') : 'carrier',
   span: parseSpan(params.get('span')),
 };
@@ -52,6 +55,15 @@ function pushState() {
   carryQuery();
 }
 
+// with one direction chosen and nothing in it (the controls stay hidden), point the way back to both, keeping the other settings
+function offerBothWays() {
+  if (!dir) return;
+  const q = new URLSearchParams(location.search);
+  q.delete('dir');
+  const both = Object.assign(document.createElement('a'), { href: `${location.pathname}${q.size ? `?${q}` : ''}`, textContent: 'both directions' });
+  $('status').append(' See ', both, '.');
+}
+
 function fillSelect(select, options, value) {
   for (const [k, label] of Object.entries(options)) select.append(new Option(label, k));
   select.value = value;
@@ -61,15 +73,15 @@ function fillSelect(select, options, value) {
 // the data behind the page, narrowed to the airline it's highlighting, if any
 function dataLink() {
   const group = parseHighlight(location.search)?.id ?? '';
-  if (year === null) setDataLink('route', { origin, dest, group });
-  else setDataLink('route_year', { origin, dest, year, group });
+  if (year === null) setDataLink('route', { origin, dest, dir, group });
+  else setDataLink('route_year', { origin, dest, year, dir, group });
 }
 
 function highlightLine(highlight, wanted, byAirline) {
   const line = $('highlight-line');
   if (!line) return;
   const name = highlight && allRows.find((r) => r.group_id === highlight.id)?.group_name;
-  const msg = highlightMessage({ highlight, name, byAirline, splitLabel: SPLITS[state.split].toLowerCase(), shown: wanted.size > 0 });
+  const msg = highlightMessage({ highlight, name, byAirline, splitLabel: SPLITS[state.split].toLowerCase(), shown: wanted.size > 0, dir });
   line.hidden = !msg;
   if (!msg) return;
   const clear = Object.assign(document.createElement('a'), { href: '#', textContent: 'clear' });
@@ -83,8 +95,8 @@ function highlightLine(highlight, wanted, byAirline) {
     drawChart();
   });
   // the other way, with the highlight: the reverse-direction link in the sentence below carries the query
-  const other = Object.assign(document.createElement('a'), { href: $('reverse-link').href, textContent: `${dest} → ${origin}` });
-  line.replaceChildren(msg.text, ...(msg.reverse ? ['; try the other way, ', other] : []), ' · ', clear);
+  const other = () => Object.assign(document.createElement('a'), { href: $('reverse-link').href, textContent: $('reverse-link').textContent });
+  line.replaceChildren(msg.text, ...(msg.reverse ? ['; try the other way, ', other()] : []), ' · ', clear);
 }
 
 function drawChart() {
@@ -123,8 +135,8 @@ function drawChart() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { ...x, type: res.stackable ? 'band' : 'point' },
     y: state.measure === 'load_factor'
-      ? { grid: true, label: MEASURES.load_factor, tickFormat: 'd', domain: [0, 100] }
-      : { grid: true, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), MEASURES[state.measure]) },
+      ? { grid: true, label: measures.load_factor, tickFormat: 'd', domain: [0, 100] }
+      : { grid: true, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), measures[state.measure]) },
     color: { legend: true, ...seriesColours(res.series, isDark()) },
     marks,
   });
@@ -165,7 +177,7 @@ function linkCell(text, href, title) {
 // the table follows the chart's split: its name columns, and its heading
 const TABLE_NAMES = { carrier: ['Carrier'], aircraft: ['Aircraft'], both: ['Carrier', 'Aircraft'], none: [''] };
 const TABLE_HEADINGS = { carrier: 'Carriers', aircraft: 'Aircraft', both: 'Carriers and aircraft', none: 'Totals' };
-const NUMBER_COLUMNS = ['Departures', 'Seats', 'Passengers', 'Load factor', 'Freight'];
+const NUMBER_COLUMNS = [routeCountWord(dir), 'Seats', 'Passengers', 'Load factor', 'Freight'];
 
 function th(text, className) {
   const el = Object.assign(document.createElement('th'), { scope: 'col', className, textContent: text });
@@ -187,7 +199,7 @@ function drawTable() {
     ];
     tr.append(
       ...names,
-      countCell(t.deps, 'departures'),
+      countCell(t.deps, routeCountWord(dir).toLowerCase()),
       countCell(t.seats, 'seats'),
       countCell(t.passengers, 'passengers'),
       cell(t.loadFactor === null ? '–' : `${t.loadFactor.toFixed(1)}%`, 'num'),
@@ -221,11 +233,11 @@ function drawYears(years) {
 
 async function main() {
   try {
-    const all = await fetchRows(queryUrl('route', { origin, dest }));
+    const all = await fetchRows(queryUrl('route', { origin, dest, dir }));
     allRows = all.rows;
     viewRows = allRows;
     if (year !== null) {
-      const monthly = await fetchRows(queryUrl('route_year', { origin, dest, year }));
+      const monthly = await fetchRows(queryUrl('route_year', { origin, dest, year, dir }));
       viewRows = monthly.rows;
     }
     // long legal names ("Hyannis Air Service, Inc. dba Cape Air") crowd the chart and table: show short ones, keep the full as hover text
@@ -237,32 +249,30 @@ async function main() {
     return;
   }
   if (!allRows.length) {
-    $('status').textContent = `No flights from ${origin} to ${dest} in the data.`;
+    $('status').textContent = `${noFlights(origin, dest, dir)} in the data.`;
     carryQuery();
-    // an airline's pages link airport pairs, so a highlighted airline may only have flown the other way
-    if (parseHighlight(location.search)) {
-      const other = Object.assign(document.createElement('a'), { href: $('reverse-link').href, textContent: `${dest} → ${origin}` });
-      $('status').append(' Try the other way, ', other, '.');
-    }
+    offerBothWays();
     return;
   }
   const years = [...new Set(allRows.map((r) => Number(r.year)))].sort((a, b) => a - b);
   drawYears(years);
   if (year !== null && !viewRows.length) {
-    $('status').textContent = `No flights from ${origin} to ${dest} in ${year}.`;
+    $('status').textContent = `${noFlights(origin, dest, dir)} in ${year}.`;
+    offerBothWays();
     return;
   }
   const mapLink = $('map-link');
   if (mapLink) mapLink.href = `/airports/${origin}/globe${year !== null ? `?year=${year}` : ''}`;
   dataLink();
   fillSelect($('chart-split'), SPLITS, state.split);
+  $('chart-dir').addEventListener('change', (e) => setDir(e.target.value));
   $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); if (onTable) drawTable(); else drawChart(); });
   if (onTable) {
     $('route-table').hidden = false;
     drawTable();
     return;
   }
-  fillSelect($('chart-measure'), MEASURES, state.measure);
+  fillSelect($('chart-measure'), measures, state.measure);
   $('chart-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); drawChart(); });
   document.addEventListener('t100:theme', () => drawChart());
   $('chart-span').value = state.span;

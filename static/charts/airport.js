@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { matrixMeasures } from '/static/charts/src/matrix.js';
 import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList, changeSort, sortChanges } from '/static/charts/src/airport.js';
 import { formatYearMonth } from '/static/charts/src/airline.js';
 import { airportGone, flownText, mostText } from '/static/charts/src/gone.js';
@@ -11,11 +11,19 @@ import { attachHighlight } from '/static/common/highlight.js';
 import { palette, seriesColours, isDark } from '/static/common/palette.js';
 import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
+import { yearDomain } from '/static/charts/src/span.js';
+import { parseDir, countWord, cutoff, setDir } from '/static/common/direction.js';
 
 // the airport's two new views share this script: over time (how big, how many places) and what changed
 const origin = document.body.dataset.origin;
 const firstYear = Number(document.body.dataset.firstYear) || null;
 const lastYear = Number(document.body.dataset.lastYear) || null;
+const dir = parseDir(location.search);
+const MATRIX_MEASURES = matrixMeasures(dir);
+const flown = { '': 'to and from', out: 'to', in: 'from' }[dir];
+// the "at least" choices are counted one way; both ways doubles them, once stays once
+const atLeast = (v) => (Number(v) === 1 ? 1 : cutoff(dir, Number(v)));
+const timesWord = (v) => (Number(v) === 1 ? 'once' : `${atLeast(v)} times`);
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
@@ -37,8 +45,9 @@ const stackMax = (points) => {
   for (const p of points) sums.set(p.year, (sums.get(p.year) || 0) + p.value);
   return Math.max(0, ...sums.values());
 };
+// both charts run over the airport's whole span, every year in it, so they line up even when a setting leaves years empty
 function yearAxis(years) {
-  const shown = [...new Set(years)].sort((a, b) => a - b).map(String);
+  const shown = yearDomain(years, { span: 'all', min: firstYear, max: lastYear }).map(String);
   const every = shown.length <= 15 ? 1 : 5;
   return { type: 'band', domain: shown, label: null, tickFormat: (d) => (Number(d) % every === 0 ? d : '') };
 }
@@ -94,7 +103,7 @@ function drawSize() {
 }
 
 function drawPlaces() {
-  const counts = placeCounts(places, { min: Number($('ap-min').value) });
+  const counts = placeCounts(places, { min: atLeast($('ap-min').value) });
   const box = $('places-chart');
   if (!counts.length) { box.textContent = 'No destinations at that level.'; return; }
   const series = ['domestic', 'international'].filter((s) => counts.some((c) => c.service === s));
@@ -121,11 +130,11 @@ async function overTime() {
     measure: [$('ap-measure').value, 'passengers'], flights: [$('ap-flights').value, 'passenger'],
     split: [$('ap-split').value, 'service'], min: [$('ap-min').value, '12'],
   });
-  setDataLink('airport_size', { origin, group: '' });
+  setDataLink('airport_size', { origin, group: '', dir });
   try {
     const [s, p] = await Promise.all([
-      fetchRows(queryUrl('airport_size', { origin })),
-      fetchRows(queryUrl('routes_by_year', { origin, min_deps: 1 })),
+      fetchRows(queryUrl('airport_size', { origin, dir })),
+      fetchRows(queryUrl('routes_by_year', { origin, min_deps: 1, dir })),
     ]);
     size = s.rows;
     places = p.rows;
@@ -146,7 +155,8 @@ let changes = [];
 let sortChoice = null; // the column last asked for; each status falls back to its own default where it can't sort by it
 
 const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
-const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} departures`; return td; };
+const word = countWord(dir).toLowerCase();
+const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} ${word}`; return td; };
 // a header row; a column with a sort key is a button (the busiest-airports table's), marked when the list is sorted by it
 const head = (labels, { sortable = [], sorted = null, onSort = () => {} } = {}) => {
   const tr = document.createElement('tr');
@@ -169,7 +179,7 @@ let saveChanges = () => {};
 
 // "dropped at any point" (airport_gone), fetched the first time it's wanted for the years, minimum and view on screen
 const gone = new Map();
-const goneParams = (show) => ({ origin, a: $('ap-a').value, b: $('ap-b').value, min: $('ap-min').value, show });
+const goneParams = (show) => ({ origin, a: $('ap-a').value, b: $('ap-b').value, min: atLeast($('ap-min').value), show, dir });
 function goneRows(show) {
   const params = goneParams(show);
   const key = JSON.stringify(params);
@@ -195,7 +205,7 @@ function nameCell(show, id, name) {
 let drawing = 0;
 async function drawTable() {
   const id = ++drawing;
-  const show = $('ap-show').value, status = $('ap-status').value, min = Number($('ap-min').value);
+  const show = $('ap-show').value, status = $('ap-status').value, min = atLeast($('ap-min').value);
   const a = $('ap-a').value, b = $('ap-b').value;
   const table = $('change-table');
   const sorted = changeSort(status, sortChoice);
@@ -211,19 +221,19 @@ async function drawTable() {
       return;
     }
     if (id !== drawing) return;
-    columns = [[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} departures`, 'num'], ['Most in a year', 'num', 'peak'],
+    columns = [[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} ${word}`, 'num'], ['Most in a year', 'num', 'peak'],
       [third, show === 'airlines' ? 'num' : 'left'], [show === 'airlines' ? 'Flown here' : 'Flown', 'left', 'when']];
     row = (x) => {
       const most = cell(mostText(x), 'num');
-      most.title = `${exactCount(x.peakDeps)} departures in ${x.peakYear}`;
+      most.title = `${exactCount(x.peakDeps)} ${word} in ${x.peakYear}`;
       return [nameCell(show, x.code, x.name), deps(x.deps_a), most,
         show === 'airlines' ? cell(exactCount(x.places), 'num') : cell(airlineList(x.members.map(shortName)), 'left'), cell(flownText(x), 'left')];
     };
   } else {
-    setDataLink('airport_changes', { origin, a, b, group: '' });
+    setDataLink('airport_changes', { origin, a, b, group: '', dir });
     items = classifyChanges(changes, { min, show }).filter((x) => x.status === status);
     const when = status === 'added' ? 'First flown' : 'Last flown';
-    columns = [[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} departures`, 'num', 'a'], [`${b} departures`, 'num', 'b'],
+    columns = [[show === 'airlines' ? 'Airline' : 'Destination', 'left'], [`${a} ${word}`, 'num', 'a'], [`${b} ${word}`, 'num', 'b'],
       [third, show === 'airlines' ? 'num' : 'left'], [show === 'airlines' ? `${when} here` : when, 'left', 'when']];
     row = (x) => (show === 'airlines'
       ? [nameCell(show, x.id, x.name), deps(x.deps_a), deps(x.deps_b), cell(exactCount(x.places), 'num'), cell(String(x.year), 'left')]
@@ -243,17 +253,17 @@ async function drawTable() {
 // the comparison in a sentence, and how many destinations came and went in between (from airport_gone)
 async function summarise() {
   const a = $('ap-a').value, b = $('ap-b').value, min = $('ap-min').value;
-  const c = summariseChanges(classifyChanges(changes, { min: Number(min), show: 'destinations' }));
+  const c = summariseChanges(classifyChanges(changes, { min: atLeast(min), show: 'destinations' }));
   const total = c.kept + c.dropped;
-  const times = min === '1' ? 'once' : `${min} times`;
+  const times = timesWord(min);
   const text = total
-    ? `In ${a} ${origin} had flights to ${exactCount(total)} destination${total === 1 ? '' : 's'} at least ${times}. By ${b}, ${exactCount(c.kept)} were still served, ${exactCount(c.dropped)} were dropped and ${exactCount(c.added)} new ones had been added.`
-    : `No destinations were flown to ${times} in ${a}.`;
+    ? `In ${a} ${origin} had flights ${flown} ${exactCount(total)} airport${total === 1 ? '' : 's'} at least ${times}. By ${b}, ${exactCount(c.kept)} were still served, ${exactCount(c.dropped)} were dropped and ${exactCount(c.added)} new ones had been added.`
+    : `No airports were flown ${dir ? flown : "to or from"} ${times} in ${a}.`;
   $('change-summary').textContent = text;
   const key = JSON.stringify(goneParams('destinations'));
   let between = 0;
   try {
-    between = airportGone(await goneRows('destinations'), { min: Number(min) }).filter((x) => x.status === 'between').length;
+    between = airportGone(await goneRows('destinations'), { min: atLeast(min) }).filter((x) => x.status === 'between').length;
   } catch (err) {
     console.error(err);
   }
@@ -265,7 +275,7 @@ async function summarise() {
 async function loadChanges() {
   const a = $('ap-a').value, b = $('ap-b').value;
   try {
-    changes = (await fetchRows(queryUrl('airport_changes', { origin, a, b }))).rows;
+    changes = (await fetchRows(queryUrl('airport_changes', { origin, a, b, dir }))).rows;
   } catch (err) {
     $('change-summary').textContent = 'Could not load the data.';
     return;
@@ -299,9 +309,11 @@ async function whatChanged() {
   await loadChanges();
 }
 
+$('dir').addEventListener('change', (e) => setDir(e.target.value));
+
 if (!firstYear) {
   const box = $('size-chart') ? $('size-chart') : $('change-summary');
-  box.textContent = `No flights from ${origin} in the data.`;
+  box.textContent = `No flights ${dir ? flown : "to or from"} ${origin} in the data.`;
   if ($('places-chart')) $('places-chart').textContent = '';
 } else if ($('size-chart')) {
   overTime();

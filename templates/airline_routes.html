@@ -15,7 +15,7 @@
     <h1 id="airline-name">{{ name }}</h1>
     {% set find = "airline" %}{% include "_find.html" %}
     <p class="intro">
-      The airport pairs {{ name }} flew from {{ first_year }} to {{ last_year }}, busiest first, with both directions counted together.
+      The airport pairs {{ name }} flew from {{ first_year }} to {{ last_year }}, busiest first, {{ "each direction its own row" if each else "with both directions counted together" }}.
       {% if parent %}One of the airlines counted together as <a href="/airlines/{{ parent.id }}">{{ parent.name }}</a>.{% endif %}
       {% if members %}Counts {{ members|map(attribute="name")|join(", ") }} together for every year.{% endif %}
     </p>
@@ -25,6 +25,7 @@
       for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
       routes, ranked by <select id="matrix-rank" aria-label="Year used to rank rows"><option value="all">all years</option><option value="latest">{{ last_year }} only</option></select>.
     </p>
+    <p class="chart-sentence">{% include "_each_choice.html" %}</p>
     <div class="key-row">
       <fieldset id="matrix-scale" class="scale-choice">
         <legend>Colour</legend>

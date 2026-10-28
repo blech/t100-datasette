@@ -10,6 +10,7 @@ import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight } from '/static/common/highlight.js';
 import { palette, isDark } from '/static/common/palette.js';
 import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js';
+import { pairLabel, setDir } from '/static/common/direction.js';
 
 // the tallest stack, which sets the y axis's scale
 const stackMax = (points, key, value = (p) => p.value) => {
@@ -24,6 +25,10 @@ const isGroup = Number(document.body.dataset.members) > 0; // a merged group: sh
 const firstYear = Number(document.body.dataset.firstYear);
 const lastYear = Number(document.body.dataset.lastYear);
 const $ = (id) => document.getElementById(id);
+// airport pairs with both directions together, or with dir=each each direction its own row (the changes page's choice)
+const each = new URLSearchParams(location.search).get('dir') === 'each';
+const minDefault = () => [...$('al-min').options].find((o) => o.defaultSelected)?.value || '1';
+const word = each ? 'departures' : 'flights';
 const LB_PER_SHORT_TON = 2000;
 
 let detail = [];
@@ -96,8 +101,9 @@ async function drawPairs() {
 const place = (code) => places.get(code) || '';
 function routeCell(r) {
   const a = document.createElement('a');
-  a.href = `/airports/${r.origin}/${r.dest}?split=carrier&highlight=airline:${group}`; // the route opens with this airline picked out
-  a.textContent = `${r.origin} – ${r.dest}`;
+  // the route opens with this airline picked out, both ways or the way this row was flown
+  a.href = `/airports/${r.origin}/${r.dest}?split=carrier&highlight=airline:${group}${each ? '&dir=out' : ''}`;
+  a.textContent = pairLabel(r.origin, r.dest, each);
   a.title = `${place(r.origin)} – ${place(r.dest)}`;
   const td = document.createElement('td');
   td.className = 'left';
@@ -113,16 +119,17 @@ function drawTable() {
   const isGone = status === 'gone';
   const shown = isGone ? gone : routes.filter((r) => r.status === status);
   if (status === 'added') shown.sort((x, y) => y.deps_b - x.deps_b);
-  setDataLink(isGone ? 'carrier_routes_gone' : 'carrier_route_changes', isGone ? { group, airline, a, b, min } : { group, airline, a, b });
-  $('th-a').textContent = `${a} departures`;
-  $('th-b').textContent = isGone ? 'Most in a year' : `${b} departures`;
+  const pairs = { group, airline, a, b, each: each ? 'each' : '' };
+  setDataLink(isGone ? 'carrier_routes_gone' : 'carrier_route_changes', isGone ? { ...pairs, min } : pairs);
+  $('th-a').textContent = `${a} ${word}`;
+  $('th-b').textContent = isGone ? 'Most in a year' : `${b} ${word}`;
   $('th-last').textContent = isGone ? 'Flown' : status === 'added' ? 'First flown' : 'Last flown';
   const tbody = $('change-table').tBodies[0];
   tbody.replaceChildren(...shown.map((r) => {
     const tr = document.createElement('tr');
     const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
-    const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} departures`; return td; };
-    const most = () => { const td = cell(mostText(r), 'num'); td.title = `${exactCount(r.peakDeps)} departures in ${r.peakYear}`; return td; };
+    const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} ${word}`; return td; };
+    const most = () => { const td = cell(mostText(r), 'num'); td.title = `${exactCount(r.peakDeps)} ${word} in ${r.peakYear}`; return td; };
     tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), deps(r.deps_a),
       ...(isGone ? [most(), cell(flownText(r), 'left')] : [deps(r.deps_b), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left')]));
     return tr;
@@ -134,10 +141,11 @@ async function loadChanges() {
   const a = $('al-a').value, b = $('al-b').value, min = $('al-min').value;
   // the views line's map link follows the years compared; a page without one (an old template) still gets its table
   const mapLink = $('map-link');
-  if (mapLink) mapLink.href = `/airlines/${airline || group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
+  if (mapLink) mapLink.href = `/airlines/${airline || group}/globe?year=${b}&compare=${a}${min === '24' ? '' : `&min=${min}`}`; // the map shows pairs, at 24 by default
+  const pairs = { group, airline, a, b, each: each ? 'each' : '' };
   const [changes, goneRes] = await Promise.all([
-    fetchRows(queryUrl('carrier_route_changes', { group, airline, a, b })),
-    fetchRows(queryUrl('carrier_routes_gone', { group, airline, a, b, min })),
+    fetchRows(queryUrl('carrier_route_changes', pairs)),
+    fetchRows(queryUrl('carrier_routes_gone', { ...pairs, min })),
   ]);
   routes = classifyRoutes(changes.rows, { min: Number(min) });
   gone = pairsGone(goneRes.rows, { a });
@@ -145,8 +153,8 @@ async function loadChanges() {
   const total = c.kept + c.dropped;
   const between = gone.filter((r) => r.status === 'between').length;
   $('change-summary').textContent = (total
-    ? `In ${a} this airline flew ${exactCount(total)} airport pairs at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${exactCount(c.kept)} of them were still flown, ${exactCount(c.dropped)} were dropped, and ${exactCount(c.added)} new ones had been added.`
-    : `No airport pairs reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`)
+    ? `In ${a} this airline flew ${exactCount(total)} ${each ? 'one-way routes' : 'airport pairs'} at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${exactCount(c.kept)} of them were still flown, ${exactCount(c.dropped)} were dropped, and ${exactCount(c.added)} new ones had been added.`
+    : `No ${each ? 'one-way routes' : 'airport pairs'} reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`)
     + (between ? ` ${exactCount(between)} more ${between === 1 ? 'was' : 'were'} added and dropped again in between.` : '');
   drawTable();
 }
@@ -221,8 +229,9 @@ async function main() {
     $(hasSize ? 'size-chart' : 'change-summary').textContent = 'Could not load the data.';
     return;
   }
+  $('each')?.addEventListener('change', (e) => setDir(e.target.value));
   $('al-min').addEventListener('change', () => {
-    remember('min', $('al-min').value, '12');
+    remember('min', $('al-min').value, minDefault());
     if (hasSize) drawPairs();
     if (hasChanges) loadChanges();
   });

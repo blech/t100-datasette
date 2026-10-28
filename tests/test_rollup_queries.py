@@ -63,8 +63,8 @@ def test_family_detail_with_an_empty_family_gives_an_airlines_every_family(ds, d
 
 def test_carrier_route_changes_compares_two_years_per_pair(ds, db_path):
     row = lambda year, dest, deps: dict(group_id="vx", airline_id="21171", year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=0, freight=0, first_month=1, last_month=12)
-    put(db_path, "carrier_route_year", [row(2017, "DEN", 300), row(2017, "LAX", 900), row(2019, "LAX", 800), row(2019, "PDX", 200), row(2017, "TINY", 3)])
-    rows = get_json(ds, "/t100/carrier_route_changes.json?_shape=objects&group=vx&a=2017&b=2019")["rows"]
+    put(db_path, "carrier_pair_year", [row(2017, "DEN", 300), row(2017, "LAX", 900), row(2019, "LAX", 800), row(2019, "PDX", 200), row(2017, "TINY", 3)])
+    rows = get_json(ds, "/t100/carrier_route_changes.json?_shape=objects&group=vx&a=2017&b=2019&each=each")["rows"]
     assert [(r["dest"], r["deps_a"], r["deps_b"]) for r in rows] == [("LAX", 900, 800), ("DEN", 300, 0), ("TINY", 3, 0), ("PDX", 0, 200)]
     assert get_json(ds, "/t100/carrier_route_counts.json?_shape=objects&group=vx&min=12")["rows"] == [{"year": 2017, "pairs": 2}, {"year": 2019, "pairs": 2}]
 
@@ -73,14 +73,14 @@ def test_airline_queries_cover_a_whole_group_or_one_member(ds, db_path):
     put(db_path, "carrier_group", [dict(airline_id="21171", group_id="alaska", group_name="Alaska (incl. Virgin America)", airline_name="Virgin America"),
                                    dict(airline_id="19930", group_id="alaska", group_name="Alaska (incl. Virgin America)", airline_name="Alaska Airlines Inc.")])
     row = lambda airline, dest, deps: dict(group_id="alaska", airline_id=airline, year=2017, origin="LAX", dest=dest, deps=deps, seats=0, passengers=deps, freight=0, first_month=1, last_month=12)
-    put(db_path, "carrier_route_year", [row("21171", "BOS", 8), row("19930", "BOS", 8), row("19930", "SEA", 20)])
+    put(db_path, "carrier_pair_year", [row("21171", "BOS", 8), row("19930", "BOS", 8), row("19930", "SEA", 20)])
     counts = lambda airline: get_json(ds, f"/t100/carrier_route_counts.json?_shape=objects&group=alaska&airline={airline}&min=12")["rows"]
     assert counts("") == [{"year": 2017, "pairs": 2}]  # LAX-BOS reaches 12 only with both airlines added up
     assert counts("19930") == [{"year": 2017, "pairs": 1}]
     assert counts("21171") == []
-    rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=alaska&airline=&year=2017")["rows"]
+    rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=alaska&airline=&year=2017&each=each")["rows"]
     assert sorted((r["airline"], r["dest"]) for r in rows) == [("Alaska Airlines Inc.", "BOS"), ("Alaska Airlines Inc.", "SEA"), ("Virgin America", "BOS")]
-    one = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=alaska&airline=21171&year=2017")["rows"]
+    one = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=alaska&airline=21171&year=2017&each=each")["rows"]
     assert [(r["airline"], r["dest"]) for r in one] == [("Virgin America", "BOS")]
 
 
@@ -198,10 +198,10 @@ def cry(year, airline, origin, dest, deps, domestic=True):
 
 
 def test_carrier_route_by_year_sums_members_and_keeps_pairs_flown_12_times(ds, db_path):
-    put(db_path, "carrier_route_year", [cry(2005, "19790", "ATL", "LGA", 10), cry(2005, "19386", "ATL", "LGA", 5),
+    put(db_path, "carrier_pair_year", [cry(2005, "19790", "ATL", "LGA", 10), cry(2005, "19386", "ATL", "LGA", 5),
                                         cry(2019, "19790", "ATL", "LGA", 30), cry(2019, "19790", "ATL", "XNA", 11),
                                         cry(2019, "19790", "ATL", "LHR", 20, domestic=False)])
-    url = "/t100/carrier_route_by_year.json?_shape=objects&group=delta&airline="
+    url = "/t100/carrier_route_by_year.json?_shape=objects&group=delta&each=each&airline="  # one way: the 12 cut-off
     got = {(r["origin"], r["dest"], r["year"]): (r["deps"], r["passengers"], r["service"]) for r in get_json(ds, url)["rows"]}
     assert got == {("ATL", "LGA", 2005): (15, 1200, "domestic"), ("ATL", "LGA", 2019): (30, 2400, "domestic"),
                    ("ATL", "LHR", 2019): (20, 1600, "international")}  # ATL-XNA flew 11 times: under the cut-off
@@ -390,17 +390,67 @@ def test_the_aircraft_queries_add_a_groups_members_together(ds, db_path):
     assert [(r["year"], r["group_id"], r["deps"]) for r in rows] == [(2017, "alaska", 10), (2018, "alaska", 10), (2019, "alaska", 6)]
 
 
+def pair(year, origin, dest, deps, airline="19790"):
+    return dict(group_id="dl", airline_id=airline, year=year, origin=origin, dest=dest, deps=deps, seats=deps * 10, passengers=deps * 8, freight=0,
+                first_month=1, last_month=12, domestic_deps=deps)
+
+
+def pairs_year(ds, each, year=2019):
+    return sorted((r["origin"], r["dest"], r["deps"]) for r in get_json(ds, f"/t100/carrier_routes_year.json?_shape=objects&group=dl&airline=&year={year}&each={each}")["rows"])
+
+
+def test_merged_pairs_match_old_table(ds, db_path):
+    from build_database import rebuild_carrier_pair_year, rebuild_carrier_route_year
+    from tests.test_routes_by_year import seg
+    add_segments(db_path, "t100_domestic", [seg("ATL", "LGA", 2019, 30, 300), seg("LGA", "ATL", 2019, 25, 250, month=2), seg("BOS", "ATL", 2019, 12, 100, month=3)])
+    conn = sqlite3.connect(db_path)
+    rebuild_carrier_route_year(conn)
+    rebuild_carrier_pair_year(conn)
+    old = conn.execute("SELECT airline_id, origin, dest, deps, seats, passengers, freight, domestic_deps FROM carrier_route_year WHERE year = 2019 ORDER BY origin, dest").fetchall()
+    conn.close()
+    rows = get_json(ds, "/t100/carrier_routes_year.json?_shape=objects&group=unknown&airline=&year=2019&each=")["rows"]
+    assert sorted((r["airline_id"], r["origin"], r["dest"], r["deps"], r["seats"], r["passengers"], r["freight"], r["domestic_deps"]) for r in rows) == old
+
+
+def test_each_mode_splits_a_pair(ds, db_path):
+    put(db_path, "carrier_pair_year", [pair(2019, "ATL", "LGA", 30), pair(2019, "LGA", "ATL", 25)])
+    assert pairs_year(ds, "") == [("ATL", "LGA", 55)]
+    assert pairs_year(ds, "each") == [("ATL", "LGA", 30), ("LGA", "ATL", 25)]
+
+
+def test_each_mode_never_emits_an_empty_direction(ds, db_path):
+    put(db_path, "carrier_pair_year", [pair(2019, "LGA", "ATL", 30)])
+    assert pairs_year(ds, "") == [("ATL", "LGA", 30)]
+    assert pairs_year(ds, "each") == [("LGA", "ATL", 30)]
+
+
+def test_airline_matrix_cutoff(ds, db_path):
+    put(db_path, "carrier_pair_year", [pair(2019, "ATL", "LGA", 12), pair(2019, "LGA", "ATL", 11)])
+    by_year = lambda each: [(r["origin"], r["dest"], r["deps"]) for r in get_json(ds, f"/t100/carrier_route_by_year.json?_shape=objects&group=dl&airline=&each={each}")["rows"]]
+    assert by_year("") == []
+    assert by_year("each") == [("ATL", "LGA", 12)]
+
+
 def test_carrier_routes_gone_gives_the_pairs_flown_from_a_up_to_b_but_not_in_b_at_the_minimum(ds, db_path):
-    row = lambda year, dest, deps, airline="21171": dict(group_id="vx", airline_id=airline, year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=0, freight=0, first_month=1, last_month=12)
-    put(db_path, "carrier_route_year", [
+    row = lambda year, dest, deps, airline="19790": pair(year, "SFO", dest, deps, airline)
+    put(db_path, "carrier_pair_year", [
         row(2015, "DEN", 300), row(2017, "DEN", 200),  # dropped
         row(2015, "LAX", 900), row(2019, "LAX", 800),  # still flown in b
         row(2017, "PDX", 200),                         # added then dropped
         row(2017, "TINY", 3),                          # under the minimum
-        row(2017, "BOS", 8), row(2017, "BOS", 8, airline="19930"),  # reaches it only with the members added up
+        row(2017, "BOS", 8), row(2017, "BOS", 8, airline="20304"),  # reaches it only with the members added up
     ])
-    rows = get_json(ds, "/t100/carrier_routes_gone.json?_shape=objects&group=vx&airline=&a=2015&b=2019&min=12")["rows"]
-    assert sorted((r["dest"], r["year"], r["airline_id"]) for r in rows) == [
-        ("BOS", 2017, "19930"), ("BOS", 2017, "21171"), ("DEN", 2015, "21171"), ("DEN", 2017, "21171"), ("PDX", 2017, "21171")]
-    once = get_json(ds, "/t100/carrier_routes_gone.json?_shape=objects&group=vx&airline=&a=2015&b=2019&min=1")["rows"]
-    assert "TINY" in {r["dest"] for r in once}
+    # both directions together, so each pair is alphabetical: the other end is whichever isn't SFO
+    other = lambda r: r["origin"] if r["dest"] == "SFO" else r["dest"]
+    gone = lambda min: [r | {"other": other(r)} for r in get_json(ds, f"/t100/carrier_routes_gone.json?_shape=objects&group=dl&airline=&a=2015&b=2019&min={min}&each=")["rows"]]
+    assert sorted((r["other"], r["year"], r["airline_id"]) for r in gone(12)) == [
+        ("BOS", 2017, "19790"), ("BOS", 2017, "20304"), ("DEN", 2015, "19790"), ("DEN", 2017, "19790"), ("PDX", 2017, "19790")]
+    assert "TINY" in {r["other"] for r in gone(1)}
+    assert "BOS" not in {r["other"] for r in gone("")}  # 24 both ways when empty
+
+
+def test_carrier_routes_gone_counts_both_directions_together_or_each_as_flown(ds, db_path):
+    put(db_path, "carrier_pair_year", [pair(2015, "SFO", "SEA", 30), pair(2019, "SEA", "SFO", 30)])
+    gone = lambda each: sorted((r["origin"], r["dest"], r["year"]) for r in get_json(ds, f"/t100/carrier_routes_gone.json?_shape=objects&group=dl&airline=&a=2015&b=2019&min=12&each={each}")["rows"])
+    assert gone("") == []  # the pair is still flown in 2019, the other way
+    assert gone("each") == [("SFO", "SEA", 2015)]  # SFO to SEA is not

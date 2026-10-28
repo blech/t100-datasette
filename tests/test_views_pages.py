@@ -18,8 +18,9 @@ def test_a_years_table_keeps_the_year(ds):
 
 
 def test_the_route_sentence_offers_the_other_direction_in_the_same_view(ds):
-    assert 'href="/airports/LAX/ATL/2024"' in get(ds, "/airports/ATL/LAX/2024").text
-    assert 'href="/airports/LAX/ATL/2024/table"' in get(ds, "/airports/ATL/LAX/2024/table").text
+    # only in one-way mode: both ways, the direction menu stands in for it
+    assert 'href="/airports/LAX/ATL/2024?dir=out"' in get(ds, "/airports/ATL/LAX/2024?dir=out").text
+    assert 'href="/airports/LAX/ATL/2024/table?dir=out"' in get(ds, "/airports/ATL/LAX/2024/table?dir=out").text
 
 
 from tests.test_rollup_pages import put
