@@ -1,7 +1,9 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
+import { pairsGone, flownText, mostText } from '/static/charts/src/gone.js';
 import { shortName } from '/static/charts/src/names.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -33,6 +35,7 @@ const LB_PER_SHORT_TON = 2000;
 let detail = [];
 let places = new Map();
 let routes = [];
+let gone = []; // pairs dropped at any point (carrier_routes_gone): dropped, or added and dropped again in between
 const memberLabel = (name) => shortName(name);
 
 const unit = (m) => MATRIX_MEASURES[m].toLowerCase().replace(/ \(.*/, '');
@@ -113,18 +116,23 @@ function routeCell(r) {
 
 function drawTable() {
   const status = $('al-status').value;
-  const a = $('al-a').value, b = $('al-b').value;
-  const shown = routes.filter((r) => r.status === status);
+  const a = $('al-a').value, b = $('al-b').value, min = $('al-min').value;
+  const isGone = status === 'gone';
+  const shown = isGone ? gone : routes.filter((r) => r.status === status);
   if (status === 'added') shown.sort((x, y) => y.deps_b - x.deps_b);
+  const pairs = { group, airline, a, b, each: each ? 'each' : '' };
+  setDataLink(isGone ? 'carrier_routes_gone' : 'carrier_route_changes', isGone ? { ...pairs, min } : pairs);
   $('th-a').textContent = `${a} ${word}`;
-  $('th-b').textContent = `${b} ${word}`;
-  $('th-last').textContent = status === 'added' ? 'First flown' : 'Last flown';
+  $('th-b').textContent = isGone ? 'Most in a year' : `${b} ${word}`;
+  $('th-last').textContent = isGone ? 'Flown' : status === 'added' ? 'First flown' : 'Last flown';
   const tbody = $('change-table').tBodies[0];
   tbody.replaceChildren(...shown.map((r) => {
     const tr = document.createElement('tr');
     const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
     const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} ${word}`; return td; };
-    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), deps(r.deps_a), deps(r.deps_b), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
+    const most = () => { const td = cell(mostText(r), 'num'); td.title = `${exactCount(r.peakDeps)} ${word} in ${r.peakYear}`; return td; };
+    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), deps(r.deps_a),
+      ...(isGone ? [most(), cell(flownText(r), 'left')] : [deps(r.deps_b), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left')]));
     return tr;
   }));
   if (!shown.length) tbody.innerHTML = `<tr><td class="left" colspan="${isGroup ? 5 : 4}">None.</td></tr>`;
@@ -135,14 +143,20 @@ async function loadChanges() {
   // the views line's map link follows the years compared; a page without one (an old template) still gets its table
   const mapLink = $('map-link');
   if (mapLink) mapLink.href = `/airlines/${airline || group}/globe?year=${b}&compare=${a}${min === '24' ? '' : `&min=${min}`}`; // the map shows pairs, at 24 by default
-  setDataLink('carrier_route_changes', { group, airline, a, b, each: each ? 'each' : '' });
-  const { rows } = await fetchRows(queryUrl('carrier_route_changes', { group, airline, a, b, each: each ? 'each' : '' }));
-  routes = classifyRoutes(rows, { min: Number(min) });
+  const pairs = { group, airline, a, b, each: each ? 'each' : '' };
+  const [changes, goneRes] = await Promise.all([
+    fetchRows(queryUrl('carrier_route_changes', pairs)),
+    fetchRows(queryUrl('carrier_routes_gone', { ...pairs, min })),
+  ]);
+  routes = classifyRoutes(changes.rows, { min: Number(min) });
+  gone = pairsGone(goneRes.rows, { a });
   const c = summariseRoutes(routes);
   const total = c.kept + c.dropped;
-  $('change-summary').textContent = total
+  const between = gone.filter((r) => r.status === 'between').length;
+  $('change-summary').textContent = (total
     ? `In ${a} this airline flew ${exactCount(total)} ${each ? 'one-way routes' : 'airport pairs'} at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${exactCount(c.kept)} of them were still flown, ${exactCount(c.dropped)} were dropped, and ${exactCount(c.added)} new ones had been added.`
-    : `No ${each ? 'one-way routes' : 'airport pairs'} reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`;
+    : `No ${each ? 'one-way routes' : 'airport pairs'} reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`)
+    + (between ? ` ${exactCount(between)} more ${between === 1 ? 'was' : 'were'} added and dropped again in between.` : '');
   drawTable();
 }
 
@@ -191,7 +205,7 @@ async function main() {
     // the same names as the airport page's chart, whose airline links carry them
     const pick = (key, allowed, fallback) => (allowed.includes(qs.get(key)) ? qs.get(key) : fallback);
     $('al-measure').value = pick('measure', Object.keys(MATRIX_MEASURES), 'passengers');
-    $('al-kind').value = pick('flights', ['passenger', 'freight', 'all'], 'passenger');
+    $('al-kind').value = pick('flights', FLIGHTS, defaultFlights($('al-measure').value));
     $('al-split').value = pick('split', ['service', 'kind'], 'service');
     $('al-span').value = parseSpan(qs.get('span'));
   }
@@ -223,10 +237,20 @@ async function main() {
     if (hasChanges) loadChanges();
   });
   if (hasSize) {
-    const settings = { 'al-measure': ['measure', 'passengers'], 'al-kind': ['flights', 'passenger'], 'al-split': ['split', 'service'] };
-    for (const [id, [key, fallback]] of Object.entries(settings)) {
-      $(id).addEventListener('change', () => { remember(key, $(id).value, fallback); drawSize(); });
-    }
+    // the flights left at their default follow the measure, so both are kept whenever either changes
+    let measure = $('al-measure').value;
+    const keep = () => {
+      remember('measure', $('al-measure').value, 'passengers');
+      remember('flights', $('al-kind').value, defaultFlights($('al-measure').value));
+      drawSize();
+    };
+    $('al-measure').addEventListener('change', () => {
+      $('al-kind').value = flightsAfter($('al-kind').value, measure, $('al-measure').value);
+      measure = $('al-measure').value;
+      keep();
+    });
+    $('al-kind').addEventListener('change', keep);
+    $('al-split').addEventListener('change', () => { remember('split', $('al-split').value, 'service'); drawSize(); });
     $('al-span').addEventListener('change', () => { remember('span', $('al-span').value, 'flown'); drawSize(); drawPairs(); });
     drawSize();
     document.addEventListener('t100:theme', () => { drawSize(); drawPairs(); });

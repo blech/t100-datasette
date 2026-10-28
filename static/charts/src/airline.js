@@ -57,8 +57,9 @@ function serviceOf(t, from, to) {
 
 // The routes to draw for year B, optionally compared with year A: every airport pair either year has coordinates for.
 // Rows are carrier_routes_year rows (one per pair and member airline, which are added up); `airports` maps a code to { lon, lat, isUs }.
-// A pair counts in a year when it is flown `min` times. Returns the routes and the airports skipped for want of coordinates.
-export function mapRoutes(rowsB, rowsA, airports, { min = 1 } = {}) {
+// A pair counts in a year when it is flown `min` times. `between` is rows (with their year) for the pairs no longer flown in B
+// (carrier_routes_gone); those not flown in A either were added then dropped between the two. Returns the routes and the airports skipped for want of coordinates.
+export function mapRoutes(rowsB, rowsA, airports, { min = 1, between = [] } = {}) {
   const compare = Array.isArray(rowsA);
   const perYear = (rows) => {
     const out = new Map();
@@ -75,9 +76,12 @@ export function mapRoutes(rowsB, rowsA, airports, { min = 1 } = {}) {
   };
   const now = perYear(rowsB);
   const then = compare ? perYear(rowsA) : null;
+  const byYear = new Map();
+  for (const r of between) byYear.set(r.year, [...(byYear.get(r.year) || []), r]);
+  const gone = [...byYear].flatMap(([year, rows]) => [...perYear(rows).values()].map((t) => ({ ...t, year })));
   const routes = [];
   const skipped = new Set();
-  for (const t of compareYears([...now.values()], then && [...then.values()], (x) => `${x.origin}\u0000${x.dest}`)) {
+  for (const t of compareYears([...now.values()], then && [...then.values()], (x) => `${x.origin}\u0000${x.dest}`, gone)) {
     const from = airports.get(t.origin);
     const to = airports.get(t.dest);
     if (!from || !to) { skipped.add(!from ? t.origin : t.dest); continue; }
@@ -85,6 +89,7 @@ export function mapRoutes(rowsB, rowsA, airports, { min = 1 } = {}) {
       origin: t.origin, dest: t.dest, status: t.status, from: [from.lon, from.lat], to: [to.lon, to.lat],
       deps: t.deps, seats: t.seats, passengers: t.passengers, freight: t.freight,
       depsThen: t.depsThen ?? 0, depsNow: t.depsNow ?? t.deps, airlines: t.airlines,
+      firstYear: t.firstYear, lastYear: t.lastYear, peakYear: t.peakYear,
       service: serviceOf(t, from, to),
     });
   }

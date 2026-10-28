@@ -1,5 +1,6 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
+import { placePopover } from '/static/common/popover.js';
 import { defaultView, clamp } from '/static/globe/src/camera.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -85,15 +86,23 @@ async function yearRows(year) {
   return cache.get(year);
 }
 
+// comparing, the pairs no longer flown in the later year, at the map's minimum: mapRoutes draws those added then dropped
+// in between (the ones flown in the earlier year it has already)
+async function betweenRows() {
+  const key = `${state.compare}-${state.year}-${state.min}`;
+  if (!cache.has(key)) cache.set(key, fetchRows(queryUrl('carrier_routes_gone', { group, airline, a: state.compare, b: state.year, min: state.min })));
+  return cache.get(key);
+}
+
 async function load() {
   const id = ++latest;
   setDataLink('carrier_routes_year', { group, airline, year: state.year });
   setStatus('Loading…');
   try {
-    const [now, then] = await Promise.all([yearRows(state.year), state.compare ? yearRows(state.compare) : null]);
+    const [now, then, between] = await Promise.all([yearRows(state.year), state.compare ? yearRows(state.compare) : null, state.compare ? betweenRows() : null]);
     if (id !== latest) return;
-    ({ routes, skipped } = mapRoutes(now.rows, then ? then.rows : null, airports, { min: Number(state.min) }));
-    setStatus(now.truncated || (then && then.truncated) ? 'Too many rows: some routes are missing from this view.' : '', true);
+    ({ routes, skipped } = mapRoutes(now.rows, then ? then.rows : null, airports, { min: Number(state.min), between: between ? between.rows : [] }));
+    setStatus(now.truncated || (then && then.truncated) || (between && between.truncated) ? 'Too many rows: some routes are missing from this view.' : '', true);
   } catch (err) {
     if (id !== latest) return;
     console.error(err);
@@ -130,7 +139,7 @@ function refresh() {
   const c = countStatuses(routes);
   const pax = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
   $('stats').textContent = comparing
-    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
+    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added${c.between ? ` · ${c.between} added then dropped` : ''}`
     : `${state.year} · ${shown.length} airport pairs · ${countLabel(pax)} passengers`;
   const mode = colourMode(state.colour, comparing);
   $('colour').value = mode;
@@ -165,7 +174,9 @@ function showPanel(r) {
   const h = document.createElement('h2');
   h.textContent = label(r);
   const sub = document.createElement('div');
-  sub.textContent = `${place(r.origin)} – ${place(r.dest)}${r.status ? ` (${r.status})` : ''}`;
+  // a pair added then dropped shows its busiest year's figures, and says so
+  const status = r.status === 'between' ? `added then dropped, figures for ${r.peakYear}` : r.status;
+  sub.textContent = `${place(r.origin)} – ${place(r.dest)}${status ? ` (${status})` : ''}`;
   const dl = document.createElement('dl');
   for (const f of routeFigures(r)) {
     const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
@@ -221,9 +232,7 @@ function bindCanvas() {
       const tip = $('tooltip');
       if (i < 0) { tip.hidden = true; return; }
       tip.textContent = tooltipText(shown[i]);
-      tip.style.left = `${x + 14}px`;
-      tip.style.top = `${y + 14}px`;
-      tip.hidden = false;
+      placePopover(tip, x, y, { dx: 14, dy: 14 });
     },
     onTap: (x, y) => {
       selected = renderer.hitTest(x, y, shown, 10);

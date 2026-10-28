@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList } from '../src/airport.js';
+import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList, changeSort, sortChanges } from '../src/airport.js';
 
 const s = (year, group_id, group_name, service, kind, deps, extra = {}) =>
   ({ year, group_id, group_name, service, kind, deps, seats: deps * 100, passengers: deps * 80, freight: 0, ...extra });
@@ -125,4 +125,40 @@ test('airlineList shows three then counts the rest', () => {
   assert.equal(airlineList(['A', 'B', 'C', 'D', 'E']), 'A, B, C + 2 more');
   assert.equal(airlineList(['A', 'B']), 'A, B');
   assert.equal(airlineList([]), '');
+});
+
+test('a list of changes sorts by the departures of the year that counts, or by when it changed, latest first', () => {
+  const added = classifyChanges([
+    c('BOS', 'united', 'United', 0, 20, 202102), c('SJC', 'united', 'United', 0, 300, 201606), c('AUS', 'united', 'United', 0, 90, 202301),
+  ], { min: 12, show: 'destinations' });
+  assert.deepEqual(sortChanges(added, 'added', 'b').map((x) => x.code), ['SJC', 'AUS', 'BOS']);
+  assert.deepEqual(sortChanges(added, 'added', 'when').map((x) => x.code), ['AUS', 'BOS', 'SJC']);
+  const dropped = classifyChanges([
+    c('SEA', 'united', 'United', 30, 0, 199001, 202104), c('PDX', 'united', 'United', 500, 0, 199001, 200912),
+  ], { min: 12, show: 'destinations' });
+  assert.deepEqual(sortChanges(dropped, 'dropped', 'a').map((x) => x.code), ['PDX', 'SEA']);
+  assert.deepEqual(sortChanges(dropped, 'dropped', 'when').map((x) => x.code), ['SEA', 'PDX']);
+});
+
+test('each status sorts only by the columns that mean something for it, the departures that count first', () => {
+  assert.equal(changeSort('added', 'when'), 'when');
+  assert.equal(changeSort('added', 'a'), 'b');      // its first year's departures are all nothing
+  assert.equal(changeSort('dropped', 'b'), 'a');
+  assert.equal(changeSort('dropped', null), 'a');
+  assert.equal(changeSort('kept', 'b'), 'b');
+  assert.equal(changeSort('kept', 'when'), 'a');
+  assert.equal(changeSort('gone', 'a'), 'peak');
+  assert.equal(changeSort('gone', 'when'), 'when');
+});
+
+test('airlines sort by the year they started or stopped here', () => {
+  const rows = [c('LAX', 'united', 'United', 0, 30, 199001, 202512), c('SFO', 'delta', 'Delta', 0, 40, 201501, 202512)];
+  const out = classifyChanges(rows, { min: 12, show: 'airlines' });
+  assert.deepEqual(sortChanges(out, 'added', 'when').map((x) => x.id), ['delta', 'united']);
+});
+
+test('those dropped at any point sort by their busiest year, or by the last year they flew', () => {
+  const items = [{ code: 'SJC', peakDeps: 351, lastYear: 2023 }, { code: 'ANC', peakDeps: 365, lastYear: 2006 }, { code: 'CHS', peakDeps: 58, lastYear: 2019 }];
+  assert.deepEqual(sortChanges(items, 'gone', 'peak').map((x) => x.code), ['ANC', 'SJC', 'CHS']);
+  assert.deepEqual(sortChanges(items, 'gone', 'when').map((x) => x.code), ['SJC', 'CHS', 'ANC']);
 });

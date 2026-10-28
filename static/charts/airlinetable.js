@@ -1,4 +1,5 @@
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { groupAirlines, sortAirlines, sharedQuery, matchesElsewhere } from '/static/charts/src/airlines.js';
 import { limitFamilies, limitOptions, DEFAULT_LIMIT } from '/static/charts/src/aircraft.js';
@@ -12,17 +13,18 @@ const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const years = ['all', ...Array.from({ length: latest - 1990 + 1 }, (_, i) => String(latest - i))];
 const LIMITS = limitOptions('airlines', 'airline');
-const DEFAULTS = { measure: 'passengers', year: String(latest), flights: 'passenger', service: 'all', limit: DEFAULT_LIMIT, q: '', sort: 'value', dir: 'desc' };
+// flights' default follows the measure (defaultFlights), so it is filled in from the state
+const DEFAULTS = { measure: 'passengers', year: String(latest), flights: null, service: 'all', limit: DEFAULT_LIMIT, q: '', sort: 'value', dir: 'desc' };
 const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), DEFAULTS.measure),
   year: pick('year', years, DEFAULTS.year),
-  flights: pick('flights', ['passenger', 'freight', 'all'], DEFAULTS.flights),
   service: pick('service', ['all', 'domestic', 'international'], DEFAULTS.service),
   limit: pick('limit', LIMITS.map((o) => o.value), DEFAULTS.limit),
   q: params.get('q') || '',
   sort: pick('sort', ['name', 'firstYear', 'value'], DEFAULTS.sort),
   dir: pick('dir', ['asc', 'desc'], DEFAULTS.dir),
 };
+state.flights = pick('flights', FLIGHTS, defaultFlights(state.measure));
 const open = new Set();
 let rows = [];
 let seq = 0;          // the newest year request; an older answer arriving late is ignored
@@ -38,7 +40,8 @@ const carry = () => { for (const a of document.querySelectorAll('nav.views a')) 
 
 function pushState() {
   const q = new URLSearchParams();
-  for (const [k, v] of Object.entries(state)) if (v !== DEFAULTS[k]) q.set(k, v);
+  const defaults = { ...DEFAULTS, flights: defaultFlights(state.measure) };
+  for (const [k, v] of Object.entries(state)) if (v !== defaults[k]) q.set(k, v);
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, Object.keys(DEFAULTS), `?${q}`)}`);
   carry();
 }
@@ -167,7 +170,12 @@ function main() {
   for (const o of LIMITS) $('airline-limit').append(new Option(o.label, o.value));
   for (const [id, field] of [['airline-measure', 'measure'], ['airline-year', 'year'], ['airline-flights', 'flights'], ['airline-service', 'service'], ['airline-limit', 'limit']]) {
     $(id).value = state[field];
-    $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); if (field === 'year') load(); else draw(); });
+    $(id).addEventListener('change', (e) => {
+      if (field === 'measure') $('airline-flights').value = state.flights = flightsAfter(state.flights, state.measure, e.target.value);
+      state[field] = e.target.value;
+      pushState();
+      if (field === 'year') load(); else draw();
+    });
   }
   $('airline-q').value = state.q;
   $('airline-q').addEventListener('input', (e) => { state.q = e.target.value; pushState(); draw(); });

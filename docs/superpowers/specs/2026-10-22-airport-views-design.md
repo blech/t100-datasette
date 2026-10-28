@@ -58,7 +58,7 @@ The page follows an airline's Over time page (`templates/airline.html`), with th
   - shows the 8 airline groups with the most of the measure over all years shown, each its own series, plus "Other" on top, stacked by size, as the site's convention has it;
   - names each group as the group is named everywhere else;
   - in the legend, each airline links to `/airlines/{group_id}`.
-- **Settings in the address:** `measure`, `flights` (`passenger` by default, as on the airlines pages) and `split` (`service` by default), written with defaults left out.
+- **Settings in the address:** `measure`, `flights` (`passenger` by default, as on the airlines pages; since 28 October, all flights when the measure is freight, because freighters carry most of it, and a freight hub such as ANC or OAK looked nearly empty on passenger flights; `static/charts/src/flights.js`) and `split` (`service` by default), written with defaults left out.
 
 **How many places.**
 - "Destinations flown at least [once / 12 times / 52 times / 365 times] each year", with 12 as the default, as on an airline's airport-pairs chart.

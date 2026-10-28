@@ -30,6 +30,24 @@ export function tapAction(showing, tapped, hasLink) {
   return hasLink ? 'follow' : 'show';
 }
 
+// Where a box `width` by `height` goes beside the point (x, y) in a viewport `vw` by `vh`: `dx` to its right, or as far to
+// its left where the right has no room, and `dy` below it (above, if negative), moved up or down to stay on screen
+export function popoverPosition({ x, y, width, height, vw, vh, dx = 12, dy = -10 }) {
+  const fitsRight = x + dx + width <= vw - 4;
+  return {
+    left: fitsRight ? x + dx : Math.max(4, x - dx - width),
+    top: Math.max(4, Math.min(y + dy, vh - height - 4)),
+  };
+}
+
+// Show a fixed popover beside a point in the viewport, kept on screen; it has to be shown to be measured
+export function placePopover(pop, x, y, offsets = {}) {
+  pop.hidden = false;
+  const { left, top } = popoverPosition({ x, y, width: pop.offsetWidth, height: pop.offsetHeight, vw: window.innerWidth, vh: window.innerHeight, ...offsets });
+  pop.style.left = `${left}px`;
+  pop.style.top = `${top}px`;
+}
+
 // the chart's own <svg>: a plot with a legend is a <figure>, and a ramp legend is an <svg> too, so take the last
 export const chartSvg = (plot) => (plot.tagName.toLowerCase() === 'svg' ? plot : [...plot.querySelectorAll('svg')].at(-1));
 
@@ -59,15 +77,12 @@ export function attachPopover(plot, { content, at, keyOf = null, link = () => nu
       const current = (plot.dataset.highlight || '').split('\n').includes(r.label) ? ' current' : '';
       return [swatch, el('span', current.trim(), r.label), el('span', `num${current}`, r.value), ...(extra ? [el('span', `extra${current}`, r.extra ?? '')] : [])];
     }));
-    pop.hidden = false;
     const [xv, yv] = at(d);
     const sx = plot.scale('x'), sy = plot.scale('y');
     const box = chartSvg(plot).getBoundingClientRect();
     const x = box.left + sx.apply(xv) + (sx.bandwidth ? sx.bandwidth / 2 : 0);
     const y = box.top + sy.apply(yv) + (sy.bandwidth ? sy.bandwidth / 2 : 0);
-    const fitsRight = x + 12 + pop.offsetWidth <= window.innerWidth - 4;
-    pop.style.left = `${fitsRight ? x + 12 : Math.max(4, x - 12 - pop.offsetWidth)}px`;
-    pop.style.top = `${Math.max(4, Math.min(y - 10, window.innerHeight - pop.offsetHeight - 4))}px`;
+    placePopover(pop, x, y);
   }
 
   // touch: the first tap shows, a second on the same target follows its link. When the plot is a bare <svg> our

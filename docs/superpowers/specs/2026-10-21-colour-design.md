@@ -26,7 +26,7 @@ This change defines the data colours once, by role, in a palette built around on
 | `kind` | passenger / freight: an airline's size chart | `#e36d2a` / `#64748b` | `#ec863f` / `#94a3b8` |
 | `single` | one-series bars: an airline's airport pairs | `#e36d2a` | `#ec863f` |
 | `engines` | twin, tri, quad, turboprop, piston and helicopter | `#be301e #ef9048 #fae4b8 #969696 #d0d0d0` | `#da5f2d #f0a05c #f5d290 #8a8a8a #5e5e5e` |
-| `change` | added / dropped on the maps (unchanged) | `#4dac26` / `#c51b7d` | same |
+| `change` | added / dropped on the maps (unchanged); between, for routes added then dropped between the two years, dashed: a neutral grey that stands further from the background than kept's muted grey | `#4dac26` / `#c51b7d` / `#3f3f46` | same / same / `#e4e4e7` |
 | `accent` | interface accent: the map's year slider, hover borders | `#e36d2a` | `#ec863f` |
 
 - **Ember's steps** were chosen to be evenly spaced in OKLab. The dark ramp is "lifted": it starts at a brighter red and stops short of the palest sand, so no step sinks into the black background or glares.

@@ -348,6 +348,54 @@ databases:
           HAVING deps_a > 0 OR deps_b > 0
           ORDER BY deps_a DESC, deps_b DESC
 
+      # the changes page's "dropped at any point": the other airports (or, with show=airlines, the airline groups) flown at least
+      # min times in some year from a up to b but not in b, so both those dropped and those added and dropped again in between.
+      # Counts flights both ways, or set dir as airport_changes does. One row per item and member (its airline groups, or its
+      # other airports) in the item's busiest year in that span, with the span. One pass with window functions, as
+      # carrier_routes_gone
+      airport_gone:
+        title: "Other airports or airlines at an airport no longer flown by a year"
+        description: "One row per other airport (or, with show=airlines, airline group) and member in its busiest year, for those flown at least min times (24 both ways, 12 one way, when empty) in some year from a up to b but not in b; counting flights both ways, or set dir to out or in; with the first and last such year, the busiest, and the flights in a."
+        sql: |
+          WITH p AS (
+            SELECT dest AS other, group_id, year, deps FROM carrier_pair_year
+            WHERE origin = :origin AND :dir <> 'in' AND year BETWEEN CAST(:a AS integer) AND CAST(:b AS integer)
+            UNION ALL
+            SELECT origin, group_id, year, deps FROM carrier_pair_year
+            WHERE dest = :origin AND :dir <> 'out' AND year BETWEEN CAST(:a AS integer) AND CAST(:b AS integer)
+          ),
+          flown AS (
+            SELECT
+              CASE WHEN :show = 'airlines' THEN p.group_id ELSE p.other END AS code,
+              CASE WHEN :show = 'airlines' THEN COALESCE(g.group_name, 'Unknown carrier') ELSE n.name END AS name,
+              CASE WHEN :show = 'airlines' THEN p.other ELSE COALESCE(g.group_name, 'Unknown carrier') END AS member,
+              p.year, SUM(p.deps) AS deps
+            FROM p
+            LEFT JOIN airport_names n ON n.code = p.other
+            LEFT JOIN (SELECT group_id, MIN(group_name) AS group_name FROM carrier_group GROUP BY 1) g ON g.group_id = p.group_id
+            GROUP BY 1, 2, 3, p.year
+          ),
+          yearly AS (
+            SELECT *, SUM(deps) OVER (PARTITION BY code, year) AS item_deps,
+              SUM(CASE WHEN year = CAST(:a AS integer) THEN deps ELSE 0 END) OVER (PARTITION BY code) AS deps_a
+            FROM flown
+          ),
+          counted AS (
+            SELECT *, MAX(year = CAST(:b AS integer)) OVER (PARTITION BY code) AS at_b,
+              MIN(year) OVER (PARTITION BY code) AS first_year, MAX(year) OVER (PARTITION BY code) AS last_year,
+              MAX(item_deps) OVER (PARTITION BY code) AS peak_deps, MAX(name) OVER (PARTITION BY code) AS item_name
+            FROM yearly
+            WHERE item_deps >= CAST(COALESCE(NULLIF(:min, ''), CASE WHEN :dir IN ('out', 'in') THEN 12 ELSE 24 END) AS integer)
+          ),
+          gone AS (
+            SELECT *, MAX(CASE WHEN item_deps = peak_deps THEN year END) OVER (PARTITION BY code) AS peak_year
+            FROM counted WHERE at_b = 0
+          )
+          SELECT code, item_name AS name, member, deps AS member_deps, deps_a, first_year, last_year, peak_year, peak_deps
+          FROM gone
+          WHERE year = peak_year
+          ORDER BY peak_deps DESC, code, member_deps DESC
+
       # every domestic airport pair in one year, both directions together (a before b), for hovering an airport on the
       # all-airports map: the same routes, with the same rule for domestic and the same 24-flight cut-off, as routes_by_year
       # gives one airport by default with international hidden
@@ -625,6 +673,40 @@ databases:
           WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline) AND r.year = :year
           GROUP BY r.airline_id, airline, 3, 4
           ORDER BY passengers DESC
+
+      # an airline's pairs no longer flown by b: flown at least min times in some year from a up to b, but not in b. The map
+      # draws the ones added then dropped in between (those flown in a it already has); the changes page lists them all. A
+      # pair is both directions together (origin before dest), or each direction as flown with each=each, as
+      # carrier_route_changes. Each pair-year is added up over the group's airlines first, so `min` counts as the map counts;
+      # one pass with window functions (joining back is far slower)
+      carrier_routes_gone:
+        title: "An airline's airport pairs no longer flown by a year"
+        description: "One row per airport pair, member airline and year from a up to b, for the pairs flown at least min times (24 when empty, 12 with each=each) in some year then but not in b: both directions together (origin before dest), or set each to each for each direction as flown. Leave airline empty for the whole group."
+        sql: |
+          WITH pairs AS (
+            SELECT r.year, r.airline_id,
+              CASE WHEN :each = 'each' THEN r.origin ELSE MIN(r.origin, r.dest) END AS origin,
+              CASE WHEN :each = 'each' THEN r.dest ELSE MAX(r.origin, r.dest) END AS dest,
+              SUM(r.deps) AS deps, SUM(r.seats) AS seats, SUM(r.passengers) AS passengers, SUM(r.freight) AS freight, SUM(r.domestic_deps) AS domestic_deps
+            FROM carrier_pair_year r
+            WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline)
+              AND r.year BETWEEN CAST(:a AS integer) AND CAST(:b AS integer)
+            GROUP BY r.year, r.airline_id, 3, 4
+          ),
+          ranged AS (
+            SELECT *, SUM(deps) OVER (PARTITION BY origin, dest, year) AS pair_deps FROM pairs
+          ),
+          flown AS (
+            SELECT *, MAX(year = CAST(:b AS integer)) OVER (PARTITION BY origin, dest) AS at_b
+            FROM ranged
+            WHERE pair_deps >= CAST(COALESCE(NULLIF(:min, ''), CASE WHEN :each = 'each' THEN 12 ELSE 24 END) AS integer)
+          )
+          SELECT f.year, f.airline_id, COALESCE(g.airline_name, 'Unknown carrier') AS airline, f.origin, f.dest,
+            f.deps, f.seats, f.passengers, f.freight, f.domestic_deps
+          FROM flown f
+          LEFT JOIN carrier_group g ON g.airline_id = f.airline_id
+          WHERE f.at_b = 0
+          ORDER BY f.year, f.passengers DESC
 
       # an airline's routes matrix: each airport pair (both directions together) by year, flown at least 12 times
       carrier_route_by_year:

@@ -428,3 +428,28 @@ def test_airline_matrix_cutoff(ds, db_path):
     by_year = lambda each: [(r["origin"], r["dest"], r["deps"]) for r in get_json(ds, f"/t100/carrier_route_by_year.json?_shape=objects&group=dl&airline=&each={each}")["rows"]]
     assert by_year("") == []
     assert by_year("each") == [("ATL", "LGA", 12)]
+
+
+def test_carrier_routes_gone_gives_the_pairs_flown_from_a_up_to_b_but_not_in_b_at_the_minimum(ds, db_path):
+    row = lambda year, dest, deps, airline="19790": pair(year, "SFO", dest, deps, airline)
+    put(db_path, "carrier_pair_year", [
+        row(2015, "DEN", 300), row(2017, "DEN", 200),  # dropped
+        row(2015, "LAX", 900), row(2019, "LAX", 800),  # still flown in b
+        row(2017, "PDX", 200),                         # added then dropped
+        row(2017, "TINY", 3),                          # under the minimum
+        row(2017, "BOS", 8), row(2017, "BOS", 8, airline="20304"),  # reaches it only with the members added up
+    ])
+    # both directions together, so each pair is alphabetical: the other end is whichever isn't SFO
+    other = lambda r: r["origin"] if r["dest"] == "SFO" else r["dest"]
+    gone = lambda min: [r | {"other": other(r)} for r in get_json(ds, f"/t100/carrier_routes_gone.json?_shape=objects&group=dl&airline=&a=2015&b=2019&min={min}&each=")["rows"]]
+    assert sorted((r["other"], r["year"], r["airline_id"]) for r in gone(12)) == [
+        ("BOS", 2017, "19790"), ("BOS", 2017, "20304"), ("DEN", 2015, "19790"), ("DEN", 2017, "19790"), ("PDX", 2017, "19790")]
+    assert "TINY" in {r["other"] for r in gone(1)}
+    assert "BOS" not in {r["other"] for r in gone("")}  # 24 both ways when empty
+
+
+def test_carrier_routes_gone_counts_both_directions_together_or_each_as_flown(ds, db_path):
+    put(db_path, "carrier_pair_year", [pair(2015, "SFO", "SEA", 30), pair(2019, "SEA", "SFO", 30)])
+    gone = lambda each: sorted((r["origin"], r["dest"], r["year"]) for r in get_json(ds, f"/t100/carrier_routes_gone.json?_shape=objects&group=dl&airline=&a=2015&b=2019&min=12&each={each}")["rows"])
+    assert gone("") == []  # the pair is still flown in 2019, the other way
+    assert gone("each") == [("SFO", "SEA", 2015)]  # SFO to SEA is not

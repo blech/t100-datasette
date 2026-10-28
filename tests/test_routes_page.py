@@ -54,9 +54,17 @@ def test_the_settings_read_as_one_sentence(ds):
     html = get(ds, "/airports/ATL/destinations").text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
     ids = re.findall(r'<select id="([^"]+)"', sentence)
-    assert ids == ["matrix-measure", "matrix-service", "matrix-n", "matrix-group", "matrix-rank"]
+    assert ids == ["matrix-measure", "matrix-service", "matrix-n", "matrix-group", "matrix-flown", "matrix-rank"]
     text = re.sub(r"<select.*?</select>", "*", sentence, flags=re.S)
-    assert " ".join(text.split()) == "Show * on * for the top * *, ranked by *."
+    assert " ".join(text.split()) == "Show * on * for the top * * *, ranked by *."
+
+
+def test_page_offers_destinations_first_flown_after_the_data_starts_or_dropped_by_its_end(ds):
+    html = get(ds, "/airports/ATL/destinations").text
+    options = re.search(r'<select id="matrix-flown"[^>]*>(.*?)</select>', html, re.S).group(1)
+    assert re.findall(r'<option value="(\w+)">([^<]+)</option>', options) == [
+        ("ever", "ever flown"), ("after", "first flown after 1990"), ("dropped", "dropped by 2025")]
+    assert 'data-min-year="1990"' in html and 'id="flown-note"' in html
 
 
 def test_colour_choice_sits_with_the_legend_not_in_the_sentence(ds):

@@ -2,7 +2,9 @@ import { formatCount as fmt } from '../../common/numbers.js';
 
 // Year B's routes set against year A's, matched by `keyOf`: each route once, marked kept, added or dropped,
 // with its departures in both years. A dropped route keeps its year-A numbers so it can still be drawn.
-export function compareYears(now, then, keyOf) {
+// `between` is the routes of the years in between: one flown there but in neither A nor B was added then dropped
+// ('between'), and is drawn with its busiest year's numbers, first, so the routes of A and B draw over it.
+export function compareYears(now, then, keyOf, between = []) {
   if (!then) return now.map((r) => ({ ...r, status: null }));
   const before = new Map(then.map((r) => [keyOf(r), r]));
   const seen = new Set();
@@ -13,17 +15,36 @@ export function compareYears(now, then, keyOf) {
     return { ...r, status: a ? 'kept' : 'added', depsThen: a ? Number(a.deps) || 0 : 0, depsNow: Number(r.deps) || 0 };
   });
   for (const [k, a] of before) if (!seen.has(k)) out.push({ ...a, status: 'dropped', depsThen: Number(a.deps) || 0, depsNow: 0 });
-  return out;
+  const spans = new Map();
+  for (const r of between) {
+    const k = keyOf(r);
+    if (seen.has(k) || before.has(k)) continue;
+    const s = spans.get(k);
+    if (!s) { spans.set(k, { peak: r, firstYear: r.year, lastYear: r.year }); continue; }
+    if (Number(r.deps) > Number(s.peak.deps)) s.peak = r;
+    s.firstYear = Math.min(s.firstYear, r.year);
+    s.lastYear = Math.max(s.lastYear, r.year);
+  }
+  const gone = [...spans.values()].map(({ peak, firstYear, lastYear }) => ({
+    ...peak, status: 'between', depsThen: 0, depsNow: 0, firstYear, lastYear, peakYear: peak.year,
+  }));
+  return [...gone, ...out];
 }
 
 export function countStatuses(routes) {
-  const c = { kept: 0, added: 0, dropped: 0 };
+  const c = { kept: 0, added: 0, dropped: 0, between: 0 };
   for (const r of routes) if (r.status) c[r.status] += 1;
   return c;
 }
 
 export function changeText(r, compareYear) {
   if (!r.status) return '';
+  if (r.status === 'between') {
+    const deps = `${fmt(r.deps)} departures`;
+    return r.firstYear === r.lastYear
+      ? `Added then dropped: flown in ${r.firstYear} only (${deps})`
+      : `Added then dropped: flown ${r.firstYear}–${r.lastYear}, most in ${r.peakYear} (${deps})`;
+  }
   return r.status === 'dropped' ? `Dropped: ${fmt(r.depsThen)} departures in ${compareYear}` : `${fmt(r.depsThen)} → ${fmt(r.depsNow)} departures`;
 }
 

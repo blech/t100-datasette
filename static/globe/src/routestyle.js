@@ -1,11 +1,14 @@
 import { colourFor, maxOf } from './scale.js';
 import { palette } from '../../common/palette.js';
 
-// Coloured by change, kept routes take the theme's muted colour, so what changed stands out
+// Coloured by change, kept routes take the theme's muted colour, so what changed stands out. Routes added then
+// dropped between the two years ('between') are dashed like dropped ones, in a grey that stands further from the
+// background than kept's.
 export const SERVICES = ['domestic', 'international'];
-export const STATUSES = ['added', 'kept', 'dropped'];
+export const STATUSES = ['added', 'kept', 'dropped', 'between'];
 const HIDEABLE = [...SERVICES, ...STATUSES];
-const LABELS = { domestic: 'Domestic', international: 'International', added: 'Added', kept: 'Kept', dropped: 'Dropped' };
+const LABELS = { domestic: 'Domestic', international: 'International', added: 'Added', kept: 'Kept', dropped: 'Dropped', between: 'Added, then dropped' };
+const DASHED = ['dropped', 'between'];
 
 const canonical = (keys) => HIDEABLE.filter((k) => keys.has(k));
 
@@ -47,7 +50,7 @@ export function alphaFor(n, value, max) {
 }
 
 // coloured by change, the kept routes are background to what changed
-const CHANGE_EMPHASIS = { kept: 0.6, added: 1.8, dropped: 1.8 };
+const CHANGE_EMPHASIS = { kept: 0.6, added: 1.8, dropped: 1.8, between: 1.2 };
 
 export function styleRoutes(routes, { mode, theme, widthKey }) {
   const max = maxOf(routes, widthKey);
@@ -56,21 +59,22 @@ export function styleRoutes(routes, { mode, theme, widthKey }) {
     return {
       colour: mode === 'change' ? palette(theme.dark).change[r.status] ?? theme.ui.muted : colourFor(r.service, theme.dark),
       alpha: Math.min(0.9, Math.max(0.08, a)),
-      dashed: r.status === 'dropped',
+      dashed: DASHED.includes(r.status),
     };
   });
 }
 
 // The legend's chips: one group per dimension, the coloured one with swatches. Counts are before hiding,
-// so a hidden chip still says how many routes it would bring back.
+// so a hidden chip still says how many routes it would bring back. "Added, then dropped" is left out when there are none.
 export function legendItems({ mode, comparing, hide, routes, dark = false }) {
   const item = (key, field, colour) => ({
     key, label: LABELS[key], count: routes.filter((r) => r[field] === key).length,
-    colour, dashed: key === 'dropped', hidden: hide.includes(key),
+    colour, dashed: DASHED.includes(key), hidden: hide.includes(key),
   });
   const groups = [{ name: 'service', items: ['international', 'domestic'].map((s) => item(s, 'service', mode === 'service' ? colourFor(s, dark) : null)) }];
   if (comparing) {
-    groups.push({ name: 'change', items: STATUSES.map((s) => item(s, 'status', mode === 'change' ? palette(dark).change[s] ?? 'var(--muted)' : null)) });
+    const items = STATUSES.map((s) => item(s, 'status', mode === 'change' ? palette(dark).change[s] ?? 'var(--muted)' : null));
+    groups.push({ name: 'change', items: items.filter((i) => i.key !== 'between' || i.count) });
   }
   return groups;
 }

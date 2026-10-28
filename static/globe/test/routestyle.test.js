@@ -113,3 +113,18 @@ test('the legend and styles follow the theme', () => {
   assert.equal(styleRoutes(routes, { mode: 'service', theme: dark, widthKey: 'passengers' })[0].colour, palette(true).service.domestic);
   assert.equal(legendItems({ mode: 'service', comparing: false, hide: [], routes, dark: true })[0].items[1].colour, palette(true).service.domestic);
 });
+
+test('routes added then dropped are dashed in their own grey, listed only when there are some, and can be hidden', () => {
+  const routes = [route('domestic', 'kept'), route('domestic', 'between'), route('domestic', 'dropped')];
+  const [kept, between, dropped] = styleRoutes([...routes, ...Array(300).fill(route('domestic', 'kept', 10))], { mode: 'change', theme, widthKey: 'passengers' });
+  assert.equal(between.colour, palette(false).change.between);
+  assert.notEqual(between.colour, palette(false).change.dropped);
+  assert.ok(between.dashed && !kept.dashed && dropped.dashed);
+  assert.ok(between.alpha > kept.alpha && between.alpha < dropped.alpha, `${kept.alpha} ${between.alpha} ${dropped.alpha}`);
+  const items = legendItems({ mode: 'change', comparing: true, hide: ['between'], routes })[1].items;
+  assert.deepEqual(items.at(-1), { key: 'between', label: 'Added, then dropped', count: 1, colour: palette(false).change.between, dashed: true, hidden: true });
+  const none = legendItems({ mode: 'change', comparing: true, hide: [], routes: [route('domestic', 'kept')] })[1].items;
+  assert.deepEqual(none.map((i) => i.key), ['added', 'kept', 'dropped']);
+  assert.deepEqual(parseStyle('?hide=between').hide, ['between']);
+  assert.deepEqual(visibleRoutes(routes, ['between'], true).map((r) => r.status), ['kept', 'dropped']);
+});

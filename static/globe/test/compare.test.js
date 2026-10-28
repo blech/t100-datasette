@@ -19,6 +19,17 @@ test('compareYears marks kept, added and dropped, dropped last and with the old 
   assert.equal(out[2].passengers, 2400);
 });
 
+const ry = (dest, year, deps) => ({ ...r(dest, deps), year });
+
+test('compareYears marks routes flown only between the two years, with their busiest year and their span', () => {
+  const between = [ry('SJC', 2016, 240), ry('SJC', 2017, 351), ry('SJC', 2023, 235), ry('CHS', 2019, 58), ry('LAX', 2017, 5), ry('DEN', 2018, 9)];
+  const out = compareYears([r('LAX', 20)], [r('DEN', 30)], byDest, between);
+  assert.deepEqual(out.map((x) => [x.dest, x.status]), [['SJC', 'between'], ['CHS', 'between'], ['LAX', 'added'], ['DEN', 'dropped']]);
+  const sjc = out[0];
+  assert.deepEqual([sjc.deps, sjc.passengers, sjc.peakYear, sjc.firstYear, sjc.lastYear, sjc.depsThen, sjc.depsNow], [351, 351 * 80, 2017, 2016, 2023, 0, 0]);
+  assert.deepEqual([out[1].firstYear, out[1].lastYear], [2019, 2019]);
+});
+
 test('compareYears copies routes rather than changing them', () => {
   const now = [r('LAX', 20)];
   compareYears(now, [], byDest);
@@ -26,7 +37,7 @@ test('compareYears copies routes rather than changing them', () => {
 });
 
 test('countStatuses counts each status and ignores routes without one', () => {
-  assert.deepEqual(countStatuses([{ status: 'kept' }, { status: 'kept' }, { status: 'dropped' }, { status: null }]), { kept: 2, added: 0, dropped: 1 });
+  assert.deepEqual(countStatuses([{ status: 'kept' }, { status: 'kept' }, { status: 'dropped' }, { status: 'between' }, { status: null }]), { kept: 2, added: 0, dropped: 1, between: 1 });
 });
 
 test('changeText describes a change', () => {
@@ -34,6 +45,8 @@ test('changeText describes a change', () => {
   assert.equal(changeText({ status: 'kept', depsThen: 10, depsNow: 1500 }, 2019), '10 → 1,500 departures');
   assert.equal(changeText({ status: 'added', depsThen: 0, depsNow: 52 }, 2019), '0 → 52 departures');
   assert.equal(changeText({ status: null }, 2019), '');
+  assert.equal(changeText({ status: 'between', firstYear: 2016, lastYear: 2023, peakYear: 2017, deps: 351 }, 2015), 'Added then dropped: flown 2016–2023, most in 2017 (351 departures)');
+  assert.equal(changeText({ status: 'between', firstYear: 2019, lastYear: 2019, peakYear: 2019, deps: 58 }, 2015), 'Added then dropped: flown in 2019 only (58 departures)');
   assert.equal(changeText({ status: 'kept', depsThen: 12345, depsNow: 2345678 }, 2019), '12,300 → 2.35\u00a0million departures');
 });
 

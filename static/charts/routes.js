@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, matrixMeasures, labelMargin, textWidth, pointerReach, placeKey } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -21,6 +21,7 @@ const state = {
   n: Number(pick('n', ['10', '25', '50'], '25')),
   group: pick('group', ['airport', 'city'], 'airport'),
   rank: pick('rank', ['all', 'latest'], 'all'),
+  flown: pick('flown', FLOWN, 'ever'),
   scale: pick('scale', ['absolute', 'year', 'busiest'], 'absolute'),
   open: (params.get('open') || '').split(',').filter(Boolean),
 };
@@ -30,6 +31,9 @@ let airportInfo = new Map();
 
 const ROW_PX = 20;
 const latestFullYear = Number(document.body.dataset.latestYear);
+const firstDataYear = Number(document.body.dataset.minYear);
+// which destinations are listed, judged by the data's first and last years, not the airport's own
+const flownSpan = () => ({ flown: state.flown, firstYear: firstDataYear, lastYear: latestFullYear });
 
 // the latest full year this airport has data for (an airport that stopped before it uses its own last year)
 function latestYear() {
@@ -37,8 +41,8 @@ function latestYear() {
   return years.length ? Math.max(...years) : null;
 }
 
-// the year that ranks the destinations, or null for all years
-const rankYear = () => (state.rank === 'latest' ? latestYear() : null);
+// the year that ranks the destinations, or null for all years; a destination dropped by then has nothing to rank in it
+const rankYear = () => (state.rank === 'latest' && state.flown !== 'dropped' ? latestYear() : null);
 
 function pushState() {
   const q = new URLSearchParams();
@@ -47,17 +51,18 @@ function pushState() {
   if (state.n !== 25) q.set('n', state.n);
   if (state.group !== 'airport') q.set('group', state.group);
   if (state.rank !== 'all') q.set('rank', state.rank);
+  if (state.flown !== 'ever') q.set('flown', state.flown);
   if (state.scale !== 'absolute') q.set('scale', state.scale);
   if (state.group === 'city' && state.open.length) q.set('open', state.open.join(','));
   const s = q.toString();
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'rank', 'scale', 'open'], s ? `?${s}` : '')}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'rank', 'flown', 'scale', 'open'], s ? `?${s}` : '')}`);
 }
 
 function drawAirports() {
   const box = $('matrix');
   box.replaceChildren();
   placeKey($('matrix-key'), null);
-  const res = buildMatrix(rows, { ...state, rankYear: rankYear() });
+  const res = buildMatrix(rows, { ...state, ...flownSpan(), rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
     return;
@@ -124,7 +129,7 @@ function drawCities() {
   const box = $('matrix');
   box.replaceChildren();
   placeKey($('matrix-key'), null);
-  const res = buildCityMatrix(rows, { ...state, rankYear: rankYear() });
+  const res = buildCityMatrix(rows, { ...state, ...flownSpan(), rankYear: rankYear() });
   if (!res.cells.length) {
     box.textContent = 'No routes to chart for this selection.';
     return;
@@ -192,6 +197,14 @@ function draw() {
   }[state.scale];
   const year = latestYear();
   if (year !== null) $('matrix-rank').options[1].textContent = `${year} only`;
+  const rankLatest = $('matrix-rank').options[1];
+  rankLatest.disabled = state.flown === 'dropped';
+  $('matrix-rank').value = rankYear() === null ? 'all' : 'latest';
+  $('flown-note').innerHTML = {
+    ever: '',
+    after: `"First flown after ${firstDataYear}" lists destinations with no flights in ${firstDataYear}, the first year of the data. Small airports and commuter routes join the data in October 2002, so many seem to start then (<a href="/about#breaks">known gaps</a>).`,
+    dropped: `"Dropped by ${latestFullYear}" lists destinations with no flights in ${latestFullYear}, including any that started and stopped since ${firstDataYear}.`,
+  }[state.flown];
   $('rank-note').textContent = rankYear() === null
     ? 'Destinations are ranked by the measure summed over all years.'
     : `Destinations are ranked by the measure in ${rankYear()} alone, so ones that did not fly then are not shown.`;
@@ -242,11 +255,13 @@ function fillControls() {
   $('matrix-n').value = String(state.n);
   $('matrix-group').value = state.group;
   $('matrix-rank').value = state.rank;
+  $('matrix-flown').value = state.flown;
   for (const radio of document.querySelectorAll('input[name="scale"]')) {
     radio.checked = radio.value === state.scale;
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
   }
   $('matrix-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
+  $('matrix-flown').addEventListener('change', (e) => { state.flown = e.target.value; pushState(); draw(); });
   $('matrix-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
   measure.addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
   $('matrix-service').addEventListener('change', (e) => { state.service = e.target.value; pushState(); draw(); });

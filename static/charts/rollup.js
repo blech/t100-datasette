@@ -3,6 +3,7 @@ import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES as MEASURES, matrixMeasures } from '/static/charts/src/matrix.js';
+import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
 import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, carriedSearch, airlineSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
@@ -40,7 +41,6 @@ const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
-  flights: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '50')),
   rank: pick('rank', ['all', 'latest'], 'all'),
@@ -48,6 +48,7 @@ const state = {
   group: kind === 'airports' ? pick('group', ['airport', 'city'], 'airport') : 'airport', // the airports matrix can show cities
   open: (params.get('open') || '').split(',').filter(Boolean), // the cities opened to list their airports
 };
+state.flights = pick('flights', FLIGHTS, defaultFlights(state.measure));
 let rows = [];
 
 const ROW_PX = 20;
@@ -61,7 +62,7 @@ const grouped = () => state.group === 'city' || aircraftLike; // rows that open 
 function pushState() {
   const q = new URLSearchParams();
   if (state.measure !== 'passengers') q.set('measure', state.measure);
-  if (state.flights !== 'passenger') q.set('flights', state.flights);
+  if (state.flights !== defaultFlights(state.measure)) q.set('flights', state.flights);
   if (state.service !== 'all') q.set('service', state.service);
   if (state.n !== 50) q.set('n', state.n);
   if (state.rank !== 'all') q.set('rank', state.rank);
@@ -243,6 +244,11 @@ function fillControls() {
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
   }
   const bind = (id, field, convert = String) => $(id).addEventListener('change', (e) => { state[field] = convert(e.target.value); pushState(); draw(); });
+  // flights left at their default follow the measure
+  $('matrix-measure').addEventListener('change', (e) => {
+    state.flights = flightsAfter(state.flights, state.measure, e.target.value);
+    if ($('matrix-kind')) $('matrix-kind').value = state.flights;
+  });
   bind('matrix-measure', 'measure');
   if ($('matrix-kind')) bind('matrix-kind', 'flights');
   if ($('matrix-service')) bind('matrix-service', 'service');

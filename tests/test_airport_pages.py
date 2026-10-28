@@ -69,7 +69,7 @@ def test_an_airport_with_no_flights_still_renders_each_page(ds):
     assert 'data-first-year=""' in get(ds, "/airports/ZZZ").text and 'data-last-year=""' in get(ds, "/airports/ZZZ/changes").text
 
 
-@pytest.mark.parametrize("q", ["n=50", "group=city", "rank=latest", "scale=year", "open=NYC", "measure=deps&n=50"])
+@pytest.mark.parametrize("q", ["n=50", "group=city", "rank=latest", "flown=dropped", "scale=year", "open=NYC", "measure=deps&n=50"])
 def test_matrix_settings_go_to_the_matrix(ds, q):
     r = get(ds, f"/airports/SFO?{q}")
     assert r.status_code == 301

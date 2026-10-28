@@ -10,7 +10,7 @@ export const PALETTE = {
     kind: { passenger: '#e36d2a', freight: '#64748b' },
     single: '#e36d2a',
     engines: ['#be301e', '#ef9048', '#fae4b8', '#969696', '#d0d0d0'],
-    change: { added: '#4dac26', dropped: '#c51b7d' },
+    change: { added: '#4dac26', dropped: '#c51b7d', between: '#3f3f46' },
     accent: '#e36d2a',
   },
   // lifted: starts brighter and stops short of the palest sand, so nothing sinks into the black or glares
@@ -21,7 +21,7 @@ export const PALETTE = {
     kind: { passenger: '#ec863f', freight: '#94a3b8' },
     single: '#ec863f',
     engines: ['#da5f2d', '#f0a05c', '#f5d290', '#8a8a8a', '#5e5e5e'],
-    change: { added: '#4dac26', dropped: '#c51b7d' },
+    change: { added: '#4dac26', dropped: '#c51b7d', between: '#e4e4e7' },
     accent: '#ec863f',
   },
 };

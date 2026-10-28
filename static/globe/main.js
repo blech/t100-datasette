@@ -1,5 +1,6 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from './src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
+import { placePopover } from '/static/common/popover.js';
 import { defaultView, clamp, glide, rotationFor } from './src/camera.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
@@ -69,11 +70,14 @@ function applyTheme(id) {
 }
 document.addEventListener('t100:theme', (e) => { themeChosen = e.detail.choice; applyTheme(e.detail.id); drawLegend(); pushState(); });
 
+// routes (placed or raw) of the years strictly between the two being compared; none when not comparing
+const inBetween = (routes) => (state.compare ? routes.filter((r) => r.year > state.compare && r.year < state.year) : []);
+
 function recompute() {
   if (state.year === null) { periodRoutes = []; shown = []; return; }
   periodRoutes = state.month !== null
     ? compareYears(forMonth(monthRoutes, state.month), null, destKey)
-    : compareYears(forYear(yearRoutes, state.year), state.compare ? forYear(yearRoutes, state.compare) : null, destKey);
+    : compareYears(forYear(yearRoutes, state.year), state.compare ? forYear(yearRoutes, state.compare) : null, destKey, inBetween(yearRoutes));
   shown = visibleRoutes(periodRoutes, state.hide, Boolean(state.compare));
 }
 
@@ -89,12 +93,12 @@ function updateStats() {
   const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : comparing ? `${state.compare} → ${state.year}` : `${state.year}`;
   const c = countStatuses(periodRoutes);
   $('stats').textContent = comparing
-    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added`
+    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added${c.between ? ` · ${c.between} added then dropped` : ''}`
     : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${countLabel(deps)} ${countWord(state.dir).toLowerCase()} · ${countLabel(pax)} passengers`;
   $('year-label').textContent = label;
   const periodRows = state.month !== null
     ? monthRaw.filter((r) => r.month === state.month)
-    : yearRaw.filter((r) => r.year === state.year || r.year === state.compare);
+    : [...yearRaw.filter((r) => r.year === state.year || r.year === state.compare), ...inBetween(yearRaw)];
   const skipped = skippedFor(periodRows.filter((r) => !state.hide.includes(r.service)), airports);
   const notes = [];
   if (skipped.length) notes.push(`${skipped.length} destination${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}`);
@@ -128,7 +132,10 @@ function showPanel(r) {
   destLink.title = `Show routes from ${r.dest}`;
   h.append(`${origin} ${{ '': '↔', out: '→', in: '←' }[state.dir]} `, destLink);
   const sub = document.createElement('div');
-  sub.textContent = `${r.destCity || ''} (${r.service}${r.status ? `, ${r.status}` : ''})`;
+  // a route added then dropped shows its busiest year, so the figures and the month-by-month link are that year's
+  const figuresYear = r.status === 'between' ? r.peakYear : state.year;
+  const status = r.status === 'between' ? `added then dropped, figures for ${figuresYear}` : r.status;
+  sub.textContent = `${r.destCity || ''} (${r.service}${status ? `, ${status}` : ''})`;
   const dl = document.createElement('dl');
   for (const f of routeFigures(r, state.dir)) {
     const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
@@ -138,8 +145,8 @@ function showPanel(r) {
   a1.href = `${routePath}${keepDir}`;
   a1.textContent = 'This route over time →';
   const a2 = document.createElement('a');
-  a2.href = `${routePath}/${state.year}${keepDir}`;
-  a2.textContent = `Month by month in ${state.year} →`;
+  a2.href = `${routePath}/${figuresYear}${keepDir}`;
+  a2.textContent = `Month by month in ${figuresYear} →`;
   p.append(close, h, sub, dl, a1, a2);
   p.hidden = false;
 }
@@ -250,9 +257,7 @@ function showChooserTip(i, x, y) {
   const p = chooserPoints[i];
   const n = chooserRoutesFor(i).length; // the routes drawn: a destination without coordinates can't be
   tip.textContent = chooserRoutes.size ? `${p.code} · ${p.city} · ${n} domestic route${n === 1 ? '' : 's'} in ${latestYear}` : `${p.code} · ${p.city}`;
-  tip.style.left = `${x + 14}px`;
-  tip.style.top = `${y + 14}px`;
-  tip.hidden = false;
+  placePopover(tip, x, y, { dx: 14, dy: 14 });
 }
 
 function bindControls() {
@@ -345,9 +350,7 @@ function bindCanvas() {
       const tip = $('tooltip');
       if (i < 0) { tip.hidden = true; return; }
       tip.textContent = tooltipText(routes[i]);
-      tip.style.left = `${x + 14}px`;
-      tip.style.top = `${y + 14}px`;
-      tip.hidden = false;
+      placePopover(tip, x, y, { dx: 14, dy: 14 });
     },
     onTap: (x, y) => {
       if (!origin) {

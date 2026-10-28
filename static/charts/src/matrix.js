@@ -11,25 +11,34 @@ const valueOf = (row, measure) => {
   return measure === 'freight' ? v / LB_PER_SHORT_TON : v;
 };
 
+// Which destinations a matrix lists, by the years they flew (with the service chosen): every one ('ever'), those first
+// flown after the data's first year ('after'), or those dropped by its last ('dropped'). The top n are taken from these.
+export const FLOWN = ['ever', 'after', 'dropped'];
+const flownTest = ({ flown = 'ever', firstYear, lastYear }) => (years) =>
+  flown === 'after' ? !years.has(firstYear) : flown === 'dropped' ? !years.has(lastYear) : true;
+
 // Rows from routes_by_year (one per destination, year and service) -> a destination-by-year grid.
 // Destinations are ranked by the measure summed over all years, or in `rankYear` alone (which drops
 // destinations that did not fly then); only the top `n` are kept, and their whole history is shown.
-export function buildMatrix(rows, { measure = 'passengers', service = 'all', n = 25, rankYear = null } = {}) {
+export function buildMatrix(rows, { measure = 'passengers', service = 'all', n = 25, rankYear = null, flown = 'ever', firstYear, lastYear } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const cellMap = new Map(); // `${dest}\u0000${year}` -> value
   const totals = new Map(); // what ranks a destination
   const yearSet = new Set();
   const yearTotals = {}; // year -> the measure over every destination, for the share of each year
+  const flewIn = new Map(); // dest -> the years it flew
   for (const r of kept) {
     yearSet.add(r.year);
+    flewIn.set(r.dest, (flewIn.get(r.dest) || new Set()).add(Number(r.year)));
     const v = valueOf(r, measure);
     yearTotals[r.year] = (yearTotals[r.year] || 0) + v;
     const key = `${r.dest}\u0000${r.year}`;
     cellMap.set(key, (cellMap.get(key) || 0) + v);
     if (rankYear === null || Number(r.year) === rankYear) totals.set(r.dest, (totals.get(r.dest) || 0) + v);
   }
+  const listed = flownTest({ flown, firstYear, lastYear });
   const dests = [...totals.entries()]
-    .filter(([, t]) => t > 0)
+    .filter(([d, t]) => t > 0 && listed(flewIn.get(d)))
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, n)
     .map(([d]) => d);
@@ -84,7 +93,7 @@ export function textWidth(box) {
 
 // Same grid, but airports in one BTS city market are one row (or aircraft in one family: rows with a `group_label` name their group). A group can be opened (`open` lists market ids),
 // which puts its airports on rows directly beneath.
-export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null } = {}) {
+export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null, flown = 'ever', firstYear, lastYear } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const openSet = new Set(open.map(String));
   const groups = new Map(); // key -> { rank, airports: Map(dest -> {rank, name, nameYear, byYear}), byYear: Map(year -> {value, parts: Map}) }
@@ -95,8 +104,9 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
     const key = r.market_id !== null && r.market_id !== undefined && r.market_id !== '' ? String(r.market_id) : `solo:${r.dest}`;
     const v = valueOf(r, measure);
     yearTotals[r.year] = (yearTotals[r.year] || 0) + v;
-    const g = groups.get(key) || { key, rank: 0, name: r.group_label || null, airports: new Map(), byYear: new Map() };
+    const g = groups.get(key) || { key, rank: 0, name: r.group_label || null, airports: new Map(), byYear: new Map(), years: new Set() };
     groups.set(key, g);
+    g.years.add(Number(r.year));
     const ranked = rankYear === null || Number(r.year) === rankYear;
     if (ranked) g.rank += v;
     const a = g.airports.get(r.dest) || { dest: r.dest, rank: 0, name: null, nameYear: -Infinity, byYear: new Map() };
@@ -113,8 +123,10 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
   const yearMax = {}; // year -> the busiest market's value, listed or not
   for (const g of groups.values()) for (const [year, cell] of g.byYear) yearMax[year] = Math.max(yearMax[year] || 0, cell.value);
   const byVolume = (a, b) => b.rank - a.rank || a.dest.localeCompare(b.dest);
+  // a market is judged as a whole: dropped only when none of its airports still flies
+  const listed = flownTest({ flown, firstYear, lastYear });
   const ranked = [...groups.values()]
-    .filter((g) => g.rank > 0)
+    .filter((g) => g.rank > 0 && listed(g.years))
     .map((g) => ({ ...g, list: [...g.airports.values()].filter((a) => a.rank > 0).sort(byVolume) }))
     .sort((a, b) => b.rank - a.rank || a.list[0].dest.localeCompare(b.list[0].dest))
     .slice(0, n);
