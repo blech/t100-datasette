@@ -5,6 +5,7 @@ from pathlib import Path
 import yaml
 from datasette.app import Datasette
 
+import build_database
 from build_database import SEGMENT_COLUMNS
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -28,6 +29,20 @@ def add_segments(db_path, table, rows):
         unknown = set(row) - set(_NAMES)
         assert not unknown, f"unknown segment columns: {unknown}"
     _insert(db_path, table, rows)
+
+
+def rebuild_airport_rollups(db_path):
+    """Rebuild the rollups the airport queries read, after a test has added segments. carrier_group is left as the test put it."""
+    conn = sqlite3.connect(db_path)
+    for name in ("route_year_totals", "airport_names", "airport_market", "airport_carrier_dir_year", "carrier_pair_year"):
+        getattr(build_database, f"rebuild_{name}")(conn)
+    conn.close()
+
+
+def rolled_json(ds, path):
+    """get_json for a query on the rollups: rebuilds them from the segments first."""
+    rebuild_airport_rollups(ds.databases["t100"].path)
+    return get_json(ds, path)
 
 
 def add_airports(db_path, rows):

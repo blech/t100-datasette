@@ -239,69 +239,76 @@ databases:
             END
             DESC
       routes_by_year:
-        title: "Destinations from an airport, by year"
-        description: "One row per destination and year, counting departures from the origin, with routes under the minimum departures (12 when empty) left out."
+        title: "Other airports from and to an airport, by year"
+        description: "One row per other airport (dest) and year, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it), with routes under the minimum flights (24 both ways, 12 one way, when empty) left out."
         sql: |
+          -- dir other than out or in counts both directions; dest is the other airport either way
           SELECT
-            dest,
-            MAX(dest_city_market_id) AS market_id,
-            MAX(dest_city_name) AS city,
-            year,
-            SUM(departures_performed) AS deps,
-            SUM(seats) AS seats,
-            SUM(passengers) AS passengers,
-            SUM(freight) AS freight,
-            CASE WHEN SUM(CASE WHEN domestic = 1 THEN departures_performed ELSE 0 END) * 2
-                      > SUM(departures_performed)
-                 THEN 'domestic' ELSE 'international' END AS service
-          FROM t100
-          WHERE origin = :origin
-          GROUP BY dest, year
-          HAVING SUM(departures_performed) >= CAST(COALESCE(NULLIF(:min_deps, ''), 12) AS integer)
-            AND (SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0)
-          ORDER BY year, dest
+            r.dest,
+            m.market_id,
+            n.name AS city,
+            r.year,
+            SUM(r.deps) AS deps,
+            SUM(r.seats) AS seats,
+            SUM(r.passengers) AS passengers,
+            SUM(r.freight) AS freight,
+            CASE WHEN SUM(r.domestic_deps) * 2 > SUM(r.deps) THEN 'domestic' ELSE 'international' END AS service
+          FROM (
+            SELECT dest, year, deps, domestic_deps, seats, passengers, freight FROM route_year_totals WHERE origin = :origin AND :dir <> 'in'
+            UNION ALL
+            SELECT origin, year, deps, domestic_deps, seats, passengers, freight FROM route_year_totals WHERE dest = :origin AND :dir <> 'out'
+          ) r
+          LEFT JOIN airport_names n ON n.code = r.dest
+          LEFT JOIN airport_market m ON m.code = r.dest
+          GROUP BY r.dest, r.year
+          HAVING SUM(r.deps) >= CAST(COALESCE(NULLIF(:min_deps, ''), CASE WHEN :dir IN ('out', 'in') THEN 12 ELSE 24 END) AS integer)
+            AND (SUM(r.deps) > 0 OR SUM(r.passengers) > 0 OR SUM(r.freight) > 0)
+          ORDER BY r.year, r.dest
 
-      # an airport's departures by year, airline group, service and kind, for its charts; groups found as carrier_group_year finds them
+      # an airport's flights by year, airline group, service and kind, for its charts, both ways or one
       airport_size:
-        title: "Departures from an airport, by year, airline group, service and kind"
-        description: "One row per year, airline group, domestic or international, and passenger or freight, counting departures from the origin. Leave group empty for every airline."
+        title: "Flights at an airport, by year, airline group, service and kind"
+        description: "One row per year, airline group, domestic or international, and passenger or freight, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it). Leave group empty for every airline."
         sql: |
           SELECT
-            t.year,
-            COALESCE(g.group_id, 'unknown') AS group_id,
-            COALESCE(g.group_name, 'Unknown carrier') AS group_name,
-            CASE WHEN t.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
-            CASE WHEN t.class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
-            SUM(t.departures_performed) AS deps, SUM(t.seats) AS seats, SUM(t.passengers) AS passengers, SUM(t.freight) AS freight
-          FROM t100 t
-          LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
-          LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
-          WHERE t.origin = :origin AND t.year IS NOT NULL
-            AND (:group = '' OR COALESCE(g.group_id, 'unknown') = :group)
-          GROUP BY t.year, 2, 3, service, kind
-          ORDER BY t.year
+            year, group_id, group_name,
+            CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(CASE :dir WHEN 'out' THEN deps WHEN 'in' THEN arrs ELSE deps + arrs END) AS deps,
+            SUM(CASE :dir WHEN 'out' THEN seats_out WHEN 'in' THEN seats_in ELSE seats_out + seats_in END) AS seats,
+            SUM(CASE :dir WHEN 'out' THEN passengers_out WHEN 'in' THEN passengers_in ELSE passengers_out + passengers_in END) AS passengers,
+            SUM(CASE :dir WHEN 'out' THEN freight_out WHEN 'in' THEN freight_in ELSE freight_out + freight_in END) AS freight
+          FROM airport_carrier_dir_year
+          WHERE airport = :origin
+            AND (:group = '' OR group_id = :group)
+          GROUP BY year, group_id, group_name, service, kind
+          HAVING deps > 0 OR seats > 0 OR passengers > 0 OR freight > 0
+          ORDER BY year
 
-      # each destination and airline group from an airport in two years, with the first and last month flown, for what changed
+      # each other airport and airline group at an airport in two years, with the first and last month flown, for what changed
       airport_changes:
-        title: "Destinations and airline groups from an airport, in two years"
-        description: "One row per destination and airline group flown in either year, counting departures from the origin, with the first and last month flown. Leave group empty for every airline."
+        title: "Other airports and airline groups at an airport, in two years"
+        description: "One row per other airport (dest) and airline group flown in either year, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it), with the first and last month flown. Leave group empty for every airline."
         sql: |
           SELECT
-            t.dest,
-            MAX(t.dest_city_name) AS city,
-            COALESCE(g.group_id, 'unknown') AS group_id,
+            p.other AS dest,
+            n.name AS city,
+            p.group_id,
             COALESCE(g.group_name, 'Unknown carrier') AS group_name,
-            SUM(CASE WHEN t.year = CAST(:a AS integer) THEN t.departures_performed ELSE 0 END) AS deps_a,
-            SUM(CASE WHEN t.year = CAST(:b AS integer) THEN t.departures_performed ELSE 0 END) AS deps_b,
-            SUM(CASE WHEN t.year = CAST(:a AS integer) THEN t.passengers ELSE 0 END) AS pax_a,
-            MIN(CASE WHEN t.departures_performed > 0 THEN t.year * 100 + t.month END) AS first_ym,
-            MAX(CASE WHEN t.departures_performed > 0 THEN t.year * 100 + t.month END) AS last_ym
-          FROM t100 t
-          LEFT JOIN (SELECT unique_carrier_entity AS entity, MIN(airline_id) AS airline_id FROM carriers GROUP BY 1) c ON c.entity = t.carrier_entity
-          LEFT JOIN carrier_group g ON g.airline_id = c.airline_id
-          WHERE t.origin = :origin
-            AND (:group = '' OR COALESCE(g.group_id, 'unknown') = :group)
-          GROUP BY t.dest, 3, 4
+            SUM(CASE WHEN p.year = CAST(:a AS integer) THEN p.deps ELSE 0 END) AS deps_a,
+            SUM(CASE WHEN p.year = CAST(:b AS integer) THEN p.deps ELSE 0 END) AS deps_b,
+            SUM(CASE WHEN p.year = CAST(:a AS integer) THEN p.passengers ELSE 0 END) AS pax_a,
+            MIN(p.year * 100 + p.first_month) AS first_ym,
+            MAX(p.year * 100 + p.last_month) AS last_ym
+          FROM (
+            SELECT dest AS other, group_id, year, deps, passengers, first_month, last_month FROM carrier_pair_year WHERE origin = :origin AND :dir <> 'in'
+            UNION ALL
+            SELECT origin, group_id, year, deps, passengers, first_month, last_month FROM carrier_pair_year WHERE dest = :origin AND :dir <> 'out'
+          ) p
+          LEFT JOIN airport_names n ON n.code = p.other
+          LEFT JOIN (SELECT group_id, MIN(group_name) AS group_name FROM carrier_group GROUP BY 1) g ON g.group_id = p.group_id
+          WHERE :group = '' OR p.group_id = :group
+          GROUP BY p.other, p.group_id
           HAVING deps_a > 0 OR deps_b > 0
           ORDER BY deps_a DESC, deps_b DESC
 
@@ -646,8 +653,16 @@ databases:
 
       routes_by_month:
         sql: |
+          -- as routes_by_year, by month of one year: dest is the other airport, and dir other than out or in counts both ways
+          WITH legs AS (
+            SELECT dest AS other, month, departures_performed, seats, passengers, freight, domestic
+            FROM t100 WHERE origin = :origin AND year = :year AND :dir <> 'in'
+            UNION ALL
+            SELECT origin, month, departures_performed, seats, passengers, freight, domestic
+            FROM t100 WHERE dest = :origin AND year = :year AND :dir <> 'out'
+          )
           SELECT
-            dest,
+            other AS dest,
             month,
             SUM(departures_performed) AS deps,
             SUM(seats) AS seats,
@@ -656,17 +671,15 @@ databases:
             CASE WHEN SUM(CASE WHEN domestic = 1 THEN departures_performed ELSE 0 END) * 2
                       > SUM(departures_performed)
                  THEN 'domestic' ELSE 'international' END AS service
-          FROM t100
-          WHERE origin = :origin AND year = :year
-            AND dest IN (
-              SELECT dest FROM t100
-              WHERE origin = :origin AND year = :year
-              GROUP BY dest
-              HAVING SUM(departures_performed) >= CAST(COALESCE(NULLIF(:min_deps, ''), 12) AS integer)
-            )
-          GROUP BY dest, month
+          FROM legs
+          WHERE other IN (
+            SELECT other FROM legs
+            GROUP BY other
+            HAVING SUM(departures_performed) >= CAST(COALESCE(NULLIF(:min_deps, ''), CASE WHEN :dir IN ('out', 'in') THEN 12 ELSE 24 END) AS integer)
+          )
+          GROUP BY other, month
           HAVING SUM(departures_performed) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0
-          ORDER BY month, dest
+          ORDER BY month, other
 
       route:
         title: "Every carrier and aircraft on a route, by year"

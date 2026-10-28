@@ -3,7 +3,7 @@ import re
 import pytest
 import yaml
 
-from tests.helpers import add_segments, get, get_json
+from tests.helpers import add_segments, get, get_json, rebuild_airport_rollups
 from tests.test_rollup_queries import put
 from tests.test_views_pages import delta
 
@@ -30,6 +30,7 @@ def seed(db_path):
              passengers=1000, seats=1500, freight=0, **{"class": "F"})
         for m in (1, 2) for e in ("U1", "D1")
     ])
+    rebuild_airport_rollups(db_path)
 
 
 def rows(ds, path):
