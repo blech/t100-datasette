@@ -50,7 +50,7 @@
           <tbody>
             {%- for r in t.rows %}
             <tr>
-              <td class="code"><a href="/airports/{{ r.code }}{{ t.query }}">{{ r.code }}</a></td>
+              <td class="code"><a href="/airports/{{ r.code }}{{ t.query }}" title="{{ r.tip }}">{{ r.code }}</a></td>
               <td class="city">{{ r.city or "" }}</td>
               <td class="airline"><a href="/airlines/{{ r.airline_id }}">{{ r.airline }}</a></td>
               <td class="num">{{ r.share }}</td>

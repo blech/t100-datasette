@@ -32,7 +32,7 @@ def test_each_sections_pages_have_its_find_box_under_the_title(ds, db_path, kind
     assert 'id="find-list"' in r.text and "/static/charts/find.js" in r.text
     title = re.search(r'<h1[ >]|id="title"', r.text).start()
     box = r.text.index('class="find"')
-    after = [m.start() for m in re.finditer(r'class="intro"', r.text) if m.start() > title]  # a map has no intro: its box is in the picker row, as the airport map's is
+    after = [m.start() for m in re.finditer(r'class="intro"(?! id="subtitle")', r.text) if m.start() > title]  # a map has no intro: its box is in the picker row, as the airport map's is; an airport's name, its subtitle, may sit above the box
     assert title < box and (not after or box < after[0]), path
 
 

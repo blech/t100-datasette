@@ -58,6 +58,14 @@ h1,
 h1 {
   margin: 0 0 8px;
 }
+/* an airport's or a route's name sits right under its code, as on the map */
+h1:has(+ #subtitle) {
+  margin-bottom: 0;
+}
+h1 + #subtitle {
+  margin-top: 0;
+  max-width: none;
+}
 h2 {
   font-size: 18px;
   margin: 0;
@@ -91,6 +99,17 @@ input[type="search"] {
   border: 1px solid var(--muted);
   border-radius: 8px;
   padding: 3px 8px;
+}
+/* Safari's own menus ignore padding and sit shorter than the buttons beside them, so the menus draw their own arrow, as Chrome sizes them */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1.5;
+  padding-right: 26px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) center, calc(100% - 10px) center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
 }
 /* Safari draws its own search box over these unless told not to; wide enough for the placeholder, never wider than a phone */
 input[type="search"] {

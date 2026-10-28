@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 
@@ -143,6 +144,34 @@ async def is_foreign(datasette, code):
     return bool(row) and row[0] is not None and not 1 <= row[0] <= 93
 
 
+async def airport_info(datasette, codes):
+    """code -> (name, ICAO code, city) for each of codes, as the airports query has them: the city is BTS's name for it,
+    else OpenFlights' city and country; any of the three may be None."""
+    result = await datasette.get_database("t100").execute(
+        """SELECT c.value, a.name, a.icao, COALESCE(n.name, a.city || ', ' || a.country)
+           FROM json_each(:codes) AS c LEFT JOIN (
+             SELECT code, name, NULL AS icao, city, country FROM airport_overrides
+             UNION ALL
+             SELECT iata_code, name, CASE WHEN icao_code IN ('', '\\N') THEN NULL ELSE icao_code END, city, country
+             FROM openflights_airports WHERE iata_code NOT IN (SELECT code FROM airport_overrides)
+           ) AS a ON a.code = c.value LEFT JOIN airport_names AS n ON n.code = c.value""",
+        {"codes": json.dumps(list(codes))},
+    )
+    return {code: (name, icao, place) for code, name, icao, place in result.rows}
+
+
+def airport_label(info, code):
+    """The line beneath an airport's heading: its name and city, whichever we know, or empty."""
+    name, _, place = info.get(code, (None, None, None))
+    return " · ".join(part for part in (name, place) if part)
+
+
+def airport_tip(info, code):
+    """An airport link's hover, as the charts' airportTip has it: name, IATA (and ICAO) code, then city."""
+    name, icao, place = info.get(code, (None, None, None))
+    return "\n".join(part for part in (name, f"{code} · {icao}" if icao else code, place) if part)
+
+
 # --- front page stories: rows from the canned queries -> the numbers the prose quotes, or None without data
 
 def prose_count(n):
@@ -226,7 +255,8 @@ async def globe_page(datasette, request):
     steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
     html = await datasette.render_template(
         "globe.html",
-        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1]},
+        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1],
+         "label": airport_label(await airport_info(datasette, [origin]), origin) if origin else ""},
         request=request,
     )
     return Response.html(html)
@@ -279,6 +309,10 @@ async def dedicated_airports_page(datasette, request):
     for t in DEDICATED_TABLES:
         rows = await story(datasette, "dedicated_airports", lambda rows, m=t["measure"]: dedicated_rows(rows, m), {"year": year, "measure": t["measure"]})
         tables.append({**t, "rows": rows})
+    info = await airport_info(datasette, {r["code"] for t in tables for r in t["rows"] or []})
+    for t in tables:
+        for r in t["rows"] or []:
+            r["tip"] = airport_tip(info, r["code"])
     html = await datasette.render_template(
         "airports_dedicated.html",
         {"min_year": min_year, "max_year": max_year, "year": year, "tables": tables,
@@ -360,6 +394,7 @@ def airport_view(template, crumb):
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
                 "crumbs": trail(datasette, *steps),
                 "foreign": await is_foreign(datasette, origin),
+                "label": airport_label(await airport_info(datasette, [origin]), origin),
             },
             request=request,
         )
@@ -385,10 +420,12 @@ def route_view(template, table):
         steps += [(dest, f"/airports/{origin}/{dest}"), (year, here if table else None)] if year else [(dest, here if table else None)]
         if table:
             steps.append(("table", None))
+        info = await airport_info(datasette, [origin, dest])
         html = await datasette.render_template(
             template,
             {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
-             "view": "table" if table else "", "crumbs": trail(datasette, *steps)},
+             "view": "table" if table else "", "crumbs": trail(datasette, *steps),
+             "label": f"{airport_label(info, origin) or origin} to {airport_label(info, dest) or dest}"},
             request=request,
         )
         return Response.html(html)
