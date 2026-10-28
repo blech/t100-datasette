@@ -230,7 +230,6 @@ async function whatChanged() {
 }
 
 $('dir').addEventListener('change', (e) => setDir(e.target.value));
-for (const o of $('ap-min').options) o.textContent = timesWord(o.value);
 
 if (!firstYear) {
   const box = $('size-chart') ? $('size-chart') : $('change-summary');

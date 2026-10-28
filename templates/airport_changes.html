@@ -17,7 +17,7 @@
     {% set find = "airport" %}{% include "_find.html" %}
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
-    <p class="chart-sentence">Count other airports flown {{ {"out": "to", "in": "from"}.get(dir, "to or from") }} at least <select id="ap-min" aria-label="Minimum departures"><option value="1">once</option><option value="12" selected>12 times</option><option value="52">52 times</option><option value="365">365 times</option></select> in a year.</p>
+    <p class="chart-sentence">Count other airports flown {{ {"out": "to", "in": "from"}.get(dir, "to or from") }} at least {% include "_ap_min.html" %} in a year.</p>
     <p class="chart-sentence">
       Compare <select id="ap-a" aria-label="From year"></select> with <select id="ap-b" aria-label="To year"></select>.
     </p>

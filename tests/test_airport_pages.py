@@ -116,3 +116,16 @@ def test_an_airport_with_only_arrivals_has_years(ds, db_path):
     put(db_path, "airport_dir_year", [dict(year=2001, airport="LHR", deps=0, arrs=5), dict(year=2003, airport="LHR", deps=0, arrs=2)])
     page = get(ds, "/airports/LHR").text
     assert 'data-first-year="2001"' in page and 'data-last-year="2003"' in page
+
+
+def test_the_network_globe_states_its_own_fixed_cutoff_whatever_dir_is_carried(ds):
+    page = get(ds, "/airports/globe?dir=out").text
+    assert "fewer than 24 flights a year, both ways" in page and "Width: flights" in page
+    assert "12 departures" not in page
+
+
+@pytest.mark.parametrize("path", ["/airports/ATL", "/airports/ATL/changes"])
+def test_the_at_least_choices_are_written_with_the_counted_number(ds, path):
+    choice = lambda q: re.search(r'<select id="ap-min"[^>]*>(.*?)</select>', get(ds, path + q).text, re.S).group(1)
+    assert re.findall(r'<option value="(\d+)"[^>]*>([^<]+)</option>', choice("")) == [("1", "once"), ("12", "24 times"), ("52", "104 times"), ("365", "730 times")]
+    assert re.findall(r'<option value="(\d+)"[^>]*>([^<]+)</option>', choice("?dir=in"))[1] == ("12", "12 times")

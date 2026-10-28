@@ -32,7 +32,7 @@
   <div id="controls">
     <div id="legend">
       <span id="legend-chips"></span>
-      <span class="note">Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden.{% if origin %} {% include "_dir_note.html" %}{% else %} <a href="/about#direction">What a route means</a>.{% endif %}</span>
+      <span class="note">{% if origin %}Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}{% else %}Routes with fewer than 24 flights a year, both ways, are hidden. <a href="/about#direction">What a route means</a>.{% endif %}</span>
     </div>
     <div class="row">
       <button id="play" type="button" aria-label="Play through the years">▶</button>
@@ -52,7 +52,7 @@
       <button id="centre" type="button">Centre {{ origin }}</button>
       <button id="fit" type="button" title="Zoom to fit the routes shown">Fit routes</button>
       <select id="colour" aria-label="Colour routes by"><option value="service">Colour: domestic or international</option><option value="change">Colour: kept, added or dropped</option></select>
-      <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: {{ count_word|lower }}</option><option value="freight">Width: freight</option></select>
+      <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: {{ count_word|lower if origin else "flights" }}</option><option value="freight">Width: freight</option></select>
       <select id="theme" aria-label="Theme"></select>
       <a id="data-link" class="data-link" href="" hidden>This map's data</a>
     </div>
