@@ -617,11 +617,13 @@ databases:
           WHERE r.group_id = :group AND (:airline = '' OR r.airline_id = :airline) AND r.year = :year
           ORDER BY r.passengers DESC
 
-      # an airline's map, comparing two years: the pairs added then dropped between them. Each pair-year is added up over the
-      # group's airlines first, so `min` counts as the map counts; one pass with window functions (joining back is far slower)
-      carrier_routes_between:
-        title: "An airline's airport pairs flown only between two years"
-        description: "One row per airport pair, member airline and year, for the pairs flown at least min times (12 when empty) in some year strictly between a and b but in neither a nor b. Leave airline empty for the whole group."
+      # an airline's pairs no longer flown by b: flown at least min times in some year from a up to b, but not in b. The map
+      # draws the ones added then dropped in between (those flown in a it already has); the changes page lists them all. Each
+      # pair-year is added up over the group's airlines first, so `min` counts as the map counts; one pass with window
+      # functions (joining back is far slower)
+      carrier_routes_gone:
+        title: "An airline's airport pairs no longer flown by a year"
+        description: "One row per airport pair, member airline and year from a up to b, for the pairs flown at least min times (12 when empty) in some year then but not in b. Leave airline empty for the whole group."
         sql: |
           WITH ranged AS (
             SELECT r.*, SUM(r.deps) OVER (PARTITION BY r.origin, r.dest, r.year) AS pair_deps
@@ -630,7 +632,7 @@ databases:
               AND r.year BETWEEN CAST(:a AS integer) AND CAST(:b AS integer)
           ),
           flown AS (
-            SELECT *, MAX(year IN (CAST(:a AS integer), CAST(:b AS integer))) OVER (PARTITION BY origin, dest) AS at_ends
+            SELECT *, MAX(year = CAST(:b AS integer)) OVER (PARTITION BY origin, dest) AS at_b
             FROM ranged
             WHERE pair_deps >= CAST(COALESCE(NULLIF(:min, ''), 12) AS integer)
           )
@@ -638,7 +640,7 @@ databases:
             f.deps, f.seats, f.passengers, f.freight, f.domestic_deps
           FROM flown f
           LEFT JOIN carrier_group g ON g.airline_id = f.airline_id
-          WHERE f.at_ends = 0
+          WHERE f.at_b = 0
           ORDER BY f.year, f.passengers DESC
 
       # an airline's routes matrix: each airport pair (both directions together) by year, flown at least 12 times

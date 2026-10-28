@@ -2,6 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
+import { pairsGone, flownText, mostText } from '/static/charts/src/gone.js';
 import { shortName } from '/static/charts/src/names.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -28,6 +29,7 @@ const LB_PER_SHORT_TON = 2000;
 let detail = [];
 let places = new Map();
 let routes = [];
+let gone = []; // pairs dropped at any point (carrier_routes_gone): dropped, or added and dropped again in between
 const memberLabel = (name) => shortName(name);
 
 const unit = (m) => MATRIX_MEASURES[m].toLowerCase().replace(/ \(.*/, '');
@@ -107,18 +109,22 @@ function routeCell(r) {
 
 function drawTable() {
   const status = $('al-status').value;
-  const a = $('al-a').value, b = $('al-b').value;
-  const shown = routes.filter((r) => r.status === status);
+  const a = $('al-a').value, b = $('al-b').value, min = $('al-min').value;
+  const isGone = status === 'gone';
+  const shown = isGone ? gone : routes.filter((r) => r.status === status);
   if (status === 'added') shown.sort((x, y) => y.deps_b - x.deps_b);
+  setDataLink(isGone ? 'carrier_routes_gone' : 'carrier_route_changes', isGone ? { group, airline, a, b, min } : { group, airline, a, b });
   $('th-a').textContent = `${a} departures`;
-  $('th-b').textContent = `${b} departures`;
-  $('th-last').textContent = status === 'added' ? 'First flown' : 'Last flown';
+  $('th-b').textContent = isGone ? 'Most in a year' : `${b} departures`;
+  $('th-last').textContent = isGone ? 'Flown' : status === 'added' ? 'First flown' : 'Last flown';
   const tbody = $('change-table').tBodies[0];
   tbody.replaceChildren(...shown.map((r) => {
     const tr = document.createElement('tr');
     const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
     const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} departures`; return td; };
-    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), deps(r.deps_a), deps(r.deps_b), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left'));
+    const most = () => { const td = cell(mostText(r), 'num'); td.title = `${exactCount(r.peakDeps)} departures in ${r.peakYear}`; return td; };
+    tr.append(routeCell(r), ...(isGroup ? [cell(r.airlines.map(memberLabel).join(', '), 'left')] : []), deps(r.deps_a),
+      ...(isGone ? [most(), cell(flownText(r), 'left')] : [deps(r.deps_b), cell(formatYearMonth(status === 'added' ? r.first_ym : r.last_ym), 'left')]));
     return tr;
   }));
   if (!shown.length) tbody.innerHTML = `<tr><td class="left" colspan="${isGroup ? 5 : 4}">None.</td></tr>`;
@@ -129,14 +135,19 @@ async function loadChanges() {
   // the views line's map link follows the years compared; a page without one (an old template) still gets its table
   const mapLink = $('map-link');
   if (mapLink) mapLink.href = `/airlines/${airline || group}/globe?year=${b}&compare=${a}${min === '12' ? '' : `&min=${min}`}`;
-  setDataLink('carrier_route_changes', { group, airline, a, b });
-  const { rows } = await fetchRows(queryUrl('carrier_route_changes', { group, airline, a, b }));
-  routes = classifyRoutes(rows, { min: Number(min) });
+  const [changes, goneRes] = await Promise.all([
+    fetchRows(queryUrl('carrier_route_changes', { group, airline, a, b })),
+    fetchRows(queryUrl('carrier_routes_gone', { group, airline, a, b, min })),
+  ]);
+  routes = classifyRoutes(changes.rows, { min: Number(min) });
+  gone = pairsGone(goneRes.rows, { a });
   const c = summariseRoutes(routes);
   const total = c.kept + c.dropped;
-  $('change-summary').textContent = total
+  const between = gone.filter((r) => r.status === 'between').length;
+  $('change-summary').textContent = (total
     ? `In ${a} this airline flew ${exactCount(total)} airport pairs at least ${min} time${min === '1' ? '' : 's'}. By ${b}, ${exactCount(c.kept)} of them were still flown, ${exactCount(c.dropped)} were dropped, and ${exactCount(c.added)} new ones had been added.`
-    : `No airport pairs reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`;
+    : `No airport pairs reached ${min} flight${min === '1' ? '' : 's'} in ${a}.`)
+    + (between ? ` ${exactCount(between)} more ${between === 1 ? 'was' : 'were'} added and dropped again in between.` : '');
   drawTable();
 }
 

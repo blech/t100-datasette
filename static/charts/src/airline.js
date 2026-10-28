@@ -57,8 +57,8 @@ function serviceOf(t, from, to) {
 
 // The routes to draw for year B, optionally compared with year A: every airport pair either year has coordinates for.
 // Rows are carrier_routes_year rows (one per pair and member airline, which are added up); `airports` maps a code to { lon, lat, isUs }.
-// A pair counts in a year when it is flown `min` times. `between` is rows (with their year) of the years between A and B, for
-// the pairs added then dropped there (carrier_routes_between). Returns the routes and the airports skipped for want of coordinates.
+// A pair counts in a year when it is flown `min` times. `between` is rows (with their year) for the pairs no longer flown in B
+// (carrier_routes_gone); those not flown in A either were added then dropped between the two. Returns the routes and the airports skipped for want of coordinates.
 export function mapRoutes(rowsB, rowsA, airports, { min = 1, between = [] } = {}) {
   const compare = Array.isArray(rowsA);
   const perYear = (rows) => {

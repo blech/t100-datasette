@@ -388,3 +388,19 @@ def test_the_aircraft_queries_add_a_groups_members_together(ds, db_path):
     _alaska_and_virgin(db_path)
     rows = get_json(ds, "/t100/aircraft_detail.json?_shape=objects&aircraft=694&group=")["rows"]
     assert [(r["year"], r["group_id"], r["deps"]) for r in rows] == [(2017, "alaska", 10), (2018, "alaska", 10), (2019, "alaska", 6)]
+
+
+def test_carrier_routes_gone_gives_the_pairs_flown_from_a_up_to_b_but_not_in_b_at_the_minimum(ds, db_path):
+    row = lambda year, dest, deps, airline="21171": dict(group_id="vx", airline_id=airline, year=year, origin="SFO", dest=dest, deps=deps, seats=0, passengers=0, freight=0, first_month=1, last_month=12)
+    put(db_path, "carrier_route_year", [
+        row(2015, "DEN", 300), row(2017, "DEN", 200),  # dropped
+        row(2015, "LAX", 900), row(2019, "LAX", 800),  # still flown in b
+        row(2017, "PDX", 200),                         # added then dropped
+        row(2017, "TINY", 3),                          # under the minimum
+        row(2017, "BOS", 8), row(2017, "BOS", 8, airline="19930"),  # reaches it only with the members added up
+    ])
+    rows = get_json(ds, "/t100/carrier_routes_gone.json?_shape=objects&group=vx&airline=&a=2015&b=2019&min=12")["rows"]
+    assert sorted((r["dest"], r["year"], r["airline_id"]) for r in rows) == [
+        ("BOS", 2017, "19930"), ("BOS", 2017, "21171"), ("DEN", 2015, "21171"), ("DEN", 2017, "21171"), ("PDX", 2017, "21171")]
+    once = get_json(ds, "/t100/carrier_routes_gone.json?_shape=objects&group=vx&airline=&a=2015&b=2019&min=1")["rows"]
+    assert "TINY" in {r["dest"] for r in once}

@@ -27,14 +27,14 @@
       Compare <select id="al-a" aria-label="From year"></select> with <select id="al-b" aria-label="To year"></select>.
     </p>
     <p id="change-summary" class="intro"></p>
-    <p class="chart-sentence">Show routes that were <select id="al-status" aria-label="Which routes"><option value="dropped">dropped</option><option value="added">added</option><option value="kept">kept</option></select>.</p>
+    <p class="chart-sentence">Show routes that were <select id="al-status" aria-label="Which routes"><option value="dropped">dropped</option><option value="gone">dropped at any point</option><option value="added">added</option><option value="kept">kept</option></select>.</p>
     <div class="scroll">
       <table id="change-table">
         <thead><tr><th class="left">Route</th>{% if members %}<th class="left" id="th-airline">Airline</th>{% endif %}<th id="th-a" class="num"></th><th id="th-b" class="num"></th><th class="left" id="th-last">Last flown</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
-    <p class="note">A route is an airport pair, with both directions counted together, so "dropped" means the airline stopped flying between the two airports in either direction (or fell below the threshold), not that a particular flight number ended. Where the airline flies a route under a different name after a merger the flying is counted together. Flying done for the airline by a regional partner, such as SkyWest for Alaska or United, is reported under the regional's own name and is not included. More on <a href="/about#groupings">how airlines are grouped</a>.</p>
+    <p class="note">A route is an airport pair, with both directions counted together, so "dropped" means the airline stopped flying between the two airports in either direction (or fell below the threshold), not that a particular flight number ended. "Dropped at any point" adds the routes added and dropped again between the two years, with the years they were flown and their busiest year. Where the airline flies a route under a different name after a merger the flying is counted together. Flying done for the airline by a regional partner, such as SkyWest for Alaska or United, is reported under the regional's own name and is not included. More on <a href="/about#groupings">how airlines are grouped</a>.</p>
     {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/charts/airline.js"></script>

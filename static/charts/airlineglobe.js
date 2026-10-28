@@ -86,10 +86,11 @@ async function yearRows(year) {
   return cache.get(year);
 }
 
-// comparing, the pairs added then dropped in the years between, at the map's minimum
+// comparing, the pairs no longer flown in the later year, at the map's minimum: mapRoutes draws those added then dropped
+// in between (the ones flown in the earlier year it has already)
 async function betweenRows() {
   const key = `${state.compare}-${state.year}-${state.min}`;
-  if (!cache.has(key)) cache.set(key, fetchRows(queryUrl('carrier_routes_between', { group, airline, a: state.compare, b: state.year, min: state.min })));
+  if (!cache.has(key)) cache.set(key, fetchRows(queryUrl('carrier_routes_gone', { group, airline, a: state.compare, b: state.year, min: state.min })));
   return cache.get(key);
 }
 
