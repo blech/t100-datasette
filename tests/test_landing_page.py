@@ -17,3 +17,12 @@ def test_datasette_index_is_still_reachable(ds):
     r = get(ds, "/-/")
     assert r.status_code == 200 and "data-min-year" not in r.text
     assert get(ds, "/.json").status_code == 200
+
+
+def test_airport_and_city_names_carry_the_matrix_hovers():
+    # an airport's code shows its name, codes and city on hover; a city's row lists its airports, as the matrix labels do
+    js = open("static/landing/main.js").read()
+    assert "import { airportTip, groupTip } from '/static/charts/src/labels.js'" in js
+    assert "queryUrl('airports')" in js
+    assert "airportTip(r.origin, airportInfo)" in js and "groupTip(" in js
+    assert "c.airports.map((a) => a.origin).join(', ')" not in js

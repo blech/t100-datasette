@@ -58,6 +58,14 @@ h1,
 h1 {
   margin: 0 0 8px;
 }
+/* an airport's or a route's name sits right under its code, as on the map */
+h1:has(+ #subtitle) {
+  margin-bottom: 0;
+}
+h1 + #subtitle {
+  margin-top: 0;
+  max-width: none;
+}
 h2 {
   font-size: 18px;
   margin: 0;
