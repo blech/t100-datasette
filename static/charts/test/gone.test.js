@@ -16,7 +16,13 @@ test('airportGone gives each item once, dropped when it flew in the first year a
   const chs = out[2];
   assert.deepEqual([chs.name, chs.deps_a, chs.firstYear, chs.lastYear, chs.peakYear, chs.peakDeps], ['CHS city', 1, 2019, 2019, 2019, 58]);
   assert.deepEqual(chs.members, ['British Airways', 'American']);
-  assert.equal(chs.places, 1); // members flown at least min times in the busiest year
+  assert.equal(chs.places, 2); // every member flown in the busiest year, American's 1 included
+});
+
+test('airportGone counts an item\'s members even when none reaches the minimum alone', () => {
+  // an airline flying 30 times a year at the airport, but to no one destination 24 times
+  const [eastern] = airportGone([g('EA', 'MIA', 20, 0, 2015, 2015, 2015, 30), g('EA', 'TPA', 10, 0, 2015, 2015, 2015, 30)], { min: 24 });
+  assert.equal(eastern.places, 2);
 });
 
 // carrier_routes_gone rows: one per pair, member airline and year

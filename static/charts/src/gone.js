@@ -7,7 +7,8 @@ const num = (v) => Number(v) || 0;
 const busiestFirst = (x, y) => y.peakDeps - x.peakDeps;
 
 // airport_gone rows (one per item and member, in the item's busiest year) -> one per destination or airline group.
-// `members` are its airlines (or destinations) that busiest year, busiest first; `places` those flown at least `min` times.
+// `members` are its airlines (or destinations) that busiest year, busiest first, and `places` how many: all of them, since
+// the item reaches `min` in that year even when no one member does alone. `min` sorts dropped from added then dropped.
 export function airportGone(rows, { min = 12 } = {}) {
   const items = new Map();
   for (const r of rows) {
@@ -22,7 +23,7 @@ export function airportGone(rows, { min = 12 } = {}) {
     const sorted = byMember.filter(([, d]) => d > 0).sort((x, y) => y[1] - x[1]);
     return {
       ...it, status: it.deps_a >= min ? 'dropped' : 'between',
-      members: sorted.map(([m]) => m), places: sorted.filter(([, d]) => d >= min).length,
+      members: sorted.map(([m]) => m), places: sorted.length,
     };
   }).sort(busiestFirst);
 }
