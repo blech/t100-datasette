@@ -31,7 +31,7 @@
 /* the footer: the theme chooser and where the data comes from */
 .site-footer { border-top:1px solid var(--rule); margin:40px 0 0; padding:8px 0 24px; font-size:13px; color:var(--muted); }
 .site-footer a { color:var(--muted); }
-.site-footer select { font-size:13px; color:var(--muted); padding:2px 8px; }
+.site-footer select { font-size:13px; color:var(--muted); padding:2px 24px 2px 8px; }
 /* pointing at one series fades the others: static/common/highlight.js */
 .faded { opacity:.22; transition:opacity .12s; }
 .popover .current { font-weight:600; }

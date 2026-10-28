@@ -31,8 +31,9 @@ a.plain { color:var(--muted); }
 #footnote { color:var(--muted); font-size:12px; min-height:1em; }
 /* links in the map's small print take the note's muted colour, as the site footer's do */
 #legend a, #footnote a, #foreign-note-box a { color:inherit; }
-button, select { font:inherit; color:var(--fg); background:transparent; border:1px solid var(--muted); border-radius:8px; padding:4px 10px; cursor:pointer; }
+button, select { font:inherit; color:var(--fg); background-color:transparent; border:1px solid var(--muted); border-radius:8px; padding:4px 10px; cursor:pointer; }
 button:hover, select:hover { border-color:var(--accent); }
+select { padding-right:26px; }
 .check { display:inline-flex; gap:4px; align-items:center; color:var(--muted); }
 @media (max-width:520px) { #panel { top:auto; bottom:170px; right:12px; } }
 #foreign-note-box { color:var(--muted); font-size:12px; } #foreign-note-box p { margin:0; }
