@@ -193,6 +193,11 @@ async function main() {
   if ([...$('al-min').options].some((o) => o.value === qs.get('min'))) $('al-min').value = qs.get('min');
   if (hasSize) {
     for (const [k, label] of Object.entries(MATRIX_MEASURES)) $('al-measure').append(new Option(label.toLowerCase(), k));
+    // the same names as the airport page's chart, whose airline links carry them
+    const pick = (key, allowed, fallback) => (allowed.includes(qs.get(key)) ? qs.get(key) : fallback);
+    $('al-measure').value = pick('measure', Object.keys(MATRIX_MEASURES), 'passengers');
+    $('al-kind').value = pick('flights', ['passenger', 'freight', 'all'], 'passenger');
+    $('al-split').value = pick('split', ['service', 'kind'], 'service');
     $('al-span').value = parseSpan(qs.get('span'));
   }
   if (hasChanges) {
@@ -222,7 +227,10 @@ async function main() {
     if (hasChanges) loadChanges();
   });
   if (hasSize) {
-    for (const id of ['al-measure', 'al-kind', 'al-split']) $(id).addEventListener('change', drawSize);
+    const settings = { 'al-measure': ['measure', 'passengers'], 'al-kind': ['flights', 'passenger'], 'al-split': ['split', 'service'] };
+    for (const [id, [key, fallback]] of Object.entries(settings)) {
+      $(id).addEventListener('change', () => { remember(key, $(id).value, fallback); drawSize(); });
+    }
     $('al-span').addEventListener('change', () => { remember('span', $('al-span').value, 'flown'); drawSize(); drawPairs(); });
     drawSize();
     document.addEventListener('t100:theme', () => { drawSize(); drawPairs(); });

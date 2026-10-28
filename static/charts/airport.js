@@ -77,14 +77,18 @@ function drawSize() {
       Plot.ruleX(periodRows(data, { key: (d) => d.year, order: names, format: (v) => formatCount(v) }), Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   }, yearPopover);
-  // each named airline in the legend opens its page
+  // each named airline in the legend opens its page, showing the same measure for the same flights
   if (split !== 'airline') return;
   const idOf = new Map([...res.links].map(([name, id]) => [nameOf.get(name), id]));
+  const q = new URLSearchParams();
+  if (measure !== 'passengers') q.set('measure', measure);
+  if (flights !== 'passenger') q.set('flights', flights);
+  const search = q.size ? `?${q}` : '';
   for (const sw of chart.querySelectorAll('[class*="-swatch"]:not([class*="-swatches"])')) {
     const id = idOf.get(sw.textContent.trim());
     const text = [...sw.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
     if (!id || !text) continue;
-    const a = Object.assign(document.createElement('a'), { href: `/airlines/${id}`, textContent: text.textContent });
+    const a = Object.assign(document.createElement('a'), { href: `/airlines/${id}${search}`, textContent: text.textContent });
     text.replaceWith(a);
   }
 }
