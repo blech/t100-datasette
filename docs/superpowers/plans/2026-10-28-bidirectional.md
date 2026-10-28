@@ -388,7 +388,7 @@ The queries become:
 This task runs in two parts. The new tables must be on the Fly volume before the branch merges, and the old ones are removed only after the merged code is live.
 
 - [ ] **Step 1: Before merging, ship the new tables.**
-  - Write the three new tables into a small SQLite file, as `docs/monthly-updates.md` describes ("applied from a small separate SQLite file uploaded by sftp and copied in with `ATTACH`"). Record its size here: ___ MB. (Task 2 measured the tables on the full database: `airport_dir_year` 3.1MB, `airport_carrier_dir_year` 36.9MB, `carrier_pair_year` 86.9MB, so about 127MB in all, against 90MB for the three old tables they replace.)
+  - Write the three new tables into a small SQLite file, as `docs/monthly-updates.md` describes ("applied from a small separate SQLite file uploaded by sftp and copied in with `ATTACH`"). Record its size here: 112 MB (37 MB gzipped), built from the worktree database on 2026-10-28 with matching row counts. (Task 2 measured the tables on the full database: `airport_dir_year` 3.1MB, `airport_carrier_dir_year` 36.9MB, `carrier_pair_year` 86.9MB, so about 127MB in all, against 90MB for the three old tables they replace.)
   - **The owner uploads and applies it.** Don't run `flyctl` without their go-ahead.
   - Confirm `/-/derived` on production reports `ok`.
 - [ ] **Step 2: The owner merges `bidirectional`, and CI deploys.** Check the live pages from Tasks 3–7 once.
