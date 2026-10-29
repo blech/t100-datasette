@@ -117,7 +117,7 @@ function drawChart() {
   const labelEvery = monthly || domain.length <= 15 ? 1 : 5;
   const data = res.points.map((p) => ({ ...p, x: String(p.period), href: monthly ? null : routePath(p.period) }));
   const x = {
-    label: null, domain,
+    label: null, domain, tickSize: 0,
     tickFormat: (d) => (monthly ? MONTHS[Number(d) - 1] : Number(d) % labelEvery === 0 ? d : ''),
   };
   const fmt = state.measure === 'load_factor' ? (v) => `${v.toFixed(1)}%` : (v) => formatCount(v);
@@ -135,8 +135,8 @@ function drawChart() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { ...x, type: res.stackable ? 'band' : 'point' },
     y: state.measure === 'load_factor'
-      ? { grid: true, label: measures.load_factor, tickFormat: 'd', domain: [0, 100] }
-      : { grid: true, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), measures[state.measure]) },
+      ? { grid: true, tickSize: 0, label: measures.load_factor, tickFormat: 'd', domain: [0, 100] }
+      : { grid: true, tickSize: 0, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), measures[state.measure]) },
     color: { legend: true, ...seriesColours(res.series, isDark()) },
     marks,
   });

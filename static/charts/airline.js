@@ -52,7 +52,7 @@ const yearPopover = { content: (d) => ({ title: d.period, rows: d.rows }), at: (
 function yearAxis(years) {
   const shown = yearDomain(years, { span: $('al-span').value, min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) });
   const every = shown.length <= 15 ? 1 : 5;
-  return { type: 'band', domain: shown.map(String), label: null, tickFormat: (d) => (Number(d) % every === 0 ? d : '') };
+  return { type: 'band', domain: shown.map(String), label: null, tickSize: 0, tickFormat: (d) => (Number(d) % every === 0 ? d : '') };
 }
 
 function drawSize() {
@@ -74,7 +74,7 @@ function drawSize() {
   const p = palette(isDark());
   const range = split === 'kind' ? [p.kind.passenger, p.kind.freight] : [p.service.domestic, p.service.international];
   plot(box, {
-    x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), MATRIX_MEASURES[measure]), grid: true },
+    x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), MATRIX_MEASURES[measure]), grid: true, tickSize: 0 },
     color: { domain: series, range, legend: true },
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series }),
@@ -91,7 +91,7 @@ async function drawPairs() {
   if (!rows.length) { box.textContent = 'No airport pairs at that level.'; return; }
   const data = rows.map((r) => ({ year: String(r.year), pairs: r.pairs }));
   plot(box, {
-    x: yearAxis(rows.map((r) => r.year)), y: { label: 'Airport pairs', grid: true },
+    x: yearAxis(rows.map((r) => r.year)), y: { label: 'Airport pairs', grid: true, tickSize: 0 },
     marks: [
       Plot.barY(data, { x: 'year', y: 'pairs', fill: palette(isDark()).single }),
       Plot.ruleY([0]),

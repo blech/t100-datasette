@@ -178,8 +178,8 @@ function drawCities() {
 // the years along the top, every one or every fifth, with the year ranking the rows always shown, in bold
 function yearAxes(labelEvery) {
   const ranked = rankYear() === null ? null : String(rankYear());
-  const axes = [Plot.axisX({ anchor: 'top', label: null, tickFormat: (d) => (yearTick(d, labelEvery, ranked) ? d : '') })];
-  if (ranked !== null) axes.push(Plot.axisX([ranked], { anchor: 'top', label: null, fontWeight: 700 }));
+  const axes = [Plot.axisX({ anchor: 'top', label: null, tickSize: 0, tickFormat: (d) => (yearTick(d, labelEvery, ranked) ? d : '') })];
+  if (ranked !== null) axes.push(Plot.axisX([ranked], { anchor: 'top', label: null, tickSize: 0, fontWeight: 700 }));
   return axes;
 }
 
