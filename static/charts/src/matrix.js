@@ -20,6 +20,11 @@ const flownTest = ({ flown = 'ever', firstYear, lastYear }) => (years) =>
 // The years an airport's destinations can be ranked by: those its rows have, up to the latest full year, newest first.
 export const fullYears = (rows, latest) => [...new Set(rows.map((r) => Number(r.year)))].filter((y) => y <= latest).sort((a, b) => b - a);
 
+// Whether a year along a matrix's top gets a plain label: every `every`th year, but not the `ranked` year, which has its
+// own bold one, nor (when labels are spaced out) a year beside it, whose label would run into the bold one.
+export const yearTick = (d, every, ranked) =>
+  d !== ranked && Number(d) % every === 0 && !(every > 1 && ranked !== null && Math.abs(Number(d) - Number(ranked)) === 1);
+
 // The year that ranks an airport's destinations, from its address: year= when the airport flew then, the old
 // rank=latest as its `latest` full year, else null for all years.
 export function rankYearFrom(search, { years, latest }) {

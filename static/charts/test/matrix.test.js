@@ -388,3 +388,14 @@ test('the years to rank by are those with rows, up to the latest full year, newe
   assert.deepEqual(fullYears(rows, 2025), [2025, 2021, 2019]);
   assert.deepEqual(fullYears([], 2025), []);
 });
+
+import { yearTick } from '../src/matrix.js';
+
+test('a year label shows every nth year, leaving the ranked year to its own bold label along with any year beside it', () => {
+  const shown = (every, ranked) => ['2004', '2005', '2006', '2009', '2010', '2011'].filter((d) => yearTick(d, every, ranked));
+  assert.deepEqual(shown(5, null), ['2005', '2010']);
+  assert.deepEqual(shown(5, '2006'), ['2010']);           // 2005 would overlap the bold 2006
+  assert.deepEqual(shown(5, '2009'), ['2005']);
+  assert.deepEqual(shown(5, '2010'), ['2005']);
+  assert.deepEqual(shown(1, '2006'), ['2004', '2005', '2009', '2010', '2011']);  // labelled every year, the cells are wide enough
+});
