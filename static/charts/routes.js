@@ -68,7 +68,7 @@ function drawAirports() {
     year: String(c.year),
     head: `${c.dest}${cities.get(c.dest) ? ` · ${cities.get(c.dest)}` : ''}`,
     rows: cellRows(c),
-    href: routeYearHref(c.dest, c.year),
+    href: routeHref(c.dest, c.year),
   }));
   const width = Math.min(box.clientWidth || 900, 1100);
   const marginLeft = 48;
@@ -86,7 +86,7 @@ function drawAirports() {
       ...yearAxes(labelEvery),
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
-      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: routeHref(d) })), {
+      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: routeHref(d, rankYear()) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
     ],
@@ -96,9 +96,12 @@ function drawAirports() {
 }
 
 // links keep the direction: departing here is the route's out, arriving its in
-const keepDir = dir ? `?dir=${dir}` : '';
-const routeYearHref = (dest, year) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}${keepDir}`;
-const routeHref = (dest) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}${keepDir}`; // a row opens its route, whose heading leads on to the other airport
+// a cell opens its route over time with its year marked, and a row's label the route with the ranking year marked, if
+// any; the route's heading leads on to the other airport, and its bars down to months
+const routeHref = (dest, year = null) => {
+  const q = new URLSearchParams([...(dir ? [['dir', dir]] : []), ...(year === null ? [] : [['year', year]])]);
+  return `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}${q.size ? `?${q}` : ''}`;
+};
 const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
@@ -137,15 +140,15 @@ function drawCities() {
     const parts = c.parts ? c.parts.slice(0, 5).map((p) => ({ label: p.dest, value: formatCount(p.value) })) : [];
     const more = c.parts && c.parts.length > 5 ? [{ label: `+${c.parts.length - 5} more`, value: '' }] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
-    // a city's cell opens the route in that year when the city has one airport; a city with several opens into them
-    const href = row.kind === 'airport' ? routeYearHref(row.code, c.year) : row.codes.length === 1 ? routeYearHref(row.codes[0], c.year) : `#toggle:${row.key}`;
+    // a city's cell opens the route, that year marked, when the city has one airport; a city with several opens into them
+    const href = row.kind === 'airport' ? routeHref(row.code, c.year) : row.codes.length === 1 ? routeHref(row.codes[0], c.year) : `#toggle:${row.key}`;
     return { ...c, year: String(c.year), href, head, rows: [...cellRows(c), ...parts, ...more] };
   });
   // a city is its name, opening into its airports (the links); an airport under it is its code, named on hover
   const labels = res.rows.map((r) => ({
     ...r,
     text: r.kind === 'airport' ? r.code : r.label,
-    href: r.kind === 'airport' ? routeHref(r.code) : `#toggle:${r.key}`,
+    href: r.kind === 'airport' ? routeHref(r.code, rankYear()) : `#toggle:${r.key}`,
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
   const width = Math.min(box.clientWidth || 900, 1200);

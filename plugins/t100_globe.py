@@ -431,13 +431,18 @@ def route_view(template, table):
         year = request.url_vars.get("year") or ""
         here = f"/airports/{origin}/{dest}{f'/{year}' if year else ''}"
         steps = [("airports", "/airports"), (origin, f"/airports/{origin}")]
-        steps += [(dest, f"/airports/{origin}/{dest}"), (year, here if table else None)] if year else [(dest, here if table else None)]
+        # going up from a year keeps it, marked on the route's chart over time
+        steps += [(dest, f"/airports/{origin}/{dest}?year={year}"), (year, here if table else None)] if year else [(dest, here if table else None)]
         if table:
             steps.append(("table", None))
         info = await airport_info(datasette, [origin, dest])
         dir = parse_dir(request.args.get("dir"))
         names = [airport_label(info, origin) or origin, airport_label(info, dest) or dest]
-        matrix_query = "&".join(f"{k}={v}" for k, v in (("dir", dir), ("year", year)) if v)
+        # the year in focus: the page's own, or the one marked on the chart over time (?year=), if it's one of the data's
+        low, high = year_range(datasette)
+        marked = request.args.get("year", "")
+        focus = year or (marked if not table and marked.isdigit() and low <= int(marked) <= high else "")
+        matrix_query = "&".join(f"{k}={v}" for k, v in (("dir", dir), ("year", focus)) if v)
         matrix_query = f"?{matrix_query}" if matrix_query else ""
         html = await datasette.render_template(
             template,

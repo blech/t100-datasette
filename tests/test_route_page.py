@@ -92,3 +92,16 @@ def test_reverse_link_names_and_keeps_the_other_direction(ds):
     assert '<a href="/airports/LAX/ATL?dir=in" id="reverse-link">ATL → LAX</a>' in page
     page = get(ds, "/airports/ATL/LAX/2019/table?dir=out").text
     assert '<a href="/airports/LAX/ATL/2019/table?dir=out" id="reverse-link">LAX → ATL</a>' in page
+
+
+def test_a_route_years_breadcrumb_goes_up_to_the_route_with_that_year_marked(ds):
+    for view in ("", "/table"):
+        page = get(ds, f"/airports/ATL/LAX/2015{view}").text
+        assert '<a href="/airports/ATL/LAX?year=2015">LAX</a>' in page, view
+
+
+def test_a_marked_routes_heading_codes_open_each_matrix_ranked_by_that_year(ds):
+    page = get(ds, "/airports/ATL/LAX?year=2015&dir=out").text
+    assert 'href="/airports/ATL/destinations?dir=out&amp;year=2015"' in page and 'href="/airports/LAX/destinations?dir=out&amp;year=2015"' in page
+    for junk in ("1066", "20x5", ""):  # not a year of the data: no year carried
+        assert 'href="/airports/ATL/destinations"' in get(ds, f"/airports/ATL/LAX?year={junk}").text, junk

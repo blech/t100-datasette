@@ -37,7 +37,7 @@ def test_route_trails_end_at_the_year_when_there_is_one(ds):
     assert crumbs(ds, "/airports/ATL/LAX") == [
         ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("LAX", None)]
     assert crumbs(ds, "/airports/atl/lax/2024") == [
-        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("LAX", "/airports/ATL/LAX"), ("2024", None)]
+        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("LAX", "/airports/ATL/LAX?year=2024"), ("2024", None)]
 
 
 def test_current_page_is_marked_and_the_trail_is_labelled(ds):
