@@ -442,6 +442,10 @@ def route_view(template, table):
             {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
              "view": "table" if table else "", "crumbs": trail(datasette, *steps),
              "dir": dir, "heading": route_heading(origin, dest, dir), "count_word": route_count_word(dir),
+             # the heading's codes, in its order, each opening that airport's destinations counted the same way
+             "heading_codes": [{"code": c, "href": f"/airports/{c}/destinations{f'?dir={dir}' if dir else ''}", "tip": airport_tip(info, c)}
+                               for c in ((dest, origin) if dir == "in" else (origin, dest))],
+             "heading_arrow": "→" if dir else "↔",
              # the same direction at the reversed address is the other way: /B/A?dir=out is B → A
              "other_way": route_heading(dest, origin, dir) if dir else "",
              "dir_choices": DIRECTION_CHOICES_ROUTE(origin, dest),

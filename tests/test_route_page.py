@@ -42,17 +42,28 @@ def test_route_both_ways_by_default(ds, db_path):
         assert (_deps(ds, query, ""), _deps(ds, query, "out"), _deps(ds, query, "in")) == (17, 10, 7), query
 
 
+def code_link(code, dir=""):
+    return f'<a href="/airports/{code}/destinations{f"?dir={dir}" if dir else ""}" title="{code}">{code}</a>'
+
+
+def test_heading_codes_open_each_airports_destinations_in_the_same_direction(ds):
+    for view in ("", "/2019", "/table", "/2019/table"):
+        page = get(ds, f"/airports/ATL/LAX{view}?dir=out").text
+        assert f'{code_link("ATL", "out")} → {code_link("LAX", "out")}' in page, view   # LAX's departures, not its arrivals from ATL
+        assert "<title>ATL → LAX" in page, view
+
+
 def test_route_page_heading_follows_dir(ds):
     page = get(ds, "/airports/ATL/LAX").text
-    assert '<h1 id="title">ATL ↔ LAX</h1>' in page and "<title>ATL ↔ LAX · T-100</title>" in page and 'data-dir=""' in page
+    assert f'<h1 id="title">{code_link("ATL")} ↔ {code_link("LAX")}</h1>' in page and "<title>ATL ↔ LAX · T-100</title>" in page and 'data-dir=""' in page
     page = get(ds, "/airports/ATL/LAX/2019?dir=in").text
-    assert '<h1 id="title">LAX → ATL in 2019</h1>' in page and 'data-dir="in"' in page
+    assert f'<h1 id="title">{code_link("LAX", "in")} → {code_link("ATL", "in")} in 2019</h1>' in page and 'data-dir="in"' in page
     assert 'id="chart-dir"' in page and "LAX → ATL</option>" in page
 
 
 def test_route_page_unknown_dir_is_both(ds):
     r = get(ds, "/airports/ATL/LAX?dir=sideways")
-    assert r.status_code == 200 and '<h1 id="title">ATL ↔ LAX</h1>' in r.text
+    assert r.status_code == 200 and f'<h1 id="title">{code_link("ATL")} ↔ {code_link("LAX")}</h1>' in r.text
 
 
 def test_one_direction_only_route(ds, db_path):

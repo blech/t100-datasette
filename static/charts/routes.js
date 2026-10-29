@@ -91,7 +91,7 @@ function drawAirports() {
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
-      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: airportHref(d) })), {
+      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: routeHref(d) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
     ],
@@ -103,7 +103,7 @@ function drawAirports() {
 // links keep the direction: departing here is the route's out, arriving its in
 const keepDir = dir ? `?dir=${dir}` : '';
 const routeYearHref = (dest, year) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}/${year}${keepDir}`;
-const airportHref = (code) => `/airports/${encodeURIComponent(code)}/destinations${keepDir}`; // matrices lead to matrices
+const routeHref = (dest) => `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}${keepDir}`; // a row opens its route, whose heading leads on to the other airport
 const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
@@ -150,7 +150,7 @@ function drawCities() {
   const labels = res.rows.map((r) => ({
     ...r,
     text: r.kind === 'airport' ? r.code : r.label,
-    href: r.kind === 'airport' ? airportHref(r.code) : `#toggle:${r.key}`,
+    href: r.kind === 'airport' ? routeHref(r.code) : `#toggle:${r.key}`,
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
   }));
   const width = Math.min(box.clientWidth || 900, 1200);
