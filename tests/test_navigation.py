@@ -52,7 +52,7 @@ def test_the_airline_pages_map_view_keeps_the_id_its_script_rewrites():
     assert [v["id"] for v in views_for("/airlines/delta")] == [None, None, None, None, "map-link"]
 
 
-@pytest.mark.parametrize("path", ["/", "/about", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
+@pytest.mark.parametrize("path", ["/", "/t100", "/-/derived", "/airports/SFO/LHR/2019/x"])
 def test_pages_with_one_view_have_none(path):
     assert views_for(path) == []
 
@@ -81,7 +81,8 @@ PAGES = {
     "/aircraft/makers": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),
     "/airlines": ("airlines", ["Airlines", "Over time"]),
     "/airlines/over-time": ("airlines", ["Airlines", "Over time"]),
-    "/about": ("about", []),
+    "/about": ("about", ["About", "Changes"]),
+    "/changelog": ("about", ["About", "Changes"]),
 }
 
 
