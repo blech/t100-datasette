@@ -364,3 +364,27 @@ test('the flight count is named for the direction counted', () => {
   assert.deepEqual(['', 'out', 'in'].map((d) => matrixMeasures(d).deps), ['Flights', 'Departures', 'Arrivals']);
   assert.equal(matrixMeasures('in').passengers, 'Passengers');
 });
+
+import { rankYearFrom } from '../src/matrix.js';
+
+test('the ranking year comes from year=, any year the airport flew, else all years', () => {
+  const years = [2015, 2016, 2025];
+  assert.equal(rankYearFrom('?year=2015', { years, latest: 2025 }), 2015);
+  assert.equal(rankYearFrom('', { years, latest: 2025 }), null);
+  assert.equal(rankYearFrom('?year=1999', { years, latest: 2025 }), null);  // not flown then
+  assert.equal(rankYearFrom('?year=junk', { years, latest: 2025 }), null);
+});
+
+test('the old rank=latest still means the latest full year, and year= wins over it', () => {
+  assert.equal(rankYearFrom('?rank=latest', { years: [2015, 2016], latest: 2016 }), 2016);
+  assert.equal(rankYearFrom('?rank=latest', { years: [], latest: null }), null);
+  assert.equal(rankYearFrom('?rank=latest&year=2015', { years: [2015, 2016], latest: 2016 }), 2015);
+});
+
+import { fullYears } from '../src/matrix.js';
+
+test('the years to rank by are those with rows, up to the latest full year, newest first', () => {
+  const rows = [2026, 2019, 2025, 2019, 2021].map((year) => ({ year: String(year) }));
+  assert.deepEqual(fullYears(rows, 2025), [2025, 2021, 2019]);
+  assert.deepEqual(fullYears([], 2025), []);
+});

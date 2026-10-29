@@ -42,22 +42,30 @@ def test_route_both_ways_by_default(ds, db_path):
         assert (_deps(ds, query, ""), _deps(ds, query, "out"), _deps(ds, query, "in")) == (17, 10, 7), query
 
 
-def code_link(code, dir=""):
-    return f'<a href="/airports/{code}/destinations{f"?dir={dir}" if dir else ""}" title="{code}">{code}</a>'
+def code_link(code, dir="", year=""):
+    query = "&amp;".join(f"{k}={v}" for k, v in (("dir", dir), ("year", year)) if v)
+    return f'<a href="/airports/{code}/destinations{f"?{query}" if query else ""}" title="{code}">{code}</a>'
 
 
 def test_heading_codes_open_each_airports_destinations_in_the_same_direction(ds):
-    for view in ("", "/2019", "/table", "/2019/table"):
+    for view, year in (("", ""), ("/2019", "2019"), ("/table", ""), ("/2019/table", "2019")):
         page = get(ds, f"/airports/ATL/LAX{view}?dir=out").text
-        assert f'{code_link("ATL", "out")} → {code_link("LAX", "out")}' in page, view   # LAX's departures, not its arrivals from ATL
+        assert f'{code_link("ATL", "out", year)} → {code_link("LAX", "out", year)}' in page, view   # LAX's departures, not its arrivals from ATL
         assert "<title>ATL → LAX" in page, view
+
+
+def test_a_route_years_heading_codes_open_each_matrix_ranked_by_that_year(ds):
+    page = get(ds, "/airports/ATL/LAX/2015?dir=out").text
+    assert 'href="/airports/ATL/destinations?dir=out&amp;year=2015"' in page and 'href="/airports/LAX/destinations?dir=out&amp;year=2015"' in page
+    page = get(ds, "/airports/ATL/LAX/2015/table").text
+    assert 'href="/airports/ATL/destinations?year=2015"' in page
 
 
 def test_route_page_heading_follows_dir(ds):
     page = get(ds, "/airports/ATL/LAX").text
     assert f'<h1 id="title">{code_link("ATL")} ↔ {code_link("LAX")}</h1>' in page and "<title>ATL ↔ LAX · T-100</title>" in page and 'data-dir=""' in page
     page = get(ds, "/airports/ATL/LAX/2019?dir=in").text
-    assert f'<h1 id="title">{code_link("LAX", "in")} → {code_link("ATL", "in")} in 2019</h1>' in page and 'data-dir="in"' in page
+    assert f'<h1 id="title">{code_link("LAX", "in", "2019")} → {code_link("ATL", "in", "2019")} in 2019</h1>' in page and 'data-dir="in"' in page
     assert 'id="chart-dir"' in page and "LAX → ATL</option>" in page
 
 

@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey, fullYears, rankYearFrom } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -20,7 +20,7 @@ const state = {
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '25')),
   group: pick('group', ['airport', 'city'], 'airport'),
-  rank: pick('rank', ['all', 'latest'], 'all'),
+  year: null, // the year ranking the destinations, or null for all years; read from the address once the rows are in
   flown: pick('flown', FLOWN, 'ever'),
   scale: pick('scale', ['absolute', 'year', 'busiest'], 'absolute'),
   open: (params.get('open') || '').split(',').filter(Boolean),
@@ -35,14 +35,8 @@ const firstDataYear = Number(document.body.dataset.minYear);
 // which destinations are listed, judged by the data's first and last years, not the airport's own
 const flownSpan = () => ({ flown: state.flown, firstYear: firstDataYear, lastYear: latestFullYear });
 
-// the latest full year this airport has data for (an airport that stopped before it uses its own last year)
-function latestYear() {
-  const years = rows.map((r) => Number(r.year)).filter((y) => y <= latestFullYear);
-  return years.length ? Math.max(...years) : null;
-}
-
-// the year that ranks the destinations, or null for all years; a destination dropped by then has nothing to rank in it
-const rankYear = () => (state.rank === 'latest' && state.flown !== 'dropped' ? latestYear() : null);
+// the year that ranks the destinations, or null for all years; a destination dropped by the latest year has nothing to rank in it
+const rankYear = () => (state.flown === 'dropped' && state.year === latestFullYear ? null : state.year);
 
 function pushState() {
   const q = new URLSearchParams();
@@ -50,12 +44,12 @@ function pushState() {
   if (state.service !== 'all') q.set('service', state.service);
   if (state.n !== 25) q.set('n', state.n);
   if (state.group !== 'airport') q.set('group', state.group);
-  if (state.rank !== 'all') q.set('rank', state.rank);
+  if (state.year !== null) q.set('year', state.year);
   if (state.flown !== 'ever') q.set('flown', state.flown);
   if (state.scale !== 'absolute') q.set('scale', state.scale);
   if (state.group === 'city' && state.open.length) q.set('open', state.open.join(','));
   const s = q.toString();
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'rank', 'flown', 'scale', 'open'], s ? `?${s}` : '')}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'service', 'n', 'group', 'rank', 'year', 'flown', 'scale', 'open'], s ? `?${s}` : '')}`);
 }
 
 function drawAirports() {
@@ -85,10 +79,11 @@ function drawAirports() {
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
-    x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
+    x: { type: 'band', domain: years, label: null, axis: null },
     y: { type: 'band', domain: res.dests, axis: null },
     color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
+      ...yearAxes(labelEvery),
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: routeHref(d) })), {
@@ -162,10 +157,11 @@ function drawCities() {
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
-    x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
+    x: { type: 'band', domain: years, label: null, axis: null },
     y: { type: 'band', domain: res.rows.map((r) => r.key), axis: null },
     color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
     marks: [
+      ...yearAxes(labelEvery),
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), href: 'href' }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'row', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
       Plot.text(labels, {
@@ -177,6 +173,14 @@ function drawCities() {
   });
   placeKey($('matrix-key'), chart);
   box.append(...attachPopover(chart, cellPopover('row')));
+}
+
+// the years along the top, every one or every fifth, with the year ranking the rows always shown, in bold
+function yearAxes(labelEvery) {
+  const ranked = rankYear() === null ? null : String(rankYear());
+  const axes = [Plot.axisX({ anchor: 'top', label: null, tickFormat: (d) => (d !== ranked && Number(d) % labelEvery === 0 ? d : '') })];
+  if (ranked !== null) axes.push(Plot.axisX([ranked], { anchor: 'top', label: null, fontWeight: 700 }));
+  return axes;
 }
 
 // a cell's popover: its row and year, its rows, and its link (a city group's toggle isn't a link to follow)
@@ -195,18 +199,14 @@ function draw() {
     year: `Colour shows each destination's share of ${origin}'s ${unit()} in that year, counting every destination (not just those listed), not the amount itself. A route can keep its colour while carrying more if the airport grew as fast. Hover over a cell for both.`,
     busiest: `Colour compares each cell with ${origin}'s top ${state.group === 'city' ? 'city' : 'destination'} that year, the one with the most ${unit()}: the top one is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own, so colours show how a destination ranked then, not how much it carried. Hover over a cell for both.`,
   }[state.scale];
-  const year = latestYear();
-  if (year !== null) $('matrix-rank').options[1].textContent = `${year} only`;
-  const rankLatest = $('matrix-rank').options[1];
-  rankLatest.disabled = state.flown === 'dropped';
-  $('matrix-rank').value = rankYear() === null ? 'all' : 'latest';
+  $('matrix-rank').value = state.year === null ? '' : String(state.year);
   $('flown-note').innerHTML = {
     ever: '',
     after: `"First flown after ${firstDataYear}" lists destinations with no flights in ${firstDataYear}, the first year of the data. Small airports and commuter routes join the data in October 2002, so many seem to start then (<a href="/about#breaks">known gaps</a>).`,
     dropped: `"Dropped by ${latestFullYear}" lists destinations with no flights in ${latestFullYear}, including any that started and stopped since ${firstDataYear}.`,
   }[state.flown];
   $('rank-note').textContent = rankYear() === null
-    ? 'Destinations are ranked by the measure summed over all years.'
+    ? `Destinations are ranked by the measure summed over all years${state.year === null ? '' : `, as none dropped by ${latestFullYear} flew in it`}.`
     : `Destinations are ranked by the measure in ${rankYear()} alone, so ones that did not fly then are not shown.`;
   if (state.group === 'city') drawCities();
   else drawAirports();
@@ -235,6 +235,9 @@ async function main() {
       fetchRows(queryUrl('airports')),
     ]);
     rows = byYear.rows;
+    const years = fullYears(rows, latestFullYear);
+    $('matrix-rank').append(...years.map((y) => new Option(String(y), String(y))));
+    state.year = rankYearFrom(location.search, { years, latest: years[0] ?? null });
     cities = new Map(airports.rows.map((a) => [a.code, a.place]));
     airportInfo = new Map(airports.rows.map((a) => [a.code, a]));
     $('truncated').hidden = !byYear.truncated;
@@ -254,13 +257,12 @@ function fillControls() {
   $('matrix-service').value = state.service;
   $('matrix-n').value = String(state.n);
   $('matrix-group').value = state.group;
-  $('matrix-rank').value = state.rank;
   $('matrix-flown').value = state.flown;
   for (const radio of document.querySelectorAll('input[name="scale"]')) {
     radio.checked = radio.value === state.scale;
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
   }
-  $('matrix-rank').addEventListener('change', (e) => { state.rank = e.target.value; pushState(); draw(); });
+  $('matrix-rank').addEventListener('change', (e) => { state.year = e.target.value ? Number(e.target.value) : null; pushState(); draw(); });
   $('matrix-flown').addEventListener('change', (e) => { state.flown = e.target.value; pushState(); draw(); });
   $('matrix-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
   measure.addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });

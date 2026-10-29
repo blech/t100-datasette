@@ -151,14 +151,14 @@ def test_a_page_view_is_logged_without_the_address_or_the_query(site, tmp_path, 
     log = tmp_path / "usage"
     monkeypatch.setenv("T100_USAGE_LOG", str(log))
     headers = {"fly-client-ip": "203.0.113.9", "user-agent": FIREFOX, "referer": "https://news.ycombinator.com/item?id=1"}
-    assert fetch(make_datasette(site), "/airports/ATL?theme=night&year=2019", headers).status_code == 200
+    assert fetch(make_datasette(site), "/airports/ATL?theme=night&from=2019", headers).status_code == 200
     (line,) = lines(log)
     time, token, route, status, referrer, kind = line.split("\t")
     assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", time)
     assert (route, status, referrer, kind) == ("/airports/ATL", "200", "news.ycombinator.com", "human")
     assert re.fullmatch(r"[0-9a-f]{12}", token)
     everything = "".join(p.read_text() for p in log.iterdir())
-    for secret in ("203.0.113.9", "theme=night", "year=2019", "Firefox", "Mozilla"):
+    for secret in ("203.0.113.9", "theme=night", "from=2019", "Firefox", "Mozilla"):
         assert secret not in everything, secret
     assert re.fullmatch(r"visits-\d{4}-\d\d\.log", next(log.glob("visits-*")).name)
 
