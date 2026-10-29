@@ -6,6 +6,7 @@ import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList
 import { formatYearMonth } from '/static/charts/src/airline.js';
 import { airportGone, flownText, mostText } from '/static/charts/src/gone.js';
 import { shortName } from '/static/charts/src/names.js';
+import { airportTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight } from '/static/common/highlight.js';
@@ -158,6 +159,7 @@ async function overTime() {
 // --- what changed ---
 
 let changes = [];
+let airportInfo = new Map(); // code -> the airports query's row, for a destination's hover; until it loads the hover is the code alone
 let sortChoice = null; // the column last asked for; each status falls back to its own default where it can't sort by it
 
 const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
@@ -202,8 +204,9 @@ function nameCell(show, id, name) {
     if (id === 'unknown') td.textContent = shortName(name);
     else td.append(Object.assign(document.createElement('a'), { href: `/airlines/${id}`, textContent: shortName(name), title: name }));
   } else {
-    td.append(Object.assign(document.createElement('a'), { href: `/airports/${origin}/${id}`, textContent: id }),
-      Object.assign(document.createElement('small'), { textContent: name ? ` ${name}` : '' }));
+    // the code at a fixed width, so the places beside it line up as a column of their own
+    td.append(Object.assign(document.createElement('a'), { href: `/airports/${origin}/${id}`, textContent: id, className: 'code', title: airportTip(id, airportInfo) }),
+      Object.assign(document.createElement('small'), { textContent: name || '' }));
   }
   return td;
 }
@@ -312,6 +315,10 @@ async function whatChanged() {
   for (const id of ['ap-a', 'ap-b']) $(id).addEventListener('change', () => { save(); loadChanges(); });
   $('ap-min').addEventListener('change', () => { save(); summarise(); drawTable(); });
   for (const id of ['ap-show', 'ap-status']) $(id).addEventListener('change', () => { save(); drawTable(); });
+  fetchRows(queryUrl('airports')).then((res) => {
+    airportInfo = new Map(res.rows.map((a) => [a.code, a]));
+    for (const a of $('change-table').querySelectorAll('a.code')) a.title = airportTip(a.textContent, airportInfo);
+  }, (err) => console.error(err));
   await loadChanges();
 }
 
