@@ -17,6 +17,23 @@ export const FLOWN = ['ever', 'after', 'dropped'];
 const flownTest = ({ flown = 'ever', firstYear, lastYear }) => (years) =>
   flown === 'after' ? !years.has(firstYear) : flown === 'dropped' ? !years.has(lastYear) : true;
 
+// The years an airport's destinations can be ranked by: those its rows have, up to the latest full year, newest first.
+export const fullYears = (rows, latest) => [...new Set(rows.map((r) => Number(r.year)))].filter((y) => y <= latest).sort((a, b) => b - a);
+
+// Whether a year along a matrix's top gets a plain label: every `every`th year, but not the `ranked` year, which has its
+// own bold one, nor (when labels are spaced out) a year beside it, whose label would run into the bold one.
+export const yearTick = (d, every, ranked) =>
+  d !== ranked && Number(d) % every === 0 && !(every > 1 && ranked !== null && Math.abs(Number(d) - Number(ranked)) === 1);
+
+// The year that ranks an airport's destinations, from its address: year= when the airport flew then, the old
+// rank=latest as its `latest` full year, else null for all years.
+export function rankYearFrom(search, { years, latest }) {
+  const params = new URLSearchParams(search);
+  const year = Number(params.get('year'));
+  if (params.has('year')) return years.includes(year) ? year : null;
+  return params.get('rank') === 'latest' ? latest ?? null : null;
+}
+
 // Rows from routes_by_year (one per destination, year and service) -> a destination-by-year grid.
 // Destinations are ranked by the measure summed over all years, or in `rankYear` alone (which drops
 // destinations that did not fly then); only the top `n` are kept, and their whole history is shown.

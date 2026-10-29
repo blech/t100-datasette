@@ -54,8 +54,8 @@ function draw() {
     height: 420,
     marginLeft: 64,
     style: { background: 'transparent', fontSize: '12px' },
-    x: { type: 'band', domain: years, label: null, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
-    y: { ...millionsAxis(stackMax(data, 'year'), MATRIX_MEASURES[state.measure]), grid: true },
+    x: { type: 'band', domain: years, label: null, tickSize: 0, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
+    y: { ...millionsAxis(stackMax(data, 'year'), MATRIX_MEASURES[state.measure]), grid: true, tickSize: 0 },
     color: colors,
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series }),

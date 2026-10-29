@@ -89,7 +89,7 @@ def test_a_route_names_both_its_airports(ds, db_path, path):
     html = get(ds, path).text
     assert subtitle(html) == "San Francisco International Airport · San Francisco, CA and John F Kennedy International Airport · New York, NY"
     assert subtitle(get(ds, path + "?dir=in").text) == "John F Kennedy International Airport · New York, NY to San Francisco International Airport · San Francisco, CA"
-    assert re.search(r'id="title">[^<]*</h1>\s*<p[^>]*id="subtitle"', html), path
+    assert re.search(r'id="title">(?:[^<]|<a [^>]*>[^<]*</a>)*</h1>\s*<p[^>]*id="subtitle"', html), path
 
 
 def test_an_unknown_end_of_a_route_is_its_code(ds, db_path):

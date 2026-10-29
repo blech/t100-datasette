@@ -1,0 +1,1 @@
+{% for c in heading_codes %}{% if not loop.first %} {{ heading_arrow }} {% endif %}<a href="{{ c.href }}" title="{{ c.tip }}">{{ c.code }}</a>{% endfor %}

@@ -175,7 +175,7 @@ function passengerChart(box, { series, bands, colourOf }) {
   const others = bands.filter((d) => d.series === OTHER_AIRLINES);
   return Plot.plot({
     ...plotFrame(box, height),
-    y: { ...millionsAxis(yMax, 'Passengers'), domain: [0, yMax], grid: true, nice: true, ticks: 6 },
+    y: { ...millionsAxis(yMax, 'Passengers'), domain: [0, yMax], grid: true, tickSize: 0, nice: true, ticks: 6 },
     color: { domain: [...series, OTHER_AIRLINES], range: [...series, OTHER_AIRLINES].map(colourOf), legend: true },
     marks: [
       ...airlineBands(bands.filter((d) => d.series !== OTHER_AIRLINES), colourOf),

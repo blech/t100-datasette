@@ -9,6 +9,8 @@ import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight, parseHighlight, highlightedSeries, highlightMessage } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { setDataLink } from '/static/common/datalink.js';
+import { parseFocus, focusSearch } from '/static/charts/src/focus.js';
+import { yearTick } from '/static/charts/src/matrix.js';
 import { parseDir, routeCountWord, noFlights, setDir } from '/static/common/direction.js';
 
 // the tallest stack, which sets the y axis's scale
@@ -37,9 +39,14 @@ const routePath = (y) => `/airports/${origin}/${dest}${y ? `/${y}` : ''}`;
 const onTable = !document.getElementById('route-chart');
 const viewPath = (y) => `${routePath(y)}${onTable ? '/table' : ''}`;
 
-// links to the route's other views, years and reverse direction keep the current settings (measure, split, span)
+// the year in focus: this page's own, or the one asked to be marked on the chart over time, if it's one of the data's
+const asked = Number(params.get('year'));
+const focus = year !== null ? String(year) : asked >= bounds.min && asked <= bounds.max ? String(asked) : null;
+
+// links to the route's other views, years and reverse direction keep the current settings (measure, split, span),
+// and a link to a chart over time the year in focus
 function carryQuery() {
-  for (const a of document.querySelectorAll('nav.views a, #years a, #reverse-link')) a.search = location.search;
+  for (const a of document.querySelectorAll('nav.views a, #years a, #reverse-link')) a.search = focusSearch(a.pathname, location.search, focus);
 }
 
 let allRows = [];   // the route, every year
@@ -116,18 +123,26 @@ function drawChart() {
   const domain = monthly ? MONTHS.map((_, i) => String(i + 1)) : yearDomain(res.periods, { span: state.span, ...bounds }).map(String);
   const labelEvery = monthly || domain.length <= 15 ? 1 : 5;
   const data = res.points.map((p) => ({ ...p, x: String(p.period), href: monthly ? null : routePath(p.period) }));
+  // the year in focus, when the chart shows it: its label in bold, never left out, and a faint band behind it
+  const marked = monthly ? null : parseFocus(location.search, domain);
   const x = {
-    label: null, domain,
-    tickFormat: (d) => (monthly ? MONTHS[Number(d) - 1] : Number(d) % labelEvery === 0 ? d : ''),
+    label: null, domain, tickSize: 0,
+    tickFormat: (d) => (monthly ? MONTHS[Number(d) - 1] : yearTick(d, labelEvery, marked) ? d : ''),
+    ...(marked === null ? {} : { axis: null }),
   };
+  const mark = marked === null ? [] : [
+    res.stackable ? Plot.cell([marked], { x: (d) => d, fill: 'currentColor', fillOpacity: 0.07 }) : Plot.ruleX([marked], { stroke: 'currentColor', strokeOpacity: 0.07, strokeWidth: 12 }),
+    Plot.axisX({ label: null, tickSize: 0, tickFormat: x.tickFormat }),
+    Plot.axisX([marked], { label: null, tickSize: 0, fontWeight: 700 }),
+  ];
   const fmt = state.measure === 'load_factor' ? (v) => `${v.toFixed(1)}%` : (v) => formatCount(v);
   const tips = periodRows(data, { key: (p) => p.x, order: res.stackable ? res.series : null, format: fmt });
   const pointer = Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 }));
   // stacked in the legend's order, biggest at the bottom and "Other" on top
   const bars = Plot.barY(data, { x: 'x', y: 'value', fill: 'series', order: res.series, ...(monthly ? {} : { href: 'href' }) });
   const marks = res.stackable
-    ? [bars, Plot.ruleY([0]), pointer]
-    : [Plot.lineY(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.dot(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.ruleY([0]), pointer];
+    ? [...mark, bars, Plot.ruleY([0]), pointer]
+    : [...mark, Plot.lineY(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.dot(data, { x: 'x', y: 'value', stroke: 'series' }), Plot.ruleY([0]), pointer];
   const chart = Plot.plot({
     width: Math.min(box.clientWidth || 800, 1000),
     height: 420,
@@ -135,8 +150,8 @@ function drawChart() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { ...x, type: res.stackable ? 'band' : 'point' },
     y: state.measure === 'load_factor'
-      ? { grid: true, label: measures.load_factor, tickFormat: 'd', domain: [0, 100] }
-      : { grid: true, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), measures[state.measure]) },
+      ? { grid: true, tickSize: 0, label: measures.load_factor, tickFormat: 'd', domain: [0, 100] }
+      : { grid: true, tickSize: 0, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), measures[state.measure]) },
     color: { legend: true, ...seriesColours(res.series, isDark()) },
     marks,
   });

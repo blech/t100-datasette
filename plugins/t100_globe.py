@@ -377,7 +377,7 @@ async def home_page(datasette, request):
     return Response.html(html)
 
 
-MATRIX_SETTINGS = ("n", "group", "rank", "flown", "scale", "open")  # the destinations matrix's settings, which mean nothing to the charts that took its address
+MATRIX_SETTINGS = ("n", "group", "rank", "year", "flown", "scale", "open")  # the destinations matrix's settings, which mean nothing to the charts that took its address
 
 
 async def airport_years(datasette, code):
@@ -431,17 +431,28 @@ def route_view(template, table):
         year = request.url_vars.get("year") or ""
         here = f"/airports/{origin}/{dest}{f'/{year}' if year else ''}"
         steps = [("airports", "/airports"), (origin, f"/airports/{origin}")]
-        steps += [(dest, f"/airports/{origin}/{dest}"), (year, here if table else None)] if year else [(dest, here if table else None)]
+        # going up from a year keeps it, marked on the route's chart over time
+        steps += [(dest, f"/airports/{origin}/{dest}?year={year}"), (year, here if table else None)] if year else [(dest, here if table else None)]
         if table:
             steps.append(("table", None))
         info = await airport_info(datasette, [origin, dest])
         dir = parse_dir(request.args.get("dir"))
         names = [airport_label(info, origin) or origin, airport_label(info, dest) or dest]
+        # the year in focus: the page's own, or the one marked on the chart over time (?year=), if it's one of the data's
+        low, high = year_range(datasette)
+        marked = request.args.get("year", "")
+        focus = year or (marked if not table and marked.isdigit() and low <= int(marked) <= high else "")
+        matrix_query = "&".join(f"{k}={v}" for k, v in (("dir", dir), ("year", focus)) if v)
+        matrix_query = f"?{matrix_query}" if matrix_query else ""
         html = await datasette.render_template(
             template,
             {"origin": origin, "dest": dest, "year": year, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1],
              "view": "table" if table else "", "crumbs": trail(datasette, *steps),
              "dir": dir, "heading": route_heading(origin, dest, dir), "count_word": route_count_word(dir),
+             # the heading's codes, in its order, each opening that airport's destinations counted the same way (and ranked by the year)
+             "heading_codes": [{"code": c, "href": f"/airports/{c}/destinations{matrix_query}", "tip": airport_tip(info, c)}
+                               for c in ((dest, origin) if dir == "in" else (origin, dest))],
+             "heading_arrow": "→" if dir else "↔",
              # the same direction at the reversed address is the other way: /B/A?dir=out is B → A
              "other_way": route_heading(dest, origin, dir) if dir else "",
              "dir_choices": DIRECTION_CHOICES_ROUTE(origin, dest),

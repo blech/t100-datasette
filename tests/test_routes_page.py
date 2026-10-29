@@ -37,9 +37,10 @@ def test_page_has_the_label_tooltip_element(ds):
     assert 'id="label-tip"' in get(ds, "/airports/ATL/destinations").text
 
 
-def test_page_offers_ranking_by_the_latest_full_year(ds):
+def test_page_offers_ranking_by_all_years_and_leaves_the_airports_years_to_the_script(ds):
     html = get(ds, "/airports/ATL/destinations").text
-    assert 'id="matrix-rank"' in html and '<option value="latest">' in html
+    menu = re.search(r'<select id="matrix-rank"[^>]*>(.*?)</select>', html, re.S).group(1)
+    assert menu == '<option value="">all years</option>'  # the years it flew, the way chosen, come with its rows
     assert 'data-latest-year="2025"' in html
 
 

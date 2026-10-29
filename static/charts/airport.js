@@ -51,7 +51,7 @@ const stackMax = (points) => {
 function yearAxis(years) {
   const shown = yearDomain(years, { span: 'all', min: firstYear, max: lastYear }).map(String);
   const every = shown.length <= 15 ? 1 : 5;
-  return { type: 'band', domain: shown, label: null, tickFormat: (d) => (Number(d) % every === 0 ? d : '') };
+  return { type: 'band', domain: shown, label: null, tickSize: 0, tickFormat: (d) => (Number(d) % every === 0 ? d : '') };
 }
 
 // the page's own settings in the address, defaults left out; the theme and anything carried stay
@@ -80,7 +80,7 @@ function drawSize() {
     : { domain: names, range: names.map((n) => (split === 'kind' ? p.kind[n] : p.service[n])) };
   const chart = plot(box, {
     x: yearAxis(res.points.map((pt) => pt.year)),
-    y: { ...millionsAxis(stackMax(data), MATRIX_MEASURES[measure]), grid: true },
+    y: { ...millionsAxis(stackMax(data), MATRIX_MEASURES[measure]), grid: true, tickSize: 0 },
     color: { ...colour, legend: true },
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: names }),
@@ -112,7 +112,7 @@ function drawPlaces() {
   const p = palette(isDark());
   const data = counts.map((c) => ({ year: String(c.year), series: c.service, value: c.count }));
   plot(box, {
-    x: yearAxis(counts.map((c) => c.year)), y: { label: 'Destinations', grid: true },
+    x: yearAxis(counts.map((c) => c.year)), y: { label: 'Destinations', grid: true, tickSize: 0 },
     color: { domain: series, range: series.map((s) => p.service[s]), legend: true },
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series }),

@@ -162,7 +162,7 @@ function drawCities(box) {
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
-    x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
+    x: { type: 'band', domain: years, label: null, axis: 'top', tickSize: 0, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.rows.map((r) => r.key), axis: null },
     color: colourOptions(res.cells),
     marks: [
@@ -213,7 +213,7 @@ function draw() {
     marginTop: 30,
     padding: 0.08,
     style: { background: 'transparent', fontSize: '12px' },
-    x: { type: 'band', domain: years, label: null, axis: 'top', tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
+    x: { type: 'band', domain: years, label: null, axis: 'top', tickSize: 0, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.dests, axis: null },
     color: relative()
       ? { type: 'sqrt', scheme: 'YlOrRd', label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
