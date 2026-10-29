@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Changelog · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/about/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <style type="text/css">
+    dt {
+        font-weight: 500;
+    }
+    dd {
+        margin: 0;
+        padding-left: 0.5em;
+    }
+  </style>
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body>
+  <main class="about">
+    {% include "_nav.html" %}
+    <h1>Changelog</h1>
+    <p class="related" id="full-name">
+        <a href="/about">About</a> · <b>Changelog</b>
+    </p>
+
+    <h2 id="2026-10-29">29 October 2026</h2>
+
+    <dl>
+        <dt>Changes to navigating through route pairs - always open all years view, but highlight selected year</dt>
+        <dt>Airport destinations matrix can be sorted by any year</dt>
+        <dt>Chart simplification: remove axis ticks</dt>
+    </dl>
+
+    <h2 id="2026-10-28">28 October 2026</h2>
+
+    <dl>
+        <dt>Change rollups and displays to bidirectional</dt>
+        <dd>This is a pretty major change - it basically doubles numbers across the site, but that's probably what viewers actually expect. Returning to showing departures or arrivals is possible by using the appropriate dropdown (which forces a page render to make sure the copy matches).
+        <dt>Default airlines when sorted by freight to 'all flights'</dt>
+        <dt>Add footnotes for freight airlines noting 2002-related data changes</dt>
+        <dt>Route changes now include added-then-dropped, which were otherwise missing</dt>
+    </dl>
+
+    <h2 id="2026-10-25">25 October 2026</h2>
+
+    <dl>
+        <dt>Include airport names as well as locations</dt>
+        <dt>Convert long-haul story to general "groups" chart</dt>
+        <dd>That replaces a specific narrative about four engined jets to a general comparison of engines across different distances</dd>
+        <dt>Add "aircraft" page to airlines</dt>
+        <dd>Includes both merged and component airline views</dd>
+    </dl>
+
+    <h2 id="2026-10-24">24 October 2026</h2>
+
+    <dl>
+        <dt>Add 'dedicated' airports page for carrier-dominated airports</dt>
+        <dt>Fix aircraft family rollups</dt>
+    </dl>
+
+    <h2 id="2026-10-23">23 October 2026</h2>
+
+    <dl>
+        <dt>Support city groupings on all departure charts</dt>
+        <dt>Harden site against scraping</dt>
+        <dt>Add aircraft pages</dt>
+    </dl>
+  </main>
+</body>
+</html>

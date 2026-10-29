@@ -67,6 +67,8 @@ def register_routes():
         (rf"^/routes/(?P<origin>{CODE})$", moved("/airports/{origin}")),
         (rf"^/route/(?P<origin>{CODE})/(?P<dest>{CODE})$", moved("/airports/{origin}/{dest}")),
         (rf"^/route/(?P<origin>{CODE})/(?P<dest>{CODE})/(?P<year>[0-9]{{4}})$", moved("/airports/{origin}/{dest}/{year}")),
+        # Changelog
+        (r"^/changelog$", changelog_page),
     ]
 
 
@@ -739,6 +741,16 @@ async def about_page(datasette, request):
     config = datasette.plugin_config("t100_globe") or {}
     html = await datasette.render_template(
         "about.html",
+        {"min_year": config.get("min_year", 1990), "max_year": config.get("max_year", 2025), "crumbs": trail(datasette, ("about", None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+async def changelog_page(datasette, request):
+    config = datasette.plugin_config("t100_globe") or {}
+    html = await datasette.render_template(
+        "changelog.html",
         {"min_year": config.get("min_year", 1990), "max_year": config.get("max_year", 2025), "crumbs": trail(datasette, ("about", None))},
         request=request,
     )
