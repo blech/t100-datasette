@@ -88,6 +88,8 @@ AIRPORT_CODE = re.compile(r"^[A-Za-z0-9]{3}$")
 def section_of(path):
     """The site section a path belongs to, from its first segment; None for the front page and Datasette's own pages."""
     first = path.strip("/").split("/")[0]
+    if first == 'changelog':
+        first = 'about'
     return first if first in SECTIONS else None
 
 
@@ -128,6 +130,10 @@ def views_for(path):
                         ("Aircraft", f"/airlines/{slug}/aircraft", None), ("Changes", f"/airlines/{slug}/changes", None),
                         ("Map", f"/airlines/{slug}/globe", "map-link"),
                         current=[[], ["routes"], ["aircraft"], ["changes"], ["globe"]].index(rest))
+        case ["about"]:
+            return make(("About", "/about", None), ("Changes", "/changelog", None), current=len(parts) - 1)
+        case ["changelog"]:
+            return make(("About", "/about", None), ("Changes", "/changelog", None), current=len(parts))
     return []
 
 
@@ -762,7 +768,7 @@ async def changelog_page(datasette, request):
     config = datasette.plugin_config("t100_globe") or {}
     html = await datasette.render_template(
         "changelog.html",
-        {"min_year": config.get("min_year", 1990), "max_year": config.get("max_year", 2025), "crumbs": trail(datasette, ("about", None))},
+        {"min_year": config.get("min_year", 1990), "max_year": config.get("max_year", 2025), "crumbs": trail(datasette, ("changelog", None))},
         request=request,
     )
     return Response.html(html)
