@@ -37,7 +37,7 @@ const bounds = { min: Number(document.body.dataset.minYear), max: Number(documen
 let rows = [];
 let aircraftRows = null;   // the family's aircraft, fetched the first time the aircraft split is chosen
 
-const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
 function pushState() {
   const q = new URLSearchParams();

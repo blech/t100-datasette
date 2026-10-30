@@ -1,3 +1,5 @@
+import { defaultFlights } from './flights.js';
+
 const LB_PER_SHORT_TON = 2000;
 const amount = (row, measure) => (Number(row[measure]) || 0) / (measure === 'freight' ? LB_PER_SHORT_TON : 1);
 const byValue = (a, b) => b.value - a.value || a.name.localeCompare(b.name);
@@ -61,6 +63,14 @@ function compare(key, dir) {
 export function sortAirlines(groups, key, dir = 'desc') {
   const by = compare(key, dir);
   return [...groups].sort(by).map((g) => ({ ...g, members: [...g.members].sort(by) }));
+}
+
+// The settings an airline's own page reads, for a link to it: the same measure for the same flights, defaults left out
+export function airlineQuery({ measure, flights }) {
+  const q = new URLSearchParams();
+  if (measure !== 'passengers') q.set('measure', measure);
+  if (flights !== defaultFlights(measure)) q.set('flights', flights);
+  return q.size ? `?${q}` : '';
 }
 
 // The settings the airlines table and the airlines matrix both read, to carry between them

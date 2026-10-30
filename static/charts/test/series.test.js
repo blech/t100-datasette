@@ -70,6 +70,17 @@ test('load factor is left out where there were no seats', () => {
   assert.equal(res.points.length, 0);
 });
 
+test('load factor leaves out a series\' periods with fewer than minDeps departures, so a full one-off flight is no spike', () => {
+  const few = [row(2019, 'United', 'B737', 12, 900, 1000), row(2019, 'Charter', 'A320', 1, 180, 180), row(2020, 'Charter', 'A320', 20, 1000, 4000)];
+  const res = buildSeries(few, { measure: 'load_factor', split: 'carrier', minDeps: 12 });
+  assert.equal(at(res, 2019, 'United'), 90);
+  assert.equal(at(res, 2019, 'Charter'), undefined);
+  assert.equal(at(res, 2020, 'Charter'), 25);
+  assert.deepEqual(res.series, ['Charter', 'United']);
+  // other measures keep every period
+  assert.equal(at(buildSeries(few, { measure: 'passengers', split: 'carrier', minDeps: 12 }), 2019, 'Charter'), 180);
+});
+
 test('other measures can be stacked', () => {
   assert.equal(buildSeries(rows, { measure: 'seats', split: 'none' }).stackable, true);
 });
@@ -78,8 +89,8 @@ test('empty input gives empty output', () => {
   assert.deepEqual(buildSeries([], { measure: 'deps', split: 'carrier' }), { points: [], series: [], periods: [], stackable: true });
 });
 
-test('menus list every measure and split', () => {
-  assert.deepEqual(Object.keys(MEASURES), ['passengers', 'deps', 'seats', 'freight', 'load_factor']);
+test('menus list every measure and split, seats last', () => {
+  assert.deepEqual(Object.keys(MEASURES), ['passengers', 'freight', 'deps', 'load_factor', 'seats']);
   assert.deepEqual(Object.keys(SPLITS), ['carrier', 'aircraft', 'both', 'none']);
 });
 

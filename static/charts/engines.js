@@ -10,7 +10,7 @@ import { formatCount } from '/static/common/numbers.js';
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
-const MEASURES = { deps: 'departures', passengers: 'passengers', seats: 'seats', freight: 'freight (short tons)' };
+const MEASURES = { passengers: 'passengers', freight: 'freight', deps: 'departures', seats: 'seats' };
 const state = {
   measure: pick('emeasure', Object.keys(MEASURES), 'deps'),
   kind: pick('ekind', ['passenger', 'freight', 'all'], 'passenger'),

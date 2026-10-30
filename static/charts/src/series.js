@@ -1,9 +1,9 @@
 export const MEASURES = {
   passengers: 'Passengers',
+  freight: 'Freight',
   deps: 'Departures',
-  seats: 'Seats',
-  freight: 'Freight (short tons)',
   load_factor: 'Load factor (%)',
+  seats: 'Seats',
 };
 export const SPLITS = { carrier: 'Carrier', aircraft: 'Aircraft', both: 'Carrier and aircraft', none: 'No split' };
 
@@ -30,8 +30,9 @@ function valueOf(measure, t) {
 }
 
 // Rows from the `route` or `route_year` query -> one value per (period, series).
-// Series beyond the `top` biggest overall are folded into "Other", listed last.
-export function buildSeries(rows, { measure = 'passengers', split = 'carrier', top = 8, periodKey = 'year', keep = new Set() } = {}) {
+// Series beyond the `top` biggest overall are folded into "Other", listed last. Load factor leaves out a series' periods
+// with fewer than `minDeps` departures, where a single full flight would be a spike to 100%.
+export function buildSeries(rows, { measure = 'passengers', split = 'carrier', top = 8, periodKey = 'year', keep = new Set(), minDeps = 0 } = {}) {
   const cells = new Map(); // `${period}\u0000${label}` -> sums
   const overall = new Map(); // label -> total of the measure's base quantity
   for (const r of rows) {
@@ -65,6 +66,7 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
 
   const points = [];
   for (const m of merged.values()) {
+    if (measure === 'load_factor' && m.deps < minDeps) continue;
     const value = valueOf(measure, m);
     if (value !== null) points.push({ period: m.period, series: m.label, value });
   }

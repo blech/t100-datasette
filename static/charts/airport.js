@@ -30,7 +30,7 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 
-const unit = (m) => MATRIX_MEASURES[m].toLowerCase().replace(/ \(.*/, '');
+const unit = (m) => MATRIX_MEASURES[m].toLowerCase();
 const yearPopover = { content: (d) => ({ title: d.period, rows: d.rows }), at: (d) => [d.period, d.top] };
 const plot = (box, options, popover) => {
   const chart = Plot.plot({
@@ -144,6 +144,15 @@ async function overTime() {
     $('size-chart').textContent = $('places-chart').textContent = 'Could not load the chart data.';
     return;
   }
+  // an airport with no freight at all isn't offered it
+  if (!size.some((r) => Number(r.freight) > 0)) {
+    $('ap-measure').querySelector('option[value="freight"]').remove();
+    if (params.get('measure') === 'freight') {
+      $('ap-measure').value = 'passengers';
+      $('ap-flights').value = flightsAfter($('ap-flights').value, 'freight', 'passengers');
+    }
+  }
+  if (params.get('measure') === 'freight' && $('ap-measure').value !== 'freight') save(); // freight there's none of
   drawSize();
   drawPlaces();
   let measure = $('ap-measure').value;

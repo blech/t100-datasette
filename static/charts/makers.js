@@ -28,7 +28,7 @@ const state = {
 };
 let rows = [];
 
-const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
 function pushState() {
   const q = new URLSearchParams();

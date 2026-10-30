@@ -38,7 +38,7 @@ let routes = [];
 let gone = []; // pairs dropped at any point (carrier_routes_gone): dropped, or added and dropped again in between
 const memberLabel = (name) => shortName(name);
 
-const unit = (m) => MATRIX_MEASURES[m].toLowerCase().replace(/ \(.*/, '');
+const unit = (m) => MATRIX_MEASURES[m].toLowerCase();
 const plot = (box, options, popover) => {
   const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100), height: 320, marginLeft: 64,
@@ -239,6 +239,14 @@ async function main() {
     if (hasChanges) loadChanges();
   });
   if (hasSize) {
+    // an airline with no freight at all isn't offered it
+    if (!detail.some((r) => Number(r.freight) > 0)) {
+      $('al-measure').querySelector('option[value="freight"]').remove();
+      if (qs.get('measure') === 'freight') {
+        $('al-measure').value = 'passengers';
+        $('al-kind').value = flightsAfter($('al-kind').value, 'freight', 'passengers');
+      }
+    }
     // the flights left at their default follow the measure, so both are kept whenever either changes
     let measure = $('al-measure').value;
     const keep = () => {
@@ -246,6 +254,11 @@ async function main() {
       remember('flights', $('al-kind').value, defaultFlights($('al-measure').value));
       drawSize();
     };
+    // freight there's none of
+    if (qs.get('measure') === 'freight' && measure !== 'freight') {
+      remember('measure', measure, 'passengers');
+      remember('flights', $('al-kind').value, defaultFlights(measure));
+    }
     $('al-measure').addEventListener('change', () => {
       $('al-kind').value = flightsAfter($('al-kind').value, measure, $('al-measure').value);
       measure = $('al-measure').value;
