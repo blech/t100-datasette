@@ -1,5 +1,6 @@
 import { slugify } from './rollup.js';
 import { dataHref } from '../../common/datalink.js';
+import { defaultFlights } from './flights.js';
 
 const LB_PER_SHORT_TON = 2000;
 
@@ -115,7 +116,7 @@ export function rowLabel(name) {
 export function carriedSearch({ measure, flights, service }) {
   const q = new URLSearchParams();
   if (measure !== 'passengers') q.set('measure', measure);
-  if (flights !== 'passenger') q.set('flights', flights);
+  if (flights !== defaultFlights(measure)) q.set('flights', flights);
   if (service !== 'all') q.set('service', service);
   const s = q.toString();
   return s ? `?${s}` : '';

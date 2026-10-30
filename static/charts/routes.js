@@ -111,11 +111,11 @@ const colourScale = (max) => (relative()
   : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(max, MATRIX_MEASURES[state.measure]) });
 // a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
-  { label: MATRIX_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
+  { label: MATRIX_MEASURES[state.measure], value: formatCount(c.value) },
   ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
   ...(state.scale === 'busiest' ? [{ label: "Of the year's top", value: fmtPct(c.peak) }] : []),
 ];
-const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
 function toggle(key) {
   state.open = state.open.includes(key) ? state.open.filter((k) => k !== key) : [...state.open, key];

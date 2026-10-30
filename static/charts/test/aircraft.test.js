@@ -175,7 +175,8 @@ import { carriedSearch } from '../src/aircraft.js';
 
 test('the matrix passes its measure, kind of flight and routes to a family or aircraft page, leaving out the defaults', () => {
   assert.equal(carriedSearch({ measure: 'passengers', flights: 'passenger', service: 'all' }), '');
-  assert.equal(carriedSearch({ measure: 'freight', flights: 'all', service: 'international' }), '?measure=freight&flights=all&service=international');
+  assert.equal(carriedSearch({ measure: 'freight', flights: 'all', service: 'international' }), '?measure=freight&service=international');  // all is freight's default
+  assert.equal(carriedSearch({ measure: 'freight', flights: 'passenger', service: 'all' }), '?measure=freight&flights=passenger');
   assert.equal(carriedSearch({ measure: 'deps', flights: 'passenger', service: 'all' }), '?measure=deps');
 });
 
@@ -197,5 +198,5 @@ import { airlineSearch } from '../src/aircraft.js';
 
 test('an airline\'s aircraft matrix opens a family or aircraft split by airline, with that airline picked out', () => {
   assert.equal(airlineSearch('delta', { measure: 'passengers', flights: 'passenger', service: 'all' }), '?split=airline&highlight=airline:delta');
-  assert.equal(airlineSearch('19540', { measure: 'freight', flights: 'all', service: 'all' }), '?measure=freight&flights=all&split=airline&highlight=airline:19540');
+  assert.equal(airlineSearch('19540', { measure: 'freight', flights: 'all', service: 'all' }), '?measure=freight&split=airline&highlight=airline:19540');
 });

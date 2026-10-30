@@ -1,7 +1,8 @@
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
-import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
+import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
+import { setMenus } from '/static/common/menus.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { groupAirlines, sortAirlines, sharedQuery, matchesElsewhere } from '/static/charts/src/airlines.js';
+import { groupAirlines, sortAirlines, sharedQuery, airlineQuery, matchesElsewhere } from '/static/charts/src/airlines.js';
 import { limitFamilies, limitOptions, DEFAULT_LIMIT } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { formatCount, countLabel } from '/static/common/numbers.js';
@@ -72,7 +73,7 @@ function memberRow(m) {
   const tr = document.createElement('tr');
   tr.className = 'type-row';
   const name = cell('', 'left type-name');
-  name.append(link(`/airlines/${m.id}`, m.name));
+  name.append(link(`/airlines/${m.id}${airlineQuery(state)}`, m.name));
   tr.append(name, cell(span(m.firstYear, m.lastYear)), cell(formatCount(m.value)), cell(pct(m.share)));
   return tr;
 }
@@ -126,7 +127,8 @@ function draw() {
       toggle.addEventListener('click', () => { if (open.has(g.id)) open.delete(g.id); else open.add(g.id); focusKey = `twist:${g.id}`; draw(); });
       first.append(toggle, ' ');
     }
-    first.append(link(`/airlines/${g.id}`, g.name));
+    // an airline's page opens on the same measure for the same flights
+    first.append(link(`/airlines/${g.id}${airlineQuery(state)}`, g.name));
     tr.append(first, cell(span(g.firstYear, g.lastYear)), cell(formatCount(g.value)), cell(pct(g.share)));
     tbody.append(tr);
     if (isOpen && (g.members.length > 1 || g.matched)) for (const m of g.members) tbody.append(memberRow(m));
@@ -171,8 +173,11 @@ function main() {
   for (const [id, field] of [['airline-measure', 'measure'], ['airline-year', 'year'], ['airline-flights', 'flights'], ['airline-service', 'service'], ['airline-limit', 'limit']]) {
     $(id).value = state[field];
     $(id).addEventListener('change', (e) => {
-      if (field === 'measure') $('airline-flights').value = state.flights = flightsAfter(state.flights, state.measure, e.target.value);
-      state[field] = e.target.value;
+      if (field === 'measure' || field === 'flights') {
+        // flights left at their default follow the measure (src/flights.js)
+        Object.assign(state, settle(state, { measure: state.measure, flights: state.flights, [field]: e.target.value }));
+        setMenus({ measure: $('airline-measure'), flights: $('airline-flights') }, state, field);
+      } else state[field] = e.target.value;
       pushState();
       if (field === 'year') load(); else draw();
     });

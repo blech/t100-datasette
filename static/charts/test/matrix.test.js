@@ -56,7 +56,9 @@ test('empty input is empty output', () => {
 });
 
 test('menu of measures', () => {
-  assert.deepEqual(Object.keys(MATRIX_MEASURES), ['passengers', 'deps', 'seats', 'freight']);
+  assert.deepEqual(Object.keys(MATRIX_MEASURES), ['passengers', 'freight', 'deps', 'seats']);
+  assert.equal(MATRIX_MEASURES.freight, 'Freight');
+  assert.deepEqual(Object.keys(matrixMeasures('out')), ['passengers', 'freight', 'deps', 'seats']);  // the count renamed in place
 });
 
 // ---- grouping by BTS market ----

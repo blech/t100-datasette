@@ -3,7 +3,8 @@ import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES as MEASURES, matrixMeasures } from '/static/charts/src/matrix.js';
-import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
+import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
+import { setMenus } from '/static/common/menus.js';
 import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, carriedSearch, airlineSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
@@ -52,7 +53,7 @@ state.flights = pick('flights', FLIGHTS, defaultFlights(state.measure));
 let rows = [];
 
 const ROW_PX = 20;
-const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const relative = () => state.scale !== 'absolute';
@@ -86,7 +87,7 @@ const carry = () => {
 
 // a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
-  { label: MATRIX_MEASURES[state.measure].replace(/ \(.*/, ''), value: formatCount(c.value) },
+  { label: MATRIX_MEASURES[state.measure], value: formatCount(c.value) },
   ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
   ...(state.scale === 'busiest' ? [{ label: "Of the year's biggest", value: fmtPct(c.peak) }] : []),
 ];
@@ -244,13 +245,16 @@ function fillControls() {
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
   }
   const bind = (id, field, convert = String) => $(id).addEventListener('change', (e) => { state[field] = convert(e.target.value); pushState(); draw(); });
-  // flights left at their default follow the measure
-  $('matrix-measure').addEventListener('change', (e) => {
-    state.flights = flightsAfter(state.flights, state.measure, e.target.value);
-    if ($('matrix-kind')) $('matrix-kind').value = state.flights;
-  });
-  bind('matrix-measure', 'measure');
-  if ($('matrix-kind')) bind('matrix-kind', 'flights');
+  // flights left at their default follow the measure (src/flights.js)
+  const menus = { measure: $('matrix-measure'), flights: $('matrix-kind') };
+  for (const [field, select] of Object.entries(menus)) {
+    select?.addEventListener('change', (e) => {
+      Object.assign(state, settle(state, { measure: state.measure, flights: state.flights, [field]: e.target.value }));
+      setMenus(menus, state, field);
+      pushState();
+      draw();
+    });
+  }
   if ($('matrix-service')) bind('matrix-service', 'service');
   if ($('matrix-group')) { $('matrix-group').value = state.group; bind('matrix-group', 'group'); }
   bind('matrix-n', 'n', Number);

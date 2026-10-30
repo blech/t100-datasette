@@ -6,23 +6,25 @@ import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight } from '/static/common/highlight.js';
 import { formatCount } from '/static/common/numbers.js';
+import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
+import { setMenus } from '/static/common/menus.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
-const MEASURES = { deps: 'departures', passengers: 'passengers', seats: 'seats', freight: 'freight (short tons)' };
+const MEASURES = { passengers: 'passengers', freight: 'freight', deps: 'departures', seats: 'seats' };
 const state = {
   measure: pick('emeasure', Object.keys(MEASURES), 'deps'),
-  kind: pick('ekind', ['passenger', 'freight', 'all'], 'passenger'),
   // a link from before the range (?eband=) opens as the same range
   ...(legacyBand(params.get('eband')) || bandRange(params.get('efrom') ?? '3000', params.get('eto') ?? 'any')),
 };
+state.kind = pick('ekind', FLIGHTS, defaultFlights(state.measure));
 let rows = [];
 
 function pushState() {
   const q = new URLSearchParams(location.search);
   q.delete('eband');
-  for (const [key, value, fallback] of [['emeasure', state.measure, 'deps'], ['ekind', state.kind, 'passenger'], ['efrom', state.from, '3000'], ['eto', state.to, 'any']]) {
+  for (const [key, value, fallback] of [['emeasure', state.measure, 'deps'], ['ekind', state.kind, defaultFlights(state.measure)], ['efrom', state.from, '3000'], ['eto', state.to, 'any']]) {
     if (value === fallback) q.delete(key); else q.set(key, value);
   }
   const s = q.toString();
@@ -69,7 +71,17 @@ async function main() {
   $('engine-kind').value = state.kind;
   showRange();
   for (const [id, field] of [['engine-measure', 'measure'], ['engine-kind', 'kind']]) {
-    $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });
+    $(id).addEventListener('change', (e) => {
+      if (field === 'measure' || field === 'kind') {
+        // flights left at their default follow the measure (src/flights.js)
+        const key = field === 'kind' ? 'flights' : field;
+        const s = settle({ measure: state.measure, flights: state.kind }, { measure: state.measure, flights: state.kind, [key]: e.target.value });
+        Object.assign(state, { measure: s.measure, kind: s.flights });
+        setMenus({ measure: $('engine-measure'), flights: $('engine-kind') }, s, key);
+      } else state[field] = e.target.value;
+      pushState();
+      draw();
+    });
   }
   for (const id of ['engine-from', 'engine-to']) {
     $(id).addEventListener('change', () => {

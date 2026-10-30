@@ -114,7 +114,9 @@ function drawChart() {
   const wanted = byAirline ? highlightedSeries(viewRows, highlight, (r) => labelFor(r, state.split)) : new Set();
   // split by carrier the airline is kept as a series of its own; split by carrier and aircraft it may fly a dozen
   // types, so only its pairings already among the largest are picked out, and the chart keeps its shape
-  const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year', keep: state.split === 'carrier' ? wanted : new Set() });
+  // load factor counts an airline in a year it flew the route at least 12 times, as the site counts flying a route, or
+  // in a month at least 4, about weekly
+  const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year', keep: state.split === 'carrier' ? wanted : new Set(), minDeps: monthly ? 4 : 12 });
   const pinned = new Set([...wanted].filter((l) => res.series.includes(l)));
   highlightLine(highlight, pinned, byAirline);
   const box = $('route-chart-plot');
@@ -287,6 +289,12 @@ async function main() {
     drawTable();
     return;
   }
+  // a route with no freight at all isn't offered it
+  if (!allRows.some((r) => Number(r.total_freight) > 0)) {
+    delete measures.freight;
+    if (state.measure === 'freight') state.measure = 'passengers';
+  }
+  if (params.get('measure') === 'freight' && state.measure !== 'freight') pushState(); // freight there's none of
   fillSelect($('chart-measure'), measures, state.measure);
   $('chart-measure').addEventListener('change', (e) => { state.measure = e.target.value; pushState(); drawChart(); });
   document.addEventListener('t100:theme', () => drawChart());

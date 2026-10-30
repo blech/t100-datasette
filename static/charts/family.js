@@ -1,6 +1,8 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
+import { setMenus } from '/static/common/menus.js';
 import { buildFamilySeries, hasVersions, slugify, SPLIT_LABEL } from '/static/charts/src/rollup.js';
 import { aircraftHref, airlinesLink } from '/static/charts/src/aircraft.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
@@ -28,21 +30,21 @@ const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
-  kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   split: pick('split', defaultSplit ? ['airline', 'all'] : ['subfamily', 'airline', 'aircraft', 'all'], defaultSplit),
   span: parseSpan(params.get('span')),
 };
+state.kind = pick('flights', FLIGHTS, defaultFlights(state.measure));
 const bounds = { min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) };
 let rows = [];
 let aircraftRows = null;   // the family's aircraft, fetched the first time the aircraft split is chosen
 
-const unit = () => MATRIX_MEASURES[state.measure].toLowerCase().replace(/ \(.*/, '');
+const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
 function pushState() {
   const q = new URLSearchParams();
   if (state.measure !== 'passengers') q.set('measure', state.measure);
-  if (state.kind !== 'passenger') q.set('flights', state.kind);
+  if (state.kind !== defaultFlights(state.measure)) q.set('flights', state.kind);
   if (state.service !== 'all') q.set('service', state.service);
   q.set('split', state.split);
   if (state.span !== 'flown') q.set('span', state.span);
@@ -159,7 +161,13 @@ async function main() {
   $('fam-span').value = state.span;
   for (const [id, field] of [['fam-measure', 'measure'], ['fam-kind', 'kind'], ['fam-service', 'service'], ['fam-split', 'split'], ['fam-span', 'span']]) {
     $(id).addEventListener('change', async (e) => {
-      state[field] = e.target.value;
+      if (field === 'measure' || field === 'kind') {
+        // flights left at their default follow the measure (src/flights.js)
+        const key = field === 'kind' ? 'flights' : field;
+        const s = settle({ measure: state.measure, flights: state.kind }, { measure: state.measure, flights: state.kind, [key]: e.target.value });
+        Object.assign(state, { measure: s.measure, kind: s.flights });
+        setMenus({ measure: $('fam-measure'), flights: $('fam-kind') }, s, key);
+      } else state[field] = e.target.value;
       if (field === 'split' && state.split === 'aircraft' && !(await loadAircraft())) return;
       pushState();
       draw();

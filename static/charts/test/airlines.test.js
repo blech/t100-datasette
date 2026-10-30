@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupAirlines, sortAirlines, sharedQuery, matchesElsewhere } from '../src/airlines.js';
+import { groupAirlines, sortAirlines, sharedQuery, airlineQuery, matchesElsewhere } from '../src/airlines.js';
 import { limitFamilies, limitOptions } from '../src/aircraft.js';
 
 const r = (group_id, group_name, airline_id, airline_name, deps, extra = {}) => ({
@@ -62,6 +62,13 @@ test('sortAirlines sorts groups and their members by name, first year or value, 
   const delta = sortAirlines(groups, 'value', 'asc').at(-1);
   assert.deepEqual(delta.members.map((m) => m.id), ['19386', '19790']);
   assert.deepEqual(groups.map((g) => g.id), ['delta', 'southwest', 'fedex']);  // the input is left alone
+});
+
+test('airlineQuery carries the measure and flights to an airline\'s own page, defaults left out', () => {
+  assert.equal(airlineQuery({ measure: 'freight', flights: 'freight' }), '?measure=freight&flights=freight');
+  assert.equal(airlineQuery({ measure: 'freight', flights: 'all' }), '?measure=freight');  // all flights is freight's default
+  assert.equal(airlineQuery({ measure: 'passengers', flights: 'all' }), '?flights=all');
+  assert.equal(airlineQuery({ measure: 'passengers', flights: 'passenger' }), '');
 });
 
 test('sharedQuery keeps only the settings both airline pages read', () => {
