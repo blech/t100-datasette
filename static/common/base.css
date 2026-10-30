@@ -118,6 +118,9 @@ select {
   background-size: 5px 5px;
   background-repeat: no-repeat;
 }
+/* a menu the page changed by itself after another was chosen (static/common/menus.js), outlined for a moment */
+select.auto-changed { animation: auto-changed 1.8s ease-out; }
+@keyframes auto-changed { from, 40% { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); } }
 /* Safari draws its own search box over these unless told not to; wide enough for the placeholder, never wider than a phone */
 input[type="search"] {
   -webkit-appearance: none;

@@ -1,7 +1,8 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
-import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
+import { FLIGHTS, defaultFlights, settle, offeredBy } from '/static/charts/src/flights.js';
+import { setMenus, offerOnly } from '/static/common/menus.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
 import { pairsGone, flownText, mostText } from '/static/charts/src/gone.js';
 import { shortName } from '/static/charts/src/names.js';
@@ -239,33 +240,29 @@ async function main() {
     if (hasChanges) loadChanges();
   });
   if (hasSize) {
-    // an airline with no freight at all isn't offered it
-    if (!detail.some((r) => Number(r.freight) > 0)) {
-      $('al-measure').querySelector('option[value="freight"]').remove();
-      if (qs.get('measure') === 'freight') {
-        $('al-measure').value = 'passengers';
-        $('al-kind').value = flightsAfter($('al-kind').value, 'freight', 'passengers');
-      }
-    }
-    // the flights left at their default follow the measure, so both are kept whenever either changes
-    let measure = $('al-measure').value;
+    // measure, flights and split are settled together (src/flights.js): an airline with no freight isn't offered it,
+    // nor freight flights or a split by kind with no freighters
+    const menus = { measure: $('al-measure'), flights: $('al-kind'), split: $('al-split') };
+    const settings = () => ({ measure: menus.measure.value, flights: menus.flights.value, split: menus.split.value });
     const keep = () => {
-      remember('measure', $('al-measure').value, 'passengers');
-      remember('flights', $('al-kind').value, defaultFlights($('al-measure').value));
-      drawSize();
+      remember('measure', menus.measure.value, 'passengers');
+      remember('flights', menus.flights.value, defaultFlights(menus.measure.value));
+      remember('split', menus.split.value, 'service');
     };
-    // freight there's none of
-    if (qs.get('measure') === 'freight' && measure !== 'freight') {
-      remember('measure', measure, 'passengers');
-      remember('flights', $('al-kind').value, defaultFlights(measure));
+    const asked = settings();
+    const offered = offeredBy(detail, { measures: Object.keys(MATRIX_MEASURES), splits: ['service', 'kind'] });
+    offerOnly(menus, offered);
+    let current = settle(asked, null, { offered });
+    setMenus(menus, current);
+    if (Object.keys(asked).some((k) => asked[k] !== current[k])) keep();
+    for (const [key, select] of Object.entries(menus)) {
+      select.addEventListener('change', () => {
+        current = settle(current, settings(), { offered });
+        setMenus(menus, current, key);
+        keep();
+        drawSize();
+      });
     }
-    $('al-measure').addEventListener('change', () => {
-      $('al-kind').value = flightsAfter($('al-kind').value, measure, $('al-measure').value);
-      measure = $('al-measure').value;
-      keep();
-    });
-    $('al-kind').addEventListener('change', keep);
-    $('al-split').addEventListener('change', () => { remember('split', $('al-split').value, 'service'); drawSize(); });
     $('al-span').addEventListener('change', () => { remember('span', $('al-span').value, 'flown'); drawSize(); drawPairs(); });
     drawSize();
     document.addEventListener('t100:theme', () => { drawSize(); drawPairs(); });

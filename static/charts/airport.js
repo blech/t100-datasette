@@ -1,7 +1,8 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { matrixMeasures } from '/static/charts/src/matrix.js';
-import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
+import { FLIGHTS, defaultFlights, settle, offeredBy } from '/static/charts/src/flights.js';
+import { setMenus, offerOnly } from '/static/common/menus.js';
 import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList, changeSort, sortChanges } from '/static/charts/src/airport.js';
 import { formatYearMonth } from '/static/charts/src/airline.js';
 import { airportGone, flownText, mostText } from '/static/charts/src/gone.js';
@@ -132,6 +133,9 @@ async function overTime() {
     measure: [$('ap-measure').value, 'passengers'], flights: [$('ap-flights').value, defaultFlights($('ap-measure').value)],
     split: [$('ap-split').value, 'service'], min: [$('ap-min').value, '12'],
   });
+  // measure, flights and split are settled together (src/flights.js), once the rows show what's worth offering
+  const menus = { measure: $('ap-measure'), flights: $('ap-flights'), split: $('ap-split') };
+  const settings = () => ({ measure: menus.measure.value, flights: menus.flights.value, split: menus.split.value });
   setDataLink('airport_size', { origin, group: '', dir });
   try {
     const [s, p] = await Promise.all([
@@ -144,23 +148,23 @@ async function overTime() {
     $('size-chart').textContent = $('places-chart').textContent = 'Could not load the chart data.';
     return;
   }
-  // an airport with no freight at all isn't offered it
-  if (!size.some((r) => Number(r.freight) > 0)) {
-    $('ap-measure').querySelector('option[value="freight"]').remove();
-    if (params.get('measure') === 'freight') {
-      $('ap-measure').value = 'passengers';
-      $('ap-flights').value = flightsAfter($('ap-flights').value, 'freight', 'passengers');
-    }
-  }
-  if (params.get('measure') === 'freight' && $('ap-measure').value !== 'freight') save(); // freight there's none of
+  // an airport with no freight isn't offered it, nor freight flights or a split by kind with no freighters
+  const asked = settings();
+  const offered = offeredBy(size, { measures: Object.keys(MATRIX_MEASURES), splits: ['service', 'kind', 'airline'] });
+  offerOnly(menus, offered);
+  let current = settle(asked, null, { offered });
+  setMenus(menus, current);
+  if (Object.keys(asked).some((k) => asked[k] !== current[k])) save();
   drawSize();
   drawPlaces();
-  let measure = $('ap-measure').value;
-  $('ap-measure').addEventListener('change', () => {
-    $('ap-flights').value = flightsAfter($('ap-flights').value, measure, $('ap-measure').value);
-    measure = $('ap-measure').value;
-  });
-  for (const id of ['ap-measure', 'ap-flights', 'ap-split']) $(id).addEventListener('change', () => { save(); drawSize(); });
+  for (const [key, select] of Object.entries(menus)) {
+    select.addEventListener('change', () => {
+      current = settle(current, settings(), { offered });
+      setMenus(menus, current, key);
+      save();
+      drawSize();
+    });
+  }
   $('ap-min').addEventListener('change', () => { save(); drawPlaces(); });
   document.addEventListener('t100:theme', () => { drawSize(); drawPlaces(); });
 }

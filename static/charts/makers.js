@@ -1,6 +1,8 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
+import { setMenus } from '/static/common/menus.js';
 import { buildFamilySeries } from '/static/charts/src/rollup.js';
 import { kindOptions } from '/static/charts/src/aircraft.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -22,10 +24,10 @@ const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
-  kind: pick('flights', ['passenger', 'freight', 'all'], 'passenger'),
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   aircraftKind: params.get('type') || 'all',  // checked against the menu once the data is in
 };
+state.kind = pick('flights', FLIGHTS, defaultFlights(state.measure));
 let rows = [];
 
 const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
@@ -33,7 +35,7 @@ const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 function pushState() {
   const q = new URLSearchParams();
   if (state.measure !== 'passengers') q.set('measure', state.measure);
-  if (state.kind !== 'passenger') q.set('flights', state.kind);
+  if (state.kind !== defaultFlights(state.measure)) q.set('flights', state.kind);
   if (state.service !== 'all') q.set('service', state.service);
   if (state.aircraftKind !== 'all') q.set('type', state.aircraftKind);
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'type'], `?${q}`)}`);
@@ -85,7 +87,17 @@ async function main() {
   if (!kinds.some((o) => o.value === state.aircraftKind)) { state.aircraftKind = 'all'; pushState(); }
   $('mk-aircraft').value = state.aircraftKind;
   for (const [id, field] of [['mk-measure', 'measure'], ['mk-kind', 'kind'], ['mk-service', 'service'], ['mk-aircraft', 'aircraftKind']]) {
-    $(id).addEventListener('change', (e) => { state[field] = e.target.value; pushState(); draw(); });
+    $(id).addEventListener('change', (e) => {
+      if (field === 'measure' || field === 'kind') {
+        // flights left at their default follow the measure (src/flights.js)
+        const key = field === 'kind' ? 'flights' : field;
+        const s = settle({ measure: state.measure, flights: state.kind }, { measure: state.measure, flights: state.kind, [key]: e.target.value });
+        Object.assign(state, { measure: s.measure, kind: s.flights });
+        setMenus({ measure: $('mk-measure'), flights: $('mk-kind') }, s, key);
+      } else state[field] = e.target.value;
+      pushState();
+      draw();
+    });
   }
   document.addEventListener('t100:theme', () => draw());
   draw();

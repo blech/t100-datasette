@@ -1,5 +1,6 @@
 import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
-import { FLIGHTS, defaultFlights, flightsAfter } from '/static/charts/src/flights.js';
+import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
+import { setMenus } from '/static/common/menus.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { groupAirlines, sortAirlines, sharedQuery, airlineQuery, matchesElsewhere } from '/static/charts/src/airlines.js';
 import { limitFamilies, limitOptions, DEFAULT_LIMIT } from '/static/charts/src/aircraft.js';
@@ -172,8 +173,11 @@ function main() {
   for (const [id, field] of [['airline-measure', 'measure'], ['airline-year', 'year'], ['airline-flights', 'flights'], ['airline-service', 'service'], ['airline-limit', 'limit']]) {
     $(id).value = state[field];
     $(id).addEventListener('change', (e) => {
-      if (field === 'measure') $('airline-flights').value = state.flights = flightsAfter(state.flights, state.measure, e.target.value);
-      state[field] = e.target.value;
+      if (field === 'measure' || field === 'flights') {
+        // flights left at their default follow the measure (src/flights.js)
+        Object.assign(state, settle(state, { measure: state.measure, flights: state.flights, [field]: e.target.value }));
+        setMenus({ measure: $('airline-measure'), flights: $('airline-flights') }, state, field);
+      } else state[field] = e.target.value;
       pushState();
       if (field === 'year') load(); else draw();
     });
