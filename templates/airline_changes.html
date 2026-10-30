@@ -19,6 +19,7 @@
       Flying in the data from {{ first_year }} to {{ last_year }}.
       {% if parent %}One of the airlines counted together as <a href="/airlines/{{ parent.id }}">{{ parent.name }}</a>.{% endif %}
     </p>
+    {% set what = "routes it flies elsewhere aren't listed" %}{% include "_foreign_airline_note.html" %}
 
 
     <p class="chart-sentence">{% include "_each_choice.html" %}</p>

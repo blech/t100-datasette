@@ -594,6 +594,18 @@ async def aircraft_page(datasette, request):
     return Response.html(html)
 
 
+async def is_foreign_airline(datasette, airline_ids):
+    """True if BTS lists every one of these airlines as foreign (carrier group 0, which matches the code on their segments).
+
+    US airlines report every flight they operate; foreign airlines report only flights to or from a US airport."""
+    if not airline_ids:
+        return False
+    marks = ",".join("?" * len(airline_ids))
+    row = (await datasette.get_database("t100").execute(
+        f"SELECT COUNT(*), SUM(carrier_group <> '0') FROM carriers WHERE airline_id IN ({marks})", list(airline_ids))).first()
+    return row[0] > 0 and not row[1]
+
+
 async def resolve_airline(datasette, slug):
     """What /airlines/<slug> is: a group of airlines (a merger such as Delta with Northwest, or one airline on its own)
     or one member of a merged group. Returns the ids to query with, the names, and the group's members; 404 if neither."""
@@ -610,6 +622,7 @@ async def resolve_airline(datasette, slug):
         group_name = (await db.execute("SELECT group_name FROM carrier_group_year WHERE group_id = ? GROUP BY group_name ORDER BY MAX(year) DESC LIMIT 1", [slug])).first()[0]
         return {
             "group": slug, "airline": "", "name": group_name, "parent": None,
+            "foreign": await is_foreign_airline(datasette, [m[0] for m in members]),
             "first_year": min(m[2] for m in members), "last_year": max(m[3] for m in members),
             "members": [{"id": m[0], "name": m[1], "first_year": m[2], "last_year": m[3]} for m in members] if len(members) > 1 else [],
         }
@@ -626,6 +639,7 @@ async def resolve_airline(datasette, slug):
         raise NotFound(f"No airline {slug}")
     return {
         "group": row[0], "airline": slug, "name": row[2], "parent": {"id": row[0], "name": row[1]},
+        "foreign": await is_foreign_airline(datasette, [slug]),
         "first_year": row[3], "last_year": row[4], "members": [],
     }
 

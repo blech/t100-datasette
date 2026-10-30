@@ -19,6 +19,7 @@
       {% if parent %}One of the airlines counted together as <a href="/airlines/{{ parent.id }}">{{ parent.name }}</a>.{% endif %}
       {% if members %}Counts {{ members|map(attribute="name")|join(", ") }} together for every year.{% endif %}
     </p>
+    {% set what = "its routes elsewhere aren't shown" %}{% include "_foreign_airline_note.html" %}
     <p class="chart-sentence">
       Show <select id="matrix-measure" aria-label="Measure"></select>
       on <select id="matrix-service" aria-label="Routes"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>

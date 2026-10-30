@@ -100,3 +100,14 @@ def test_a_members_aircraft_page_shows_that_member_alone(ds, db_path):
 
 def test_an_unknown_airlines_aircraft_are_not_found(ds):
     assert get(ds, "/airlines/nope/aircraft").status_code == 404
+
+
+def test_a_foreign_airlines_pages_say_the_data_is_only_its_us_flights(ds, db_path):
+    put(db_path, "carriers", [dict(airline_id="19540", carrier_group="0"), dict(airline_id="19790", carrier_group="3")])
+    for airline, group in [("19540", "british-airways"), ("19790", "delta")]:
+        put(db_path, "carrier_group_year", [dict(year=2019, airline_id=airline, group_id=group, group_name=group, domestic=0,
+                                                 service_class="F", deps=4, seats=400, passengers=300, freight=0)])
+    for tail in ["", "/routes", "/aircraft", "/changes", "/globe"]:
+        assert 'id="foreign-airline-note"' in get(ds, f"/airlines/british-airways{tail}").text, tail
+        assert 'id="foreign-airline-note"' in get(ds, f"/airlines/19540{tail}").text, tail
+        assert 'id="foreign-airline-note"' not in get(ds, f"/airlines/delta{tail}").text, tail
