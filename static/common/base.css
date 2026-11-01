@@ -195,3 +195,7 @@ th[aria-sort] button::after {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* a page's settings written as a sentence, each a menu in it */
+.chart-sentence { line-height: 2.3; margin: 0 0 4px; }
+.chart-sentence select { margin: 0 2px; }

@@ -123,7 +123,7 @@ function groupedRows() {
 const aircraftTitle = (code, name) => { const i = aircraftInfo.get(code); return i ? `${name}\n${i.maker} · ${i.aircraft_kind}` : name; };
 function drawCities(box) {
   const aircraft = aircraftLike;
-  const res = buildCityMatrix(groupedRows(), { ...state, service: aircraft ? state.service : 'all', rankYear: rankYear() });
+  const res = buildCityMatrix(groupedRows(), { ...state, rankYear: rankYear() });
   if (!res.cells.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const city = cityOf();
   const byKey = new Map(res.rows.map((r) => [r.key, r]));

@@ -14,11 +14,18 @@ export function topBy(rows, key, n) {
     .slice(0, n);
 }
 
+export const SERVICES = ['all', 'domestic', 'international'];
+export const ROW_COUNTS = [10, 25, 50];
+export const DEFAULT_ROWS = 50;
+
 export function parseState(search, minYear, maxYear) {
   const q = new URLSearchParams(search || '');
   const year = Number.parseInt(q.get('year'), 10);
   const sort = q.get('sort');
+  const n = Number.parseInt(q.get('n'), 10);
   return {
+    n: ROW_COUNTS.includes(n) ? n : DEFAULT_ROWS,
+    service: SERVICES.includes(q.get('service')) ? q.get('service') : 'all',
     year: q.get('year') === 'all' ? 'all' : Number.isFinite(year) && year >= minYear && year <= maxYear ? year : maxYear,
     sort: Object.hasOwn(SORTS, sort) ? sort : 'passengers',
     group: q.get('group') === 'city' ? 'city' : 'airport',
@@ -33,6 +40,8 @@ export function toSearch(state, maxYear) {
   if (state.year !== maxYear) q.set('year', state.year);
   if (state.sort !== 'passengers') q.set('sort', state.sort);
   if (state.group === 'city') q.set('group', 'city');
+  if (state.n && state.n !== DEFAULT_ROWS) q.set('n', state.n);
+  if (state.service && state.service !== 'all') q.set('service', state.service);
   const s = q.toString();
   return s ? `?${s}` : '';
 }
@@ -40,12 +49,14 @@ export function toSearch(state, maxYear) {
 // the sort column carries over as the airport page's matrix measure (the keys are the same); destinations has no matrix
 // the table's sort and the airports matrix's measure are the same setting where both have it (not destinations, not seats)
 const SHARED = ['deps', 'freight'];
-// and so is showing airports or cities
+// and so are showing airports or cities, how many rows and which flights
 const search = (q) => (q.size ? `?${q}` : '');
-export const matrixSearch = (sort, group = 'airport') => {
+export const matrixSearch = (sort, group = 'airport', { n = DEFAULT_ROWS, service = 'all' } = {}) => {
   const q = new URLSearchParams();
   if (SHARED.includes(sort)) q.set('measure', sort);
   if (group === 'city') q.set('group', 'city');
+  if (n !== DEFAULT_ROWS) q.set('n', n);
+  if (service !== 'all') q.set('service', service);
   return search(q);
 };
 export const tableSearch = (s) => {
@@ -53,6 +64,8 @@ export const tableSearch = (s) => {
   const q = new URLSearchParams();
   if (SHARED.includes(from.get('measure'))) q.set('sort', from.get('measure'));
   if (from.get('group') === 'city') q.set('group', 'city');
+  if (ROW_COUNTS.includes(Number(from.get('n'))) && Number(from.get('n')) !== DEFAULT_ROWS) q.set('n', from.get('n'));
+  if (SERVICES.includes(from.get('service')) && from.get('service') !== 'all') q.set('service', from.get('service'));
   return search(q);
 };
 

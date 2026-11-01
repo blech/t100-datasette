@@ -103,9 +103,9 @@ def views_for(path):
 
     match parts:
         case ["airports"] | ["airports", "dedicated"] | ["airports", "over-time"] | ["airports", "globe"]:
-            return make(("Busiest airports", "/airports", None), ("Most dedicated", "/airports/dedicated", None),
-                        ("Over time", "/airports/over-time", None), ("Map", "/airports/globe", None),
-                        current=[[], ["dedicated"], ["over-time"], ["globe"]].index(parts[1:]))
+            return make(("Busiest airports", "/airports", None), ("Over time", "/airports/over-time", None),
+                        ("Most dedicated", "/airports/dedicated", None), ("Map", "/airports/globe", None),
+                        current=[[], ["over-time"], ["dedicated"], ["globe"]].index(parts[1:]))
         case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
@@ -292,7 +292,8 @@ async def airports_index(datasette, request):
     min_year, max_year = year_range(datasette)
     html = await datasette.render_template(
         "airports.html",
-        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None)), **airport_direction(request)},
+        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None)), **airport_direction(request),
+         "ranks": [("all", "all years")] + [(str(y), str(y)) for y in range(max_year, min_year - 1, -1)]},
         request=request,
     )
     return Response.html(html)

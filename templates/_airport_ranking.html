@@ -1,0 +1,10 @@
+{# the airport lists' shared settings, from "the top" on: how many, airports or cities, which flights, which year ranks them, which way
+   they count. /airports starts its sentence with "Show", /airports/over-time with "Show <measure> for". `p` prefixes the ids the
+   page's script reads; `ranks` is the (value, text) choices for the year that ranks them. #}
+{% macro airport_ranking(p, ranks, dir, dir_choices) -%}
+the top <select id="{{ p }}-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
+<select id="{{ p }}-group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>
+for <select id="{{ p }}-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>,
+ranked by <select id="{{ p }}-rank" aria-label="Year used to rank rows">{% for value, text in ranks %}<option value="{{ value }}">{{ text }}</option>{% endfor %}</select>
+in <select id="dir" aria-label="Direction">{% for value, text in dir_choices %}<option value="{{ value }}"{% if value == dir %} selected{% endif %}>{{ text|lower }}</option>{% endfor %}</select>.
+{%- endmacro %}

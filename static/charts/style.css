@@ -13,8 +13,6 @@
 #years a[aria-current] { font-weight: 600; }
 #route-table { margin-top: 24px; }
 #route-table td.left, #route-table th.left, #change-table td.left, #change-table th.left { text-align: left; }
-.chart-sentence { line-height: 2.3; margin: 0 0 4px; }
-.chart-sentence select { margin: 0 2px; }
 .scale-choice { display: flex; flex-wrap: wrap; gap: 4px 16px; border: 0; padding: 0; margin: 0 0 8px; }
 .scale-choice legend { float: left; padding: 0; }
 .scale-choice label { white-space: nowrap; }

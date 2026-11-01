@@ -6,7 +6,6 @@ import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { parseDir, setDir } from '/static/common/direction.js';
 
-const ROWS_SHOWN = 20;
 const minYear = Number(document.body.dataset.minYear);
 const maxYear = Number(document.body.dataset.maxYear);
 const state = parseState(location.search, minYear, maxYear);
@@ -47,7 +46,7 @@ function render() {
     if (th.dataset.sort === state.sort) th.setAttribute('aria-sort', 'descending');
     else th.removeAttribute('aria-sort');
   }
-  $('heading').textContent = `Busiest ${state.group === 'city' ? 'cities' : 'airports'} by ${sortLabels(dir)[state.sort].toLowerCase()}, ${yearLabel(state.year, minYear, maxYear)}`;
+  $('heading').textContent = `Busiest ${state.group === 'city' ? 'cities' : 'airports'} by ${sortLabels(dir)[state.sort].toLowerCase()}, ${yearLabel(state.year, minYear, maxYear)}${state.service === 'all' ? '' : `, ${state.service} flights`}`;
   const body = document.querySelector('#airports tbody');
   body.replaceChildren();
   // an airport's row: its code (to its page), name, figures and map; under an opened city it's indented
@@ -63,11 +62,11 @@ function render() {
     return tr;
   };
   if (state.group !== 'city') {
-    for (const r of topBy(rows, state.sort, ROWS_SHOWN)) body.append(airportRow(r, false));
+    for (const r of topBy(rows, state.sort, state.n)) body.append(airportRow(r, false));
     return;
   }
   // a city's row: a ▸ that opens it, its name, and its airports' totals (destinations counted once for the city)
-  for (const c of topBy(groupCities(rows), state.sort, ROWS_SHOWN)) {
+  for (const c of topBy(groupCities(rows), state.sort, state.n)) {
     const tip = groupTip({ label: c.name, codes: c.airports.map((a) => a.airport) }, airportInfo);
     const tr = document.createElement('tr');
     tr.className = 'city-row';
@@ -90,19 +89,22 @@ function render() {
 }
 
 // the views line's matrix takes the sort as its measure
-const carryToMatrix = () => { const a = document.querySelector('nav.views a[href^="/airports/over-time"]'); if (a) a.href = `/airports/over-time${matrixSearch(state.sort, state.group)}`; };
+const carryToMatrix = () => { const a = document.querySelector('nav.views a[href^="/airports/over-time"]'); if (a) a.href = `/airports/over-time${matrixSearch(state.sort, state.group, state)}`; };
 
 function pushState() {
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['year', 'sort', 'group'], toSearch(state, maxYear))}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['year', 'sort', 'group', 'n', 'service'], toSearch(state, maxYear))}`);
   carryToMatrix();
 }
 
+// every flight is the query's default, so an empty service
+const queryParams = () => ({ year: state.year, dir, service: state.service === 'all' ? '' : state.service });
+
 async function load() {
-  setDataLink('top_airports', { year: state.year, dir });
+  setDataLink('top_airports', queryParams());
   const id = ++loadSeq;
   $('status').textContent = 'Loading…';
   try {
-    const res = await fetchRows(queryUrl('top_airports', { year: state.year, dir }));
+    const res = await fetchRows(queryUrl('top_airports', queryParams()));
     if (id !== loadSeq) return;
     rows = res.rows;
     $('status').textContent = rows.length ? '' : `No data for ${yearLabel(state.year, minYear, maxYear)}.`;
@@ -115,15 +117,19 @@ async function load() {
   render();
 }
 
-const select = $('year');
-select.append(new Option('All years', 'all'));
-for (let y = maxYear; y >= minYear; y--) select.append(new Option(String(y), String(y)));
-select.value = String(state.year);
 carryToMatrix();
-select.addEventListener('change', () => { state.year = select.value === 'all' ? 'all' : Number(select.value); pushState(); load(); });
-const grouping = $('group');
+const ranking = $('table-rank');
+ranking.value = String(state.year);
+ranking.addEventListener('change', () => { state.year = ranking.value === 'all' ? 'all' : Number(ranking.value); pushState(); load(); });
+const grouping = $('table-group');
 grouping.value = state.group;
 grouping.addEventListener('change', () => { state.group = grouping.value; pushState(); render(); });
+const rowCount = $('table-n');
+rowCount.value = String(state.n);
+rowCount.addEventListener('change', () => { state.n = Number(rowCount.value); pushState(); render(); });
+const service = $('table-service');
+service.value = state.service;
+service.addEventListener('change', () => { state.service = service.value; pushState(); load(); });
 
 for (const th of document.querySelectorAll('th[data-sort]')) {
   th.querySelector('button').addEventListener('click', () => { state.sort = th.dataset.sort; pushState(); render(); });

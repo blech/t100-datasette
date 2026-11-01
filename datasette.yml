@@ -65,12 +65,16 @@ databases:
 
       top_airports:
         title: "Busiest US airports in a year or all years"
-        description: "One row per US airport: its flights both ways (or set dir to out for departures, in for arrivals), seats, passengers, freight, other airports flown to or from at least 24 times both ways or 12 one way (in some year, for all years), and its BTS city market with the market's own count. Leave year empty for all years."
+        description: "One row per US airport: its flights both ways (or set dir to out for departures, in for arrivals), seats, passengers, freight, other airports flown to or from at least 24 times both ways or 12 one way (in some year, for all years), and its BTS city market with the market's own count. Leave year empty for all years. Set service to domestic or international for the flights in that BTS file, with destinations counting the routes the matrices call that (empty or all counts everything)."
         sql: |
           -- dests: other airports with at least 24 flights both ways (12 one way) in the year, or in some year for all years, each
           -- counted once, the cut-off the maps and matrices use; market_dests counts each one once for all the market's airports
           -- one way, each leg of 12+ as flown (x to y); both ways, each pair once (x before y) with 24+ its two legs together, which
           -- needs a leg of 12+, so those legs are the candidates and the reverse leg is looked up by its key
+          -- service (all, domestic or international): dests count only the routes the matrices call that (most of the route's
+          -- departures, in the directions asked for, in the domestic file); the totals are the airport's flights in the domestic or the
+          -- international file, as airport_size splits them (by_service). For all (or empty) the totals come straight from
+          -- airport_dir_year, which is faster
           WITH pairs AS (
             SELECT CASE WHEN :dir IN ('out', 'in') THEN r.origin ELSE MIN(r.origin, r.dest) END AS x,
                    CASE WHEN :dir IN ('out', 'in') THEN r.dest ELSE MAX(r.origin, r.dest) END AS y
@@ -78,61 +82,79 @@ databases:
             LEFT JOIN route_year_totals AS back ON :dir NOT IN ('out', 'in') AND back.year = r.year AND back.origin = r.dest AND back.dest = r.origin
             WHERE (:year IN ('', 'all') OR r.year = CAST(:year AS integer)) AND r.deps >= 12
               AND (:dir IN ('out', 'in') OR r.deps + COALESCE(back.deps, 0) >= 24)
-            GROUP BY 1, 2  -- a pair counts once, in however many years it reaches the cut-off
+              AND (:service IN ('', 'all') OR CASE WHEN (r.domestic_deps + COALESCE(back.domestic_deps, 0)) * 2 > r.deps + COALESCE(back.deps, 0)
+                   THEN 'domestic' ELSE 'international' END = :service)
+            GROUP BY 1, 2
           ),
           partners AS (
             SELECT x AS airport, y AS other FROM pairs WHERE :dir <> 'in'
             UNION ALL
             SELECT y, x FROM pairs WHERE :dir <> 'out'
           ),
-          dests AS (
-            SELECT airport, COUNT(DISTINCT other) AS dests FROM partners GROUP BY airport
-          ),
+          dests AS (SELECT airport, COUNT(DISTINCT other) AS dests FROM partners GROUP BY airport),
           market_dests AS (
             SELECT m.market_id, COUNT(DISTINCT p.other) AS market_dests
-            FROM partners AS p
-            JOIN airport_market AS m ON m.code = p.airport
-            GROUP BY m.market_id
+            FROM partners AS p JOIN airport_market AS m ON m.code = p.airport GROUP BY m.market_id
           ),
-          totals AS (
+          by_service AS (
             SELECT airport, SUM(CASE :dir WHEN 'out' THEN deps WHEN 'in' THEN arrs ELSE deps + arrs END) AS deps,
               SUM(CASE :dir WHEN 'out' THEN seats_out WHEN 'in' THEN seats_in ELSE seats_out + seats_in END) AS seats,
               SUM(CASE :dir WHEN 'out' THEN passengers_out WHEN 'in' THEN passengers_in ELSE passengers_out + passengers_in END) AS passengers,
-              SUM(CASE :dir WHEN 'out' THEN freight_out WHEN 'in' THEN freight_in ELSE freight_out + freight_in END) AS freight,
-              -- a year's own city name; for all years, the newest
-              CASE WHEN :year IN ('', 'all') THEN (SELECT n.city_name FROM airport_dir_year AS n WHERE n.airport = a.airport ORDER BY n.year DESC LIMIT 1)
-                ELSE MAX(city_name) END AS city
-            FROM airport_dir_year AS a
-            WHERE (:year IN ('', 'all') OR year = CAST(:year AS integer))
-              AND wac BETWEEN 1 AND 93
+              SUM(CASE :dir WHEN 'out' THEN freight_out WHEN 'in' THEN freight_in ELSE freight_out + freight_in END) AS freight
+            FROM airport_carrier_dir_year
+            WHERE :service IN ('domestic', 'international') AND domestic = (:service = 'domestic')
+              AND (:year IN ('', 'all') OR year = CAST(:year AS integer))
             GROUP BY airport
-            HAVING deps > 0 OR seats > 0 OR passengers > 0 OR freight > 0
+          ),
+          totals AS (
+            SELECT a.airport,
+              CASE WHEN :service IN ('', 'all') THEN SUM(CASE :dir WHEN 'out' THEN a.deps WHEN 'in' THEN a.arrs ELSE a.deps + a.arrs END) ELSE s.deps END AS n_deps,
+              CASE WHEN :service IN ('', 'all') THEN SUM(CASE :dir WHEN 'out' THEN a.seats_out WHEN 'in' THEN a.seats_in ELSE a.seats_out + a.seats_in END) ELSE s.seats END AS n_seats,
+              CASE WHEN :service IN ('', 'all') THEN SUM(CASE :dir WHEN 'out' THEN a.passengers_out WHEN 'in' THEN a.passengers_in ELSE a.passengers_out + a.passengers_in END) ELSE s.passengers END AS n_passengers,
+              CASE WHEN :service IN ('', 'all') THEN SUM(CASE :dir WHEN 'out' THEN a.freight_out WHEN 'in' THEN a.freight_in ELSE a.freight_out + a.freight_in END) ELSE s.freight END AS n_freight,
+              CASE WHEN :year IN ('', 'all') THEN (SELECT n.city_name FROM airport_dir_year AS n WHERE n.airport = a.airport ORDER BY n.year DESC LIMIT 1)
+                ELSE MAX(a.city_name) END AS city
+            FROM airport_dir_year AS a
+            LEFT JOIN by_service AS s ON s.airport = a.airport
+            WHERE (:year IN ('', 'all') OR a.year = CAST(:year AS integer)) AND a.wac BETWEEN 1 AND 93
+            GROUP BY a.airport
+            HAVING n_deps > 0 OR n_seats > 0 OR n_passengers > 0 OR n_freight > 0
           )
-          SELECT t.airport, t.city, t.deps, t.seats, t.passengers, t.freight, COALESCE(d.dests, 0) AS dests,
+          SELECT t.airport, t.city, t.n_deps AS deps, t.n_seats AS seats, t.n_passengers AS passengers, t.n_freight AS freight, COALESCE(d.dests, 0) AS dests,
             m.market_id, COALESCE(md.market_dests, COALESCE(d.dests, 0)) AS market_dests
           FROM totals AS t
           LEFT JOIN dests AS d ON d.airport = t.airport
           LEFT JOIN airport_market AS m ON m.code = t.airport
           LEFT JOIN market_dests AS md ON md.market_id = m.market_id
-          ORDER BY t.passengers DESC, t.airport
+          ORDER BY t.n_passengers DESC, t.airport
 
       # the airports matrix: every US airport that flew at least 365 times in some year, with all its years and its city market
       airport_by_year:
         title: "US airports by year"
-        description: "One row per US airport and year, counting flights both ways (or set dir to out for departures, in for arrivals), for airports with at least 730 flights both ways (365 one way) in some year, with each airport's BTS city market."
+        description: "One row per US airport, year and service (domestic or international, by BTS file), counting flights both ways (or set dir to out for departures, in for arrivals), for airports with at least 730 flights both ways (365 one way) in some year, with each airport's BTS city market."
         sql: |
-          WITH a AS (
-            SELECT airport, city_name, year, CASE :dir WHEN 'out' THEN deps WHEN 'in' THEN arrs ELSE deps + arrs END AS deps,
-              CASE :dir WHEN 'out' THEN seats_out WHEN 'in' THEN seats_in ELSE seats_out + seats_in END AS seats, CASE :dir WHEN 'out' THEN passengers_out WHEN 'in' THEN passengers_in ELSE passengers_out + passengers_in END AS passengers, CASE :dir WHEN 'out' THEN freight_out WHEN 'in' THEN freight_in ELSE freight_out + freight_in END AS freight
-            FROM airport_dir_year
+          -- big: the airports that ever flew enough; their flights come from airport_carrier_dir_year, split by the BTS file as airport_size does
+          WITH big AS (
+            SELECT airport FROM airport_dir_year
             WHERE wac BETWEEN 1 AND 93
+            GROUP BY airport
+            HAVING MAX(CASE :dir WHEN 'out' THEN deps WHEN 'in' THEN arrs ELSE deps + arrs END) >= CASE WHEN :dir IN ('out', 'in') THEN 365 ELSE 730 END
           )
-          SELECT a.airport, a.city_name AS city, m.market_id, a.year, a.deps, a.seats, a.passengers, a.freight
-          FROM a
-          LEFT JOIN airport_market AS m ON m.code = a.airport
-          WHERE a.airport IN (SELECT airport FROM a GROUP BY airport HAVING MAX(deps) >= CASE WHEN :dir IN ('out', 'in') THEN 365 ELSE 730 END)
-            AND (a.deps > 0 OR a.passengers > 0 OR a.freight > 0)
-          ORDER BY a.year, a.airport
+          SELECT airport, city, market_id, year, service, deps, seats, passengers, freight FROM (
+            SELECT c.airport, n.city_name AS city, m.market_id, c.year,
+              CASE WHEN c.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+              SUM(CASE :dir WHEN 'out' THEN c.deps WHEN 'in' THEN c.arrs ELSE c.deps + c.arrs END) AS deps,
+              SUM(CASE :dir WHEN 'out' THEN c.seats_out WHEN 'in' THEN c.seats_in ELSE c.seats_out + c.seats_in END) AS seats,
+              SUM(CASE :dir WHEN 'out' THEN c.passengers_out WHEN 'in' THEN c.passengers_in ELSE c.passengers_out + c.passengers_in END) AS passengers,
+              SUM(CASE :dir WHEN 'out' THEN c.freight_out WHEN 'in' THEN c.freight_in ELSE c.freight_out + c.freight_in END) AS freight
+            FROM airport_carrier_dir_year AS c
+            JOIN airport_dir_year AS n ON n.airport = c.airport AND n.year = c.year
+            LEFT JOIN airport_market AS m ON m.code = c.airport
+            WHERE c.airport IN (SELECT airport FROM big)
+            GROUP BY c.airport, c.year, c.domestic
+          )
+          WHERE deps > 0 OR passengers > 0 OR freight > 0
+          ORDER BY year, airport
 
       # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
       busiest_airports:

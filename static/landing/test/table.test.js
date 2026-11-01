@@ -17,12 +17,12 @@ test('ties break by airport code', () => {
   assert.deepEqual(topBy(rows, 'deps', 5).map((r) => r.airport), ['A', 'B']);
 });
 test('state defaults to the newest year and passengers', () => {
-  assert.deepEqual(parseState('', 1990, 2025), { year: 2025, sort: 'passengers', group: 'airport' });
+  assert.deepEqual(parseState('', 1990, 2025), { year: 2025, sort: 'passengers', group: 'airport', n: 50, service: 'all' });
 });
 test('state parses valid values and rejects junk', () => {
-  assert.deepEqual(parseState('?year=2019&sort=freight', 1990, 2025), { year: 2019, sort: 'freight', group: 'airport' });
-  assert.deepEqual(parseState('?year=1850&sort=name', 1990, 2025), { year: 2025, sort: 'passengers', group: 'airport' });
-  assert.deepEqual(parseState('?year=2026', 1990, 2025), { year: 2025, sort: 'passengers', group: 'airport' });
+  assert.deepEqual(parseState('?year=2019&sort=freight', 1990, 2025), { year: 2019, sort: 'freight', group: 'airport', n: 50, service: 'all' });
+  assert.deepEqual(parseState('?year=1850&sort=name', 1990, 2025), { year: 2025, sort: 'passengers', group: 'airport', n: 50, service: 'all' });
+  assert.deepEqual(parseState('?year=2026', 1990, 2025), { year: 2025, sort: 'passengers', group: 'airport', n: 50, service: 'all' });
 });
 test('toSearch omits defaults', () => {
   assert.equal(toSearch({ year: 2025, sort: 'passengers', group: 'airport' }, 2025), '');
@@ -52,7 +52,7 @@ test('the table and the airports matrix carry the measure each way, where both h
   assert.equal(matrixSearch('deps'), '?measure=deps');
   assert.equal(matrixSearch('freight'), '?measure=freight');
   assert.equal(matrixSearch('dests'), '');           // the matrix has no destinations
-  assert.equal(tableSearch('?measure=deps&n=25&theme=dark'), '?sort=deps');
+  assert.equal(tableSearch('?measure=deps&n=25&theme=dark'), '?sort=deps&n=25');   // the number of rows is shared too
   assert.equal(tableSearch('?measure=seats'), '');   // the table has no seats column
   assert.equal(tableSearch(''), '');
   assert.equal(matrixSearch('deps', 'city'), '?measure=deps&group=city');   // cities carry each way too
@@ -97,4 +97,15 @@ test('all years is a year choice of its own, written as year=all', () => {
 test('the flight count column is named for the direction counted', () => {
   assert.deepEqual(['', 'out', 'in'].map((d) => sortLabels(d).deps), ['Flights', 'Departures', 'Arrivals']);
   assert.equal(sortLabels('in').passengers, 'Passengers');
+});
+
+test('how many rows and which flights are read and written, and carry to the airports matrix and back', () => {
+  assert.deepEqual([parseState('?n=10', 1990, 2025).n, parseState('?n=25', 1990, 2025).n, parseState('?n=20', 1990, 2025).n, parseState('?n=x', 1990, 2025).n], [10, 25, 50, 50]);
+  assert.deepEqual(['domestic', 'international', 'all', 'bogus', ''].map((s) => parseState(`?service=${s}`, 1990, 2025).service), ['domestic', 'international', 'all', 'all', 'all']);
+  assert.equal(toSearch({ year: 2025, sort: 'passengers', group: 'airport', n: 50, service: 'all' }, 2025), '');
+  assert.equal(toSearch({ year: 2025, sort: 'passengers', group: 'airport', n: 10, service: 'international' }, 2025), '?n=10&service=international');
+  assert.equal(matrixSearch('deps', 'city', { n: 25, service: 'domestic' }), '?measure=deps&group=city&n=25&service=domestic');
+  assert.equal(matrixSearch('passengers', 'airport', { n: 50, service: 'all' }), '');
+  assert.equal(tableSearch('?measure=deps&n=25&service=international&scale=year'), '?sort=deps&n=25&service=international');
+  assert.equal(tableSearch('?n=50&service=all&n=7'), '');   // defaults and values the table has no menu for are dropped
 });

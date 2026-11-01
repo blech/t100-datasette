@@ -1,6 +1,6 @@
 import sqlite3
 
-from build_database import rebuild_airport_dir_year, rebuild_route_year_totals
+from build_database import rebuild_airport_carrier_dir_year, rebuild_airport_dir_year, rebuild_route_year_totals
 from tests.helpers import add_segments as _add, get_json
 from tests.test_routes_by_year import seg
 
@@ -19,12 +19,13 @@ def us(origin, year, deps, pax, seats=100, freight=0, city=None, dest="ZZZ"):
 def rebuilt(db_path):
     conn = sqlite3.connect(db_path)
     rebuild_airport_dir_year(conn)
+    rebuild_airport_carrier_dir_year(conn)
     rebuild_route_year_totals(conn)
     conn.close()
 
 
-def top(ds, year=2025, dir=""):
-    body = get_json(ds, f"/t100/top_airports.json?year={year}&dir={dir}&_shape=objects")
+def top(ds, year=2025, dir="", service=""):
+    body = get_json(ds, f"/t100/top_airports.json?year={year}&dir={dir}&service={service}&_shape=objects")
     assert body["truncated"] is False
     return {r["airport"]: r for r in body["rows"]}
 
@@ -135,3 +136,47 @@ def test_top_airports_ranks_on_both_by_default(ds, db_path):
     assert list(top(ds, dir="out"))[:2] == ["Y", "X"]
     assert top(ds)["X"]["passengers"] == 110 and top(ds, dir="in")["X"]["passengers"] == 100
     assert [top(ds, dir=d)["X"]["dests"] for d in ("", "out", "in")] == [1, 0, 1]   # Q: 110 both ways (24+), 10 out (under 12), 100 in
+
+
+def mixed_service(db_path):
+    """ATL flies domestic to BOS (20 departures) and international to LHR (12); SEA flies only domestic; each route appears once."""
+    add_segments(db_path, "t100_domestic", [us("ATL", 2025, 20, 2000, seats=3000, freight=100, dest="BOS"), us("SEA", 2025, 15, 1500, dest="BOS")])
+    add_segments(db_path, "t100_international", [us("ATL", 2025, 12, 900, seats=1200, freight=700, dest="LHR")])
+
+
+def test_service_counts_only_the_domestic_or_international_routes(ds, db_path):
+    mixed_service(db_path)
+    atl = {s: top(ds, service=s)["ATL"] for s in ("", "all", "domestic", "international")}
+    assert (atl["domestic"]["deps"], atl["domestic"]["passengers"], atl["domestic"]["seats"], atl["domestic"]["freight"]) == (20, 2000, 3000, 100)
+    assert (atl["international"]["deps"], atl["international"]["passengers"], atl["international"]["seats"], atl["international"]["freight"]) == (12, 900, 1200, 700)
+    assert atl[""] == atl["all"] and atl["all"]["deps"] == 32 and atl["all"]["passengers"] == 2900   # no service means every route
+
+
+def test_an_airport_with_no_routes_of_a_service_is_left_out(ds, db_path):
+    mixed_service(db_path)
+    assert set(top(ds, service="international")) == {"ATL"}
+    assert set(top(ds, service="domestic")) == {"ATL", "SEA"}
+
+
+def test_totals_follow_the_file_and_destinations_follow_the_route_rule(ds, db_path):
+    # BOS has 30 departures in the domestic file and 5 in the international: its traffic splits by file, but the matrices call the
+    # route domestic (most departures), so it is a domestic destination only
+    add_segments(db_path, "t100_domestic", [us("ATL", 2025, 30, 3000, dest="BOS")])
+    add_segments(db_path, "t100_international", [us("ATL", 2025, 5, 500, dest="BOS")])
+    dom, intl = (top(ds, dir="out", service=s)["ATL"] for s in ("domestic", "international"))
+    assert (dom["passengers"], dom["dests"]) == (3000, 1)
+    assert (intl["passengers"], intl["dests"]) == (500, 0)
+
+
+def test_destinations_count_only_the_service_asked_for(ds, db_path):
+    mixed_service(db_path)
+    add_segments(db_path, "t100_domestic", [us("ATL", 2025, 30, 300, dest="DEN")])
+    assert [top(ds, dir="out", service=s)["ATL"]["dests"] for s in ("", "domestic", "international")] == [3, 2, 1]
+
+
+def test_service_with_a_direction_and_all_years(ds, db_path):
+    mixed_service(db_path)
+    add_segments(db_path, "t100_international", [us("ATL", 2019, 12, 400, dest="LHR"), arriving("LHR", "ATL", 2025, 40, 4000)])
+    assert top(ds, "all", dir="out", service="international")["ATL"]["passengers"] == 1300      # 2025 and 2019, leaving only
+    assert top(ds, 2025, dir="in", service="international")["ATL"]["passengers"] == 4000
+    assert top(ds, 2025, service="international")["ATL"]["passengers"] == 4900                   # both ways

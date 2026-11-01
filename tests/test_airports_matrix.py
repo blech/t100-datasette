@@ -1,9 +1,9 @@
 import re
 
-from tests.helpers import get, get_json, put_airport_years
+from tests.helpers import get, get_json, put_airport_carriers, put_airport_years
 from tests.test_rollup_queries import put
 
-VIEWS = [("Busiest airports", "/airports"), ("Most dedicated", "/airports/dedicated"), ("Over time", "/airports/over-time"), ("Map", "/airports/globe")]
+VIEWS = [("Busiest airports", "/airports"), ("Over time", "/airports/over-time"), ("Most dedicated", "/airports/dedicated"), ("Map", "/airports/globe")]
 
 
 def totals(db_path):
@@ -12,6 +12,9 @@ def totals(db_path):
     put_airport_years(db_path, [row(2019, "ATL", 34, 400000), row(1990, "ATL", 34, 100),   # a busy airport keeps its quiet years
                                          row(2019, "LHR", 493, 50000),                              # outside the US
                                          row(2019, "ZZZ", 34, 364)])                                # never 365 departures in a year
+    # the same airports' flights in the domestic file, by airline
+    put_airport_carriers(db_path, [dict(r, group_id="DL", group_name="Delta", domestic=1, service_class="F") for r in [
+        row(2019, "ATL", 34, 400000), row(1990, "ATL", 34, 100), row(2019, "LHR", 493, 50000), row(2019, "ZZZ", 34, 364)]])
 
 
 def test_airport_by_year_gives_us_airports_that_ever_flew_365_times_with_all_their_years(ds, db_path):
@@ -22,13 +25,22 @@ def test_airport_by_year_gives_us_airports_that_ever_flew_365_times_with_all_the
     assert atl["city"] == "ATL city" and atl["deps"] == 400000 and atl["freight"] == 4000000
 
 
+def test_airport_by_year_splits_each_year_by_domestic_and_international(ds, db_path):
+    totals(db_path)
+    put_airport_carriers(db_path, [dict(year=2019, origin="ATL", origin_wac=34, group_id="DL", group_name="Delta", domestic=0, service_class="F",
+                                        deps=10000, seats=1000000, passengers=800000, freight=100000)])
+    rows = get_json(ds, "/t100/airport_by_year.json?_shape=objects&_size=max")["rows"]
+    assert sorted((r["airport"], r["year"], r["service"], r["deps"]) for r in rows) == [
+        ("ATL", 1990, "domestic", 100), ("ATL", 2019, "domestic", 400000), ("ATL", 2019, "international", 10000)]
+
+
 def test_the_airports_matrix_page(ds):
     r = get(ds, "/airports/over-time")
     assert r.status_code == 200
     assert 'data-kind="airports"' in r.text and 'id="matrix"' in r.text and "/static/charts/rollup.js" in r.text
     assert "Airports over time" in r.text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', r.text, re.S).group(1)
-    assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-n", "matrix-group", "matrix-rank"]
+    assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-n", "matrix-group", "matrix-service", "matrix-rank", "dir"]
     assert '<option value="city">cities</option>' in sentence
     assert "airlines" not in sentence and 'data-find="airport"' in r.text and 'data-find="airline"' not in r.text
 
@@ -69,14 +81,30 @@ def test_airport_by_year_gives_each_airport_its_market(ds, db_path):
     assert {r["airport"]: r["market_id"] for r in rows} == {"ATL": "30397"}
 
 
-def test_the_busiest_airports_table_offers_airports_or_cities(ds):
-    html = get(ds, "/airports").text
-    bar = re.search(r'<div class="bar">.*?</div>', html, re.S).group(0)
-    assert re.search(r'<select id="group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>', bar)
+def sentence(html):
+    return re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
+
+
+def test_the_busiest_airports_table_is_set_by_a_sentence(ds):
+    text = sentence(get(ds, "/airports").text)
+    assert re.findall(r'<select id="([^"]+)"', text) == ["table-n", "table-group", "table-service", "table-rank", "dir"]
+    assert '<option value="city">cities</option>' in text and '<option value="international">international flights</option>' in text
+    assert re.search(r'<select id="table-rank"[^>]*><option value="all">all years</option><option value="2025">2025</option>.*<option value="1990">1990</option></select>', text)
+    assert '<option value="" selected>both directions</option>' in text and "Show the top" in " ".join(text.split())
+
+
+def test_the_two_airport_lists_share_the_sentence_after_their_lead(ds):
+    def shared(html):  # from "the top" on, without each page's id prefix and its own choices of year
+        text = " ".join(sentence(html).split()).split("the top ", 1)[1]
+        return re.sub(r'(<select id="(?:table|matrix)-rank"[^>]*>).*?</select>', r"\1</select>", text).replace('id="table-', 'id="x-').replace('id="matrix-', 'id="x-')
+    assert shared(get(ds, "/airports").text) == shared(get(ds, "/airports/over-time").text)
+    assert " ".join(sentence(get(ds, "/airports/over-time").text).split()).startswith('Show <select id="matrix-measure"')
 
 
 def test_airport_by_year_threshold_is_730_flights_both_ways(ds, db_path):
     put_airport_years(db_path, [dict(year=2019, origin="AAA", origin_wac=34, deps=365, arrs=364), dict(year=2019, origin="BBB", origin_wac=34, deps=365, arrs=365)])
+    put_airport_carriers(db_path, [dict(year=2019, origin=o, origin_wac=34, group_id="DL", group_name="Delta", domestic=1, service_class="F", deps=365, arrs=a)
+                                   for o, a in (("AAA", 364), ("BBB", 365))])
     codes = lambda dir: {r["airport"] for r in get_json(ds, f"/t100/airport_by_year.json?dir={dir}&_shape=objects&_size=max")["rows"]}
     assert codes("") == {"BBB"}
     assert codes("out") == {"AAA", "BBB"}

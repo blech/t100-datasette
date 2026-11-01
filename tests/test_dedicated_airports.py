@@ -89,7 +89,7 @@ def test_the_page_takes_a_year_and_falls_back_to_the_latest_for_nonsense(ds, db_
 
 def test_the_page_is_in_the_airports_views_line(ds):
     html = page(ds)
-    assert '<a href="/airports">Busiest airports</a> · <strong aria-current="page">Most dedicated</strong> · <a href="/airports/over-time">Over time</a>' in html
+    assert '<a href="/airports">Busiest airports</a> · <a href="/airports/over-time">Over time</a> · <strong aria-current="page">Most dedicated</strong>' in html
 
 
 def test_the_page_renders_without_data(ds):

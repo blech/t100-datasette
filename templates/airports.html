@@ -20,12 +20,11 @@
 
     <noscript><p>This table needs JavaScript. You can still <a href="/airports/globe">browse airports on the map</a> or use the <a href="/t100">data tables</a>.</p></noscript>
 
-    <div class="bar">
-      <h2 id="heading">Busiest airports</h2>
-      <label>Show <select id="group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select></label>
-      <label>Year <select id="year" aria-label="Year"></select></label>
-      {% include "_dir_choice.html" %}
-    </div>
+    {% from "_airport_ranking.html" import airport_ranking %}
+    <p class="chart-sentence">
+      Show {{ airport_ranking("table", ranks, dir, dir_choices) }}
+    </p>
+    <h2 id="heading">Busiest airports</h2>
     <div class="scroll">
       <table id="airports">
         <thead>
@@ -44,7 +43,7 @@
       </table>
     </div>
     <p id="status" role="status"></p>
-    <p class="note">The table shows the top 20 for the column you sort by. Load factor is passengers as a share of seats. Destinations counts other airports with at least {{ 24 if dir == "" else 12 }} {{ count_word|lower }} {{ {"out": "to them", "in": "from them"}.get(dir, "to and from them") }} that year (for all years, in some year), each counted once. A city is a BTS city market (New York is JFK, LaGuardia and Newark): its row adds up its airports, counts each destination once, and opens to list them. Freight is in short tons (2,000 lb). Hover over a number for the exact figure. <a href="/about#measures">What the columns mean</a>.
+    <p class="note">The table lists the rows chosen above, ranked by the column you sort by. Domestic and international flights are the ones BTS files in each of its two data sets, and a destination counts as domestic or international by where most of the route's flights are filed. Load factor is passengers as a share of seats. Destinations counts other airports with at least {{ 24 if dir == "" else 12 }} {{ count_word|lower }} {{ {"out": "to them", "in": "from them"}.get(dir, "to and from them") }} that year (for all years, in some year), each counted once. A city is a BTS city market (New York is JFK, LaGuardia and Newark): its row adds up its airports, counts each destination once, and opens to list them. Freight is in short tons (2,000 lb). Hover over a number for the exact figure. <a href="/about#measures">What the columns mean</a>.
       On the map, routes with fewer than 24 flights a year, both ways, are hidden. <a href="/about#direction">More on directions</a>.</p>
     {% include "_footer.html" %}
   </main>
