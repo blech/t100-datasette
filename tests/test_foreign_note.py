@@ -42,3 +42,11 @@ def test_globe_page_flags_foreign_airports_and_not_the_chooser(ds, db_path):
     assert 'data-foreign="1"' in get(ds, "/airports/LHR/globe").text and NOTE in get(ds, "/airports/LHR/globe").text
     assert NOTE not in get(ds, "/airports/ATL/globe").text
     assert NOTE not in get(ds, "/airports/globe").text
+
+
+def test_destinations_matrix_for_a_foreign_airport_has_no_flights_menu_since_all_its_flights_are_international(ds, db_path):
+    load(db_path)
+    foreign = get(ds, "/airports/LHR/destinations").text
+    assert '<select id="matrix-service"' not in foreign and 'id="matrix-service">international flights</span>' in foreign
+    assert '<select id="matrix-service"' in get(ds, "/airports/ATL/destinations").text
+    assert '<select id="matrix-service"' in get(ds, "/airports/SJU/destinations").text   # a US territory is not foreign

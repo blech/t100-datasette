@@ -19,7 +19,8 @@
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">
       Show <select id="matrix-measure" aria-label="Measure"></select>
-      on <select id="matrix-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>
+      {% if foreign %}on <span id="matrix-service">international flights</span>{# every flight at a foreign airport is to or from the US #}
+      {% else %}on <select id="matrix-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>{% endif %}
       for the top <select id="matrix-n" aria-label="Number of destinations"><option>10</option><option selected>25</option><option>50</option></select>
       <select id="matrix-group" aria-label="Group rows by"><option value="airport">airports</option><option value="city">cities (BTS markets)</option></select>
       <select id="matrix-flown" aria-label="Which destinations"><option value="ever">ever flown</option><option value="after">first flown after {{ min_year }}</option><option value="dropped">dropped by {{ latest_year }}</option></select>,

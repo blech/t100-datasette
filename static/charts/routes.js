@@ -10,6 +10,7 @@ import { replaceSearch } from '/static/nav/src/state.js';
 import { parseDir, setDir } from '/static/common/direction.js';
 
 const origin = document.body.dataset.origin;
+const foreign = document.body.dataset.foreign === '1'; // all of a foreign airport's flights are international, so there is nothing to choose
 const dir = parseDir(location.search);
 const MATRIX_MEASURES = matrixMeasures(dir);
 const $ = (id) => document.getElementById(id);
@@ -17,7 +18,7 @@ const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
-  service: pick('service', ['all', 'domestic', 'international'], 'all'),
+  service: foreign ? 'all' : pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '25')),
   group: pick('group', ['airport', 'city'], 'airport'),
   year: null, // the year ranking the destinations, or null for all years; read from the address once the rows are in
@@ -257,7 +258,7 @@ function fillControls() {
   const measure = $('matrix-measure');
   for (const [k, label] of Object.entries(MATRIX_MEASURES)) measure.append(new Option(label.toLowerCase(), k)); // reads mid-sentence
   measure.value = state.measure;
-  $('matrix-service').value = state.service;
+  if (!foreign) $('matrix-service').value = state.service;
   $('matrix-n').value = String(state.n);
   $('matrix-group').value = state.group;
   $('matrix-flown').value = state.flown;
@@ -269,7 +270,7 @@ function fillControls() {
   $('matrix-flown').addEventListener('change', (e) => { state.flown = e.target.value; pushState(); draw(); });
   $('matrix-group').addEventListener('change', (e) => { state.group = e.target.value; pushState(); draw(); });
   measure.addEventListener('change', (e) => { state.measure = e.target.value; pushState(); draw(); });
-  $('matrix-service').addEventListener('change', (e) => { state.service = e.target.value; pushState(); draw(); });
+  if (!foreign) $('matrix-service').addEventListener('change', (e) => { state.service = e.target.value; pushState(); draw(); });
   $('matrix-n').addEventListener('change', (e) => { state.n = Number(e.target.value); pushState(); draw(); });
 }
 
