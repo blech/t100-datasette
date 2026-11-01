@@ -9,7 +9,11 @@ export function parseDir(search) {
   return d === 'out' || d === 'in' ? d : '';
 }
 
+// an airport outside the US has only its flights to and from the US in the data, so leaving it is flying to the US
+const WORDS_ABROAD = { '': 'Flights', out: 'Flights to the US', in: 'Flights from the US' };
+
 export const countWord = (dir) => WORDS[dir];
+export const abroadCountWord = (dir) => WORDS_ABROAD[dir];
 
 // a route's one-way count is departures from the airport its heading starts with, whichever way that is
 export const routeCountWord = (dir) => (dir === '' ? 'Flights' : 'Departures');

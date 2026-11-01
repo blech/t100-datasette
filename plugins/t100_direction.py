@@ -5,14 +5,19 @@ _WORDS = {"": "Flights", "out": "Departures", "in": "Arrivals"}
 
 DIRECTION_CHOICES_AIRPORT = [("", "Both directions"), ("out", "Departing"), ("in", "Arriving")]
 
+# an airport outside the US has only its flights to and from the US in the data, so its directions are named for the US:
+# leaving it (out) is flying to the US, arriving at it (in) is flying from the US
+DIRECTION_CHOICES_ABROAD = [("", "to and from the US"), ("out", "to the US"), ("in", "from the US")]
+_WORDS_ABROAD = {"": "Flights", "out": "Flights to the US", "in": "Flights from the US"}
+
 
 def parse_dir(value):
     """A ?dir= value -> '', 'out' or 'in'; anything else counts as both."""
     return value if value in ("out", "in") else ""
 
 
-def count_word(dir):
-    return _WORDS[dir]
+def count_word(dir, abroad=False):
+    return (_WORDS_ABROAD if abroad else _WORDS)[dir]
 
 
 def route_count_word(dir):

@@ -1,8 +1,11 @@
-import { countWord } from '../../common/direction.js';
+import { countWord, abroadCountWord } from '../../common/direction.js';
 
 export const SORTS = { passengers: 'Passengers', deps: 'Departures', dests: 'Destinations', freight: 'Freight' };
 // the same, with the flight count named for the direction counted
-export const sortLabels = (dir) => ({ ...SORTS, deps: countWord(dir) });
+export const sortLabels = (dir, abroad = false) => ({ ...SORTS, deps: (abroad ? abroadCountWord : countWord)(dir) });
+
+// a label in the middle of a sentence (not the "US" in it)
+export const lowerFirst = (text) => text.charAt(0).toLowerCase() + text.slice(1);
 
 // passengers as a percentage of seats, or null with no seats (an all-freight airport)
 export const loadFactor = (r) => (Number(r.seats) > 0 ? (Number(r.passengers) / Number(r.seats)) * 100 : null);
@@ -23,9 +26,11 @@ export function parseState(search, minYear, maxYear) {
   const year = Number.parseInt(q.get('year'), 10);
   const sort = q.get('sort');
   const n = Number.parseInt(q.get('n'), 10);
+  const region = q.get('region') === 'abroad' ? 'abroad' : 'us';
   return {
+    region,
     n: ROW_COUNTS.includes(n) ? n : DEFAULT_ROWS,
-    service: SERVICES.includes(q.get('service')) ? q.get('service') : 'all',
+    service: region === 'us' && SERVICES.includes(q.get('service')) ? q.get('service') : 'all', // abroad, every flight is international
     year: q.get('year') === 'all' ? 'all' : Number.isFinite(year) && year >= minYear && year <= maxYear ? year : maxYear,
     sort: Object.hasOwn(SORTS, sort) ? sort : 'passengers',
     group: q.get('group') === 'city' ? 'city' : 'airport',
@@ -40,6 +45,7 @@ export function toSearch(state, maxYear) {
   if (state.year !== maxYear) q.set('year', state.year);
   if (state.sort !== 'passengers') q.set('sort', state.sort);
   if (state.group === 'city') q.set('group', 'city');
+  if (state.region === 'abroad') q.set('region', 'abroad');
   if (state.n && state.n !== DEFAULT_ROWS) q.set('n', state.n);
   if (state.service && state.service !== 'all') q.set('service', state.service);
   const s = q.toString();

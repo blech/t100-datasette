@@ -24,8 +24,8 @@ def rebuilt(db_path):
     conn.close()
 
 
-def top(ds, year=2025, dir="", service=""):
-    body = get_json(ds, f"/t100/top_airports.json?year={year}&dir={dir}&service={service}&_shape=objects")
+def top(ds, year=2025, dir="", service="", region=""):
+    body = get_json(ds, f"/t100/top_airports.json?year={year}&dir={dir}&service={service}&region={region}&_shape=objects")
     assert body["truncated"] is False
     return {r["airport"]: r for r in body["rows"]}
 
@@ -180,3 +180,32 @@ def test_service_with_a_direction_and_all_years(ds, db_path):
     assert top(ds, "all", dir="out", service="international")["ATL"]["passengers"] == 1300      # 2025 and 2019, leaving only
     assert top(ds, 2025, dir="in", service="international")["ATL"]["passengers"] == 4000
     assert top(ds, 2025, service="international")["ATL"]["passengers"] == 4900                   # both ways
+
+
+def abroad(db_path):
+    """LHR (outside the US) flies to JFK 20 times and back 30, and to BOS 12 times; JFK also flies domestic to ATL."""
+    to_us = lambda dest, deps, pax: dict(seg("LHR", dest, 2025, deps, pax), origin_wac=491, origin_city_name="London, United Kingdom", dest_wac=22, dest_city_name=f"{dest} City")
+    from_us = dict(seg("JFK", "LHR", 2025, 30, 3000), origin_wac=22, origin_city_name="New York, NY", dest_wac=491, dest_city_name="London, United Kingdom")
+    add_segments(db_path, "t100_international", [to_us("JFK", 20, 2000), from_us, to_us("BOS", 12, 600)])
+    add_segments(db_path, "t100_domestic", [us("JFK", 2025, 40, 4000, dest="ATL")])
+
+
+def test_region_abroad_lists_airports_outside_the_us_by_their_flights_to_and_from_it(ds, db_path):
+    abroad(db_path)
+    assert set(top(ds, region="abroad")) == {"LHR"}
+    assert set(top(ds)) == set(top(ds, region="us")) == {"BOS", "JFK"}   # the US airports with flights to LHR or others; LHR is not one
+    lhr = top(ds, region="abroad")["LHR"]
+    assert (lhr["city"], lhr["deps"], lhr["passengers"], lhr["dests"]) == ("London, United Kingdom", 62, 5600, 1)   # JFK; BOS has only 12 flights, under the 24 both ways
+
+
+def test_region_abroad_counts_each_direction_as_the_flights_to_or_from_the_us(ds, db_path):
+    abroad(db_path)
+    assert top(ds, dir="out", region="abroad")["LHR"]["passengers"] == 2600   # to the US: departures from LHR
+    assert top(ds, dir="in", region="abroad")["LHR"]["passengers"] == 3000    # from the US: arrivals at LHR
+    assert [top(ds, dir=d, region="abroad")["LHR"]["dests"] for d in ("", "out", "in")] == [1, 2, 1]   # 12 or more one way (JFK and BOS leaving, JFK arriving), 24 both ways (JFK)
+
+
+def test_every_flight_at_an_airport_abroad_is_international(ds, db_path):
+    abroad(db_path)
+    assert top(ds, service="international", region="abroad")["LHR"]["passengers"] == 5600
+    assert top(ds, service="domestic", region="abroad") == {}

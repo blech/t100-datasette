@@ -1,10 +1,14 @@
-{# the airport lists' shared settings, from "the top" on: how many, airports or cities, which flights, which year ranks them, which way
-   they count. /airports starts its sentence with "Show", /airports/over-time with "Show <measure> for". `p` prefixes the ids the
-   page's script reads; `ranks` is the (value, text) choices for the year that ranks them. #}
-{% macro airport_ranking(p, ranks, dir, dir_choices) -%}
+{# the airport lists' shared settings, from "the top" on: how many, airports or cities, (on /airports) in the US or abroad, which flights,
+   which year ranks them, which way they count. /airports starts its sentence with "Show", /airports/over-time with "Show <measure> for".
+   `p` prefixes the ids the page's script reads; `ranks` is the (value, text) choices for the year that ranks them. `region` is 'us' or
+   'abroad' where the page offers the choice, else none. Abroad every flight is international, so that menu is its words, and the
+   directions are named for the US (dir_choices). #}
+{% macro airport_ranking(p, ranks, dir, dir_choices, region=none) -%}
 the top <select id="{{ p }}-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
 <select id="{{ p }}-group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>
-for <select id="{{ p }}-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>,
+{% if region %}<select id="{{ p }}-region" aria-label="In the US or abroad"><option value="us"{% if region == "us" %} selected{% endif %}>in the US</option><option value="abroad"{% if region == "abroad" %} selected{% endif %}>abroad</option></select>
+{% endif -%}
+{% if region == "abroad" %}for <span id="{{ p }}-service">international flights</span>{% else %}for <select id="{{ p }}-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>{% endif %},
 ranked by <select id="{{ p }}-rank" aria-label="Year used to rank rows">{% for value, text in ranks %}<option value="{{ value }}">{{ text }}</option>{% endfor %}</select>
-in <select id="dir" aria-label="Direction">{% for value, text in dir_choices %}<option value="{{ value }}"{% if value == dir %} selected{% endif %}>{{ text|lower }}</option>{% endfor %}</select>.
+{% if region == "abroad" %}counting flights{% else %}in{% endif %} <select id="dir" aria-label="Direction">{% for value, text in dir_choices %}<option value="{{ value }}"{% if value == dir %} selected{% endif %}>{{ text[0]|lower }}{{ text[1:] }}</option>{% endfor %}</select>.
 {%- endmacro %}

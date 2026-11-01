@@ -9,7 +9,7 @@ from datasette.utils.asgi import NotFound, Response
 
 # Datasette loads each plugin from its file, not as a package, so a shared module is imported from beside this one
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from t100_direction import DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, cutoff, parse_dir, route_count_word, route_heading  # noqa: E402
+from t100_direction import DIRECTION_CHOICES_ABROAD, DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, cutoff, parse_dir, route_count_word, route_heading  # noqa: E402
 
 
 CODE = r"[A-Za-z0-9]{3}"
@@ -270,6 +270,16 @@ def airport_direction(request):
     return {"dir": dir, "count_word": count_word(dir), "dir_choices": DIRECTION_CHOICES_AIRPORT}
 
 
+def airport_region(request):
+    """Which airports the busiest-airports table ranks, 'us' or 'abroad' (outside the US), and what that changes: the directions
+    are named for the US and the flight count says which way."""
+    region = "abroad" if request.args.get("region") == "abroad" else "us"
+    if region == "us":
+        return {"region": region, "abroad": False}
+    dir = parse_dir(request.args.get("dir"))
+    return {"region": region, "abroad": True, "count_word": count_word(dir, abroad=True), "dir_choices": DIRECTION_CHOICES_ABROAD}
+
+
 async def globe_page(datasette, request):
     origin = (request.url_vars.get("origin") or "").upper()
     steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
@@ -292,7 +302,7 @@ async def airports_index(datasette, request):
     min_year, max_year = year_range(datasette)
     html = await datasette.render_template(
         "airports.html",
-        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None)), **airport_direction(request),
+        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None)), **airport_direction(request), **airport_region(request),
          "ranks": [("all", "all years")] + [(str(y), str(y)) for y in range(max_year, min_year - 1, -1)]},
         request=request,
     )

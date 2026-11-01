@@ -1,7 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { sortLabels, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel } from './src/table.js';
+import { sortLabels, lowerFirst, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel } from './src/table.js';
 import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { parseDir, setDir } from '/static/common/direction.js';
@@ -38,7 +38,9 @@ function link(href, text, title) {
 }
 
 const dir = parseDir(location.search);
-const word = sortLabels(dir).deps.toLowerCase();
+const abroad = state.region === 'abroad';
+const labels = sortLabels(dir, abroad);
+const word = lowerFirst(labels.deps);
 $('dir').addEventListener('change', (e) => setDir(e.target.value));
 
 function render() {
@@ -46,7 +48,7 @@ function render() {
     if (th.dataset.sort === state.sort) th.setAttribute('aria-sort', 'descending');
     else th.removeAttribute('aria-sort');
   }
-  $('heading').textContent = `Busiest ${state.group === 'city' ? 'cities' : 'airports'} by ${sortLabels(dir)[state.sort].toLowerCase()}, ${yearLabel(state.year, minYear, maxYear)}${state.service === 'all' ? '' : `, ${state.service} flights`}`;
+  $('heading').textContent = `Busiest ${state.group === 'city' ? 'cities' : 'airports'}${abroad ? ' abroad' : ''} by ${lowerFirst(labels[state.sort])}, ${yearLabel(state.year, minYear, maxYear)}${state.service === 'all' ? '' : `, ${state.service} flights`}`;
   const body = document.querySelector('#airports tbody');
   body.replaceChildren();
   // an airport's row: its code (to its page), name, figures and map; under an opened city it's indented
@@ -92,12 +94,12 @@ function render() {
 const carryToMatrix = () => { const a = document.querySelector('nav.views a[href^="/airports/over-time"]'); if (a) a.href = `/airports/over-time${matrixSearch(state.sort, state.group, state)}`; };
 
 function pushState() {
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['year', 'sort', 'group', 'n', 'service'], toSearch(state, maxYear))}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['year', 'sort', 'group', 'region', 'n', 'service'], toSearch(state, maxYear))}`);
   carryToMatrix();
 }
 
 // every flight is the query's default, so an empty service
-const queryParams = () => ({ year: state.year, dir, service: state.service === 'all' ? '' : state.service });
+const queryParams = () => ({ year: state.year, dir, service: state.service === 'all' ? '' : state.service, region: abroad ? 'abroad' : '' });
 
 async function load() {
   setDataLink('top_airports', queryParams());
@@ -127,9 +129,18 @@ grouping.addEventListener('change', () => { state.group = grouping.value; pushSt
 const rowCount = $('table-n');
 rowCount.value = String(state.n);
 rowCount.addEventListener('change', () => { state.n = Number(rowCount.value); pushState(); render(); });
-const service = $('table-service');
-service.value = state.service;
-service.addEventListener('change', () => { state.service = service.value; pushState(); load(); });
+if (!abroad) { // abroad, the flights menu is only words
+  const service = $('table-service');
+  service.value = state.service;
+  service.addEventListener('change', () => { state.service = service.value; pushState(); load(); });
+}
+// US or abroad changes what the directions mean and what the page says, so the page reloads, with the way and flights back to their defaults
+$('table-region').addEventListener('change', (e) => {
+  const q = new URLSearchParams(location.search);
+  q.delete('dir'); q.delete('service');
+  if (e.target.value === 'abroad') q.set('region', 'abroad'); else q.delete('region');
+  location.search = q.size ? `?${q}` : '';
+});
 
 for (const th of document.querySelectorAll('th[data-sort]')) {
   th.querySelector('button').addEventListener('click', () => { state.sort = th.dataset.sort; pushState(); render(); });

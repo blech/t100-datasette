@@ -87,7 +87,7 @@ def sentence(html):
 
 def test_the_busiest_airports_table_is_set_by_a_sentence(ds):
     text = sentence(get(ds, "/airports").text)
-    assert re.findall(r'<select id="([^"]+)"', text) == ["table-n", "table-group", "table-service", "table-rank", "dir"]
+    assert re.findall(r'<select id="([^"]+)"', text) == ["table-n", "table-group", "table-region", "table-service", "table-rank", "dir"]
     assert '<option value="city">cities</option>' in text and '<option value="international">international flights</option>' in text
     assert re.search(r'<select id="table-rank"[^>]*><option value="all">all years</option><option value="2025">2025</option>.*<option value="1990">1990</option></select>', text)
     assert '<option value="" selected>both directions</option>' in text and "Show the top" in " ".join(text.split())
@@ -96,6 +96,7 @@ def test_the_busiest_airports_table_is_set_by_a_sentence(ds):
 def test_the_two_airport_lists_share_the_sentence_after_their_lead(ds):
     def shared(html):  # from "the top" on, without each page's id prefix and its own choices of year
         text = " ".join(sentence(html).split()).split("the top ", 1)[1]
+        text = re.sub(r'<select id="table-region".*?</select> ', "", text)   # only /airports can look abroad
         return re.sub(r'(<select id="(?:table|matrix)-rank"[^>]*>).*?</select>', r"\1</select>", text).replace('id="table-', 'id="x-').replace('id="matrix-', 'id="x-')
     assert shared(get(ds, "/airports").text) == shared(get(ds, "/airports/over-time").text)
     assert " ".join(sentence(get(ds, "/airports/over-time").text).split()).startswith('Show <select id="matrix-measure"')

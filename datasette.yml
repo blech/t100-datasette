@@ -65,7 +65,7 @@ databases:
 
       top_airports:
         title: "Busiest US airports in a year or all years"
-        description: "One row per US airport: its flights both ways (or set dir to out for departures, in for arrivals), seats, passengers, freight, other airports flown to or from at least 24 times both ways or 12 one way (in some year, for all years), and its BTS city market with the market's own count. Leave year empty for all years. Set service to domestic or international for the flights in that BTS file, with destinations counting the routes the matrices call that (empty or all counts everything)."
+        description: "One row per US airport: its flights both ways (or set dir to out for departures, in for arrivals), seats, passengers, freight, other airports flown to or from at least 24 times both ways or 12 one way (in some year, for all years), and its BTS city market with the market's own count. Leave year empty for all years. Set region to abroad for the airports outside the US instead, ranked by their flights to and from the US (all of those are international, so domestic finds none). Set service to domestic or international for the flights in that BTS file, with destinations counting the routes the matrices call that (empty or all counts everything)."
         sql: |
           -- dests: other airports with at least 24 flights both ways (12 one way) in the year, or in some year for all years, each
           -- counted once, the cut-off the maps and matrices use; market_dests counts each one once for all the market's airports
@@ -116,7 +116,7 @@ databases:
                 ELSE MAX(a.city_name) END AS city
             FROM airport_dir_year AS a
             LEFT JOIN by_service AS s ON s.airport = a.airport
-            WHERE (:year IN ('', 'all') OR a.year = CAST(:year AS integer)) AND a.wac BETWEEN 1 AND 93
+            WHERE (:year IN ('', 'all') OR a.year = CAST(:year AS integer)) AND CASE WHEN :region = 'abroad' THEN a.wac NOT BETWEEN 1 AND 93 ELSE a.wac BETWEEN 1 AND 93 END
             GROUP BY a.airport
             HAVING n_deps > 0 OR n_seats > 0 OR n_passengers > 0 OR n_freight > 0
           )
