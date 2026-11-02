@@ -18,7 +18,7 @@
     <noscript><p>This table needs JavaScript. You can still <a href="/airports/globe">browse airports on the map</a>.</p></noscript>
 
     <p class="chart-sentence">
-      Show every airport in {{ country }}, counting flights for <select id="year" aria-label="Year">
+      Show <select id="group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select> in {{ country }}, counting flights for <select id="year" aria-label="Year">
         <option value="all">all years</option>{% for y in years %}<option value="{{ y }}">{{ y }}</option>{% endfor %}</select>
       <select id="dir" aria-label="Direction">{% for value, text in dir_choices %}<option value="{{ value }}"{% if value == dir %} selected{% endif %}>{{ text[0]|lower }}{{ text[1:] }}</option>{% endfor %}</select>.
     </p>
@@ -42,7 +42,7 @@
       </table>
     </div>
     <p id="status" role="status"></p>
-    <p class="note">Cities are BTS city markets: a city's row adds up its airports and counts each destination once. Destinations counts US airports with at least {{ 24 if dir == "" else 12 }} flights {{ {"out": "from the airport", "in": "to the airport"}.get(dir, "to and from the airport") }} that year (for all years, in some year); the total row counts each US airport once for the whole country. Freight is in short tons (2,000 lb). <a href="/airports?region=abroad&amp;group=country">All countries</a>.</p>
+    <p class="note">Cities are BTS city markets: a city's row adds up its airports, counts each destination once, and opens to list them. Destinations counts US airports with at least {{ 24 if dir == "" else 12 }} flights {{ {"out": "from the airport", "in": "to the airport"}.get(dir, "to and from the airport") }} that year (for all years, in some year); the total row counts each US airport once for the whole country. Freight is in short tons (2,000 lb). <a href="/airports?region=abroad&amp;group=country">All countries</a>.</p>
     {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/landing/country.js"></script>

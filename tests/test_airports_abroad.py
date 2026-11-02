@@ -74,3 +74,9 @@ def test_country_slugs_drop_accents_and_punctuation():
     from plugins.t100_globe import country_slug
     assert [country_slug(n) for n in ("United Kingdom", "Congo (Kinshasa)", "Cote d'Ivoire", "Côte d'Ivoire", "U.S.S.R.")] == [
         "united-kingdom", "congo-kinshasa", "cote-d-ivoire", "cote-d-ivoire", "u-s-s-r"]
+
+
+def test_a_country_page_switches_between_airports_and_cities(ds, db_path):
+    abroad(db_path)
+    text = get(ds, "/countries/united-kingdom").text
+    assert '<select id="group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select> in United Kingdom' in text

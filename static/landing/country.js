@@ -14,6 +14,8 @@ const dir = parseDir(location.search);
 const word = lowerFirst(abroadCountWord(dir));
 const asked = Number.parseInt(new URLSearchParams(location.search).get('year'), 10);
 let year = new URLSearchParams(location.search).get('year') === 'all' ? 'all' : asked >= minYear && asked <= maxYear ? asked : maxYear;
+const group = new URLSearchParams(location.search).get('group') === 'city' ? 'city' : 'airport';
+const open = new Set(); // the cities opened to list their airports
 let airportInfo = new Map();
 let rows = [];
 let loadSeq = 0;
@@ -41,15 +43,30 @@ function render() {
   body.replaceChildren();
   foot.replaceChildren();
   const mine = rows.filter((r) => r.country === country);
-  // a city with several airports gets a row of its own, its airports indented beneath it; a lone airport is just its row
-  for (const c of groupCities(mine).sort((a, b) => b.passengers - a.passengers || a.name.localeCompare(b.name))) {
-    if (c.airports.length === 1) { body.append(airportRow(c.airports[0], false)); continue; }
-    const tr = document.createElement('tr');
-    tr.className = 'city-row';
-    tr.append(cell('', 'code'), cell(place(c.name), 'city'), countCell(c.passengers, 'passengers'), countCell(c.deps, word),
-      percentCell(loadFactor(c)), cell(String(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
-    body.append(tr);
-    for (const a of c.airports) body.append(airportRow(a, true));
+  if (group === 'airport') {
+    for (const r of [...mine].sort((x, y) => (Number(y.passengers) || 0) - (Number(x.passengers) || 0) || x.airport.localeCompare(y.airport))) body.append(airportRow(r, false));
+  } else {
+    // a city's row opens to list its airports; a lone airport's city has nothing to open
+    for (const c of groupCities(mine).sort((x, y) => y.passengers - x.passengers || x.name.localeCompare(y.name))) {
+      const tr = document.createElement('tr');
+      tr.className = 'city-row';
+      const first = cell('', 'code');
+      const isOpen = open.has(c.key);
+      if (c.airports.length > 1) {
+        const toggle = Object.assign(document.createElement('button'), { type: 'button', className: 'twist', textContent: isOpen ? '▾' : '▸' });
+        toggle.setAttribute('aria-expanded', String(isOpen));
+        toggle.setAttribute('aria-label', `${isOpen ? 'Hide' : 'Show'} ${place(c.name)}'s airports`);
+        toggle.dataset.key = c.key;
+        toggle.addEventListener('click', () => { if (open.has(c.key)) open.delete(c.key); else open.add(c.key); render(); body.querySelector(`[data-key="${c.key}"]`)?.focus(); });
+        first.append(toggle);
+      } else {
+        first.append(link(airportHref(c.airports[0].airport, 'passengers'), c.airports[0].airport, airportTip(c.airports[0].airport, airportInfo)));
+      }
+      tr.append(first, cell(place(c.name), 'city'), countCell(c.passengers, 'passengers'), countCell(c.deps, word),
+        percentCell(loadFactor(c)), cell(String(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
+      body.append(tr);
+      if (isOpen) for (const a of c.airports) body.append(airportRow(a, true));
+    }
   }
   if (!mine.length) return;
   const total = { passengers: 0, deps: 0, seats: 0, freight: 0 };
@@ -79,6 +96,12 @@ async function load() {
   render();
 }
 
+$('group').value = group;
+$('group').addEventListener('change', () => {
+  const q = new URLSearchParams(location.search);
+  if ($('group').value === 'city') q.set('group', 'city'); else q.delete('group');
+  location.search = q.size ? `?${q}` : '';
+});
 $('dir').addEventListener('change', (e) => setDir(e.target.value));
 $('year').value = String(year);
 $('year').addEventListener('change', () => {
