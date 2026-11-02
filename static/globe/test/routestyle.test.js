@@ -32,6 +32,9 @@ test('colourMode is service unless comparing, and change by default when compari
   assert.equal(colourMode('change', false), 'service');
   assert.equal(colourMode(null, true), 'change');
   assert.equal(colourMode('service', true), 'service');
+  assert.equal(colourMode('single', false), 'single');
+  assert.equal(colourMode('single', true), 'single');
+  assert.equal(parseStyle('?colour=single').colour, 'single');
 });
 
 test('toggleHide adds and removes, in canonical order', () => {
@@ -73,11 +76,13 @@ test('styleRoutes colours by service or by change, kept in the theme\'s muted co
   assert.deepEqual(byService.map((s) => s.colour), [palette(false).service.domestic, palette(false).service.international, palette(false).service.domestic]);
   const byChange = styleRoutes(routes, { mode: 'change', theme, widthKey: 'passengers' });
   assert.deepEqual(byChange.map((s) => s.colour), ['#777777', palette(false).change.added, palette(false).change.dropped]);
+  const single = styleRoutes(routes, { mode: 'single', theme: { ...theme, dark: true }, widthKey: 'passengers' });
+  assert.ok(single.every((s) => s.colour === palette(true).single));
 });
 
 test('dropped routes are dashed whichever dimension is coloured', () => {
   const routes = [route('domestic', 'kept'), route('domestic', 'dropped'), route('domestic', null)];
-  for (const mode of ['service', 'change']) {
+  for (const mode of ['service', 'change', 'single']) {
     assert.deepEqual(styleRoutes(routes, { mode, theme, widthKey: 'passengers' }).map((s) => s.dashed), [false, true, false]);
   }
 });

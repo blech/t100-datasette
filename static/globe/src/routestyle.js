@@ -12,10 +12,10 @@ const DASHED = ['dropped', 'between'];
 
 const canonical = (keys) => HIDEABLE.filter((k) => keys.has(k));
 
-// ?colour=service|change&hide=domestic,dropped. The older ?service=domestic (still carried by the nav) means "hide international".
+// ?colour=service|change|single&hide=domestic,dropped. The older ?service=domestic (still carried by the nav) means "hide international".
 export function parseStyle(search) {
   const q = new URLSearchParams(search || '');
-  const colour = ['service', 'change'].includes(q.get('colour')) ? q.get('colour') : null;
+  const colour = ['service', 'change', 'single'].includes(q.get('colour')) ? q.get('colour') : null;
   const hide = new Set((q.get('hide') || '').split(',').filter((k) => HIDEABLE.includes(k)));
   const service = q.get('service');
   if (SERVICES.includes(service)) for (const s of SERVICES) if (s !== service) hide.add(s);
@@ -29,8 +29,9 @@ export function styleParams({ colour, hide }) {
   return out;
 }
 
-// change only means something with two years to compare; comparing defaults to it
-export const colourMode = (colour, comparing) => (comparing ? colour ?? 'change' : 'service');
+// change only means something with two years to compare; comparing defaults to it. Single (every route in the
+// palette's one orange) works either way.
+export const colourMode = (colour, comparing) => (colour === 'single' ? 'single' : comparing ? colour ?? 'change' : 'service');
 
 export function toggleHide(hide, key) {
   const s = new Set(hide);
@@ -57,7 +58,8 @@ export function styleRoutes(routes, { mode, theme, widthKey }) {
   return routes.map((r) => {
     const a = alphaFor(routes.length, r[widthKey], max) * (mode === 'change' ? CHANGE_EMPHASIS[r.status] ?? 1 : 1);
     return {
-      colour: mode === 'change' ? palette(theme.dark).change[r.status] ?? theme.ui.muted : colourFor(r.service, theme.dark),
+      colour: mode === 'single' ? palette(theme.dark).single
+        : mode === 'change' ? palette(theme.dark).change[r.status] ?? theme.ui.muted : colourFor(r.service, theme.dark),
       alpha: Math.min(0.9, Math.max(0.08, a)),
       dashed: DASHED.includes(r.status),
     };
