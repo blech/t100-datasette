@@ -101,5 +101,22 @@ export function groupCities(rows, by = 'city') {
   });
 }
 
+// a country's page: its name in lower case without accents, anything else between words a dash (plugins/t100_globe.py does the same)
+export const countrySlug = (name) => name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+export const countryHref = (name, { year = 'all', dir = '' } = {}, maxYear) => {
+  const q = new URLSearchParams();
+  if (year !== maxYear) q.set('year', year);
+  if (dir) q.set('dir', dir);
+  return `/countries/${countrySlug(name)}${q.size ? `?${q}` : ''}`;
+};
+
+// a country opens to its busiest airports and one row adding up the rest (a lone leftover airport is listed, not summed)
+export const SHOWN_IN_COUNTRY = 5;
+export function splitAirports(airports, shown = SHOWN_IN_COUNTRY) {
+  if (airports.length <= shown + 1) return { shown: airports, others: [] };
+  return { shown: airports.slice(0, shown), others: airports.slice(shown) };
+}
+export const sumOf = (rows) => Object.fromEntries(['passengers', 'deps', 'seats', 'freight'].map((k) => [k, rows.reduce((n, r) => n + (Number(r[k]) || 0), 0)]));
+
 export const airportHref = (code, sort) =>
   `/airports/${encodeURIComponent(code)}${sort === 'passengers' || sort === 'dests' ? '' : `?measure=${sort}`}`;

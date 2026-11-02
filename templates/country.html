@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Airports in {{ country }} · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="/static/nav/main.js"></script>
+</head>
+<body data-min-year="{{ min_year }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}" data-country="{{ country }}">
+  <main>
+    {% include "_nav.html" %}
+    <h1>Airports in {{ country }}</h1>
+    <p class="note" id="abroad-note">{{ country }} is outside the US. The T-100 data only covers flights to or from US airports, so only these airports' flights to and from the US are counted here, not their other routes. <a href="/about#direction">More on what the data covers</a>.</p>
+
+    <noscript><p>This table needs JavaScript. You can still <a href="/airports/globe">browse airports on the map</a>.</p></noscript>
+
+    <p class="chart-sentence">
+      Show every airport in {{ country }}, counting flights for <select id="year" aria-label="Year">
+        <option value="all">all years</option>{% for y in years %}<option value="{{ y }}">{{ y }}</option>{% endfor %}</select>
+      <select id="dir" aria-label="Direction">{% for value, text in dir_choices %}<option value="{{ value }}"{% if value == dir %} selected{% endif %}>{{ text[0]|lower }}{{ text[1:] }}</option>{% endfor %}</select>.
+    </p>
+    <h2 id="heading">Airports in {{ country }}</h2>
+    <div class="scroll">
+      <table id="airports">
+        <thead>
+          <tr>
+            <th scope="col" class="left">Airport</th>
+            <th scope="col" class="left">City</th>
+            <th scope="col" class="num">Passengers</th>
+            <th scope="col" class="num">{{ count_word }}</th>
+            <th scope="col" class="num">Load factor</th>
+            <th scope="col" class="num">Destinations</th>
+            <th scope="col" class="num">Freight</th>
+            <th scope="col"><span class="visually-hidden">More detail</span></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+    <p id="status" role="status"></p>
+    <p class="note">Cities are BTS city markets: a city's row adds up its airports and counts each destination once. Destinations counts US airports with at least {{ 24 if dir == "" else 12 }} flights {{ {"out": "from the airport", "in": "to the airport"}.get(dir, "to and from the airport") }} that year (for all years, in some year); the total row counts each US airport once for the whole country. Freight is in short tons (2,000 lb). <a href="/airports?region=abroad&amp;group=country">All countries</a>.</p>
+    {% include "_footer.html" %}
+  </main>
+  <script type="module" src="/static/landing/country.js"></script>
+</body>
+</html>

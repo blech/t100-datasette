@@ -1,6 +1,7 @@
 import re
 
 from tests.helpers import get
+from tests.test_top_airports import abroad
 
 ABROAD = "/airports?region=abroad"
 
@@ -54,3 +55,22 @@ def test_countries_are_a_grouping_only_abroad(ds):
     abroad = get(ds, ABROAD).text
     assert '<option value="country">countries</option>' in abroad
     assert "countries" not in get(ds, "/airports").text
+
+
+def test_a_country_has_a_page_and_unknown_ones_are_not_found(ds, db_path):
+    abroad(db_path)
+    abroad_page = get(ds, "/countries/united-kingdom")
+    assert abroad_page.status_code == 200 and "<h1>Airports in United Kingdom</h1>" in abroad_page.text
+    assert 'data-country="United Kingdom"' in abroad_page.text
+    assert get(ds, "/countries/atlantis").status_code == 404
+
+
+def test_countries_goes_to_the_airports_table_grouped_by_country(ds):
+    r = get(ds, "/countries")
+    assert r.status_code == 302 and r.headers["location"] == "/airports?region=abroad&group=country"
+
+
+def test_country_slugs_drop_accents_and_punctuation():
+    from plugins.t100_globe import country_slug
+    assert [country_slug(n) for n in ("United Kingdom", "Congo (Kinshasa)", "Cote d'Ivoire", "Côte d'Ivoire", "U.S.S.R.")] == [
+        "united-kingdom", "congo-kinshasa", "cote-d-ivoire", "cote-d-ivoire", "u-s-s-r"]

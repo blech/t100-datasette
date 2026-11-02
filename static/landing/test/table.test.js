@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { lowerFirst, yearLabel, groupCities, matrixSearch, tableSearch, topBy, parseState, toSearch, SORTS, sortLabels, airportHref, loadFactor } from '../src/table.js';
+import { countrySlug, countryHref, splitAirports, sumOf, lowerFirst, yearLabel, groupCities, matrixSearch, tableSearch, topBy, parseState, toSearch, SORTS, sortLabels, airportHref, loadFactor } from '../src/table.js';
 
 test('topBy sorts descending by the chosen measure and keeps the top n', () => {
   const rows = [
@@ -131,4 +131,18 @@ test('abroad, airports group by country, with the country\'s own destination cou
   const [uk, fr] = groupCities([row('MAN', 'Manchester, United Kingdom', 'United Kingdom', 5, 4), row('LHR', 'London, United Kingdom', 'United Kingdom', 9, 4), row('CDG', 'Paris, France', 'France', 7, 2)], 'country');
   assert.deepEqual([uk.name, uk.passengers, uk.dests, uk.airports.map((a) => a.airport)], ['United Kingdom', 14, 4, ['LHR', 'MAN']]);
   assert.deepEqual([fr.name, fr.dests], ['France', 2]);
+});
+
+test('a country\'s address is its name as a slug, with the year and way carried', () => {
+  assert.deepEqual(['United Kingdom', 'Congo (Kinshasa)', 'Côte d\'Ivoire', 'U.S.S.R.'].map(countrySlug), ['united-kingdom', 'congo-kinshasa', 'cote-d-ivoire', 'u-s-s-r']);
+  assert.equal(countryHref('United Kingdom', { year: 2025, dir: '' }, 2025), '/countries/united-kingdom');
+  assert.equal(countryHref('United Kingdom', { year: 'all', dir: 'out' }, 2025), '/countries/united-kingdom?year=all&dir=out');
+});
+
+test('a country opens to its five busiest airports and a sum of the rest, unless only one would be left over', () => {
+  const list = (n) => Array.from({ length: n }, (_, i) => ({ airport: `A${i}`, passengers: 10, deps: 1, seats: 20, freight: 2 }));
+  assert.equal(splitAirports(list(6)).others.length, 0);
+  const { shown, others } = splitAirports(list(9));
+  assert.deepEqual([shown.length, others.length], [5, 4]);
+  assert.deepEqual(sumOf(others), { passengers: 40, deps: 4, seats: 80, freight: 8 });
 });

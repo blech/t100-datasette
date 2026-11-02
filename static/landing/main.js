@@ -1,8 +1,9 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { sortLabels, lowerFirst, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel } from './src/table.js';
-import { formatCount, formatTons, exactCount } from '/static/common/numbers.js';
+import { sortLabels, lowerFirst, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel, countryHref, splitAirports, sumOf } from './src/table.js';
+import { exactCount } from '/static/common/numbers.js';
+import { cell, countCell, tonsCell, percentCell, link } from './src/cells.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { parseDir, setDir } from '/static/common/direction.js';
 
@@ -15,27 +16,6 @@ let rows = [];
 let airportInfo = new Map(); // code -> name, ICAO code and city, for the hovers; until it loads they show the code alone
 const open = new Set(); // the cities opened to list their airports
 let loadSeq = 0;
-
-function cell(text, className, title) {
-  const td = document.createElement('td');
-  td.textContent = text;
-  if (className) td.className = className;
-  if (title !== undefined) td.title = title;
-  return td;
-}
-
-// a measured count, rounded, with the exact figure on hover
-const countCell = (n, noun) => cell(formatCount(n), 'num', `${exactCount(n)} ${noun}`);
-const tonsCell = (pounds) => cell(formatTons(pounds), 'num', `${exactCount(pounds)} lb`);
-const percentCell = (pct) => cell(pct === null ? '–' : `${pct.toFixed(1)}%`, 'num');
-
-function link(href, text, title) {
-  const a = document.createElement('a');
-  a.href = href;
-  a.textContent = text;
-  if (title !== undefined) a.title = title;
-  return a;
-}
 
 const dir = parseDir(location.search);
 const abroad = state.region === 'abroad';
@@ -63,6 +43,17 @@ function render() {
       percentCell(loadFactor(r)), cell(exactCount(r.dests), 'num'), tonsCell(r.freight), more);
     return tr;
   };
+  // the airports under a country beyond the busiest few: one row adding them up, to the country's page
+  const othersRow = (c, others) => {
+    const tr = document.createElement('tr');
+    tr.className = 'member others';
+    const total = sumOf(others);
+    const more = cell('', 'more');
+    more.append(link(countryHref(c.name, { year: state.year, dir }, maxYear), 'All →'));
+    tr.append(cell('', 'code'), cell(`${others.length} other airports`, 'city'), countCell(total.passengers, 'passengers'), countCell(total.deps, word),
+      percentCell(loadFactor(total)), cell('', 'num'), tonsCell(total.freight), more);
+    return tr;
+  };
   if (state.group === 'airport') {
     for (const r of topBy(rows, state.sort, state.n)) body.append(airportRow(r, false));
     return;
@@ -81,12 +72,18 @@ function render() {
     toggle.dataset.key = c.key;
     const first = cell('', 'code');
     first.append(toggle);
-    const name = cell(c.name, 'city');
+    const name = cell('', 'city');
+    if (state.group === 'country') name.append(link(countryHref(c.name, { year: state.year, dir }, maxYear), c.name, tip)); // the country's own page lists every airport
+    else name.textContent = c.name;
     name.title = tip;
     tr.append(first, name, countCell(c.passengers, 'passengers'), countCell(c.deps, word), percentCell(loadFactor(c)),
       cell(exactCount(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
     body.append(tr);
-    if (isOpen) for (const a of c.airports) body.append(airportRow(a, true));
+    if (!isOpen) continue;
+    // a country lists its busiest airports and adds up the rest; its page has them all
+    const { shown, others } = state.group === 'country' ? splitAirports(c.airports) : { shown: c.airports, others: [] };
+    for (const a of shown) body.append(airportRow(a, true));
+    if (others.length) body.append(othersRow(c, others));
   }
 }
 

@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 from datasette import hookimpl
@@ -26,11 +27,22 @@ def moved(template):
     return view
 
 
+def redirect_to(target):
+    """A redirect to a fixed address (not permanent: where the page lives may change)."""
+
+    async def view(request):
+        return Response.redirect(target, status=302)
+
+    return view
+
+
 @hookimpl
 def register_routes():
     return [
         (r"^/$", home_page),
         (r"^/airports$", airports_index),
+        (r"^/countries$", redirect_to("/airports?region=abroad&group=country")),
+        (r"^/countries/(?P<slug>[a-z0-9-]+)$", country_page),
         (r"^/airports/globe$", globe_page),
         (r"^/airports/dedicated$", dedicated_airports_page),
         (r"^/airports/over-time$", rollup_page("airports")),
@@ -88,6 +100,8 @@ AIRPORT_CODE = re.compile(r"^[A-Za-z0-9]{3}$")
 def section_of(path):
     """The site section a path belongs to, from its first segment; None for the front page and Datasette's own pages."""
     first = path.strip("/").split("/")[0]
+    if first == 'countries':
+        first = 'airports'
     if first and first == 'changelog':
         first = 'about'
     return first if first in SECTIONS else None
@@ -278,6 +292,36 @@ def airport_region(request):
         return {"region": region, "abroad": False}
     dir = parse_dir(request.args.get("dir"))
     return {"region": region, "abroad": True, "count_word": count_word(dir, abroad=True), "dir_choices": DIRECTION_CHOICES_ABROAD}
+
+
+def country_slug(name):
+    """A country's address: its name in lower case without accents, anything else between words a dash (static/landing/src/table.js does the same)."""
+    plain = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", plain.lower()).strip("-")
+
+
+async def countries(datasette):
+    """The countries outside the US that appear in the data, as {slug: name}: what follows the first comma of an airport's city name."""
+    result = await datasette.get_database("t100").execute(
+        "SELECT DISTINCT SUBSTR(city_name, INSTR(city_name, ', ') + 2) FROM airport_dir_year WHERE wac NOT BETWEEN 1 AND 93 AND city_name LIKE '%, %'")
+    return {country_slug(r[0]): r[0] for r in result.rows}
+
+
+async def country_page(datasette, request):
+    """Every airport of one country outside the US, with its flights to and from the US, grouped by city."""
+    slug = request.url_vars["slug"]
+    name = (await countries(datasette)).get(slug)
+    if name is None:
+        raise NotFound(f"No country {slug}")
+    min_year, max_year = year_range(datasette)
+    html = await datasette.render_template(
+        "country.html",
+        {"min_year": min_year, "max_year": max_year, "country": name, "crumbs": trail(datasette, ("airports", "/airports"), ("abroad", "/airports?region=abroad"), (name, None)),
+         "dir_choices": DIRECTION_CHOICES_ABROAD, "dir": parse_dir(request.args.get("dir")), "count_word": count_word(parse_dir(request.args.get("dir")), abroad=True),
+         "years": list(range(max_year, min_year - 1, -1))},
+        request=request,
+    )
+    return Response.html(html)
 
 
 async def globe_page(datasette, request):
