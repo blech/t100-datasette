@@ -1,4 +1,5 @@
 import re
+import sqlite3
 
 from tests.helpers import get
 from tests.test_top_airports import abroad
@@ -80,3 +81,14 @@ def test_a_country_page_switches_between_airports_and_cities(ds, db_path):
     abroad(db_path)
     text = get(ds, "/countries/united-kingdom").text
     assert '<select id="group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select> in United Kingdom' in text
+
+
+def test_a_foreign_airports_country_links_to_its_page_and_a_us_airports_does_not(ds, db_path):
+    abroad(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("INSERT OR REPLACE INTO airport_names (code, name) VALUES ('LHR', 'London, United Kingdom')")
+    conn.commit()
+    conn.close()
+    page = get(ds, "/airports/LHR").text
+    assert '<a href="/countries/united-kingdom">United Kingdom</a>' in page
+    assert "/countries/" not in get(ds, "/airports/JFK").text

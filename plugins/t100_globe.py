@@ -6,6 +6,7 @@ import unicodedata
 from pathlib import Path
 
 from datasette import hookimpl
+from markupsafe import Markup, escape
 from datasette.utils.asgi import NotFound, Response
 
 # Datasette loads each plugin from its file, not as a package, so a shared module is imported from beside this one
@@ -194,6 +195,16 @@ def airport_label(info, code):
     return " · ".join(part for part in (name, place) if part)
 
 
+async def linked_label(datasette, info, code, foreign):
+    """airport_label with the country of an airport outside the US linked to its country page (the label is then markup)."""
+    label = airport_label(info, code)
+    place = info.get(code, (None, None, None))[2] or ""
+    country = place.partition(", ")[2] if foreign else ""
+    if not country or country_slug(country) not in await countries(datasette) or not label.endswith(country):
+        return label
+    return Markup(f'{escape(label[: -len(country)])}<a href="/countries/{country_slug(country)}">{escape(country)}</a>')
+
+
 def airport_tip(info, code):
     """An airport link's hover, as the charts' airportTip has it: name, IATA (and ICAO) code, then city."""
     name, icao, place = info.get(code, (None, None, None))
@@ -330,7 +341,7 @@ async def globe_page(datasette, request):
     html = await datasette.render_template(
         "globe.html",
         {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1],
-         "label": airport_label(await airport_info(datasette, [origin]), origin) if origin else "", **airport_direction(request)},
+         "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, await is_foreign(datasette, origin)) if origin else "", **airport_direction(request)},
         request=request,
     )
     return Response.html(html)
@@ -470,7 +481,7 @@ def airport_view(template, crumb):
                 "min_year": year_range(datasette)[0],
                 "crumbs": trail(datasette, *steps),
                 "foreign": await is_foreign(datasette, origin),
-                "label": airport_label(await airport_info(datasette, [origin]), origin),
+                "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, await is_foreign(datasette, origin)),
                 **airport_direction(request),
             },
             request=request,
