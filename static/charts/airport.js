@@ -48,6 +48,11 @@ const stackMax = (points) => {
   for (const p of points) sums.set(p.year, (sums.get(p.year) || 0) + p.value);
   return Math.max(0, ...sums.values());
 };
+// whole-number ticks for a count axis, up to `max`, no more than about eight of them (half a destination is not a thing)
+const wholeTicks = (max) => {
+  const step = [1, 2, 5, 10, 20, 50, 100, 200, 500].find((s) => max / s <= 8) || 1000;
+  return Array.from({ length: Math.floor(max / step) + 1 }, (_, i) => i * step);
+};
 // both charts run over the airport's whole span, every year in it, so they line up even when a setting leaves years empty
 function yearAxis(years) {
   const shown = yearDomain(years, { span: 'all', min: firstYear, max: lastYear }).map(String);
@@ -113,7 +118,7 @@ function drawPlaces() {
   const p = palette(isDark());
   const data = counts.map((c) => ({ year: String(c.year), series: c.service, value: c.count }));
   plot(box, {
-    x: yearAxis(counts.map((c) => c.year)), y: { label: 'Destinations', grid: true, tickSize: 0 },
+    x: yearAxis(counts.map((c) => c.year)), y: { label: 'Destinations', grid: true, tickSize: 0, ticks: wholeTicks(stackMax(data)), tickFormat: (v) => exactCount(v) },
     color: { domain: series, range: series.map((s) => p.service[s]), legend: true },
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series }),
