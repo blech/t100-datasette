@@ -5,7 +5,7 @@
    directions are named for the US (dir_choices). #}
 {% macro airport_ranking(p, ranks, dir, dir_choices, region=none) -%}
 the top <select id="{{ p }}-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
-<select id="{{ p }}-group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>
+<select id="{{ p }}-group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option>{% if region == "abroad" %}<option value="country">countries</option>{% endif %}</select>
 {% if region %}<select id="{{ p }}-region" aria-label="In the US or abroad"><option value="us"{% if region == "us" %} selected{% endif %}>in the US</option><option value="abroad"{% if region == "abroad" %} selected{% endif %}>abroad</option></select>
 {% endif -%}
 {% if region == "abroad" %}for <span id="{{ p }}-service">international flights</span>{% else %}for <select id="{{ p }}-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>{% endif %},

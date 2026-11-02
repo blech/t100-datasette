@@ -48,3 +48,9 @@ def test_abroad_destinations_are_us_airports(ds):
 
 def test_over_time_has_no_region_menu(ds):
     assert "region" not in sentence(get(ds, "/airports/over-time").text)
+
+
+def test_countries_are_a_grouping_only_abroad(ds):
+    abroad = get(ds, ABROAD).text
+    assert '<option value="country">countries</option>' in abroad
+    assert "countries" not in get(ds, "/airports").text

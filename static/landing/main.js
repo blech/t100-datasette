@@ -48,7 +48,7 @@ function render() {
     if (th.dataset.sort === state.sort) th.setAttribute('aria-sort', 'descending');
     else th.removeAttribute('aria-sort');
   }
-  $('heading').textContent = `Busiest ${state.group === 'city' ? 'cities' : 'airports'}${abroad ? ' abroad' : ''} by ${lowerFirst(labels[state.sort])}, ${yearLabel(state.year, minYear, maxYear)}${state.service === 'all' ? '' : `, ${state.service} flights`}`;
+  $('heading').textContent = `Busiest ${{ city: 'cities', country: 'countries' }[state.group] || 'airports'}${abroad ? ' abroad' : ''} by ${lowerFirst(labels[state.sort])}, ${yearLabel(state.year, minYear, maxYear)}${state.service === 'all' ? '' : `, ${state.service} flights`}`;
   const body = document.querySelector('#airports tbody');
   body.replaceChildren();
   // an airport's row: its code (to its page), name, figures and map; under an opened city it's indented
@@ -63,12 +63,12 @@ function render() {
       percentCell(loadFactor(r)), cell(exactCount(r.dests), 'num'), tonsCell(r.freight), more);
     return tr;
   };
-  if (state.group !== 'city') {
+  if (state.group === 'airport') {
     for (const r of topBy(rows, state.sort, state.n)) body.append(airportRow(r, false));
     return;
   }
   // a city's row: a ▸ that opens it, its name, and its airports' totals (destinations counted once for the city)
-  for (const c of topBy(groupCities(rows), state.sort, state.n)) {
+  for (const c of topBy(groupCities(rows, state.group), state.sort, state.n)) {
     const tip = groupTip({ label: c.name, codes: c.airports.map((a) => a.airport) }, airportInfo);
     const tr = document.createElement('tr');
     tr.className = 'city-row';

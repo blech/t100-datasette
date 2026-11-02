@@ -33,7 +33,7 @@ export function parseState(search, minYear, maxYear) {
     service: region === 'us' && SERVICES.includes(q.get('service')) ? q.get('service') : 'all', // abroad, every flight is international
     year: q.get('year') === 'all' ? 'all' : Number.isFinite(year) && year >= minYear && year <= maxYear ? year : maxYear,
     sort: Object.hasOwn(SORTS, sort) ? sort : 'passengers',
-    group: q.get('group') === 'city' ? 'city' : 'airport',
+    group: q.get('group') === 'city' ? 'city' : q.get('group') === 'country' && region === 'abroad' ? 'country' : 'airport',
   };
 }
 
@@ -44,7 +44,7 @@ export function toSearch(state, maxYear) {
   const q = new URLSearchParams();
   if (state.year !== maxYear) q.set('year', state.year);
   if (state.sort !== 'passengers') q.set('sort', state.sort);
-  if (state.group === 'city') q.set('group', 'city');
+  if (state.group === 'city' || state.group === 'country') q.set('group', state.group);
   if (state.region === 'abroad') q.set('region', 'abroad');
   if (state.n && state.n !== DEFAULT_ROWS) q.set('n', state.n);
   if (state.service && state.service !== 'all') q.set('service', state.service);
@@ -78,11 +78,12 @@ export const tableSearch = (s) => {
 // top_airports rows -> one row per BTS city market: its airports' totals (busiest first), named after the busiest airport's
 // city, with the market's own destination count (each destination once, however many of its airports fly there). An airport
 // with no market is a city of its own.
-export function groupCities(rows) {
+export function groupCities(rows, by = 'city') {
   const cities = new Map();
   for (const r of rows) {
-    const key = r.market_id ? String(r.market_id) : `solo:${r.airport}`;
-    const c = cities.get(key) || { key, airports: [], passengers: 0, deps: 0, seats: 0, freight: 0, dests: Number(r.market_id ? r.market_dests : r.dests) || 0 };
+    const country = by === 'country' && r.country;   // abroad, a country's airports: every one with a country in its city name
+    const key = country ? `country:${r.country}` : r.market_id ? String(r.market_id) : `solo:${r.airport}`;
+    const c = cities.get(key) || { key, airports: [], passengers: 0, deps: 0, seats: 0, freight: 0, dests: Number(country ? r.country_dests : r.market_id ? r.market_dests : r.dests) || 0 };
     c.airports.push(r);
     for (const k of ['passengers', 'deps', 'seats', 'freight']) c[k] += Number(r[k]) || 0;
     cities.set(key, c);
@@ -95,7 +96,7 @@ export function groupCities(rows) {
       const name = a.city || a.airport;
       carried.set(name, (carried.get(name) || 0) + (Number(a.passengers) || Number(a.deps) || 0));
     }
-    const name = [...carried].sort((x, y) => y[1] - x[1])[0][0];
+    const name = by === 'country' && airports[0].country ? airports[0].country : [...carried].sort((x, y) => y[1] - x[1])[0][0];
     return { ...c, airports, airport: airports[0].airport, name };
   });
 }

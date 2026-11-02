@@ -209,3 +209,14 @@ def test_every_flight_at_an_airport_abroad_is_international(ds, db_path):
     abroad(db_path)
     assert top(ds, service="international", region="abroad")["LHR"]["passengers"] == 5600
     assert top(ds, service="domestic", region="abroad") == {}
+
+
+def test_abroad_rows_carry_their_country_and_count_its_destinations_once(ds, db_path):
+    abroad(db_path)
+    manchester = dict(seg("MAN", "BOS", 2025, 14, 700), origin_wac=491, origin_city_name="Manchester, United Kingdom", dest_wac=22, dest_city_name="BOS City")
+    add_segments(db_path, "t100_international", [manchester])
+    rows = top(ds, dir="out", region="abroad")
+    assert (rows["LHR"]["country"], rows["MAN"]["country"]) == ("United Kingdom", "United Kingdom")
+    assert (rows["LHR"]["dests"], rows["MAN"]["dests"]) == (2, 1)
+    assert rows["LHR"]["country_dests"] == rows["MAN"]["country_dests"] == 2   # JFK and BOS, BOS counted once
+    assert top(ds)["JFK"]["country"] is None   # a US airport has none

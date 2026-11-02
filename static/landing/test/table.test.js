@@ -122,3 +122,13 @@ test('airports abroad: the region is read and written, every flight is internati
   assert.equal(matrixSearch('deps', 'city', { region: 'abroad' }), '?measure=deps&group=city');   // Over time only knows the US
   assert.equal(tableSearch('?region=abroad'), '');
 });
+
+test('abroad, airports group by country, with the country\'s own destination count', () => {
+  assert.equal(parseState('?region=abroad&group=country', 1990, 2025).group, 'country');
+  assert.equal(parseState('?group=country', 1990, 2025).group, 'airport');   // only abroad
+  assert.equal(toSearch({ region: 'abroad', year: 2025, sort: 'passengers', group: 'country', n: 50, service: 'all' }, 2025), '?group=country&region=abroad');
+  const row = (airport, city, country, passengers, country_dests) => ({ airport, city, country, passengers, deps: 1, seats: 2, freight: 0, dests: 1, market_id: airport, market_dests: 1, country_dests });
+  const [uk, fr] = groupCities([row('MAN', 'Manchester, United Kingdom', 'United Kingdom', 5, 4), row('LHR', 'London, United Kingdom', 'United Kingdom', 9, 4), row('CDG', 'Paris, France', 'France', 7, 2)], 'country');
+  assert.deepEqual([uk.name, uk.passengers, uk.dests, uk.airports.map((a) => a.airport)], ['United Kingdom', 14, 4, ['LHR', 'MAN']]);
+  assert.deepEqual([fr.name, fr.dests], ['France', 2]);
+});
