@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES as MEASURES, matrixMeasures } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES as MEASURES, matrixMeasures, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
 import { setMenus } from '/static/common/menus.js';
 import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
@@ -87,7 +87,7 @@ const carry = () => {
 
 // a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
-  { label: MATRIX_MEASURES[state.measure], value: formatCount(c.value) },
+  { label: MATRIX_MEASURES[state.measure], value: measureFormat(state.measure, formatCount)(c.value) },
   ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
   ...(state.scale === 'busiest' ? [{ label: "Of the year's biggest", value: fmtPct(c.peak) }] : []),
 ];
@@ -150,7 +150,7 @@ function drawCities(box) {
   const names = new Map(rows.map((r) => [r.aircraft, r.aircraft_name]));
   const data = res.cells.map((c) => {
     const row = byKey.get(c.row);
-    const part = (p) => ({ label: aircraft ? names.get(p.dest) || p.dest : p.dest, value: formatCount(p.value) });
+    const part = (p) => ({ label: aircraft ? names.get(p.dest) || p.dest : p.dest, value: measureFormat(state.measure, formatCount)(p.value) });
     const parts = c.parts && row.codes.length > 1 ? c.parts.slice(0, 5).map(part) : [];
     return { ...c, year: String(c.year), head: aircraft ? (row.kind === 'airport' ? row.name : row.label) : row.kind === 'airport' ? row.code : row.label, rows: [...cellRows(c), ...parts] };
   });
@@ -184,7 +184,7 @@ function drawCities(box) {
 
 const colourOptions = (cells) => (relative()
   ? { type: 'sqrt', scheme: 'YlOrRd', label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
-  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) });
+  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) });
 
 function draw() {
   $('scale-note').hidden = !relative();
@@ -218,7 +218,7 @@ function draw() {
     y: { type: 'band', domain: res.dests, axis: null },
     color: relative()
       ? { type: 'sqrt', scheme: 'YlOrRd', label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
-      : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) },
+      : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) },
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField() }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),

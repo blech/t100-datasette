@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { MATRIX_MEASURES, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
 import { setMenus } from '/static/common/menus.js';
 import { buildFamilySeries } from '/static/charts/src/rollup.js';
@@ -49,7 +49,7 @@ function draw() {
   const years = res.years.map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.points.map((p) => ({ ...p, year: String(p.year) }));
-  const tips = periodRows(data, { key: (p) => p.year, order: res.series, format: (v) => formatCount(v) });
+  const tips = periodRows(data, { key: (p) => p.year, order: res.series, format: measureFormat(state.measure, formatCount) });
   const colors = { ...seriesColours(res.series, isDark()), legend: true };
   const chart = Plot.plot({
     width: Math.min(box.clientWidth || 900, 1100),
@@ -57,7 +57,7 @@ function draw() {
     marginLeft: 64,
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, tickSize: 0, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
-    y: { ...millionsAxis(stackMax(data, 'year'), MATRIX_MEASURES[state.measure]), grid: true, tickSize: 0 },
+    y: { ...millionsAxis(stackMax(data, 'year'), axisLabel(state.measure, MATRIX_MEASURES[state.measure])), grid: true, tickSize: 0 },
     color: colors,
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: res.series }),

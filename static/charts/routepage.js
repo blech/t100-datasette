@@ -11,7 +11,7 @@ import { attachHighlight, parseHighlight, highlightedSeries, highlightMessage } 
 import { seriesColours, isDark } from '/static/common/palette.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { parseFocus, focusSearch } from '/static/charts/src/focus.js';
-import { yearTick } from '/static/charts/src/matrix.js';
+import { yearTick, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { parseDir, routeCountWord, noFlights, setDir } from '/static/common/direction.js';
 
 // the tallest stack, which sets the y axis's scale
@@ -138,7 +138,7 @@ function drawChart() {
     Plot.axisX({ label: null, tickSize: 0, tickFormat: x.tickFormat }),
     Plot.axisX([marked], { label: null, tickSize: 0, fontWeight: 700 }),
   ];
-  const fmt = state.measure === 'load_factor' ? (v) => `${v.toFixed(1)}%` : (v) => formatCount(v);
+  const fmt = state.measure === 'load_factor' ? (v) => `${v.toFixed(1)}%` : measureFormat(state.measure, formatCount);
   const tips = periodRows(data, { key: (p) => p.x, order: res.stackable ? res.series : null, format: fmt });
   const pointer = Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 }));
   // stacked in the legend's order, biggest at the bottom and "Other" on top
@@ -154,7 +154,7 @@ function drawChart() {
     x: { ...x, type: res.stackable ? 'band' : 'point' },
     y: state.measure === 'load_factor'
       ? { grid: true, tickSize: 0, label: measures.load_factor, tickFormat: 'd', domain: [0, 100] }
-      : { grid: true, tickSize: 0, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), measures[state.measure]) },
+      : { grid: true, tickSize: 0, ...millionsAxis(res.stackable ? stackMax(res.points, 'period') : Math.max(0, ...res.points.map((p) => p.value)), axisLabel(state.measure, measures[state.measure])) },
     color: { legend: true, ...seriesColours(res.series, isDark()) },
     marks,
   });

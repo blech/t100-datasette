@@ -401,3 +401,11 @@ test('a year label shows every nth year, leaving the ranked year to its own bold
   assert.deepEqual(shown(5, '2010'), ['2005']);
   assert.deepEqual(shown(1, '2006'), ['2004', '2005', '2009', '2010', '2011']);  // labelled every year, the cells are wide enough
 });
+
+import { axisLabel as _axisLabel, measureFormat as _measureFormat } from '../src/matrix.js';
+test('freight is labelled in short tons, on an axis and after a hover figure; other measures are untouched', () => {
+  assert.equal(_axisLabel('freight', 'Freight'), 'Freight, short tons');
+  assert.equal(_axisLabel('passengers', 'Passengers'), 'Passengers');
+  assert.equal(_measureFormat('freight', (v) => String(v))(118.5), '118.5 tons');
+  assert.equal(_measureFormat('deps', (v) => String(v))(7), '7');
+});

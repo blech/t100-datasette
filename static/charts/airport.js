@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { matrixMeasures } from '/static/charts/src/matrix.js';
+import { matrixMeasures, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { FLIGHTS, defaultFlights, settle, offeredBy } from '/static/charts/src/flights.js';
 import { setMenus, offerOnly } from '/static/common/menus.js';
 import { sizeSeries, placeCounts, classifyChanges, summariseChanges, airlineList, changeSort, sortChanges } from '/static/charts/src/airport.js';
@@ -81,12 +81,12 @@ function drawSize() {
     : { domain: names, range: names.map((n) => (split === 'kind' ? p.kind[n] : p.service[n])) };
   const chart = plot(box, {
     x: yearAxis(res.points.map((pt) => pt.year)),
-    y: { ...millionsAxis(stackMax(data), MATRIX_MEASURES[measure]), grid: true, tickSize: 0 },
+    y: { ...millionsAxis(stackMax(data), axisLabel(measure, MATRIX_MEASURES[measure])), grid: true, tickSize: 0 },
     color: { ...colour, legend: true },
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: names }),
       Plot.ruleY([0]),
-      Plot.ruleX(periodRows(data, { key: (d) => d.year, order: names, format: (v) => formatCount(v) }), Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
+      Plot.ruleX(periodRows(data, { key: (d) => d.year, order: names, format: measureFormat(measure, formatCount) }), Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   }, yearPopover);
   // each named airline in the legend opens its page, showing the same measure for the same flights

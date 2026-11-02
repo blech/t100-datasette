@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { MATRIX_MEASURES } from '/static/charts/src/matrix.js';
+import { MATRIX_MEASURES, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { FLIGHTS, defaultFlights, settle, offeredBy } from '/static/charts/src/flights.js';
 import { setMenus, offerOnly } from '/static/common/menus.js';
 import { classifyRoutes, summariseRoutes, formatYearMonth } from '/static/charts/src/airline.js';
@@ -75,12 +75,12 @@ function drawSize() {
   const p = palette(isDark());
   const range = split === 'kind' ? [p.kind.passenger, p.kind.freight] : [p.service.domestic, p.service.international];
   plot(box, {
-    x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), MATRIX_MEASURES[measure]), grid: true, tickSize: 0 },
+    x: yearAxis(years), y: { ...millionsAxis(stackMax(data, 'year'), axisLabel(measure, MATRIX_MEASURES[measure])), grid: true, tickSize: 0 },
     color: { domain: series, range, legend: true },
     marks: [
       Plot.barY(data, { x: 'year', y: 'value', fill: 'series', order: series }),
       Plot.ruleY([0]),
-      Plot.ruleX(periodRows(data, { key: (d) => d.year, order: series, format: (v) => formatCount(v) }), Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
+      Plot.ruleX(periodRows(data, { key: (d) => d.year, order: series, format: measureFormat(measure, formatCount) }), Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   }, yearPopover);
 }

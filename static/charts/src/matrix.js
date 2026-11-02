@@ -5,6 +5,10 @@ export const MATRIX_MEASURES = { passengers: 'Passengers', freight: 'Freight', d
 // the same, with the flight count named for the direction an airport page counts
 export const matrixMeasures = (dir) => ({ ...MATRIX_MEASURES, deps: countWord(dir) });
 
+// Freight is charted in short tons: say so on an axis or legend, and after each figure in a hover
+export const axisLabel = (measure, label) => (measure === 'freight' ? 'Freight, short tons' : label);
+export const measureFormat = (measure, format) => (measure === 'freight' ? (v) => `${format(v)} tons` : format);
+
 const LB_PER_SHORT_TON = 2000;
 const valueOf = (row, measure) => {
   const v = Number(row[measure]) || 0;

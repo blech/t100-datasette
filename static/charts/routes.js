@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey, fullYears, rankYearFrom, yearTick } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey, fullYears, rankYearFrom, yearTick, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -109,10 +109,10 @@ const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination` });
 const colourScale = (max) => (relative()
   ? { type: 'sqrt', scheme: 'YlOrRd', label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
-  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(max, MATRIX_MEASURES[state.measure]) });
+  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(max, axisLabel(state.measure, MATRIX_MEASURES[state.measure])) });
 // a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
-  { label: MATRIX_MEASURES[state.measure], value: formatCount(c.value) },
+  { label: MATRIX_MEASURES[state.measure], value: measureFormat(state.measure, formatCount)(c.value) },
   ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
   ...(state.scale === 'busiest' ? [{ label: "Of the year's top", value: fmtPct(c.peak) }] : []),
 ];
@@ -138,7 +138,7 @@ function drawCities() {
   const labelEvery = years.length <= 15 ? 1 : 5;
   const data = res.cells.map((c) => {
     const row = byKey.get(c.row);
-    const parts = c.parts ? c.parts.slice(0, 5).map((p) => ({ label: p.dest, value: formatCount(p.value) })) : [];
+    const parts = c.parts ? c.parts.slice(0, 5).map((p) => ({ label: p.dest, value: measureFormat(state.measure, formatCount)(p.value) })) : [];
     const more = c.parts && c.parts.length > 5 ? [{ label: `+${c.parts.length - 5} more`, value: '' }] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
     // a city's cell opens the route, that year marked, when the city has one airport; a city with several opens into them
