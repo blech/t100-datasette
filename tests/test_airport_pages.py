@@ -43,7 +43,8 @@ def test_each_page_has_the_four_views_with_its_own_current(ds):
     for i, (_, path) in enumerate(VIEWS):
         html = get(ds, path).text
         line = re.search(r'<nav class="views".*?</nav>', html, re.S).group(0)
-        expected = " · ".join(f'<strong aria-current="page">{label}</strong>' if j == i else f'<a href="{href}">{label}</a>'
+        expected = " · ".join(f'<strong aria-current="page">{label}</strong>' if j == i
+                              else f'<a href="{href}"{" id=\"changes-link\"" if label == "Changes" else ""}>{label}</a>'
                               for j, (label, href) in enumerate(VIEWS))
         assert expected in line, path
 

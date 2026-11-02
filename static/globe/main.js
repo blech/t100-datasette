@@ -9,7 +9,7 @@ import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, sk
 import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
-import { colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
+import { colourMode, rangeHint, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
 import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
 import { renderLegend, syncRange } from './src/controls.js';
 import { routesByOrigin, chooserTap } from './src/chooser.js';
@@ -78,7 +78,7 @@ function recompute() {
   periodRoutes = state.month !== null
     ? compareYears(forMonth(monthRoutes, state.month), null, destKey)
     : compareYears(forYear(yearRoutes, state.year), state.compare ? forYear(yearRoutes, state.compare) : null, destKey, inBetween(yearRoutes));
-  shown = visibleRoutes(periodRoutes, state.hide, Boolean(state.compare));
+  shown = visibleRoutes(periodRoutes, state.hide, Boolean(state.compare), colourMode(state.colour, Boolean(state.compare)));
 }
 
 function pushState() {
@@ -92,9 +92,11 @@ function updateStats() {
   const deps = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.deps || 0)), 0);
   const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : comparing ? `${state.compare} → ${state.year}` : `${state.year}`;
   const c = countStatuses(periodRoutes);
-  $('stats').textContent = comparing
-    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added${c.between ? ` · ${c.between} added then dropped` : ''}`
-    : `${label} · ${shown.length} ${document.body.dataset.foreign ? 'US destinations' : 'destinations'} · ${countLabel(deps)} ${countWord(state.dir).toLowerCase()} · ${countLabel(pax)} passengers`;
+  const places = document.body.dataset.foreign ? 'US destinations' : 'destinations';
+  // in one colour, comparing is every destination flown across the years, so a plain total
+  $('stats').textContent = comparing && colourMode(state.colour, comparing) === 'single' ? `${label} · ${shown.length} ${places}`
+    : comparing ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added${c.between ? ` · ${c.between} added then dropped` : ''}`
+    : `${label} · ${shown.length} ${places} · ${countLabel(deps)} ${countWord(state.dir).toLowerCase()} · ${countLabel(pax)} passengers`;
   $('year-label').textContent = label;
   const periodRows = state.month !== null
     ? monthRaw.filter((r) => r.month === state.month)
@@ -194,9 +196,13 @@ function refresh() {
   const mode = colourMode(state.colour, comparing);
   $('colour').value = mode;
   $('colour').querySelector('option[value="change"]').disabled = !comparing;
+  $('range-hint').textContent = rangeHint(mode);
   drawLegend();
   if (years.length) syncRange(range, years, state.year, state.compare);
   updateStats();
+  // the views line's Changes page, between the same two years
+  const changes = $('changes-link');
+  if (changes) changes.href = `${new URL(changes.href).pathname}${state.compare ? `?from=${state.compare}&to=${state.year}` : ''}`;
   pushState();
   dirty = true;
 }

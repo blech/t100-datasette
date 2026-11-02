@@ -109,7 +109,7 @@ def views_for(path):
         case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
-                        ("Changes", f"/airports/{c}/changes", None), ("Map", f"/airports/{c}/globe", None),
+                        ("Changes", f"/airports/{c}/changes", "changes-link"), ("Map", f"/airports/{c}/globe", None),
                         current=[[], ["destinations"], ["changes"], ["globe"]].index(rest))
         case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and b.lower() != "globe" and (
                 rest in ([], ["table"]) or (rest and rest[0].isdigit() and rest[1:] in ([], ["table"]))):
@@ -127,7 +127,7 @@ def views_for(path):
             return make(("Airlines", "/airlines", None), ("Over time", "/airlines/over-time", None), current=len(parts) - 1)
         case ["airlines", slug, *rest] if rest in ([], ["routes"], ["aircraft"], ["changes"], ["globe"]):
             return make(("Over time", f"/airlines/{slug}", None), ("Routes", f"/airlines/{slug}/routes", None),
-                        ("Aircraft", f"/airlines/{slug}/aircraft", None), ("Changes", f"/airlines/{slug}/changes", None),
+                        ("Aircraft", f"/airlines/{slug}/aircraft", None), ("Changes", f"/airlines/{slug}/changes", "changes-link"),
                         ("Map", f"/airlines/{slug}/globe", "map-link"),
                         current=[[], ["routes"], ["aircraft"], ["changes"], ["globe"]].index(rest))
         case ["about"]:

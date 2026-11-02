@@ -9,7 +9,7 @@ import { NetworkRenderer } from '/static/globe/src/renderer.js';
 import { maxOf } from '/static/globe/src/scale.js';
 import { mapRoutes, centreOf } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
-import { parseStyle, styleParams, colourMode, toggleHide, visibleRoutes, styleRoutes, legendItems } from '/static/globe/src/routestyle.js';
+import { parseStyle, styleParams, colourMode, rangeHint, toggleHide, visibleRoutes, styleRoutes, legendItems } from '/static/globe/src/routestyle.js';
 import { countStatuses, changeText, moveHandle, playStep } from '/static/globe/src/compare.js';
 import { renderLegend, syncRange } from '/static/globe/src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
@@ -133,23 +133,26 @@ function refresh() {
   $('panel').hidden = true;
   $('tooltip').hidden = true;
   const comparing = Boolean(state.compare);
-  shown = visibleRoutes(routes, state.hide, comparing);
+  shown = visibleRoutes(routes, state.hide, comparing, colourMode(state.colour, comparing));
   $('year-label').textContent = comparing ? `${state.compare} → ${state.year}` : state.year;
   syncRange(range, years, state.year, state.compare);
+  const mode = colourMode(state.colour, comparing);
   const c = countStatuses(routes);
   const pax = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
-  $('stats').textContent = comparing
-    ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added${c.between ? ` · ${c.between} added then dropped` : ''}`
-    : `${state.year} · ${shown.length} airport pairs · ${countLabel(pax)} passengers`;
-  const mode = colourMode(state.colour, comparing);
+  // in one colour, comparing is every pair flown across the years, so a plain total
+  $('stats').textContent = !comparing ? `${state.year} · ${shown.length} airport pairs · ${countLabel(pax)} passengers`
+    : mode === 'single' ? `${state.compare} → ${state.year} · ${shown.length} airport pairs`
+      : `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added${c.between ? ` · ${c.between} added then dropped` : ''}`;
   $('colour').value = mode;
   $('colour').querySelector('option[value="change"]').disabled = !comparing;
+  $('range-hint').textContent = rangeHint(mode);
   drawLegend();
   $('footnote').textContent = skipped.length ? `${skipped.length} airport${skipped.length === 1 ? '' : 's'} not shown (no coordinates): ${skipped.slice(0, 12).join(', ')}${skipped.length > 12 ? '…' : ''}` : '';
   if (!routes.length && !$('status').textContent) setStatus('No routes at this level in this year.');
   else if (routes.length && !shown.length) setStatus('Every route here is hidden: click a legend entry to show it again.');
   else if (routes.length && $('status').className !== 'warn') setStatus('');
-  $('table-link').href = `/airlines/${own}/changes${tableQuery()}`;
+  const changes = $('changes-link');
+  changes.href = `${new URL(changes.href).pathname}${tableQuery()}`;
   pushState();
   dirty = true;
 }

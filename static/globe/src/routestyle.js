@@ -33,14 +33,22 @@ export function styleParams({ colour, hide }) {
 // palette's one orange) works either way.
 export const colourMode = (colour, comparing) => (colour === 'single' ? 'single' : comparing ? colour ?? 'change' : 'service');
 
+// the line under the time range: what dragging back to an earlier year does in this colouring
+export const rangeHint = (mode) => (mode === 'single'
+  ? 'Drag the hollow handle back to an earlier year to show every route flown since then. Click the legend to hide domestic or international routes.'
+  : 'Drag the hollow handle back to compare with an earlier year: new routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.');
+
 export function toggleHide(hide, key) {
   const s = new Set(hide);
   if (s.has(key)) s.delete(key); else s.add(key);
   return canonical(s);
 }
 
-export const visibleRoutes = (routes, hide, comparing) =>
-  routes.filter((r) => !hide.includes(r.service) && !(comparing && r.status && hide.includes(r.status)));
+// in one colour, comparing shows every route flown across the years, so change can't hide any
+export const visibleRoutes = (routes, hide, comparing, mode) => {
+  const byChange = comparing && mode !== 'single';
+  return routes.filter((r) => !hide.includes(r.service) && !(byChange && r.status && hide.includes(r.status)));
+};
 
 // fainter as more routes crowd the map, so a big network doesn't turn into a smear; the busiest stay strongest
 export function alphaFor(n, value, max) {
@@ -61,12 +69,12 @@ export function styleRoutes(routes, { mode, theme, widthKey }) {
       colour: mode === 'single' ? palette(theme.dark).single
         : mode === 'change' ? palette(theme.dark).change[r.status] ?? theme.ui.muted : colourFor(r.service, theme.dark),
       alpha: Math.min(0.9, Math.max(0.08, a)),
-      dashed: DASHED.includes(r.status),
+      dashed: mode !== 'single' && DASHED.includes(r.status),
     };
   });
 }
 
-// The legend's chips: one group per dimension, the coloured one with swatches. Counts are before hiding,
+// The legend's chips: one group per dimension, the coloured one with swatches; in one colour, change has none. Counts are before hiding,
 // so a hidden chip still says how many routes it would bring back. "Added, then dropped" is left out when there are none.
 export function legendItems({ mode, comparing, hide, routes, dark = false }) {
   const item = (key, field, colour) => ({
@@ -74,7 +82,7 @@ export function legendItems({ mode, comparing, hide, routes, dark = false }) {
     colour, dashed: DASHED.includes(key), hidden: hide.includes(key),
   });
   const groups = [{ name: 'service', items: ['international', 'domestic'].map((s) => item(s, 'service', mode === 'service' ? colourFor(s, dark) : null)) }];
-  if (comparing) {
+  if (comparing && mode !== 'single') {
     const items = STATUSES.map((s) => item(s, 'status', mode === 'change' ? palette(dark).change[s] ?? 'var(--muted)' : null));
     groups.push({ name: 'change', items: items.filter((i) => i.key !== 'between' || i.count) });
   }

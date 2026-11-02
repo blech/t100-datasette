@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseStyle, styleParams, colourMode, toggleHide, visibleRoutes, alphaFor, styleRoutes, legendItems,
+  parseStyle, styleParams, colourMode, rangeHint, toggleHide, visibleRoutes, alphaFor, styleRoutes, legendItems,
 } from '../src/routestyle.js';
 import { palette } from '../../common/palette.js';
 
@@ -52,6 +52,8 @@ test('visibleRoutes hides by service always and by status only when comparing', 
   assert.equal(visibleRoutes(routes, ['dropped'], false).length, 3);
   assert.deepEqual(visibleRoutes(routes, ['domestic', 'international'], true), []);
   assert.deepEqual(visibleRoutes([], ['kept'], true), []);
+  assert.equal(visibleRoutes(routes, ['dropped'], true, 'single').length, 3);
+  assert.equal(visibleRoutes(routes, ['domestic'], true, 'single').length, 1);
 });
 
 test('alphaFor falls as more routes are shown and rises with a route\'s size', () => {
@@ -80,11 +82,12 @@ test('styleRoutes colours by service or by change, kept in the theme\'s muted co
   assert.ok(single.every((s) => s.colour === palette(true).single));
 });
 
-test('dropped routes are dashed whichever dimension is coloured', () => {
+test('dropped routes are dashed whichever dimension is coloured, but not in one colour', () => {
   const routes = [route('domestic', 'kept'), route('domestic', 'dropped'), route('domestic', null)];
-  for (const mode of ['service', 'change', 'single']) {
+  for (const mode of ['service', 'change']) {
     assert.deepEqual(styleRoutes(routes, { mode, theme, widthKey: 'passengers' }).map((s) => s.dashed), [false, true, false]);
   }
+  assert.ok(styleRoutes(routes, { mode: 'single', theme, widthKey: 'passengers' }).every((s) => !s.dashed));
 });
 
 test('legendItems lists services always and changes only when comparing, with counts before hiding', () => {
@@ -95,6 +98,7 @@ test('legendItems lists services always and changes only when comparing, with co
 
   const both = legendItems({ mode: 'change', comparing: true, hide: ['kept'], routes });
   assert.deepEqual(both.map((g) => g.name), ['service', 'change']);
+  assert.deepEqual(legendItems({ mode: 'single', comparing: true, hide: [], routes }).map((g) => g.name), ['service']);
   assert.deepEqual(both[0].items.map((i) => i.colour), [null, null]);
   assert.deepEqual(both[1].items.map((i) => [i.key, i.count, i.colour, i.dashed, i.hidden]), [
     ['added', 1, palette(false).change.added, false, false],
@@ -132,4 +136,11 @@ test('routes added then dropped are dashed in their own grey, listed only when t
   assert.deepEqual(none.map((i) => i.key), ['added', 'kept', 'dropped']);
   assert.deepEqual(parseStyle('?hide=between').hide, ['between']);
   assert.deepEqual(visibleRoutes(routes, ['between'], true).map((r) => r.status), ['kept', 'dropped']);
+});
+
+test('rangeHint describes change colours, except in one colour', () => {
+  assert.match(rangeHint('change'), /dashed pink/);
+  assert.match(rangeHint('service'), /dashed pink/);
+  assert.match(rangeHint('single'), /every route flown/);
+  assert.doesNotMatch(rangeHint('single'), /pink/);
 });
