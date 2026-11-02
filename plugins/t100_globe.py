@@ -511,7 +511,7 @@ def route_view(template, table):
             steps.append(("table", None))
         info = await airport_info(datasette, [origin, dest])
         dir = parse_dir(request.args.get("dir"))
-        names = [airport_label(info, origin) or origin, airport_label(info, dest) or dest]
+        names = [await linked_label(datasette, info, c, await is_foreign(datasette, c)) or c for c in (origin, dest)]
         # the year in focus: the page's own, or the one marked on the chart over time (?year=), if it's one of the data's
         low, high = year_range(datasette)
         marked = request.args.get("year", "")
@@ -530,7 +530,7 @@ def route_view(template, table):
              # the same direction at the reversed address is the other way: /B/A?dir=out is B → A
              "other_way": route_heading(dest, origin, dir) if dir else "",
              "dir_choices": DIRECTION_CHOICES_ROUTE(origin, dest),
-             "label": {"": f"{names[0]} and {names[1]}", "out": f"{names[0]} to {names[1]}", "in": f"{names[1]} to {names[0]}"}[dir]},
+             "label": Markup({"": "{0} and {1}", "out": "{0} to {1}", "in": "{1} to {0}"}[dir]).format(*names)},
             request=request,
         )
         return Response.html(html)

@@ -92,3 +92,14 @@ def test_a_foreign_airports_country_links_to_its_page_and_a_us_airports_does_not
     page = get(ds, "/airports/LHR").text
     assert '<a href="/countries/united-kingdom">United Kingdom</a>' in page
     assert "/countries/" not in get(ds, "/airports/JFK").text
+
+
+def test_a_route_page_links_the_country_of_each_foreign_end(ds, db_path):
+    abroad(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("INSERT OR REPLACE INTO airport_names (code, name) VALUES ('LHR', 'London, United Kingdom')")
+    conn.commit()
+    conn.close()
+    for path in ("/airports/LHR/JFK", "/airports/JFK/LHR", "/airports/LHR/JFK?dir=out"):
+        page = get(ds, path).text
+        assert page.count('<a href="/countries/united-kingdom">United Kingdom</a>') == 1, path
