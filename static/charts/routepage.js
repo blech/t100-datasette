@@ -5,6 +5,7 @@ import { buildSeries, aggregateTable, labelFor, MEASURES, SPLITS } from '/static
 import { formatCount, formatTons, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
+import { hasFreight } from '/static/charts/src/flights.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight, parseHighlight, highlightedSeries, highlightMessage } from '/static/common/highlight.js';
 import { seriesColours, isDark } from '/static/common/palette.js';
@@ -289,8 +290,8 @@ async function main() {
     drawTable();
     return;
   }
-  // a route with no freight at all isn't offered it
-  if (!allRows.some((r) => Number(r.total_freight) > 0)) {
+  // a route with next to no freight isn't offered it
+  if (!hasFreight(allRows, 'total_freight')) {
     delete measures.freight;
     if (state.measure === 'freight') state.measure = 'passengers';
   }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultFlights, flightsAfter, settle, offeredBy } from '../src/flights.js';
+import { defaultFlights, flightsAfter, settle, offeredBy, hasFreight } from '../src/flights.js';
 
 test('freight counts all flights by default; every other measure passenger flights', () => {
   assert.deepEqual(['passengers', 'deps', 'seats', 'freight'].map(defaultFlights), ['passenger', 'passenger', 'passenger', 'all']);
@@ -55,11 +55,18 @@ test('settle: on its own, it puts an address\'s settings right for what the page
 
 test('offeredBy leaves out freight with none carried, and freight flights and the split by kind with no freighters', () => {
   const opts = { measures: ['passengers', 'freight', 'deps', 'seats'], splits: ['service', 'kind', 'airline'] };
-  const pax = { kind: 'passenger', freight: 0 };
+  const pax = { year: 2020, kind: 'passenger', freight: 0 };
   assert.deepEqual(offeredBy([pax], opts), { measure: ['passengers', 'deps', 'seats'], flights: ['passenger', 'all'], split: ['service', 'airline'] });
   // belly freight alone: freight offered, freighters not
-  assert.deepEqual(offeredBy([{ ...pax, freight: 2000 }], opts).measure, opts.measures);
-  assert.deepEqual(offeredBy([{ ...pax, freight: 2000 }], opts).flights, ['passenger', 'all']);
-  const both = offeredBy([pax, { kind: 'freight', freight: '4000' }], opts);
+  assert.deepEqual(offeredBy([{ ...pax, freight: 30000 }], opts).measure, opts.measures);
+  assert.deepEqual(offeredBy([{ ...pax, freight: 30000 }], opts).flights, ['passenger', 'all']);
+  const both = offeredBy([pax, { year: 2020, kind: 'freight', freight: '40000' }], opts);
   assert.deepEqual(both, { measure: opts.measures, flights: ['passenger', 'freight', 'all'], split: opts.splits });
+});
+
+test('hasFreight wants 10 short tons in some year, adding up the year\'s rows', () => {
+  assert.equal(hasFreight([{ year: 2011, freight: 78 }]), false);
+  assert.equal(hasFreight([{ year: 2011, freight: 12000 }, { year: 2011, freight: '8000' }]), true);
+  assert.equal(hasFreight([{ year: 2011, freight: 12000 }, { year: 2012, freight: 8000 }]), false);
+  assert.equal(hasFreight([{ year: 2011, total_freight: 20000 }], 'total_freight'), true);
 });

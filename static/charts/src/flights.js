@@ -31,10 +31,20 @@ export function settle(before, after = null, { offered = {}, splitDefault = 'ser
   return split === undefined ? { measure, flights } : { measure, flights, split };
 }
 
-// What a page's rows (airport_size, carrier_group_detail) leave worth offering: freight, if they carry any; freight
-// flights, and a split by passenger or freight, if any are freighters'
+// Freight is only worth offering if some year carries at least 10 short tons (in pounds, as the data has it): below
+// that, a chart is a flat line with a speck (PVC's 78 lb in 2011)
+export const MIN_FREIGHT_LB = 20000;
+
+export function hasFreight(rows, field = 'freight') {
+  const years = new Map();
+  for (const r of rows) years.set(r.year, (years.get(r.year) ?? 0) + (Number(r[field]) || 0));
+  return [...years.values()].some((lb) => lb >= MIN_FREIGHT_LB);
+}
+
+// What a page's rows (airport_size, carrier_group_detail) leave worth offering: freight, if they carry enough
+// (hasFreight); freight flights, and a split by passenger or freight, if any are freighters'
 export function offeredBy(rows, { measures, splits }) {
-  const freight = rows.some((r) => Number(r.freight) > 0);
+  const freight = hasFreight(rows);
   const freighters = rows.some((r) => r.kind === 'freight');
   return {
     measure: measures.filter((m) => m !== 'freight' || freight),
