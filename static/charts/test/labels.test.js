@@ -33,3 +33,13 @@ test('airport tip shows the place once, not the city and country on top of it', 
   const rdu = new Map([['RDU', { code: 'RDU', name: 'Raleigh Durham International Airport', city: 'Raleigh-durham', country: 'United States', place: 'Raleigh/Durham, NC', icao: 'KRDU' }]]);
   assert.equal(airportTip('RDU', rdu), 'Raleigh Durham International Airport\nRDU · KRDU\nRaleigh/Durham, NC');
 });
+
+test('on an airport\'s own pages, an airport\'s hover text ends with how far it is, and a city lists each airport\'s distance', () => {
+  const info = new Map([['LGA', { name: 'LaGuardia Airport', icao: 'KLGA', place: 'New York, NY' }], ['JFK', { name: 'John F Kennedy International Airport', icao: 'KJFK', place: 'New York, NY' }]]);
+  const distances = new Map([['LGA', 762], ['JFK', 760]]);
+  assert.equal(airportTip('LGA', info, { from: 'ATL', distances }), 'LaGuardia Airport\nLGA · KLGA\nNew York, NY\n762 miles from ATL');
+  assert.equal(airportTip('ZZZ', info, { from: 'ATL', distances: new Map([['ZZZ', 1234]]) }), 'ZZZ\n1,234 miles from ATL');
+  assert.equal(airportTip('LGA', info), 'LaGuardia Airport\nLGA · KLGA\nNew York, NY');
+  const tip = groupTip({ label: 'New York, NY · JFK, LGA', codes: ['JFK', 'LGA'] }, info, { distances }).split('\n');
+  assert.deepEqual(tip.slice(2), ['JFK · KJFK  John F Kennedy International Airport · 760 miles', 'LGA · KLGA  LaGuardia Airport · 762 miles']);
+});

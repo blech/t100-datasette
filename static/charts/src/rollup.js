@@ -7,7 +7,8 @@ import { pairLabel } from '../../common/direction.js';
 export function rollupRows(rows, { key, kind = 'all' }) {
   return rows
     .filter((r) => kind === 'all' || !r.kind || r.kind === kind) // rows with no kind (an airline's routes) can't be split by it
-    .map((r) => ({ dest: r[key], year: r.year, service: r.service, deps: r.deps, seats: r.seats, passengers: r.passengers, freight: r.freight }));
+    .map((r) => ({ dest: r[key], year: r.year, service: r.service, deps: r.deps, seats: r.seats, passengers: r.passengers, freight: r.freight,
+      ...(r.rest ? { rest: true } : {}) }));
 }
 
 // Rows from carrier_route_by_year -> rows named by their airport pair: "ATL ↔ LGA" with both directions together, or with
@@ -32,6 +33,17 @@ export function bandRange(from, to) {
   if (!BAND_EDGES.includes(from)) return { ...LONG_HAUL };
   const above = BAND_TO.map((b) => b.value).filter((v) => v === 'any' || Number(v) > Number(from));
   return { from, to: above.includes(to) ? to : above[0] };
+}
+
+// Rows from top_routes_by_year -> the routes matrix's rows for one range of distance bands (from bandRange): each pair named as
+// routeRows names it, with its distance, and the year's totals for the range's bands (rest), which the matrix's shares count
+export function topRouteRows(rows, { from = '0', to = 'any' } = {}) {
+  const inRange = (band) => Number(band) >= Number(from) && (to === 'any' || Number(band) < Number(to));
+  return rows.filter((r) => inRange(r.band)).map((r) => ({
+    ...(r.rest ? {} : { route: pairLabel(r.origin, r.dest, false), origin: r.origin, dest: r.dest }),
+    year: r.year, service: r.service, distance: r.distance, rest: Boolean(r.rest),
+    deps: r.deps, seats: r.seats, passengers: r.passengers, freight: r.freight,
+  }));
 }
 
 // the page's single band menu before it had a range (?eband=), as the same range

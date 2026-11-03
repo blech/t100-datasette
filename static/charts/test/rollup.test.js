@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rollupRows, routeRows, buildEngineShares, BAND_FROM, BAND_TO, bandRange, legacyBand } from '../src/rollup.js';
+import { rollupRows, routeRows, topRouteRows, buildEngineShares, BAND_FROM, BAND_TO, bandRange, legacyBand } from '../src/rollup.js';
 import { buildMatrix } from '../src/matrix.js';
 
 const f = (year, family, deps, extra = {}) => ({ year, family, deps, seats: deps * 100, passengers: deps * 80, freight: 0, service: 'domestic', kind: 'passenger', ...extra });
@@ -202,4 +202,29 @@ test('routeRows names a pair with both directions together, or one direction as 
   const row = { origin: 'LGA', dest: 'ATL', year: 2019, deps: 1, seats: 0, passengers: 0, freight: 0, service: 'domestic' };
   assert.equal(routeRows([row])[0].route, 'ATL ↔ LGA');
   assert.equal(routeRows([row], { each: true })[0].route, 'LGA → ATL');
+});
+
+test('topRouteRows names each pair, keeps its distance, and keeps only the pairs and totals in the distance range', () => {
+  const rows = [
+    { origin: 'LAS', dest: 'LAX', year: 2025, service: 'domestic', distance: 236, band: 0, deps: 20, seats: 3000, passengers: 2400, freight: 0, rest: 0 },
+    { origin: 'JFK', dest: 'LAX', year: 2025, service: 'domestic', distance: 2475, band: 1500, deps: 10, seats: 2000, passengers: 1800, freight: 0, rest: 0 },
+    { origin: '', dest: '', year: 2025, service: 'domestic', distance: 0, band: 0, deps: 90, seats: 9000, passengers: 8000, freight: 0, rest: 1 },
+    { origin: '', dest: '', year: 2025, service: 'domestic', distance: 1500, band: 1500, deps: 30, seats: 3000, passengers: 2000, freight: 0, rest: 1 },
+  ];
+  const short = topRouteRows(rows, { from: '0', to: '500' });
+  assert.deepEqual(short.map((r) => [r.route, r.distance, r.rest]), [['LAS ↔ LAX', 236, false], [undefined, 0, true]]);
+  assert.equal(topRouteRows(rows, { from: '0', to: 'any' }).length, 4);
+  assert.deepEqual(topRouteRows(rows, { from: '1500', to: 'any' }).map((r) => r.route), ['JFK ↔ LAX', undefined]);
+});
+
+test('the matrix takes a year\'s totals from its total rows when it has them, so shares count the routes not listed', () => {
+  const rows = topRouteRows([
+    { origin: 'LAS', dest: 'LAX', year: 2025, service: 'domestic', distance: 236, band: 0, deps: 20, seats: 0, passengers: 20, freight: 0, rest: 0 },
+    { origin: '', dest: '', year: 2025, service: 'domestic', distance: 0, band: 0, deps: 80, seats: 0, passengers: 80, freight: 0, rest: 1 },
+  ], { from: '0', to: 'any' });
+  const res = buildMatrix(rollupRows(rows, { key: 'route' }), { measure: 'passengers', n: 5 });
+  assert.deepEqual(res.dests, ['LAS ↔ LAX']);
+  assert.equal(res.yearTotals[2025], 80);
+  assert.equal(res.cells[0].share, 0.25);
+  assert.equal(res.cells[0].peak, 1);
 });
