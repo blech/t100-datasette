@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES as MEASURES, matrixMeasures } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, fullYears, MATRIX_MEASURES as MEASURES, matrixMeasures } from '/static/charts/src/matrix.js';
 import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
 import { setMenus } from '/static/common/menus.js';
 import { rollupRows, routeRows, topRouteRows, bandRange, BAND_FROM, BAND_TO, slugify } from '/static/charts/src/rollup.js';
@@ -33,7 +33,7 @@ const body = document.body.dataset;
 // an airline's routes: pairs both ways together, or with dir=each each direction as flown
 const each = kind === 'routes' && new URLSearchParams(location.search).get('dir') === 'each';
 const queryParams = kind === 'routes' ? { group: body.group, airline: body.airline, each: each ? 'each' : '' } : kind === 'fleet' ? { group: body.group, airline: body.airline }
-  : kind === 'airports' ? { dir } : {};
+  : kind === 'airports' ? { dir } : kind === 'toproutes' ? { year: '' } : {}; // the routes matrix's year is the one ranking it
 const aircraftLike = kind === 'aircraft' || kind === 'fleet';
 const latestFullYear = Number(document.body.dataset.latestYear);
 const $ = (id) => document.getElementById(id);
@@ -46,6 +46,8 @@ const state = {
   service: pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '50')),
   rank: pick('rank', ['all', 'latest'], 'all'),
+  // the routes matrix ranks by any full year (year=, or the old rank=latest), as the destinations matrix does; checked once loaded
+  year: kind !== 'toproutes' ? null : params.get('rank') === 'latest' ? latestFullYear : Number(params.get('year')) || null,
   scale: pick('scale', ['absolute', 'year', 'busiest'], 'year'),
   group: kind === 'airports' ? pick('group', ['airport', 'city'], 'airport') : 'airport', // the airports matrix can show cities
   open: (params.get('open') || '').split(',').filter(Boolean), // the cities opened to list their airports
@@ -60,7 +62,7 @@ const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const relative = () => state.scale !== 'absolute';
-const rankYear = () => (state.rank === 'latest' ? latestFullYear : null);
+const rankYear = () => (kind === 'toproutes' ? state.year : state.rank === 'latest' ? latestFullYear : null);
 const grouped = () => state.group === 'city' || aircraftLike; // rows that open into their parts: cities into airports, families into aircraft
 
 function pushState() {
@@ -69,14 +71,14 @@ function pushState() {
   if (state.flights !== defaultFlights(state.measure)) q.set('flights', state.flights);
   if (state.service !== 'all') q.set('service', state.service);
   if (state.n !== 50) q.set('n', state.n);
-  if (state.rank !== 'all') q.set('rank', state.rank);
+  if (kind === 'toproutes') { if (state.year !== null) q.set('year', state.year); } else if (state.rank !== 'all') q.set('rank', state.rank);
   if (state.scale !== 'year') q.set('scale', state.scale);
   if (state.group === 'city') q.set('group', 'city');
   if (grouped() && state.open.length) q.set('open', state.open.join(','));
   if (kind === 'toproutes' && state.from !== '0') q.set('from', state.from);
   if (kind === 'toproutes' && state.to !== 'any') q.set('to', state.to);
   const s = q.toString();
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'n', 'rank', 'scale', 'group', 'open', 'from', 'to'], s ? `?${s}` : '')}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'n', 'rank', 'year', 'scale', 'group', 'open', 'from', 'to'], s ? `?${s}` : '')}`);
   carry();
 }
 
@@ -203,7 +205,7 @@ function draw() {
     year: `Colour shows each ${page.noun}'s share of all ${unit()} that year, counting every ${page.noun} (not just those listed), not the amount itself. Hover over a cell for both.`,
     busiest: `Colour compares each cell with the year's biggest ${page.noun}: the biggest is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own. Hover over a cell for both.`,
   }[state.scale];
-  $('matrix-rank').options[1].textContent = `${latestFullYear} only`;
+  if (kind !== 'toproutes') $('matrix-rank').options[1].textContent = `${latestFullYear} only`;
   $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}${kind === 'airports' ? (state.group === 'city' ? ' A city is a BTS city market (New York is JFK, LaGuardia and Newark); click one to list its airports, and an airport\'s code to see where it flies.' : ' Click an airport\'s code to see where it flies.') : ''}${aircraftLike ? ' Each row is an aircraft family; ▸ opens it into the aircraft in it, BTS\'s own entries such as the Boeing 737-800. Each family is counted with all its versions.' : ''}${kind === 'fleet' ? ' Click a name to see that family or aircraft split by airline, with this one picked out.' : ''}${kind === 'routes' ? (each ? ' Each row is one direction of an airport pair, as flown; a year shows when the airline flew it at least 12 times.' : ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 24 times, roughly monthly each way.') + ' A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}${kind === 'toproutes' ? ' Each row is an airport pair, both directions together, flown by any airline; its distance is in its hover text. Click a route to see it.' : ''}`;
 
   const box = $('matrix');
@@ -251,7 +253,7 @@ function fillControls() {
   if ($('matrix-kind')) $('matrix-kind').value = state.flights;
   if ($('matrix-service')) $('matrix-service').value = state.service;
   $('matrix-n').value = String(state.n);
-  $('matrix-rank').value = state.rank;
+  if (kind !== 'toproutes') $('matrix-rank').value = state.rank;
   for (const radio of document.querySelectorAll('input[name="scale"]')) {
     radio.checked = radio.value === state.scale;
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
@@ -270,7 +272,16 @@ function fillControls() {
   if ($('matrix-service')) bind('matrix-service', 'service');
   if ($('matrix-group')) { $('matrix-group').value = state.group; bind('matrix-group', 'group'); }
   bind('matrix-n', 'n', Number);
-  bind('matrix-rank', 'rank');
+  if (kind !== 'toproutes') bind('matrix-rank', 'rank');
+  else {
+    // a new year asks for the pairs that could be its top 50
+    $('matrix-rank').addEventListener('change', async (e) => {
+      state.year = e.target.value ? Number(e.target.value) : null;
+      pushState();
+      try { await loadRoutes(); } catch (err) { console.error(err); $('matrix').textContent = 'Could not load the chart data.'; return; }
+      draw();
+    });
+  }
   if ($('matrix-from')) {
     for (const b of BAND_FROM) $('matrix-from').append(new Option(b.label, b.value));
     for (const b of BAND_TO) $('matrix-to').append(new Option(b.label, b.value));
@@ -296,19 +307,33 @@ $('matrix').addEventListener('click', (e) => {
 
 attachLabelTips($('matrix'), $('label-tip'));
 
+// the routes matrix's rows for its ranking year: the pairs that could be among its top 50 then, with every year of each
+async function loadRoutes() {
+  queryParams.year = state.year ?? '';
+  setDataLink(page.query, queryParams);
+  const res = await fetchRows(queryUrl(page.query, queryParams));
+  loaded = res.rows;
+  for (const r of topRouteRows(loaded)) if (!r.rest) miles.set(r.route, r.distance);
+  return res;
+}
+
 async function main() {
+  if (kind === 'toproutes') queryParams.year = state.year ?? '';
   setDataLink(page.query, queryParams);
   fillControls();
   carry();
   try {
     const [res, airports] = await Promise.all([
-      fetchRows(queryUrl(page.query, queryParams)),
+      kind === 'toproutes' ? loadRoutes() : fetchRows(queryUrl(page.query, queryParams)),
       kind === 'routes' || kind === 'toproutes' || kind === 'airports' ? fetchRows(queryUrl('airports')).catch(() => null) : null, // place and airport names are only hover text
     ]);
     rows = kind === 'routes' ? routeRows(res.rows, { each }) : res.rows;
     if (kind === 'toproutes') {
-      loaded = res.rows;
-      for (const r of topRouteRows(loaded)) if (!r.rest) miles.set(r.route, r.distance);
+      // every full year can rank the routes (the totals rows have them all); a year from the address that isn't one ranks by all
+      const years = fullYears(loaded, latestFullYear);
+      $('matrix-rank').append(...years.map((y) => new Option(String(y), String(y))));
+      if (state.year !== null && !years.includes(state.year)) { state.year = null; pushState(); await loadRoutes(); }
+      $('matrix-rank').value = state.year === null ? '' : String(state.year);
     }
     if (airports) places = new Map(airports.rows.map((r) => [r.code, r.place]));
     if (airports) airportInfo = new Map(airports.rows.map((r) => [r.code, r]));

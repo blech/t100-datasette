@@ -172,7 +172,7 @@ CREATE TABLE "t100_international" (
 
 CREATE TABLE "top_route_year" (
    [a] TEXT, [b] TEXT, [year] INTEGER, [service] TEXT, [distance] INTEGER, [band] INTEGER,
-   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [year_rank] INTEGER, [overall_rank] INTEGER,
    PRIMARY KEY ([a], [b], [year])
 ) WITHOUT ROWID;
 

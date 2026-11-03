@@ -137,10 +137,14 @@ databases:
       # the routes matrix: the airport pairs that could be among its top 50, by year, and every pair's totals for the shares of a year
       top_routes_by_year:
         title: "The busiest airport pairs by year"
-        description: "One row per airport pair (both directions together, origin before dest) and year, with its service and distance in miles, for the pairs in the top 50 of their service and distance band by flights, seats, passengers or freight, over all years or in the last full year. Rows with rest = 1 are every pair's totals for a year, service and distance band (distance is the band's lower bound), counting those not listed."
+        description: "One row per airport pair (both directions together, origin before dest) and year, with its service and distance in miles, for the pairs in the top 50 of their service and distance band by flights, seats, passengers or freight, over all years or, with year set, in that year, and the busiest pair of each band in each year. Rows with rest = 1 are every pair's totals for a year, service and distance band (distance is the band's lower bound), counting those not listed."
         sql: |
+          WITH kept AS (
+            SELECT DISTINCT a, b FROM top_route_year
+            WHERE year_rank = 1 OR (CASE WHEN :year = '' THEN overall_rank WHEN year = CAST(:year AS integer) THEN year_rank END) <= 50
+          )
           SELECT a AS origin, b AS dest, year, service, distance, band, deps, seats, passengers, freight, 0 AS rest
-          FROM top_route_year
+          FROM top_route_year JOIN kept USING (a, b)
           UNION ALL
           SELECT '', '', year, service, band, band, deps, seats, passengers, freight, 1
           FROM route_band_year

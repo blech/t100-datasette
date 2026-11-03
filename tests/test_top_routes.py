@@ -12,8 +12,8 @@ def seg(origin, dest, year, pax, month=1, distance=300):
 
 
 def load(db_path, monkeypatch, top=1):
-    """With a top of 1: AAA-BBB is the busiest over all years, CCC-DDD in 2025 (the last full year), GGG-HHH of the long haul;
-    EEE-FFF is none of those."""
+    """With a top of 1: AAA-BBB is the busiest over all years and in 2023 and 2024, CCC-DDD in 2025, GGG-HHH of the long haul;
+    EEE-FFF is second in 2025 and third over all years."""
     monkeypatch.setattr(build_database, "TOP_ROUTES", top)
     add_segments(db_path, "t100_domestic", [
         seg("AAA", "BBB", 2023, 100, distance=290), seg("AAA", "BBB", 2024, 600), seg("BBB", "AAA", 2024, 400),
@@ -39,16 +39,16 @@ def test_pair_distance_is_both_directions_in_the_last_year_flown(db_path, monkey
     assert table(db_path, "SELECT a, b, distance FROM pair_distance WHERE a = 'AAA'") == [("AAA", "BBB", 300)]
 
 
-def test_top_route_year_keeps_the_busiest_over_all_years_in_the_last_full_year_and_in_each_band(db_path, monkeypatch):
+def test_top_route_year_keeps_the_busiest_in_some_year_or_over_all_years_in_each_band_with_their_ranks(db_path, monkeypatch):
     load(db_path, monkeypatch)
-    rows = table(db_path, "SELECT a, b, year, service, distance, band, passengers FROM top_route_year ORDER BY a, year")
-    assert rows == [("AAA", "BBB", 2023, "domestic", 300, 0, 100), ("AAA", "BBB", 2024, "domestic", 300, 0, 1000),
-                    ("CCC", "DDD", 2025, "domestic", 300, 0, 240), ("GGG", "HHH", 2025, "domestic", 3100, 3000, 30)]
+    rows = table(db_path, "SELECT a, b, year, service, distance, band, passengers, year_rank, overall_rank FROM top_route_year ORDER BY a, year")
+    assert rows == [("AAA", "BBB", 2023, "domestic", 300, 0, 100, 1, 1), ("AAA", "BBB", 2024, "domestic", 300, 0, 1000, 1, 1),
+                    ("CCC", "DDD", 2025, "domestic", 300, 0, 240, 1, 2), ("GGG", "HHH", 2025, "domestic", 3100, 3000, 30, 1, 1)]
 
 
 def test_top_route_year_keeps_more_with_a_longer_list(db_path, monkeypatch):
     load(db_path, monkeypatch, top=2)
-    assert ("EEE", "FFF") in table(db_path, "SELECT DISTINCT a, b FROM top_route_year")
+    assert table(db_path, "SELECT year_rank, overall_rank FROM top_route_year WHERE a = 'EEE'") == [(2, 3)]
 
 
 def test_route_band_year_counts_every_pair(db_path, monkeypatch):
@@ -82,3 +82,11 @@ def test_routes_by_year_gives_each_other_airports_distance_whichever_end_it_is(d
     for origin, dest in (("AAA", "BBB"), ("BBB", "AAA")):
         rows = get_json(ds, f"/t100/routes_by_year.json?origin={origin}&dir=&min_deps=1&_shape=objects")["rows"]
         assert {(r["dest"], r["year"], r["distance"]) for r in rows} == {(dest, 2023, 300), (dest, 2024, 300)}
+
+
+def test_top_routes_by_year_sends_the_pairs_ranked_in_the_year_asked_and_each_years_busiest(ds, db_path, monkeypatch):
+    load(db_path, monkeypatch, top=3)
+    pairs = lambda year: {(r["origin"], r["dest"]) for r in get_json(ds, f"/t100/top_routes_by_year.json?year={year}&_shape=objects")["rows"] if not r["rest"]}
+    busiest = {("AAA", "BBB"), ("CCC", "DDD"), ("GGG", "HHH")}  # each the busiest of its band in some year
+    assert pairs("") == pairs(2025) == busiest | {("EEE", "FFF")}
+    assert pairs(2023) == busiest  # EEE-FFF didn't fly in 2023
