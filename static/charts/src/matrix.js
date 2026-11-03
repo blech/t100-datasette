@@ -37,8 +37,11 @@ export function rankYearFrom(search, { years, latest }) {
 // Rows from routes_by_year (one per destination, year and service) -> a destination-by-year grid.
 // Destinations are ranked by the measure summed over all years, or in `rankYear` alone (which drops
 // destinations that did not fly then); only the top `n` are kept, and their whole history is shown.
+// Rows marked rest are a year's totals over every destination, listed or not (the routes matrix has them, as it is sent only
+// the busiest pairs): when there are any, a year's shares are of those totals, and they are never rows of the grid.
 export function buildMatrix(rows, { measure = 'passengers', service = 'all', n = 25, rankYear = null, flown = 'ever', firstYear, lastYear } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
+  const totalsGiven = kept.some((r) => r.rest);
   const cellMap = new Map(); // `${dest}\u0000${year}` -> value
   const totals = new Map(); // what ranks a destination
   const yearSet = new Set();
@@ -46,9 +49,10 @@ export function buildMatrix(rows, { measure = 'passengers', service = 'all', n =
   const flewIn = new Map(); // dest -> the years it flew
   for (const r of kept) {
     yearSet.add(r.year);
+    if (r.rest) { yearTotals[r.year] = (yearTotals[r.year] || 0) + valueOf(r, measure); continue; }
     flewIn.set(r.dest, (flewIn.get(r.dest) || new Set()).add(Number(r.year)));
     const v = valueOf(r, measure);
-    yearTotals[r.year] = (yearTotals[r.year] || 0) + v;
+    if (!totalsGiven) yearTotals[r.year] = (yearTotals[r.year] || 0) + v;
     const key = `${r.dest}\u0000${r.year}`;
     cellMap.set(key, (cellMap.get(key) || 0) + v);
     if (rankYear === null || Number(r.year) === rankYear) totals.set(r.dest, (totals.get(r.dest) || 0) + v);

@@ -28,6 +28,7 @@ const state = {
 let rows = [];
 let cities = new Map();
 let airportInfo = new Map();
+const far = { from: origin, distances: new Map() }; // each other airport's distance from this one, for its hover text
 
 const ROW_PX = 20;
 const latestFullYear = Number(document.body.dataset.latestYear);
@@ -86,7 +87,7 @@ function drawAirports() {
       ...yearAxes(labelEvery),
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
-      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo), href: routeHref(d, rankYear()) })), {
+      Plot.text(res.dests.map((d) => ({ dest: d, tip: airportTip(d, airportInfo, far), href: routeHref(d, rankYear()) })), {
         y: 'dest', text: 'dest', title: 'tip', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8,
       }),
     ],
@@ -149,7 +150,7 @@ function drawCities() {
     ...r,
     text: r.kind === 'airport' ? r.code : r.label,
     href: r.kind === 'airport' ? routeHref(r.code, rankYear()) : `#toggle:${r.key}`,
-    tip: r.kind === 'airport' ? airportTip(r.code, airportInfo) : groupTip(r, airportInfo),
+    tip: r.kind === 'airport' ? airportTip(r.code, airportInfo, far) : groupTip(r, airportInfo, far),
   }));
   const width = Math.min(box.clientWidth || 900, 1200);
   const marginLeft = labelMargin(labels.map((l) => l.text), textWidth(box)) + ARROW_SLOT;
@@ -243,6 +244,7 @@ async function main() {
     state.year = rankYearFrom(location.search, { years, latest: years[0] ?? null });
     cities = new Map(airports.rows.map((a) => [a.code, a.place]));
     airportInfo = new Map(airports.rows.map((a) => [a.code, a]));
+    far.distances = new Map(rows.filter((r) => r.distance).map((r) => [r.dest, r.distance]));
     $('truncated').hidden = !byYear.truncated;
   } catch (err) {
     console.error(err);
