@@ -5,7 +5,7 @@ import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, MATRIX_MEASURES as MEASURES, matrixMeasures } from '/static/charts/src/matrix.js';
 import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
 import { setMenus } from '/static/common/menus.js';
-import { rollupRows, routeRows, slugify } from '/static/charts/src/rollup.js';
+import { rollupRows, routeRows, topRouteRows, bandRange, BAND_FROM, BAND_TO, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, carriedSearch, airlineSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
 import { tableSearch } from '/static/landing/src/table.js';
@@ -19,6 +19,7 @@ import { parseDir, setDir } from '/static/common/direction.js';
 const KINDS = {
   airlines: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
   routes: { query: 'carrier_route_by_year', key: 'route', noun: 'route' },
+  toproutes: { query: 'top_routes_by_year', key: 'route', noun: 'route' }, // every airline's busiest pairs, by distance
   airports: { query: 'airport_by_year', key: 'airport', noun: 'airport' },
   aircraft: { query: 'aircraft_by_year', key: 'family', noun: 'family' },
   fleet: { query: 'carrier_aircraft_by_year', key: 'family', noun: 'family' }, // one airline's aircraft, drawn as the aircraft matrix is
@@ -26,7 +27,7 @@ const KINDS = {
 const kind = document.body.dataset.kind;
 const dir = parseDir(location.search); // only the airports matrix offers a direction
 // the flight count's name: the airports matrix's direction, or an airline's pairs (flights both ways) or each direction (departures)
-const MATRIX_MEASURES = kind === 'airports' ? matrixMeasures(dir) : kind === 'routes' ? matrixMeasures(new URLSearchParams(location.search).get('dir') === 'each' ? 'out' : '') : MEASURES;
+const MATRIX_MEASURES = kind === 'airports' ? matrixMeasures(dir) : kind === 'toproutes' ? matrixMeasures('') : kind === 'routes' ? matrixMeasures(new URLSearchParams(location.search).get('dir') === 'each' ? 'out' : '') : MEASURES;
 const page = KINDS[kind];
 const body = document.body.dataset;
 // an airline's routes: pairs both ways together, or with dir=each each direction as flown
@@ -48,9 +49,11 @@ const state = {
   scale: pick('scale', ['absolute', 'year', 'busiest'], 'year'),
   group: kind === 'airports' ? pick('group', ['airport', 'city'], 'airport') : 'airport', // the airports matrix can show cities
   open: (params.get('open') || '').split(',').filter(Boolean), // the cities opened to list their airports
+  ...(kind === 'toproutes' ? bandRange(params.get('from') ?? '0', params.get('to') ?? 'any') : {}), // the routes matrix's distances
 };
 state.flights = pick('flights', FLIGHTS, defaultFlights(state.measure));
 let rows = [];
+let loaded = []; // the routes matrix's rows as fetched: rows are those in its distance range
 
 const ROW_PX = 20;
 const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
@@ -70,8 +73,10 @@ function pushState() {
   if (state.scale !== 'year') q.set('scale', state.scale);
   if (state.group === 'city') q.set('group', 'city');
   if (grouped() && state.open.length) q.set('open', state.open.join(','));
+  if (kind === 'toproutes' && state.from !== '0') q.set('from', state.from);
+  if (kind === 'toproutes' && state.to !== 'any') q.set('to', state.to);
   const s = q.toString();
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'n', 'rank', 'scale', 'group', 'open'], s ? `?${s}` : '')}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'n', 'rank', 'scale', 'group', 'open', 'from', 'to'], s ? `?${s}` : '')}`);
   carry();
 }
 
@@ -80,7 +85,7 @@ function pushState() {
 const carry = () => {
   for (const a of document.querySelectorAll('nav.views a')) {
     if (kind === 'airports') { if (a.pathname === '/airports') a.search = tableSearch(location.search); } // the table takes the measure as its sort
-    else if (kind === 'aircraft') continue; // the aircraft views share no settings
+    else if (kind === 'aircraft' || kind === 'toproutes') continue; // the aircraft views share no settings, nor the routes matrix the airports'
     else a.search = kind === 'routes' || kind === 'fleet' ? location.search : sharedQuery(location.search);
   }
 };
@@ -101,14 +106,19 @@ let places = new Map();
 let airportInfo = new Map(); // code -> the airports query's row (name, ICAO code, place), for an airport's hover text
 const place = (code) => places.get(code) || code;
 const pairOf = (route) => route.split(/ [↔→] /);
-function familyHref(name) {
+// the routes matrix's cells open their route with the year marked, as the destinations matrix's do, and a label the route
+// with the ranking year marked, if any
+function familyHref(name, year = null) {
   if (kind === 'routes') { const [o, d] = pairOf(name); return `/airports/${o}/${d}?split=carrier&highlight=airline:${body.group}${each ? '&dir=out' : ''}`; }
+  if (kind === 'toproutes') { const [o, d] = pairOf(name); return `/airports/${o}/${d}${year === null ? '' : `?year=${year}`}`; }
   if (kind === 'airports') return `/airports/${name}/destinations`; // a matrix leads to a matrix
   const id = rows.find((r) => r.group_name === name)?.group_id;
   return id ? `/airlines/${id}` : undefined;
 }
 const airportTitle = (code) => (airportInfo.has(code) ? airportTip(code, airportInfo) : `${code} · ${rows.find((r) => r.airport === code)?.city || ''}`);
-const titleOf = (name) => (kind === 'routes' ? pairOf(name).map(place).join(' – ') : kind === 'airports' ? airportTitle(name) : name);
+const miles = new Map(); // the routes matrix's route -> its distance
+const titleOf = (name) => (kind === 'toproutes' ? `${pairOf(name).map(place).join(' – ')}\n${formatCount(miles.get(name))} miles`
+  : kind === 'routes' ? pairOf(name).map(place).join(' – ') : kind === 'airports' ? airportTitle(name) : name);
 
 // the grouped matrices: a city is its name, opening into its airports (each a link to its destinations matrix); a family is
 // its name, opening into its aircraft (each a link to that aircraft's page). Both feed buildCityMatrix rows named dest and market_id
@@ -194,17 +204,18 @@ function draw() {
     busiest: `Colour compares each cell with the year's biggest ${page.noun}: the biggest is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own. Hover over a cell for both.`,
   }[state.scale];
   $('matrix-rank').options[1].textContent = `${latestFullYear} only`;
-  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}${kind === 'airports' ? (state.group === 'city' ? ' A city is a BTS city market (New York is JFK, LaGuardia and Newark); click one to list its airports, and an airport\'s code to see where it flies.' : ' Click an airport\'s code to see where it flies.') : ''}${aircraftLike ? ' Each row is an aircraft family; ▸ opens it into the aircraft in it, BTS\'s own entries such as the Boeing 737-800. Each family is counted with all its versions.' : ''}${kind === 'fleet' ? ' Click a name to see that family or aircraft split by airline, with this one picked out.' : ''}${kind === 'routes' ? (each ? ' Each row is one direction of an airport pair, as flown; a year shows when the airline flew it at least 12 times.' : ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 24 times, roughly monthly each way.') + ' A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}`;
+  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}${kind === 'airports' ? (state.group === 'city' ? ' A city is a BTS city market (New York is JFK, LaGuardia and Newark); click one to list its airports, and an airport\'s code to see where it flies.' : ' Click an airport\'s code to see where it flies.') : ''}${aircraftLike ? ' Each row is an aircraft family; ▸ opens it into the aircraft in it, BTS\'s own entries such as the Boeing 737-800. Each family is counted with all its versions.' : ''}${kind === 'fleet' ? ' Click a name to see that family or aircraft split by airline, with this one picked out.' : ''}${kind === 'routes' ? (each ? ' Each row is one direction of an airport pair, as flown; a year shows when the airline flew it at least 12 times.' : ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 24 times, roughly monthly each way.') + ' A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}${kind === 'toproutes' ? ' Each row is an airport pair, both directions together, flown by any airline; its distance is in its hover text. Click a route to see it.' : ''}`;
 
   const box = $('matrix');
   box.replaceChildren();
   placeKey($('matrix-key'), null);
   if (grouped()) { drawCities(box); useLabelTips(box); return; }
-  const res = buildMatrix(rollupRows(rows, { key: page.key, kind: kind === 'routes' ? 'all' : state.flights }), { ...state, rankYear: rankYear() });
+  if (kind === 'toproutes') rows = topRouteRows(loaded, state);
+  const res = buildMatrix(rollupRows(rows, { key: page.key, kind: kind === 'routes' || kind === 'toproutes' ? 'all' : state.flights }), { ...state, rankYear: rankYear() });
   if (!res.cells.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const years = res.years.map(String);
   const labelEvery = years.length <= 15 ? 1 : 5;
-  const data = res.cells.map((c) => ({ ...c, year: String(c.year) }));
+  const data = res.cells.map((c) => ({ ...c, year: String(c.year), ...(kind === 'toproutes' ? { href: familyHref(c.dest, c.year) } : {}) }));
   const width = Math.min(box.clientWidth || 900, 1200);
   const marginLeft = labelMargin(res.dests.map(labelOf), textWidth(box)); // as wide as the longest label, from airport codes to airline names
   const chart = Plot.plot({
@@ -220,14 +231,15 @@ function draw() {
       ? { type: 'sqrt', scheme: 'YlOrRd', label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: '.0%' }
       : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), MATRIX_MEASURES[state.measure]) },
     marks: [
-      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField() }),
+      Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),
-      Plot.text(res.dests.map((d) => ({ dest: d, label: labelOf(d), href: familyHref(d), title: titleOf(d) })), { y: 'dest', text: 'label', title: 'title', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8, fill: 'currentColor' }),
+      Plot.text(res.dests.map((d) => ({ dest: d, label: labelOf(d), href: familyHref(d, kind === 'toproutes' ? rankYear() : null), title: titleOf(d) })), { y: 'dest', text: 'label', title: 'title', href: 'href', frameAnchor: 'left', textAnchor: 'end', dx: -8, fill: 'currentColor' }),
     ],
   });
   placeKey($('matrix-key'), chart);
   box.append(...attachPopover(chart, {
     content: (d) => ({ title: `${d.dest} · ${d.year}`, rows: cellRows(d) }), at: (d) => [d.year, d.dest], keyOf: () => ({ kind: 'none' }),
+    link: (d) => d.href || null,
   }));
   useLabelTips(box);
 }
@@ -259,6 +271,15 @@ function fillControls() {
   if ($('matrix-group')) { $('matrix-group').value = state.group; bind('matrix-group', 'group'); }
   bind('matrix-n', 'n', Number);
   bind('matrix-rank', 'rank');
+  if ($('matrix-from')) {
+    for (const b of BAND_FROM) $('matrix-from').append(new Option(b.label, b.value));
+    for (const b of BAND_TO) $('matrix-to').append(new Option(b.label, b.value));
+    const showRange = () => { $('matrix-from').value = state.from; $('matrix-to').value = state.to; };
+    showRange();
+    for (const id of ['matrix-from', 'matrix-to']) {
+      $(id).addEventListener('change', () => { Object.assign(state, bandRange($('matrix-from').value, $('matrix-to').value)); showRange(); pushState(); draw(); });
+    }
+  }
 }
 
 // a city's ▸ (a #toggle: link) opens or closes it
@@ -282,9 +303,13 @@ async function main() {
   try {
     const [res, airports] = await Promise.all([
       fetchRows(queryUrl(page.query, queryParams)),
-      kind === 'routes' || kind === 'airports' ? fetchRows(queryUrl('airports')).catch(() => null) : null, // place and airport names are only hover text
+      kind === 'routes' || kind === 'toproutes' || kind === 'airports' ? fetchRows(queryUrl('airports')).catch(() => null) : null, // place and airport names are only hover text
     ]);
     rows = kind === 'routes' ? routeRows(res.rows, { each }) : res.rows;
+    if (kind === 'toproutes') {
+      loaded = res.rows;
+      for (const r of topRouteRows(loaded)) if (!r.rest) miles.set(r.route, r.distance);
+    }
     if (airports) places = new Map(airports.rows.map((r) => [r.code, r.place]));
     if (airports) airportInfo = new Map(airports.rows.map((r) => [r.code, r]));
     if (aircraftLike) aircraftInfo = new Map(rows.map((r) => [r.aircraft, { name: r.aircraft_name, maker: r.maker, aircraft_kind: r.aircraft_kind }]));

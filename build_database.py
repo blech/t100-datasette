@@ -144,6 +144,24 @@ CREATE TABLE IF NOT EXISTS "route_year_totals" (
    [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [origin], [dest])
 ) WITHOUT ROWID;
+-- Each airport pair's distance in miles (a before b, both directions), as BTS gives it in the last year flown, by rebuild_pair_distance()
+CREATE TABLE IF NOT EXISTS "pair_distance" (
+   [a] TEXT, [b] TEXT, [distance] INTEGER,
+   PRIMARY KEY ([a], [b])
+) WITHOUT ROWID;
+-- The airport pairs (a before b, both directions) the routes matrix can list, by year, by rebuild_top_route_year(): any pair in
+-- the top TOP_ROUTES for its service and distance band by some measure, over all years or in the last full year, or the busiest of a year
+CREATE TABLE IF NOT EXISTS "top_route_year" (
+   [a] TEXT, [b] TEXT, [year] INTEGER, [service] TEXT, [distance] INTEGER, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([a], [b], [year])
+) WITHOUT ROWID;
+-- Every airport pair's totals by year, service and distance band, for the routes matrix's shares of a year, by rebuild_top_route_year()
+CREATE TABLE IF NOT EXISTS "route_band_year" (
+   [year] INTEGER, [service] TEXT, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [service], [band])
+) WITHOUT ROWID;
 -- BTS's own name for each airport code ("Raleigh/Durham, NC"), derived by rebuild_airport_names()
 CREATE TABLE IF NOT EXISTS "airport_names" (
    [code] TEXT PRIMARY KEY, [name] TEXT
@@ -515,6 +533,87 @@ def rebuild_route_year_totals(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM route_year_totals").fetchone()[0]
 
 
+def rebuild_pair_distance(conn: sqlite3.Connection) -> int:
+    """Recompute pair_distance: each airport pair's distance, both directions together. BTS gives a distance on every segment;
+    a pair's can change when an airport moves (Denver in 1995 kept its code), so the last year flown gives it."""
+    create_schema(conn)
+    with conn:
+        conn.execute("DELETE FROM pair_distance")
+        conn.execute(
+            """
+            INSERT INTO pair_distance
+            SELECT a, b, distance FROM (
+              SELECT a, b, distance, ROW_NUMBER() OVER (PARTITION BY a, b ORDER BY year DESC) AS latest
+              FROM (SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, year, MAX(distance) AS distance
+                    FROM t100 WHERE origin != dest AND distance > 0 GROUP BY 1, 2, 3)
+            ) WHERE latest = 1
+            """
+        )
+    return conn.execute("SELECT COUNT(*) FROM pair_distance").fetchone()[0]
+
+
+# the routes matrix's longest list (its "top 50"): top_route_year keeps every pair that could be on it
+TOP_ROUTES = 50
+_MEASURES = ("deps", "seats", "passengers", "freight")
+
+
+def rebuild_top_route_year(conn: sqlite3.Connection) -> int:
+    """Recompute top_route_year and route_band_year from route_year_totals and pair_distance (rebuild those first).
+
+    The routes matrix ranks its rows in the browser, by any measure, for one service and distance band, over all years or the
+    last full year (the last with twelve months of domestic data). Ranking every pair there would mean sending all 100,000 or
+    so; instead a pair is kept when it is in the top TOP_ROUTES of its service and band by some measure, over all years or in
+    that year, and the busiest pair of each year is kept too, so a matrix coloured against the year's biggest has it.
+    route_band_year has every pair's totals, so a share of the year counts all of them, not just those kept."""
+    create_schema(conn)
+    band = _BAND_SQL.replace("distance", "d.distance")
+    latest = conn.execute(
+        "SELECT MAX(year) FROM (SELECT year FROM t100_domestic GROUP BY year HAVING COUNT(DISTINCT month) = 12)").fetchone()[0]
+    ranks = lambda partition: ", ".join(
+        f"ROW_NUMBER() OVER (PARTITION BY {partition} ORDER BY {m} DESC) AS by_{m}" for m in _MEASURES)
+    # a pair's best rank by any measure it has some of (a pair with no freight isn't anyone's busiest for freight)
+    best = f"MIN({', '.join(f'CASE WHEN {m} > 0 THEN by_{m} ELSE 1e9 END' for m in _MEASURES)})"
+    with conn:
+        conn.execute("DELETE FROM top_route_year")
+        conn.execute("DELETE FROM route_band_year")
+        conn.execute("DROP TABLE IF EXISTS temp.pair_year")
+        conn.execute(
+            f"""
+            CREATE TEMP TABLE pair_year AS
+            SELECT y.*, d.distance, {band} AS band FROM (
+              SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, year,
+                CASE WHEN SUM(domestic_deps) * 2 > SUM(deps) THEN 'domestic' ELSE 'international' END AS service,
+                SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+              FROM route_year_totals WHERE origin != dest GROUP BY 1, 2, 3
+            ) AS y LEFT JOIN pair_distance AS d ON d.a = y.a AND d.b = y.b
+            """
+        )
+        conn.execute(
+            f"""
+            INSERT INTO top_route_year
+            SELECT a, b, year, service, distance, band, deps, seats, passengers, freight
+            FROM pair_year
+            WHERE (a, b) IN (
+              SELECT a, b FROM (SELECT a, b, year, deps, seats, passengers, freight, {ranks("year, service, band")} FROM pair_year)
+              WHERE {best} <= CASE year WHEN ? THEN {TOP_ROUTES} ELSE 1 END
+              UNION
+              SELECT a, b FROM (SELECT a, b, deps, seats, passengers, freight, {ranks("service, band")} FROM (
+                SELECT a, b, service, band, {", ".join(f"SUM({m}) AS {m}" for m in _MEASURES)} FROM pair_year GROUP BY 1, 2, 3, 4))
+              WHERE {best} <= {TOP_ROUTES}
+            )
+            """,
+            [latest],
+        )
+        conn.execute(
+            f"""
+            INSERT INTO route_band_year
+            SELECT year, service, band, {", ".join(f"SUM({m})" for m in _MEASURES)} FROM pair_year GROUP BY 1, 2, 3
+            """
+        )
+        conn.execute("DROP TABLE temp.pair_year")
+    return conn.execute("SELECT COUNT(*) FROM top_route_year").fetchone()[0]
+
+
 def rebuild_family_detail_year(conn: sqlite3.Connection) -> int:
     """Recompute family_detail_year: each aircraft family's yearly totals by subfamily and airline group."""
     create_schema(conn)
@@ -570,6 +669,8 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "family_detail_year": rebuild_family_detail_year(conn),
         "aircraft_carrier_year": rebuild_aircraft_carrier_year(conn),
         "route_year_totals": rebuild_route_year_totals(conn),
+        "pair_distance": rebuild_pair_distance(conn),
+        "top_route_year": rebuild_top_route_year(conn),
         "airport_dir_year": rebuild_airport_dir_year(conn),
         "airport_carrier_dir_year": rebuild_airport_carrier_dir_year(conn),
         "carrier_pair_year": rebuild_carrier_pair_year(conn),

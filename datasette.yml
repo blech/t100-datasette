@@ -134,6 +134,18 @@ databases:
             AND (a.deps > 0 OR a.passengers > 0 OR a.freight > 0)
           ORDER BY a.year, a.airport
 
+      # the routes matrix: the airport pairs that could be among its top 50, by year, and every pair's totals for the shares of a year
+      top_routes_by_year:
+        title: "The busiest airport pairs by year"
+        description: "One row per airport pair (both directions together, origin before dest) and year, with its service and distance in miles, for the pairs in the top 50 of their service and distance band by flights, seats, passengers or freight, over all years or in the last full year. Rows with rest = 1 are every pair's totals for a year, service and distance band (distance is the band's lower bound), counting those not listed."
+        sql: |
+          SELECT a AS origin, b AS dest, year, service, distance, band, deps, seats, passengers, freight, 0 AS rest
+          FROM top_route_year
+          UNION ALL
+          SELECT '', '', year, service, band, band, deps, seats, passengers, freight, 1
+          FROM route_band_year
+          ORDER BY year, rest, passengers DESC
+
       # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
       busiest_airports:
         sql: |
@@ -276,13 +288,14 @@ databases:
             DESC
       routes_by_year:
         title: "Other airports from and to an airport, by year"
-        description: "One row per other airport (dest) and year, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it), with routes under the minimum flights (24 both ways, 12 one way, when empty) left out."
+        description: "One row per other airport (dest) and year, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it), with routes under the minimum flights (24 both ways, 12 one way, when empty) left out, and the pair's distance in miles."
         sql: |
           -- dir other than out or in counts both directions; dest is the other airport either way
           SELECT
             r.dest,
             m.market_id,
             n.name AS city,
+            d.distance,
             r.year,
             SUM(r.deps) AS deps,
             SUM(r.seats) AS seats,
@@ -296,6 +309,7 @@ databases:
           ) r
           LEFT JOIN airport_names n ON n.code = r.dest
           LEFT JOIN airport_market m ON m.code = r.dest
+          LEFT JOIN pair_distance d ON d.a = MIN(:origin, r.dest) AND d.b = MAX(:origin, r.dest)
           GROUP BY r.dest, r.year
           HAVING SUM(r.deps) >= CAST(COALESCE(NULLIF(:min_deps, ''), CASE WHEN :dir IN ('out', 'in') THEN 12 ELSE 24 END) AS integer)
             AND (SUM(r.deps) > 0 OR SUM(r.passengers) > 0 OR SUM(r.freight) > 0)

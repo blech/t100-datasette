@@ -91,6 +91,17 @@ CREATE TABLE "openflights_airports" (
    "timezone" TEXT, "dst" TEXT, "tz" TEXT, "type" TEXT, "source" TEXT
 );
 
+CREATE TABLE "pair_distance" (
+   [a] TEXT, [b] TEXT, [distance] INTEGER,
+   PRIMARY KEY ([a], [b])
+) WITHOUT ROWID;
+
+CREATE TABLE "route_band_year" (
+   [year] INTEGER, [service] TEXT, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [service], [band])
+) WITHOUT ROWID;
+
 CREATE TABLE "route_year_totals" (
    [year] INTEGER, [origin] TEXT, [dest] TEXT, [deps] INTEGER, [domestic_deps] INTEGER,
    [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
@@ -158,6 +169,12 @@ CREATE TABLE "t100_international" (
    [air_time] INTEGER,
    [wac] INTEGER
 );
+
+CREATE TABLE "top_route_year" (
+   [a] TEXT, [b] TEXT, [year] INTEGER, [service] TEXT, [distance] INTEGER, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([a], [b], [year])
+) WITHOUT ROWID;
 
 CREATE TABLE "type_year" (
    [year] INTEGER, [aircraft_type] TEXT, [domestic] INTEGER, [service_class] TEXT,

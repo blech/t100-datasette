@@ -34,6 +34,7 @@ def register_routes():
         (r"^/airports/globe$", globe_page),
         (r"^/airports/dedicated$", dedicated_airports_page),
         (r"^/airports/over-time$", rollup_page("airports")),
+        (r"^/airports/routes$", rollup_page("toproutes")),
         (rf"^/airports/(?P<origin>{CODE})$", airport_page),
         (rf"^/airports/(?P<origin>{CODE})/destinations$", routes_page),
         (rf"^/airports/(?P<origin>{CODE})/changes$", airport_changes_page),
@@ -102,10 +103,10 @@ def views_for(path):
         return [{"label": label, "href": href, "current": i == current, "id": id_} for i, (label, href, id_) in enumerate(items)]
 
     match parts:
-        case ["airports"] | ["airports", "dedicated"] | ["airports", "over-time"] | ["airports", "globe"]:
+        case ["airports"] | ["airports", "dedicated"] | ["airports", "over-time"] | ["airports", "routes"] | ["airports", "globe"]:
             return make(("Busiest airports", "/airports", None), ("Most dedicated", "/airports/dedicated", None),
-                        ("Over time", "/airports/over-time", None), ("Map", "/airports/globe", None),
-                        current=[[], ["dedicated"], ["over-time"], ["globe"]].index(parts[1:]))
+                        ("Over time", "/airports/over-time", None), ("Routes", "/airports/routes", None), ("Map", "/airports/globe", None),
+                        current=[[], ["dedicated"], ["over-time"], ["routes"], ["globe"]].index(parts[1:]))
         case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
@@ -479,6 +480,8 @@ route_table_page = route_view("route_table.html", table=True)
 ROLLUP_PAGES = {
     "airlines": {"title": "Airlines", "crumb": "airlines", "noun": "airlines", "query": "carrier_group_by_year", "key": "group_name"},
     "airports": {"title": "Airports", "crumb": "airports", "noun": "airports", "query": "airport_by_year", "key": "origin"},
+    # every airline's busiest airport pairs: one of the airports section's views, at /airports/routes
+    "toproutes": {"title": "Routes", "crumb": "airports", "noun": "routes", "query": "top_routes_by_year", "key": "route"},
     "aircraft": {"title": "Aircraft families", "crumb": "aircraft", "noun": "families", "query": "aircraft_by_year", "key": "family"},
 }
 
@@ -494,7 +497,7 @@ def rollup_page(kind):
                 "kind": kind,
                 "page": page,
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
-                "crumbs": trail(datasette, (page["crumb"], f"/{kind}"), ("over time", None)),
+                "crumbs": trail(datasette, (page["crumb"], f"/{page['crumb']}"), ("routes" if kind == "toproutes" else "over time", None)),
                 **(airport_direction(request) if kind == "airports" else {}),
             },
             request=request,
