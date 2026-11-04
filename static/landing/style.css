@@ -1,3 +1,4 @@
+#airports.no-codes th.code, #airports.no-codes td.code { display: none; }
 /* the busiest-airports table: the airport and city columns, the controls above */
 h2#heading { margin:24px 0 8px; }
 td.code a { font-weight:600; }

@@ -32,6 +32,7 @@ function render() {
   $('heading').textContent = `Busiest ${{ city: 'cities', country: 'countries' }[state.group] || 'airports'}${abroad ? ' abroad' : ''} by ${lowerFirst(labels[state.sort])}, ${yearLabel(state.year, minYear, maxYear)}${state.service === 'all' ? '' : `, ${state.service} flights`}`;
   const body = document.querySelector('#airports tbody');
   body.replaceChildren();
+  body.parentElement.classList.remove('no-codes');
   // an airport's row: its code (to its page), name, figures and map; under an opened city it's indented
   // the position in the list, on a top-level row only: the airports opened under a city have none
   const rankCell = (rank) => cell(rank ? String(rank) : '', 'num rank');
@@ -62,7 +63,10 @@ function render() {
     return;
   }
   // a city's row: a ▸ that opens it, its name, and its airports' totals (destinations counted once for the city)
-  for (const [i, c] of topBy(groupCities(rows, state.group), state.sort, state.n).entries()) {
+  const groups = topBy(groupCities(rows, state.group), state.sort, state.n);
+  // with every group closed the airport column is empty, so it goes; the ▸ lives beside the rank
+  body.parentElement.classList.toggle('no-codes', !groups.some((c) => open.has(c.key)));
+  for (const [i, c] of groups.entries()) {
     const tip = groupTip({ label: c.name, codes: c.airports.map((a) => a.airport) }, airportInfo);
     const tr = document.createElement('tr');
     tr.className = 'city-row';
@@ -73,13 +77,13 @@ function render() {
     toggle.title = tip;
     toggle.addEventListener('click', () => { if (open.has(c.key)) open.delete(c.key); else open.add(c.key); render(); body.querySelector(`[data-key="${c.key}"]`)?.focus(); });
     toggle.dataset.key = c.key;
-    const first = cell('', 'code');
-    first.append(toggle);
+    const rank = rankCell(i + 1);
+    rank.prepend(toggle, ' ');
     const name = cell('', 'city');
     if (state.group === 'country') name.append(link(countryHref(c.name, { year: state.year, dir }, maxYear), c.name, tip)); // the country's own page lists every airport
     else name.textContent = c.name;
     name.title = tip;
-    tr.append(rankCell(i + 1), first, name, countCell(c.passengers, 'passengers'), countCell(c.deps, word), percentCell(loadFactor(c)),
+    tr.append(rank, cell('', 'code'), name, countCell(c.passengers, 'passengers'), countCell(c.deps, word), percentCell(loadFactor(c)),
       cell(exactCount(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
     body.append(tr);
     if (!isOpen) continue;
