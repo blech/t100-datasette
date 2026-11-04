@@ -600,7 +600,7 @@ def route_view(template, table):
              # the same direction at the reversed address is the other way: /B/A?dir=out is B → A
              "other_way": route_heading(dest, origin, dir) if dir else "",
              "dir_choices": DIRECTION_CHOICES_ROUTE(origin, dest),
-             "label": Markup({"": "{0} and {1}", "out": "{0} to {1}", "in": "{1} to {0}"}[dir]).format(*names)},
+             "label": Markup({"": "{0} ↔ {1}", "out": "{0} → {1}", "in": "{1} → {0}"}[dir]).format(*names)},
             request=request,
         )
         return Response.html(html)
