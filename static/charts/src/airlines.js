@@ -18,7 +18,7 @@ export function groupAirlines(rows, { measure = 'passengers', flights = 'passeng
     if (service !== 'all' && r.service !== service) continue;
     const g = byGroup.get(r.group_id) || { id: r.group_id, name: r.group_name, members: new Map() };
     byGroup.set(r.group_id, g);
-    const m = g.members.get(r.airline_id) || { id: r.airline_id, name: r.airline_name, value: 0, firstYear: null, lastYear: null, share: 0 };
+    const m = g.members.get(r.airline_id) || { id: r.airline_id, name: r.airline_name, code: r.carrier || '', value: 0, firstYear: null, lastYear: null, share: 0 };
     g.members.set(r.airline_id, m);
     m.value += amount(r, measure);
     const first = Number(r.first_year) || null, last = Number(r.last_year) || null;
@@ -37,7 +37,7 @@ export function groupAirlines(rows, { measure = 'passengers', flights = 'passeng
     if (value <= 0 && !needle) continue;
     const members = (nameHit ? all.filter((m) => m.value > 0) : memberHits).sort(byValue);
     for (const m of members) m.share = total > 0 ? m.value / total : 0;
-    groups.push({ id: g.id, name: g.name, firstYear: firstOf(all), lastYear: lastOf(all), value,
+    groups.push({ id: g.id, name: g.name, code: (members[0] || all[0]).code, firstYear: firstOf(all), lastYear: lastOf(all), value,
       share: total > 0 ? value / total : 0, matched: Boolean(needle) && !nameHit, members });
   }
   groups.sort(byValue);

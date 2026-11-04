@@ -74,7 +74,7 @@ function memberRow(m) {
   tr.className = 'type-row';
   const name = cell('', 'left type-name');
   name.append(link(`/airlines/${m.id}${airlineQuery(state)}`, m.name));
-  tr.append(name, cell(span(m.firstYear, m.lastYear)), cell(formatCount(m.value)), cell(pct(m.share)));
+  tr.append(cell(''), cell(m.code, 'code'), name, cell(span(m.firstYear, m.lastYear)), cell(formatCount(m.value)), cell(pct(m.share)));
   return tr;
 }
 
@@ -106,12 +106,17 @@ function draw() {
   const sorted = sortAirlines(shown, state.sort, state.dir);
   const table = document.createElement('table');
   const head = document.createElement('tr');
-  head.append(headerCell('name', 'Airline', 'left'), headerCell('firstYear', 'Flew'), headerCell('value', MATRIX_MEASURES[state.measure]), document.createElement('th'));
+  const rankHead = document.createElement('th');
+  rankHead.textContent = '#';
+  rankHead.title = 'Position in this list';
+  const codeHead = document.createElement('th');
+  codeHead.textContent = 'Code';
+  head.append(rankHead, codeHead, headerCell('name', 'Airline', 'left'), headerCell('firstYear', 'Flew'), headerCell('value', MATRIX_MEASURES[state.measure]), document.createElement('th'));
   head.lastChild.textContent = 'Share';
   const thead = document.createElement('thead');
   thead.append(head);
   const tbody = document.createElement('tbody');
-  for (const g of sorted) {
+  for (const [i, g] of sorted.entries()) {
     const tr = document.createElement('tr');
     const first = document.createElement('td');
     first.className = 'left';
@@ -129,7 +134,7 @@ function draw() {
     }
     // an airline's page opens on the same measure for the same flights
     first.append(link(`/airlines/${g.id}${airlineQuery(state)}`, g.name));
-    tr.append(first, cell(span(g.firstYear, g.lastYear)), cell(formatCount(g.value)), cell(pct(g.share)));
+    tr.append(cell(String(i + 1), 'rank'), cell(g.code, 'code'), first, cell(span(g.firstYear, g.lastYear)), cell(formatCount(g.value)), cell(pct(g.share)));
     tbody.append(tr);
     if (isOpen && (g.members.length > 1 || g.matched)) for (const m of g.members) tbody.append(memberRow(m));
   }

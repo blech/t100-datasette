@@ -183,6 +183,16 @@ def test_airline_table_gives_each_member_its_year_by_service_and_kind(ds, db_pat
     assert sw["airline_name"] == "Southwest"  # no carrier_group row: the group's name stands in
 
 
+def test_airline_table_gives_the_two_letter_code_it_flies_under_now_once_per_row(ds, db_path):
+    seed_delta(db_path)
+    put(db_path, "carriers", [dict(airline_id="19790", carrier="DL", start_date_source="1/1/1960 12:00:00 AM"),
+                              dict(airline_id="19790", carrier="D1", start_date_source="10/1/1986 12:00:00 AM"),
+                              dict(airline_id="19790", carrier="DL", start_date_source="3/1/1999 12:00:00 AM")])
+    rows = get_json(ds, "/t100/airline_table.json?_shape=objects&year=all")["rows"]
+    assert {r["carrier"] for r in rows if r["airline_id"] == "19790"} == {"DL"}
+    assert len([r for r in rows if r["airline_id"] == "19790" and r["kind"] == "passenger" and r["service"] == "domestic"]) == 1
+
+
 def test_airline_table_can_add_up_every_year_and_spans_every_year(ds, db_path):
     seed_delta(db_path)
     rows = get_json(ds, "/t100/airline_table.json?_shape=objects&year=all")["rows"]

@@ -645,6 +645,9 @@ databases:
             d.group_name,
             d.airline_id,
             COALESCE(g.airline_name, d.group_name) AS airline_name,
+            -- the two-letter code it flies under now (the latest start date on its carriers rows)
+            (SELECT c.carrier FROM carriers c WHERE c.airline_id = d.airline_id
+              ORDER BY substr(c.start_date_source, instr(c.start_date_source, ' ') - 4, 4) DESC LIMIT 1) AS carrier,
             CASE WHEN d.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
             CASE WHEN d.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
             MIN(CASE WHEN d.deps > 0 THEN d.year END) AS first_year,
@@ -655,7 +658,7 @@ databases:
             SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.freight ELSE 0 END) AS freight
           FROM carrier_group_year d
             LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
-          GROUP BY d.group_id, d.group_name, d.airline_id, airline_name, service, kind
+          GROUP BY d.group_id, d.group_name, d.airline_id, airline_name, carrier, service, kind
           HAVING SUM(CASE WHEN (:year IN ('', 'all') OR d.year = CAST(:year AS INTEGER)) THEN d.deps ELSE 0 END) > 0
           ORDER BY d.group_id, d.airline_id
 
