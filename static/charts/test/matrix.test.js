@@ -409,3 +409,15 @@ test('freight is labelled in short tons, on an axis and after a hover figure; ot
   assert.equal(_measureFormat('freight', (v) => String(v))(118.5), '118.5 tons');
   assert.equal(_measureFormat('deps', (v) => String(v))(7), '7');
 });
+
+import { buildCityMatrix as _buildCityMatrix } from '../src/matrix.js';
+test('with hideSmall, an opened city lists the airports above 2% of it and one row summing the rest', () => {
+  const row = (dest, year, passengers, deps, freight = 0) => ({ dest, year, passengers, deps, freight, seats: passengers, market_id: '1', city: dest, service: 'domestic' });
+  const rows = [row('JFK', 2024, 6e7, 4e5), row('JFK', 2025, 6e7, 4e5), row('ISP', 2024, 1e6, 3e3), row('ISP', 2025, 1.2e6, 3.3e3), row('NYS', 2025, 5e3, 2e3)];
+  const opened = (extra) => _buildCityMatrix(rows, { open: ['1'], ...extra }).rows.map((r) => r.kind === 'others' ? `${r.label}` : r.key);
+  assert.deepEqual(opened({ hideSmall: true }), ['1', '1/JFK', '2 other airports']);
+  assert.deepEqual(opened({}), ['1', '1/JFK', '1/ISP', '1/NYS']);   // off, it lists every airport
+  const res = _buildCityMatrix(rows, { open: ['1'], hideSmall: true });
+  assert.deepEqual(res.cells.filter((c) => c.row === '1/others').map((c) => [c.year, c.value]), [[2024, 1e6], [2025, 1205000]]);
+  assert.deepEqual(res.rows.find((r) => r.kind === 'others').codes, ['ISP', 'NYS']);
+});

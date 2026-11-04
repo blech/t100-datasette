@@ -1,5 +1,6 @@
 import { yearDomain } from './span.js';
 import { countWord } from '../../common/direction.js';
+import { splitSmall, othersLabel } from '../../common/small.js';
 
 export const MATRIX_MEASURES = { passengers: 'Passengers', freight: 'Freight', deps: 'Departures', seats: 'Seats' };
 // the same, with the flight count named for the direction an airport page counts
@@ -118,7 +119,7 @@ export function textWidth(box) {
 
 // Same grid, but airports in one BTS city market are one row (or aircraft in one family: rows with a `group_label` name their group). A group can be opened (`open` lists market ids),
 // which puts its airports on rows directly beneath.
-export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null, flown = 'ever', firstYear, lastYear } = {}) {
+export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null, flown = 'ever', firstYear, lastYear, hideSmall = false } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const openSet = new Set(open.map(String));
   const groups = new Map(); // key -> { rank, airports: Map(dest -> {rank, name, nameYear, byYear}), byYear: Map(year -> {value, parts: Map}) }
@@ -136,7 +137,10 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
     if (ranked) g.rank += v;
     const a = g.airports.get(r.dest) || { dest: r.dest, rank: 0, name: null, nameYear: -Infinity, byYear: new Map() };
     g.airports.set(r.dest, a);
-    if (ranked) a.rank += v;
+    if (ranked) {
+      a.rank += v;
+      for (const m of ['deps', 'passengers', 'freight']) a[m] = (a[m] || 0) + (Number(r[m]) || 0);   // what the airport is judged small by
+    }
     if (r.city && r.year >= a.nameYear) { a.name = r.city; a.nameYear = r.year; }
     a.byYear.set(r.year, (a.byYear.get(r.year) || 0) + v);
     const cell = g.byYear.get(r.year) || { value: 0, parts: new Map() };
@@ -173,10 +177,19 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
       cells.push({ row: g.key, year, value: cell.value, share: cell.value / yearTotals[year], peak: cell.value / yearMax[year], parts });
     }
     if (isOpen) {
-      for (const a of g.list) {
+      // with hideSmall, the airports under 2% of the city are one row of their own (see common/small.js)
+      const { shown, small } = hideSmall ? splitSmall(g.list) : { shown: g.list, small: [] };
+      for (const a of shown) {
         const key = `${g.key}/${a.dest}`;
         outRows.push({ key, kind: 'airport', code: a.dest, groupKey: g.key, label: a.dest, name: a.name });
         for (const [year, value] of a.byYear) if (value > 0) cells.push({ row: key, year, value, share: value / yearTotals[year], peak: value / yearMax[year] });
+      }
+      if (small.length) {
+        const key = `${g.key}/others`;
+        outRows.push({ key, kind: 'others', groupKey: g.key, label: othersLabel(small.length), codes: small.map((a) => a.dest) });
+        const sums = new Map();
+        for (const a of small) for (const [year, value] of a.byYear) sums.set(year, (sums.get(year) || 0) + value);
+        for (const [year, value] of sums) if (value > 0) cells.push({ row: key, year, value, share: value / yearTotals[year], peak: value / yearMax[year] });
       }
     }
   }

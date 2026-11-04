@@ -42,7 +42,7 @@
       </table>
     </div>
     <p id="status" role="status"></p>
-    <p class="note">Cities are BTS city markets: a city's row adds up its airports, counts each destination once, and opens to list them. Destinations counts US airports with at least {{ 24 if dir == "" else 12 }} flights {{ {"out": "from the airport", "in": "to the airport"}.get(dir, "to and from the airport") }} that year (for all years, in some year); the total row counts each US airport once for the whole country. Freight is in short tons (2,000 lb). <a href="/airports?region=abroad&amp;group=country">All countries</a>.</p>
+    <p class="note">Cities are BTS city markets: a city's row adds up its airports, counts each destination once, and opens to list them, with any airport under 2% of the city's flights, passengers and freight added up as "other airports". Destinations counts US airports with at least {{ 24 if dir == "" else 12 }} flights {{ {"out": "from the airport", "in": "to the airport"}.get(dir, "to and from the airport") }} that year (for all years, in some year); the total row counts each US airport once for the whole country. Freight is in short tons (2,000 lb). <a href="/airports?region=abroad&amp;group=country">All countries</a>.</p>
     {% include "_footer.html" %}
   </main>
   <script type="module" src="/static/landing/country.js"></script>

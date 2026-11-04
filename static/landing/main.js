@@ -3,6 +3,7 @@ import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { sortLabels, lowerFirst, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel, countryHref, splitAirports, sumOf } from './src/table.js';
 import { exactCount } from '/static/common/numbers.js';
+import { splitSmall, othersLabel } from '/static/common/small.js';
 import { cell, countCell, tonsCell, percentCell, link } from './src/cells.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { parseDir, setDir } from '/static/common/direction.js';
@@ -44,13 +45,13 @@ function render() {
     return tr;
   };
   // the airports under a country beyond the busiest few: one row adding them up, to the country's page
-  const othersRow = (c, others) => {
+  const othersRow = (c, others, href) => {
     const tr = document.createElement('tr');
     tr.className = 'member others';
     const total = sumOf(others);
     const more = cell('', 'more');
-    more.append(link(countryHref(c.name, { year: state.year, dir }, maxYear), 'All →'));
-    tr.append(cell('', 'code'), cell(`${others.length} other airports`, 'city'), countCell(total.passengers, 'passengers'), countCell(total.deps, word),
+    if (href) more.append(link(href, 'All →'));
+    tr.append(cell('', 'code'), cell(othersLabel(others.length), 'city'), countCell(total.passengers, 'passengers'), countCell(total.deps, word),
       percentCell(loadFactor(total)), cell('', 'num'), tonsCell(total.freight), more);
     return tr;
   };
@@ -80,10 +81,12 @@ function render() {
       cell(exactCount(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
     body.append(tr);
     if (!isOpen) continue;
-    // a country lists its busiest airports and adds up the rest; its page has them all
-    const { shown, others } = state.group === 'country' ? splitAirports(c.airports) : { shown: c.airports, others: [] };
+    // a country lists its busiest airports and adds up the rest, its page having them all; a city lists the airports that are
+    // not small beside it and adds up the rest
+    const country = state.group === 'country';
+    const { shown, others } = country ? splitAirports(c.airports) : (({ shown, small }) => ({ shown, others: small }))(splitSmall(c.airports));
     for (const a of shown) body.append(airportRow(a, true));
-    if (others.length) body.append(othersRow(c, others));
+    if (others.length) body.append(othersRow(c, others, country ? countryHref(c.name, { year: state.year, dir }, maxYear) : undefined));
   }
 }
 

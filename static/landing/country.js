@@ -2,6 +2,7 @@ import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { lowerFirst, airportHref, loadFactor, groupCities, yearLabel } from './src/table.js';
+import { splitSmall, othersLabel } from '/static/common/small.js';
 import { cell, countCell, tonsCell, percentCell, link } from './src/cells.js';
 import { airportTip } from '/static/charts/src/labels.js';
 import { parseDir, setDir, abroadCountWord } from '/static/common/direction.js';
@@ -36,6 +37,17 @@ function airportRow(r, member) {
   return tr;
 }
 
+// the airports of a city too small to list, as one row
+function othersRow(small) {
+  const tr = document.createElement('tr');
+  tr.className = 'member others';
+  const total = { passengers: 0, deps: 0, seats: 0, freight: 0 };
+  for (const r of small) for (const k of Object.keys(total)) total[k] += Number(r[k]) || 0;
+  tr.append(cell('', 'code'), cell(othersLabel(small.length), 'city'), countCell(total.passengers, 'passengers'), countCell(total.deps, word),
+    percentCell(loadFactor(total)), cell('', 'num'), tonsCell(total.freight), cell('', 'more'));
+  return tr;
+}
+
 function render() {
   $('heading').textContent = `Airports in ${country}, ${yearLabel(year, minYear, maxYear)}`;
   const body = document.querySelector('#airports tbody');
@@ -65,7 +77,10 @@ function render() {
       tr.append(first, cell(place(c.name), 'city'), countCell(c.passengers, 'passengers'), countCell(c.deps, word),
         percentCell(loadFactor(c)), cell(String(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
       body.append(tr);
-      if (isOpen) for (const a of c.airports) body.append(airportRow(a, true));
+      if (!isOpen) continue;
+      const { shown, small } = splitSmall(c.airports);
+      for (const a of shown) body.append(airportRow(a, true));
+      if (small.length) body.append(othersRow(small));
     }
   }
   if (!mine.length) return;
