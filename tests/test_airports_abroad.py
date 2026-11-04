@@ -1,7 +1,7 @@
 import re
 import sqlite3
 
-from tests.helpers import get
+from tests.helpers import get, get_json
 from tests.test_top_airports import abroad
 
 ABROAD = "/airports?region=abroad"
@@ -48,8 +48,23 @@ def test_abroad_destinations_are_us_airports(ds):
     assert "Destinations counts other airports" in get(ds, "/airports").text
 
 
-def test_over_time_has_no_region_menu(ds):
-    assert "region" not in sentence(get(ds, "/airports/over-time").text)
+def test_over_time_has_the_same_region_menu_and_abroad_the_same_words(ds):
+    us = get(ds, "/airports/over-time").text
+    assert re.findall(r'<select id="([^"]+)"', sentence(us)) == ["matrix-measure", "matrix-n", "matrix-group", "matrix-region", "matrix-service", "matrix-rank", "dir"]
+    assert '<option value="us" selected>in the US</option>' in us and "countries" not in us
+    abroad_page = get(ds, "/airports/over-time?region=abroad").text
+    assert re.findall(r'<select id="([^"]+)"', sentence(abroad_page)) == ["matrix-measure", "matrix-n", "matrix-group", "matrix-region", "matrix-rank", "dir"]
+    assert '<option value="abroad" selected>abroad</option>' in abroad_page and '<option value="country">countries</option>' in abroad_page
+    assert '<span id="matrix-service">international flights</span>' in abroad_page and "to the US" in abroad_page
+    assert 'data-region="abroad"' in abroad_page and "Every airport outside the US" in abroad_page
+
+
+def test_airport_by_year_region_abroad_gives_the_airports_outside_the_us(ds, db_path):
+    from tests.test_airports_matrix import totals
+    totals(db_path)
+    abroad_rows = get_json(ds, "/t100/airport_by_year.json?_shape=objects&_size=max&region=abroad")["rows"]
+    assert {r["airport"] for r in abroad_rows} == {"LHR"}
+    assert {r["airport"] for r in get_json(ds, "/t100/airport_by_year.json?_shape=objects&_size=max")["rows"]} == {"ATL"}
 
 
 def test_countries_are_a_grouping_only_abroad(ds):

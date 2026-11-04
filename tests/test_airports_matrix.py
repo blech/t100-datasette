@@ -41,7 +41,7 @@ def test_the_airports_matrix_page(ds):
     assert 'data-kind="airports"' in r.text and 'id="matrix"' in r.text and "/static/charts/rollup.js" in r.text
     assert "Airports over time" in r.text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', r.text, re.S).group(1)
-    assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-n", "matrix-group", "matrix-service", "matrix-rank", "dir"]
+    assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-n", "matrix-group", "matrix-region", "matrix-service", "matrix-rank", "dir"]
     assert '<option value="city">cities</option>' in sentence
     assert "airlines" not in sentence and 'data-find="airport"' in r.text and 'data-find="airline"' not in r.text
 
@@ -97,7 +97,6 @@ def test_the_busiest_airports_table_is_set_by_a_sentence(ds):
 def test_the_two_airport_lists_share_the_sentence_after_their_lead(ds):
     def shared(html):  # from "the top" on, without each page's id prefix and its own choices of year
         text = " ".join(sentence(html).split()).split("the top ", 1)[1]
-        text = re.sub(r'<select id="table-region".*?</select> ', "", text)   # only /airports can look abroad
         return re.sub(r'(<select id="(?:table|matrix)-rank"[^>]*>).*?</select>', r"\1</select>", text).replace('id="table-', 'id="x-').replace('id="matrix-', 'id="x-')
     assert shared(get(ds, "/airports").text) == shared(get(ds, "/airports/over-time").text)
     assert " ".join(sentence(get(ds, "/airports/over-time").text).split()).startswith('Show <select id="matrix-measure"')

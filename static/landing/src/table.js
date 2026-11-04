@@ -57,10 +57,11 @@ export function toSearch(state, maxYear) {
 const SHARED = ['deps', 'freight'];
 // and so are showing airports or cities, how many rows and which flights
 const search = (q) => (q.size ? `?${q}` : '');
-export const matrixSearch = (sort, group = 'airport', { n = DEFAULT_ROWS, service = 'all' } = {}) => {
+export const matrixSearch = (sort, group = 'airport', { n = DEFAULT_ROWS, service = 'all', region = 'us' } = {}) => {
   const q = new URLSearchParams();
   if (SHARED.includes(sort)) q.set('measure', sort);
-  if (group === 'city') q.set('group', 'city');
+  if (group === 'city' || (group === 'country' && region === 'abroad')) q.set('group', group);
+  if (region === 'abroad') q.set('region', 'abroad');
   if (n !== DEFAULT_ROWS) q.set('n', n);
   if (service !== 'all') q.set('service', service);
   return search(q);
@@ -69,7 +70,9 @@ export const tableSearch = (s) => {
   const from = new URLSearchParams(s || '');
   const q = new URLSearchParams();
   if (SHARED.includes(from.get('measure'))) q.set('sort', from.get('measure'));
-  if (from.get('group') === 'city') q.set('group', 'city');
+  const abroad = from.get('region') === 'abroad';
+  if (from.get('group') === 'city' || (abroad && from.get('group') === 'country')) q.set('group', from.get('group'));
+  if (abroad) q.set('region', 'abroad');
   if (ROW_COUNTS.includes(Number(from.get('n'))) && Number(from.get('n')) !== DEFAULT_ROWS) q.set('n', from.get('n'));
   if (SERVICES.includes(from.get('service')) && from.get('service') !== 'all') q.set('service', from.get('service'));
   return search(q);

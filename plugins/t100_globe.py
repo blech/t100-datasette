@@ -564,7 +564,7 @@ def rollup_page(kind):
                 "page": page,
                 "latest_year": (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025),
                 "crumbs": trail(datasette, (page["crumb"], f"/{page['crumb']}"), ("routes" if kind == "toproutes" else "over time", None)),
-                **(airport_direction(request) if kind == "airports" else {}),
+                **({**airport_direction(request), **airport_region(request)} if kind == "airports" else {}),
             },
             request=request,
         )

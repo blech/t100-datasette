@@ -1,10 +1,10 @@
 import { yearDomain } from './span.js';
-import { countWord } from '../../common/direction.js';
+import { countWord, abroadCountWord } from '../../common/direction.js';
 import { splitSmall, othersLabel } from '../../common/small.js';
 
 export const MATRIX_MEASURES = { passengers: 'Passengers', freight: 'Freight', deps: 'Departures', seats: 'Seats' };
 // the same, with the flight count named for the direction an airport page counts
-export const matrixMeasures = (dir) => ({ ...MATRIX_MEASURES, deps: countWord(dir) });
+export const matrixMeasures = (dir, abroad = false) => ({ ...MATRIX_MEASURES, deps: (abroad ? abroadCountWord : countWord)(dir) });
 
 // Freight is charted in short tons: say so on an axis or legend, and after each figure in a hover
 export const axisLabel = (measure, label) => (measure === 'freight' ? 'Freight, short tons' : label);

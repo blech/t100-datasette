@@ -139,13 +139,13 @@ databases:
 
       # the airports matrix: every US airport that flew at least 365 times in some year, with all its years and its city market
       airport_by_year:
-        title: "US airports by year"
-        description: "One row per US airport, year and service (domestic or international, by BTS file), counting flights both ways (or set dir to out for departures, in for arrivals), for airports with at least 730 flights both ways (365 one way) in some year, with each airport's BTS city market."
+        title: "Airports by year"
+        description: "One row per US airport (or, with region set to abroad, per airport outside the US, counting its flights to and from the US), year and service (domestic or international, by BTS file), counting flights both ways (or set dir to out for departures, in for arrivals), for airports with at least 730 flights both ways (365 one way) in some year, with each airport's BTS city market."
         sql: |
           -- big: the airports that ever flew enough; their flights come from airport_carrier_dir_year, split by the BTS file as airport_size does
           WITH big AS (
             SELECT airport FROM airport_dir_year
-            WHERE wac BETWEEN 1 AND 93
+            WHERE CASE WHEN :region = 'abroad' THEN wac NOT BETWEEN 1 AND 93 ELSE wac BETWEEN 1 AND 93 END
             GROUP BY airport
             HAVING MAX(CASE :dir WHEN 'out' THEN deps WHEN 'in' THEN arrs ELSE deps + arrs END) >= CASE WHEN :dir IN ('out', 'in') THEN 365 ELSE 730 END
           )

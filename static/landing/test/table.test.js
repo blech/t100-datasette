@@ -119,8 +119,11 @@ test('airports abroad: the region is read and written, every flight is internati
   assert.deepEqual(['', 'out', 'in'].map((d) => sortLabels(d, true).deps), ['Flights', 'Flights to the US', 'Flights from the US']);
   assert.deepEqual(['', 'out', 'in'].map((d) => sortLabels(d).deps), ['Flights', 'Departures', 'Arrivals']);
   assert.equal(lowerFirst('Flights to the US'), 'flights to the US');
-  assert.equal(matrixSearch('deps', 'city', { region: 'abroad' }), '?measure=deps&group=city');   // Over time only knows the US
-  assert.equal(tableSearch('?region=abroad'), '');
+  assert.equal(matrixSearch('deps', 'city', { region: 'abroad' }), '?measure=deps&group=city&region=abroad');   // Over time knows abroad too
+  assert.equal(matrixSearch('deps', 'country', { region: 'abroad' }), '?measure=deps&group=country&region=abroad');
+  assert.equal(matrixSearch('deps', 'country'), '?measure=deps');   // countries are an abroad grouping
+  assert.equal(tableSearch('?region=abroad&group=country&measure=freight'), '?sort=freight&group=country&region=abroad');
+  assert.equal(tableSearch('?group=country'), '');
 });
 
 test('abroad, airports group by country, with the country\'s own destination count', () => {

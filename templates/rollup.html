@@ -9,13 +9,14 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
-<body data-kind="{{ kind }}" data-latest-year="{{ latest_year }}"{% if kind == "airports" %} data-dir="{{ dir }}"{% endif %}>
+<body data-kind="{{ kind }}" data-latest-year="{{ latest_year }}"{% if kind == "airports" %} data-dir="{{ dir }}" data-region="{{ region }}"{% endif %}>
   <main>
     {% include "_nav.html" %}
     <h1>{{ page.title }} over time</h1>
     {% set find = {"airlines": "airline", "airports": "airport", "toproutes": "airport", "aircraft": "aircraft"}[kind] %}{% include "_find.html" %}
     <p class="intro">
-      {% if kind == "airports" %}Every US airport in the data, counting flights {{ {"out": "departing it", "in": "arriving at it"}.get(dir, "to and from it") }}, by year. Click an airport's code to see where it flies.
+      {% if kind == "airports" and abroad %}Every airport outside the US in the data, counting its flights {{ {"out": "to the US", "in": "from the US"}.get(dir, "to and from the US") }}, by year, the way the US airports are. Only flights to or from a US airport are in the data. Click an airport's code to see which US airports it flies to.
+      {% elif kind == "airports" %}Every US airport in the data, counting flights {{ {"out": "departing it", "in": "arriving at it"}.get(dir, "to and from it") }}, by year. Click an airport's code to see where it flies.
       {% elif kind == "toproutes" %}The busiest airport pairs in the data, flown by any airline, with both directions counted together, by year. Pick a range of distances to compare routes of a similar length. Click a route to see it.
       {% elif kind == "aircraft" %}Every aircraft family in the data, by year. Click a <span aria-hidden="true">▸</span> to list a family's aircraft, a family's name to see its page, or an aircraft's name to see that one.
       {% else %}Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.{% endif %}
@@ -23,7 +24,7 @@
     {% if kind == "airports" %}{% from "_airport_ranking.html" import airport_ranking %}
     <p class="chart-sentence">
       Show <select id="matrix-measure" aria-label="Measure"></select> for
-      {{ airport_ranking("matrix", [("all", "all years"), ("latest", latest_year ~ " only")], dir, dir_choices) }}
+      {{ airport_ranking("matrix", [("all", "all years"), ("latest", latest_year ~ " only")], dir, dir_choices, region) }}
     </p>
     {% else %}
     <p class="chart-sentence">
