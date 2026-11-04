@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
+{{ modulepreload("/static/nav/main.js") }}
+{{ modulepreload("/static/charts/rollup.js") }}
 </head>
 <body data-kind="{{ kind }}" data-latest-year="{{ latest_year }}"{% if kind == "airports" %} data-dir="{{ dir }}" data-region="{{ region }}"{% endif %}>
   <main>

@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
   <script type="module" src="/static/nav/main.js"></script>
+{{ modulepreload("/static/nav/main.js") }}
+{{ modulepreload("/static/charts/rollup.js") }}
 </head>
 <body data-kind="fleet" data-group="{{ group }}" data-airline="{{ airline }}" data-latest-year="{{ last_year }}">
   <main>
