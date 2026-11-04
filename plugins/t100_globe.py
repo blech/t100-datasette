@@ -463,6 +463,74 @@ async def airport_years(datasette, code):
     return first, last
 
 
+# how far down the size ranking a rank is worth stating, and how far down the dedicated ranking (the dedicated page lists ten)
+SIZE_RANK_LIMIT = 100
+DEDICATED_RANK_LIMIT = 10
+LB_PER_TON = 2000
+
+
+def ordinal(n):
+    """1st, 2nd, 3rd, 4th, 11th, 112th."""
+    n = int(n)
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def rank_sentences(code, year, rows, size_limit=SIZE_RANK_LIMIT, dedicated_limit=DEDICATED_RANK_LIMIT):
+    """The line under a US airport's heading from its airport_ranks rows (one per measure it has): what it handled in `year`, how it
+    ranks among the US airports (for the top `size_limit`), and, for the top `dedicated_limit` of the pool the most-dedicated page
+    ranks, which airline carried most of it. Markup; empty when the airport had neither passengers nor freight."""
+    by = {r["measure"]: r for r in rows}
+    if not by:
+        return ""
+    amount = {"passengers": lambda r: f"{prose_count(r['total'])} passengers", "freight": lambda r: f"{prose_count(r['total'] / LB_PER_TON)} tons of freight"}
+    parts, ranked_before = [], False
+    for measure in ("passengers", "freight"):
+        r = by.get(measure)
+        if not r:
+            continue
+        text = amount[measure](r)
+        if r["size_rank"] <= size_limit:
+            place = "" if r["size_rank"] == 1 else f"{ordinal(r['size_rank'])} "   # the busiest, not the 1st busiest
+            if ranked_before:
+                text += f", the {place}busiest"
+            else:
+                text += f", making it the {place}busiest airport in the US" + (" for freight" if measure == "freight" else "")
+            ranked_before = True
+        parts.append(text)
+    # "9.15 million passengers, making it the 48th busiest airport in the US, and 546,000 tons of freight, 17th busiest";
+    # a part with no rank joins with a plain "and"
+    first = parts[0]
+    sentence = Markup("In {}, {} had {}").format(year, code, first)
+    for part in parts[1:]:
+        sentence += Markup("{}{}").format(", and " if ", " in first else " and ", part)
+    sentence += "."
+    dedicated = []
+    for measure, noun, verb in (("passengers", "passenger flights", "carrying {} of its passengers"), ("freight", "freight", "carrying {} of it")):
+        r = by.get(measure)
+        if r and r["dedicated_rank"] and r["dedicated_rank"] <= dedicated_limit:
+            airline = re.sub(r"\s*\(incl\..*?\)", "", short_airline_name(r["group_name"]))   # "Southwest (incl. AirTran)" is just Southwest here
+            dedicated.append((measure, noun, ordinal(r["dedicated_rank"]), airline, percent(r["share"], 1), verb))
+    if dedicated:
+        link = f"/airports/dedicated?year={year}"   # the first mention links to the page that ranks them
+        pieces = [Markup('the {} {} airport for {}, with {} {}').format(o, Markup(f'<a href="{link}">most dedicated</a>') if i == 0 else "most dedicated", noun, airline, verb.format(share))
+                  for i, (_, noun, o, airline, share, verb) in enumerate(dedicated)]
+        sentence += Markup(" It was also {}.").format(Markup(", and ").join(pieces))
+    return sentence
+
+
+async def airport_rank_line(datasette, origin, foreign):
+    """rank_sentences for the latest full year, or empty for an airport outside the US or one that did not fly then."""
+    if foreign:
+        return ""
+    year = year_range(datasette)[1]
+    try:
+        rows = await canned(datasette, "airport_ranks", {"origin": origin, "year": year})
+    except Exception:
+        log.exception("airport_ranks failed for %s", origin)
+        return ""
+    return rank_sentences(origin, year, rows)
+
+
 def airport_view(template, crumb):
     """One of an airport's views: its charts over time (no crumb of its own), its destinations matrix, or what changed."""
 
@@ -483,6 +551,7 @@ def airport_view(template, crumb):
                 "crumbs": trail(datasette, *steps),
                 "foreign": await is_foreign(datasette, origin),
                 "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, await is_foreign(datasette, origin)),
+                "rank_line": await airport_rank_line(datasette, origin, await is_foreign(datasette, origin)) if template == "airport.html" else "",
                 **airport_direction(request),
             },
             request=request,

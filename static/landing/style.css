@@ -10,3 +10,6 @@ td.city { white-space:normal; }
 #airports tr.member td.code { padding-left: 1.4em; }
 #airports tr.member td { color: var(--muted, #777); }
 #airports tr.member td a { color: inherit; }
+
+/* the position in a list: quiet, and narrow */
+td.rank { color: var(--muted, #777); width: 2.5em; }

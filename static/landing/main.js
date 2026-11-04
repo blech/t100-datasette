@@ -33,14 +33,16 @@ function render() {
   const body = document.querySelector('#airports tbody');
   body.replaceChildren();
   // an airport's row: its code (to its page), name, figures and map; under an opened city it's indented
-  const airportRow = (r, member) => {
+  // the position in the list, on a top-level row only: the airports opened under a city have none
+  const rankCell = (rank) => cell(rank ? String(rank) : '', 'num rank');
+  const airportRow = (r, member, rank) => {
     const tr = document.createElement('tr');
     if (member) tr.className = 'member';
     const code = cell('', 'code');
     code.append(link(airportHref(r.airport, state.sort), r.airport, airportTip(r.airport, airportInfo)));
     const more = cell('', 'more');
     more.append(link(`/airports/${encodeURIComponent(r.airport)}/globe${state.year === 'all' ? '' : `?year=${state.year}`}`, 'Map →')); // all years: the map's latest
-    tr.append(code, cell(r.city || '', 'city'), countCell(r.passengers, 'passengers'), countCell(r.deps, word),
+    tr.append(rankCell(rank), code, cell(r.city || '', 'city'), countCell(r.passengers, 'passengers'), countCell(r.deps, word),
       percentCell(loadFactor(r)), cell(exactCount(r.dests), 'num'), tonsCell(r.freight), more);
     return tr;
   };
@@ -51,16 +53,16 @@ function render() {
     const total = sumOf(others);
     const more = cell('', 'more');
     if (href) more.append(link(href, 'All →'));
-    tr.append(cell('', 'code'), cell(othersLabel(others.length), 'city'), countCell(total.passengers, 'passengers'), countCell(total.deps, word),
+    tr.append(rankCell(), cell('', 'code'), cell(othersLabel(others.length), 'city'), countCell(total.passengers, 'passengers'), countCell(total.deps, word),
       percentCell(loadFactor(total)), cell('', 'num'), tonsCell(total.freight), more);
     return tr;
   };
   if (state.group === 'airport') {
-    for (const r of topBy(rows, state.sort, state.n)) body.append(airportRow(r, false));
+    topBy(rows, state.sort, state.n).forEach((r, i) => body.append(airportRow(r, false, i + 1)));
     return;
   }
   // a city's row: a ▸ that opens it, its name, and its airports' totals (destinations counted once for the city)
-  for (const c of topBy(groupCities(rows, state.group), state.sort, state.n)) {
+  for (const [i, c] of topBy(groupCities(rows, state.group), state.sort, state.n).entries()) {
     const tip = groupTip({ label: c.name, codes: c.airports.map((a) => a.airport) }, airportInfo);
     const tr = document.createElement('tr');
     tr.className = 'city-row';
@@ -77,7 +79,7 @@ function render() {
     if (state.group === 'country') name.append(link(countryHref(c.name, { year: state.year, dir }, maxYear), c.name, tip)); // the country's own page lists every airport
     else name.textContent = c.name;
     name.title = tip;
-    tr.append(first, name, countCell(c.passengers, 'passengers'), countCell(c.deps, word), percentCell(loadFactor(c)),
+    tr.append(rankCell(i + 1), first, name, countCell(c.passengers, 'passengers'), countCell(c.deps, word), percentCell(loadFactor(c)),
       cell(exactCount(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
     body.append(tr);
     if (!isOpen) continue;
@@ -85,7 +87,7 @@ function render() {
     // not small beside it and adds up the rest
     const country = state.group === 'country';
     const { shown, others } = country ? splitAirports(c.airports) : (({ shown, small }) => ({ shown, others: small }))(splitSmall(c.airports));
-    for (const a of shown) body.append(airportRow(a, true));
+    for (const a of shown) body.append(airportRow(a, true, 0));
     if (others.length) body.append(othersRow(c, others, country ? countryHref(c.name, { year: state.year, dir }, maxYear) : undefined));
   }
 }

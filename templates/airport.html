@@ -14,6 +14,7 @@
     {% include "_nav.html" %}
     <h1 id="title">{{ origin }}: over time</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
+    {% if rank_line %}<p class="rank-line" id="rank-line">{{ rank_line }}</p>{% endif %}
     {% set find = "airport" %}{% include "_find.html" %}
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">{% include "_dir_choice.html" %}</p>

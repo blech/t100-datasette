@@ -38,6 +38,7 @@
         <table id="{{ t.measure }}">
           <thead>
             <tr>
+              <th scope="col" class="num">#</th>
               <th scope="col" class="left">Airport</th>
               <th scope="col" class="left">City</th>
               <th scope="col" class="left">Biggest airline</th>
@@ -50,6 +51,7 @@
           <tbody>
             {%- for r in t.rows %}
             <tr>
+              <td class="num rank">{{ loop.index }}</td>
               <td class="code"><a href="/airports/{{ r.code }}{{ t.query }}" title="{{ r.tip }}">{{ r.code }}</a></td>
               <td class="city">{{ r.city or "" }}</td>
               <td class="airline"><a href="/airlines/{{ r.airline_id }}">{{ r.airline }}</a></td>

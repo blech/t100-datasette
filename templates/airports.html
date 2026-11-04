@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/landing/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
   <script type="module" src="/static/nav/main.js"></script>
 </head>
 <body data-min-year="{{ min_year }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}" data-region="{{ region }}">
@@ -32,6 +35,7 @@
       <table id="airports">
         <thead>
           <tr>
+            <th scope="col" class="num"><span title="Position in this list">#</span></th>
             <th scope="col" class="left">Airport</th>
             <th scope="col" class="left">City</th>
             <th scope="col" class="num" data-sort="passengers"><button type="button">Passengers</button></th>

@@ -151,6 +151,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
+  font-size: 13px;
 }
 th,
 td {
@@ -161,6 +162,11 @@ td {
 }
 th.num,
 td.num {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-size: 13px;
+  font-weight: 400;
+  font-style: normal;
   text-align: right;
 }
 th {

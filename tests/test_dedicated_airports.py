@@ -120,13 +120,6 @@ def test_the_freight_tables_airports_open_the_airport_page_showing_freight_on_al
     assert '<a href="/airports/BWI" title="BWI">BWI</a>' in html[:html.index('id="freight-heading"')]  # passengers: the page's own defaults
 
 
-def test_the_tables_have_no_row_number_column(ds, db_path):
-    put_airport_carriers(db_path, [cell(2025, "AAA", "x", 10), cell(2025, "BBB", "y", 5)])
-    html = page(ds)
-    assert 'scope="col" class="num">#</th>' not in html
-    assert re.findall(r'<tr>\s*<td class="code">', html), "the airport is the first cell of each row"
-
-
 def test_an_airports_code_shows_its_name_codes_and_city_on_hover(ds, db_path):
     put_airport_carriers(db_path, [cell(2025, "BWI", "southwest", 708, 0)])
     city(db_path, 2025, "BWI")
@@ -140,3 +133,46 @@ def test_dedicated_counts_arriving_passengers(ds, db_path):
     city(db_path, 2025, "AAA")
     [row] = dedicated(ds)
     assert (row["group_id"], round(row["share"], 3)) == ("x", 0.667)
+
+
+def ranks(ds, origin, year=2025):
+    return {r["measure"]: r for r in get_json(ds, f"/t100/airport_ranks.json?_shape=objects&year={year}&origin={origin}")["rows"]}
+
+
+def three_airports(db_path):
+    put_airport_carriers(db_path, [cell(2025, "AAA", "x", 900, freight=4000), cell(2025, "AAA", "y", 100), cell(2025, "BBB", "x", 500), cell(2025, "BBB", "z", 500, freight=1000),
+                                          cell(2025, "CCC", "y", 70), cell(2025, "CCC", "z", 20), cell(2025, "CCC", "x", 10)])
+    city(db_path, 2025, "AAA", "BBB", "CCC")
+
+
+def test_an_airports_ranks_agree_with_the_dedicated_page(ds, db_path):
+    three_airports(db_path)
+    names = lambda measure: [r["airport"] for r in dedicated(ds, measure=measure)]
+    for code in ("AAA", "BBB", "CCC"):
+        r = ranks(ds, code)["passengers"]
+        assert r["dedicated_rank"] == names("passengers").index(code) + 1, code   # the page's own order
+    assert ranks(ds, "AAA")["passengers"]["size_rank"] == 1 and ranks(ds, "CCC")["passengers"]["size_rank"] == 3 and ranks(ds, "AAA")["passengers"]["size_count"] == 3
+    assert (ranks(ds, "AAA")["freight"]["size_rank"], ranks(ds, "AAA")["freight"]["size_count"]) == (1, 2)
+
+
+def test_an_airport_has_a_rank_only_for_what_it_handled_and_none_outside_the_us(ds, db_path):
+    three_airports(db_path)
+    assert set(ranks(ds, "CCC")) == {"passengers"}   # no freight
+    assert ranks(ds, "AAA", year=2019) == {}
+    put_airport_carriers(db_path, [cell(2025, "LHR", "x", 10, wac=493)])
+    assert ranks(ds, "LHR") == {}
+
+
+def test_the_dedicated_ranking_stops_at_the_pool_the_page_ranks(ds, db_path):
+    # 26 freight airports: only the top 25 by size are ranked for dedication
+    put_airport_carriers(db_path, [cell(2025, f"A{i:02d}", "x", freight=1000 - i) for i in range(26)])
+    city(db_path, 2025, *[f"A{i:02d}" for i in range(26)])
+    assert ranks(ds, "A24")["freight"]["dedicated_rank"] is not None
+    assert ranks(ds, "A25")["freight"]["size_rank"] == 26 and ranks(ds, "A25")["freight"]["dedicated_rank"] is None
+
+
+def test_the_dedicated_tables_number_their_rows(ds, db_path):
+    three_airports(db_path)
+    html = get(ds, "/airports/dedicated?year=2025").text
+    assert html.count('<th scope="col" class="num">#</th>') == 2
+    assert re.findall(r'<td class="num rank">(\d+)</td>', html)[:3] == ["1", "2", "3"]

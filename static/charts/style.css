@@ -38,3 +38,5 @@
 #airline-table button.link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 #at-q, #airline-q { min-width: 16em; }
 details.note summary { cursor: pointer; }
+/* the line under an airport's heading saying how it ranks */
+.rank-line { margin: 4px 0 12px; }

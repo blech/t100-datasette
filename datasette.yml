@@ -236,6 +236,42 @@ databases:
           ORDER BY share DESC, l.total DESC, l.airport
           LIMIT 10
 
+      # where one airport stands in one year, for the line under its heading: how big it is among the US airports, for passengers and
+      # for freight (both directions, as dedicated_airports counts them), and how dedicated it is among the same pool of biggest
+      # airports that page ranks (the top 100 for passengers, the top 25 for freight), by the largest airline group's share
+      airport_ranks:
+        title: "An airport's rank by size and by dedication in one year"
+        description: "For one airport (origin) and year: for passengers and for freight, its total, its rank among the US airports with any, how many there are, the airline group carrying most of it with its share, and its rank by that share among the pool dedicated_airports ranks (empty outside the pool). Empty for an airport outside the US or with neither."
+        sql: |
+          WITH measures(measure) AS (VALUES ('passengers'), ('freight')),
+          by_airline AS (
+            SELECT m.measure, c.airport, c.group_id, MIN(c.group_name) AS group_name,
+                   SUM(CASE m.measure WHEN 'freight' THEN c.freight_out + c.freight_in ELSE c.passengers_out + c.passengers_in END) AS value
+            FROM airport_carrier_dir_year AS c CROSS JOIN measures AS m
+            WHERE c.year = CAST(:year AS integer) AND c.wac BETWEEN 1 AND 93
+            GROUP BY m.measure, c.airport, c.group_id
+          ), totals AS (
+            SELECT measure, airport, SUM(value) AS total FROM by_airline GROUP BY measure, airport HAVING SUM(value) > 0
+          ), biggest AS (
+            SELECT measure, airport, total, ROW_NUMBER() OVER (PARTITION BY measure ORDER BY total DESC, airport) AS size_rank,
+                   COUNT(*) OVER (PARTITION BY measure) AS size_count
+            FROM totals
+          ), leaders AS (
+            SELECT b.measure, b.airport, b.size_rank, b.size_count, b.total, a.group_id, a.group_name, a.value AS airline_total,
+                   ROW_NUMBER() OVER (PARTITION BY b.measure, b.airport ORDER BY a.value DESC, a.group_id) AS place
+            FROM biggest AS b JOIN by_airline AS a ON a.measure = b.measure AND a.airport = b.airport
+          ), pool AS (
+            SELECT *, 1.0 * airline_total / total AS share,
+                   ROW_NUMBER() OVER (PARTITION BY measure ORDER BY 1.0 * airline_total / total DESC, total DESC, airport) AS dedicated_rank
+            FROM leaders
+            WHERE place = 1 AND size_rank <= CASE measure WHEN 'freight' THEN 25 ELSE 100 END
+          )
+          SELECT l.measure, l.total, l.size_rank, l.size_count, l.group_id, l.group_name, l.airline_total,
+                 1.0 * l.airline_total / l.total AS share, p.dedicated_rank
+          FROM leaders AS l LEFT JOIN pool AS p ON p.measure = l.measure AND p.airport = l.airport
+          WHERE l.place = 1 AND l.airport = :origin
+          ORDER BY l.measure DESC
+
       # the front page airline story: the share of all passengers carried by the four and ten biggest
       # reporting carriers each year (operating carriers, so regional partners count on their own)
       carrier_concentration:
