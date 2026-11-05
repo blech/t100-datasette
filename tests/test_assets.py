@@ -32,3 +32,4 @@ def test_pages_preload_their_modules(ds):
         html = get(ds, path).text
         assert '<link rel="modulepreload" href="/static/charts/rollup.js">' in html
         assert '<link rel="modulepreload" href="/static/nav/main.js">' in html
+        assert '<link rel="modulepreload" href="/static/charts/src/airline.js">' in html  # via the find box's script, which is in the body

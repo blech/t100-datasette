@@ -10,6 +10,7 @@
   <script type="module" src="/static/nav/main.js"></script>
 {{ modulepreload("/static/nav/main.js") }}
 {{ modulepreload("/static/charts/rollup.js") }}
+{{ modulepreload("/static/charts/find.js") }}
   {# the chart's data, fetched while the modules load: these URLs are the ones rollup.js asks for (queryUrl), or the preload is wasted #}
   <link rel="preload" as="fetch" crossorigin href="/t100/carrier_route_by_year.json?_shape=objects&group={{ group }}&airline={{ airline }}&each={{ 'each' if each else '' }}">
   <link rel="preload" as="fetch" crossorigin href="/t100/airports.json?_shape=objects">
