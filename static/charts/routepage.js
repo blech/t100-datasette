@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { shortenField } from '/static/charts/src/names.js';
 import { slugify } from '/static/charts/src/rollup.js';
-import { buildSeries, aggregateTable, labelFor, MEASURES, SPLITS } from '/static/charts/src/series.js';
+import { buildSeries, aggregateTable, labelFor, splitsByCarrier, MEASURES, SPLITS } from '/static/charts/src/series.js';
 import { formatCount, formatTons, exactCount, millionsAxis } from '/static/common/numbers.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { parseSpan, yearDomain } from '/static/charts/src/span.js';
@@ -111,10 +111,10 @@ function drawChart() {
   const monthly = year !== null;
   // an airline carried here by ?highlight= (from its own pages) is picked out, and never folded into Other
   const highlight = parseHighlight(location.search);
-  const byAirline = state.split === 'carrier' || state.split === 'both';
+  const byAirline = splitsByCarrier(state.split);
   const wanted = byAirline ? highlightedSeries(viewRows, highlight, (r) => labelFor(r, state.split)) : new Set();
-  // split by carrier the airline is kept as a series of its own; split by carrier and aircraft it may fly a dozen
-  // types, so only its pairings already among the largest are picked out, and the chart keeps its shape
+  // split by carrier the airline is kept as a series of its own; split by carrier and aircraft or family it may fly a
+  // dozen types, so only its pairings already among the largest are picked out, and the chart keeps its shape
   // load factor counts an airline in a year it flew the route at least 12 times, as the site counts flying a route, or
   // in a month at least 4, about weekly
   const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year', keep: state.split === 'carrier' ? wanted : new Set(), minDeps: monthly ? 4 : 12 });
@@ -193,8 +193,8 @@ function linkCell(text, href, title) {
 }
 
 // the table follows the chart's split: its name columns, and its heading
-const TABLE_NAMES = { carrier: ['Carrier'], aircraft: ['Aircraft'], both: ['Carrier', 'Aircraft'], none: [''] };
-const TABLE_HEADINGS = { carrier: 'Carriers', aircraft: 'Aircraft', both: 'Carriers and aircraft', none: 'Totals' };
+const TABLE_NAMES = { carrier: ['Carrier'], family: ['Family'], aircraft: ['Aircraft'], carrier_family: ['Carrier', 'Family'], both: ['Carrier', 'Aircraft'], none: [''] };
+const TABLE_HEADINGS = { carrier: 'Carriers', family: 'Families', aircraft: 'Aircraft', carrier_family: 'Carriers and families', both: 'Carriers and aircraft', none: 'Totals' };
 const NUMBER_COLUMNS = [routeCountWord(dir), 'Seats', 'Passengers', 'Load factor', 'Freight'];
 
 function th(text, className) {

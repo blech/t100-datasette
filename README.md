@@ -9,7 +9,7 @@ It has two layers:
 - a **routes matrix** at `/airports/routes`: the busiest airport pairs flown by any airline, both directions together, by year, for a range of distances (`?from=0&to=500` for under 500 miles), domestic or international. It reads `top_routes_by_year` and is the fourth view in the airports section's views line.
 - an **airport network map** at `/airports/<AIRPORT>/globe` (for example `/airports/ATL/globe`; `/airports/globe` is the same map with an airport chooser, where hovering an airport (or tapping it once) shows its domestic routes for the latest year; `/globe` redirects there): pick a US airport, see its routes by year on a globe or flat map (international in orange, domestic in blue), play through the years, and drill down to months. Clicking a route links to its route page.
 - a **routes-over-time** page, the main page for an airport, at `/airports/<AIRPORT>`: a destination-by-year matrix (optionally grouped by BTS city market, with rows that open into their airports).
-- a **route** page at `/airports/<FROM>/<TO>` (and `/airports/<FROM>/<TO>/<YEAR>` for the months of one year): a stacked chart by carrier or aircraft and a carrier-and-aircraft table. These replace the Datasette `route` and `route_year` pages for browsing; those queries remain as raw data tables.
+- a **route** page at `/airports/<FROM>/<TO>` (and `/airports/<FROM>/<TO>/<YEAR>` for the months of one year): a stacked chart and a table, each split by carrier, aircraft family, aircraft, carrier and family, or carrier and aircraft. These replace the Datasette `route` and `route_year` pages for browsing; those queries remain as raw data tables.
 - the standard **Datasette interface** for tables and canned queries, for exploring everything else.
 
 ## Prerequisites

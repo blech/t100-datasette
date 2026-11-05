@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSeries, aggregateTable, MEASURES, SPLITS } from '../src/series.js';
+import { buildSeries, aggregateTable, splitsByCarrier, MEASURES, SPLITS } from '../src/series.js';
 
 const row = (year, carrier, aircraft, deps, pax, seats, freight = 0) =>
   ({ year, carrier, aircraft, deps, total_passengers: pax, total_seats: seats, total_freight: freight });
@@ -91,7 +91,7 @@ test('empty input gives empty output', () => {
 
 test('menus list every measure and split, seats last', () => {
   assert.deepEqual(Object.keys(MEASURES), ['passengers', 'freight', 'deps', 'load_factor', 'seats']);
-  assert.deepEqual(Object.keys(SPLITS), ['carrier', 'aircraft', 'both', 'none']);
+  assert.deepEqual(Object.keys(SPLITS), ['carrier', 'family', 'aircraft', 'carrier_family', 'both', 'none']);
 });
 
 test('months can be the period instead of years', () => {
@@ -157,4 +157,48 @@ test('buildSeries makes room for a series asked for: it takes the last place, so
   const kept = buildSeries(rows, { top: 8, keep: new Set(['C9']) });
   assert.deepEqual(kept.series, ['C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C9', 'Other'], 'eight named series at most');
   assert.deepEqual(kept.points.filter((p) => p.series === 'Other').map((p) => p.value), [93 + 92], 'C7 and C8 fold into Other');
+});
+
+const versions = [
+  { year: 2025, carrier: 'JAL', aircraft: 'B787-800', family: 'Boeing 787', group_id: 'jal', deps: 13, total_seats: 2418, total_passengers: 1561, total_freight: 2000 },
+  { year: 2025, carrier: 'JAL', aircraft: 'B787-900', family: 'Boeing 787', group_id: 'jal', deps: 13, total_seats: 3035, total_passengers: 2160, total_freight: 4000 },
+  { year: 2025, carrier: 'JAL', aircraft: 'B777-200ER', family: 'Boeing 777', group_id: 'jal', deps: 5, total_seats: 1220, total_passengers: 827, total_freight: 0 },
+  { year: 2025, carrier: 'ANA', aircraft: 'B787-900', family: 'Boeing 787', group_id: 'ana', deps: 2, total_seats: 400, total_passengers: 300, total_freight: 0 },
+];
+
+test('carrier and family add an airline\'s versions of a family into one series, and keep airlines apart', () => {
+  const res = buildSeries(versions, { measure: 'deps', split: 'carrier_family' });
+  assert.deepEqual(res.series, ['JAL · Boeing 787', 'JAL · Boeing 777', 'ANA · Boeing 787']);
+  assert.equal(at(res, 2025, 'JAL · Boeing 787'), 26);
+  assert.equal(at(res, 2025, 'ANA · Boeing 787'), 2);
+});
+
+test('aggregateTable by carrier and family has one row per pair, named and linked by the family', () => {
+  const t = aggregateTable(versions, 'carrier_family');
+  assert.deepEqual(t.map((r) => [r.carrier, r.aircraft, r.deps]), [['JAL', 'Boeing 787', 26], ['JAL', 'Boeing 777', 5], ['ANA', 'Boeing 787', 2]]);
+  assert.equal(t[0].family, 'Boeing 787');
+  assert.equal(t[0].groupId, 'jal');
+  assert.equal(t[0].passengers, 3721);
+});
+
+test('carrier and family name a missing family Unknown', () => {
+  const res = buildSeries([row(2019, 'United', 'B777', 1, 1, 1)], { measure: 'deps', split: 'carrier_family' });
+  assert.deepEqual(res.series, ['United · Unknown']);
+});
+
+test('the splits that show carriers are the ones a highlighted airline can be picked out on', () => {
+  assert.deepEqual(Object.keys(SPLITS).filter(splitsByCarrier), ['carrier', 'carrier_family', 'both']);
+});
+
+test('family alone adds every airline\'s versions of a family into one series', () => {
+  const res = buildSeries(versions, { measure: 'deps', split: 'family' });
+  assert.deepEqual(res.series, ['Boeing 787', 'Boeing 777']);
+  assert.equal(at(res, 2025, 'Boeing 787'), 28);
+});
+
+test('aggregateTable by family has one row per family, linked to it and to no airline', () => {
+  const t = aggregateTable(versions, 'family');
+  assert.deepEqual(t.map((r) => [r.carrier, r.aircraft, r.deps]), [[null, 'Boeing 787', 28], [null, 'Boeing 777', 5]]);
+  assert.equal(t[0].family, 'Boeing 787');
+  assert.equal(t[0].groupId, null);
 });
