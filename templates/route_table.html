@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-origin="{{ origin }}" data-dest="{{ dest }}" data-dir="{{ dir }}" data-year="{{ year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
@@ -36,6 +36,6 @@
     <p id="status" role="status"></p>
     {% include "_footer.html" %}
   </main>
-  <script type="module" src="/static/charts/routepage.js"></script>
+  <script type="module" src="{{ script_url('charts/routepage.js') }}"></script>
 </body>
 </html>

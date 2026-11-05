@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/home/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
@@ -68,6 +68,6 @@
   <script src="/static/globe/vendor/d3-array.min.js"></script>
   <script src="/static/globe/vendor/d3-geo.min.js"></script>
   <script src="/static/globe/vendor/topojson-client.min.js"></script>
-  <script type="module" src="/static/home/main.js"></script>
+  <script type="module" src="{{ script_url('home/main.js') }}"></script>
 </body>
 </html>

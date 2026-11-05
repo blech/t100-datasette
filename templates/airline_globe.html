@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/globe/style.css">
   <link rel="stylesheet" href="/static/charts/airlineglobe.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-group="{{ group }}" data-airline="{{ airline }}">
   <canvas id="globe" aria-label="Map of the airline's routes"></canvas>
@@ -55,6 +55,6 @@
   <script src="/static/globe/vendor/d3-array.min.js"></script>
   <script src="/static/globe/vendor/d3-geo.min.js"></script>
   <script src="/static/globe/vendor/topojson-client.min.js"></script>
-  <script type="module" src="/static/charts/airlineglobe.js"></script>
+  <script type="module" src="{{ script_url('charts/airlineglobe.js') }}"></script>
 </body>
 </html>

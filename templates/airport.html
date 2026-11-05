@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
   <main>
@@ -33,6 +33,6 @@
     <p class="note">{% include "_dir_note.html" %} Airlines are counted as groups, so a merged airline's flying is shown together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
     {% include "_footer.html" %}
   </main>
-  <script type="module" src="/static/charts/airport.js"></script>
+  <script type="module" src="{{ script_url('charts/airport.js') }}"></script>
 </body>
 </html>

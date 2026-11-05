@@ -56,7 +56,7 @@ test('no page hard-codes a data colour or a Plot scheme outside the palette', ()
   const allowed = new Set(['common/palette.js', 'globe/src/themes.js', 'home/src/airlines.js']);
   const offenders = [];
   for (const f of readdirSync(root, { recursive: true })) {
-    if (!f.endsWith('.js') || /(^|\/)(vendor|test)\//.test(f) || allowed.has(f)) continue;
+    if (!f.endsWith('.js') || /(^|\/)(vendor|test|dist)\//.test(f) || allowed.has(f)) continue;
     const src = readFileSync(new URL(f, root), 'utf8').replace(/scheme: 'YlOrRd'/g, '');
     if (/#[0-9a-fA-F]{6}\b|scheme: '/.test(src)) offenders.push(f);
   }

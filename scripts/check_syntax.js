@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const scripts = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-  e.isDirectory() ? (e.name === 'vendor' ? [] : scripts(join(dir, e.name))) : e.name.endsWith('.js') ? [join(dir, e.name)] : []);
+  e.isDirectory() ? (e.name === 'vendor' || e.name === 'dist' ? [] : scripts(join(dir, e.name))) : e.name.endsWith('.js') ? [join(dir, e.name)] : []);
 
 const failed = scripts('static').filter((file) => {
   const res = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });

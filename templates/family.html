@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-family="{{ family }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
@@ -28,6 +28,6 @@
     <p class="note" id="family-note">Each bar is one year. Freight is in short tons (2,000 lb). Versions and families follow BTS's aircraft, which lump a few variants together (for example "737 NG (incl. MAX 7)"). Airlines that merged are counted together throughout. More on <a href="/about#groupings">how things are grouped</a> and on <a href="/about#freight">freight-only and belly cargo</a>.</p>
     {% include "_footer.html" %}
   </main>
-  <script type="module" src="/static/charts/family.js"></script>
+  <script type="module" src="{{ script_url('charts/family.js') }}"></script>
 </body>
 </html>

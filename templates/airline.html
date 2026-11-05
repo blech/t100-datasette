@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-group="{{ group }}" data-airline="{{ airline }}" data-members="{{ members|length }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
@@ -47,6 +47,6 @@
 
     {% include "_footer.html" %}
   </main>
-  <script type="module" src="/static/charts/airline.js"></script>
+  <script type="module" src="{{ script_url('charts/airline.js') }}"></script>
 </body>
 </html>

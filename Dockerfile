@@ -1,5 +1,15 @@
 #syntax=docker/dockerfile:1
 
+# Bundle the pages' JavaScript (scripts/bundle.mjs reads the templates for the entry points)
+FROM node:24-slim AS bundle
+WORKDIR /build
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY scripts/bundle.mjs scripts/bundle.mjs
+COPY templates templates
+COPY static static
+RUN npm run bundle
+
 FROM python:3.14-slim-trixie
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -15,6 +25,7 @@ COPY datasette.yml serve_public.sh schema.sql ./
 COPY plugins plugins
 COPY templates templates
 COPY static static
+COPY --from=bundle /build/static/dist static/dist
 COPY scripts/usage_report.py scripts/usage_report.py
 
 CMD ["./serve_public.sh"]

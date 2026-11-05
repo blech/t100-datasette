@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/globe/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-origin="{{ origin }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
   <canvas id="globe" aria-label="Map of routes from the selected airport"></canvas>
@@ -63,6 +63,6 @@
   <script src="/static/globe/vendor/d3-array.min.js"></script>
   <script src="/static/globe/vendor/d3-geo.min.js"></script>
   <script src="/static/globe/vendor/topojson-client.min.js"></script>
-  <script type="module" src="/static/globe/main.js"></script>
+  <script type="module" src="{{ script_url('globe/main.js') }}"></script>
 </body>
 </html>

@@ -26,3 +26,7 @@ source_downloads/
 
 # explore/ scratch cubes (rebuild with explore/README.md steps)
 explore/cubes.duckdb
+
+# JavaScript build output and dependencies (npm run bundle)
+static/dist/
+node_modules/

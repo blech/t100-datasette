@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body>
   <main>
@@ -34,6 +34,6 @@
     <p class="note">Each bar is one year. The eight biggest makers for the chosen flights are shown, the rest as Other. Freight is in short tons (2,000 lb).</p>
     {% include "_footer.html" %}
   </main>
-  <script type="module" src="/static/charts/makers.js"></script>
+  <script type="module" src="{{ script_url('charts/makers.js') }}"></script>
 </body>
 </html>

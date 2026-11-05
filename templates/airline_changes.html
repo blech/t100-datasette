@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-group="{{ group }}" data-airline="{{ airline }}" data-members="{{ members|length }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
   <main>
@@ -39,6 +39,6 @@
     <p class="note">{% if each %}Each direction of an airport pair is its own row, so "dropped" means the airline stopped flying that way (or fell below the threshold){% else %}A route is an airport pair, with both directions counted together, so "dropped" means the airline stopped flying between the two airports in either direction (or fell below the threshold){% endif %}, not that a particular flight number ended. "Dropped at any point" adds the routes added and dropped again between the two years, with the years they were flown and their busiest year. <a href="/about#direction">More on directions</a>. Where the airline flies a route under a different name after a merger the flying is counted together. Flying done for the airline by a regional partner, such as SkyWest for Alaska or United, is reported under the regional's own name and is not included. More on <a href="/about#groupings">how airlines are grouped</a>.</p>
     {% include "_footer.html" %}
   </main>
-  <script type="module" src="/static/charts/airline.js"></script>
+  <script type="module" src="{{ script_url('charts/airline.js') }}"></script>
 </body>
 </html>

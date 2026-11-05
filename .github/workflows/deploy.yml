@@ -23,7 +23,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - run: npm ci
       - run: npm test
+      # the bundle must build; the Docker image builds it again for the deploy
+      - run: npm run bundle
 
   deploy:
     needs: test

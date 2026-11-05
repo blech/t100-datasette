@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-origin="{{ origin }}" data-latest-year="{{ latest_year }}" data-min-year="{{ min_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
   <main>
@@ -42,6 +42,6 @@
     {% include "_footer.html" %}
   </main>
   <div id="label-tip" class="popover text" role="tooltip" hidden></div>
-  <script type="module" src="/static/charts/routes.js"></script>
+  <script type="module" src="{{ script_url('charts/routes.js') }}"></script>
 </body>
 </html>

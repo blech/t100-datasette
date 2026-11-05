@@ -44,6 +44,7 @@ check 200 /airlines/over-time                                       "matrix-kind
 check 301 "/airlines?scale=busiest"
 check 200 /airlines/delta                                          "size-chart"
 check 200 /airlines/delta/routes                                   "matrix"
+check 200 /airlines/delta/routes                                   "/static/dist/charts/rollup-"  # the bundled script, not the source module
 check 200 /airlines/delta/aircraft                                 'data-kind="fleet"'
 check 200 /airlines/delta/globe                                    'id="globe"'
 check 404 /airlines/no-such-airline

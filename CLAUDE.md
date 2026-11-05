@@ -21,7 +21,13 @@ Datasette project visualising BTS T-100 flight data (1990-2025). `README.md` is 
 - `plugins/t100_globe.py`: the front page and all `/airports/...` page routes (old paths redirect). Other plugins are small: `t100_guard.py`, `t100_render_links.py`, `t100_usage.py`, `t100_direction.py`, `t100_schema.py`.
 - `datasette.yml`: settings and every canned query (the SQL behind the charts).
 - `templates/`: Jinja pages; `_nav.html`, `_footer.html` etc. are shared partials.
-- `static/`: plain ES modules, no build step. `common/` is shared (number formatting in `numbers.js`, palette, popovers), `nav/` is the header and theme chooser, `globe/`, `charts/`, `home/`, `dedicated/` are per-page code. Vendored libraries live in `vendor/` dirs.
+- `static/`: plain ES modules. Edit these; there is no build step in development. `common/` is shared (number formatting in `numbers.js`, palette, popovers), `nav/` is the header and theme chooser, `globe/`, `charts/`, `home/`, `dedicated/` are per-page code. Vendored libraries live in `vendor/` dirs.
+
+## JavaScript bundle
+
+- Templates load page scripts with `{{ script_url('charts/rollup.js') }}` (never a literal `/static/...` path) and preload with `modulepreload(...)`, both from `plugins/t100_assets.py`. Without `static/dist/manifest.json` they give the source modules, which is development's normal state.
+- `npm run bundle` (esbuild, `scripts/bundle.mjs`) builds `static/dist/`: hashed, minified, split. It is gitignored, built by the Docker image and CI, and its entry points are whatever `script_url('...')` calls the templates contain. Don't edit `static/dist/`.
+- To see what production serves, run `npm run bundle` and restart; delete `static/dist/` to go back. The Python tests ignore any local bundle.
 
 ## Tests and deploy
 

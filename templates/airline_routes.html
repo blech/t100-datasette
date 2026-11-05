@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 {{ modulepreload("/static/nav/main.js") }}
 {{ modulepreload("/static/charts/rollup.js") }}
 {{ modulepreload("/static/charts/find.js") }}
@@ -52,6 +52,6 @@
     {% include "_footer.html" %}
   </main>
   <div id="label-tip" class="popover text" role="tooltip" hidden></div>
-  <script type="module" src="/static/charts/rollup.js"></script>
+  <script type="module" src="{{ script_url('charts/rollup.js') }}"></script>
 </body>
 </html>

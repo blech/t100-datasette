@@ -1,9 +1,14 @@
+import os
 import sqlite3
+import tempfile
 
 import pytest
 
 from build_database import create_indexes, create_schema
 from tests.helpers import make_datasette
+
+# no JavaScript bundle in any test (a local `npm run bundle` would otherwise change the script URLs pages use): see plugins/t100_assets.py
+os.environ["T100_DIST"] = tempfile.mkdtemp(prefix="t100-no-dist-")
 
 
 @pytest.fixture

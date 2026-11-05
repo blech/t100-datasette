@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/common/base.css">
   <link rel="stylesheet" href="/static/landing/style.css">
   <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="/static/nav/main.js"></script>
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
 </head>
 <body data-min-year="{{ min_year }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}" data-region="{{ region }}">
   <main>
@@ -51,6 +51,6 @@
       On the map, routes with fewer than 24 flights a year, both ways, are hidden. <a href="/about#direction">More on directions</a>.</p>
     {% include "_footer.html" %}
   </main>
-  <script type="module" src="/static/landing/main.js"></script>
+  <script type="module" src="{{ script_url('landing/main.js') }}"></script>
 </body>
 </html>

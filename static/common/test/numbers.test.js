@@ -64,7 +64,7 @@ test('millionsAxis switches to millions at a maximum of a million', () => {
 test('no page formats numbers on its own', () => {
   const root = new URL('../../', import.meta.url);
   const offenders = readdirSync(root, { recursive: true })
-    .filter((f) => f.endsWith('.js') && !/(^|\/)(vendor|test)\//.test(f) && f !== 'common/numbers.js')
+    .filter((f) => f.endsWith('.js') && !/(^|\/)(vendor|test|dist)\//.test(f) && f !== 'common/numbers.js')
     .filter((f) => /toLocaleString\(|tickFormat: '~s'/.test(readFileSync(new URL(f, root), 'utf8')));
   assert.deepEqual(offenders, []);
 });
