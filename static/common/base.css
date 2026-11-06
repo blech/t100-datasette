@@ -113,14 +113,26 @@ select {
   appearance: none;
   line-height: 1.5;
   padding-right: 26px;
-  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position: calc(100% - 15px) center, calc(100% - 10px) center;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) center,
+    calc(100% - 10px) center;
   background-size: 5px 5px;
   background-repeat: no-repeat;
 }
 /* a menu the page changed by itself after another was chosen (static/common/menus.js), outlined for a moment */
-select.auto-changed { animation: auto-changed 1.8s ease-out; }
-@keyframes auto-changed { from, 40% { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); } }
+select.auto-changed {
+  animation: auto-changed 1.8s ease-out;
+}
+@keyframes auto-changed {
+  from,
+  40% {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+}
 /* Safari draws its own search box over these unless told not to; wide enough for the placeholder, never wider than a phone */
 input[type="search"] {
   -webkit-appearance: none;
@@ -197,5 +209,10 @@ th[aria-sort] button::after {
 }
 
 /* a page's settings written as a sentence, each a menu in it */
-.chart-sentence { line-height: 2.3; margin: 0 0 4px; }
-.chart-sentence select { margin: 0 2px; }
+.chart-sentence {
+  line-height: 2.3;
+  margin: 0 0 4px;
+}
+.chart-sentence select {
+  margin: 0 2px;
+}
