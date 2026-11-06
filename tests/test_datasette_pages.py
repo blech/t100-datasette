@@ -51,12 +51,13 @@ def test_the_data_page_header_has_its_rule(ds):
     assert 'class="views"' in header(get(ds, "/t100").text)
 
 
-def test_both_kinds_of_page_load_the_monospace_experiment(ds):
+def test_both_kinds_of_page_load_the_monospace_font(ds):
     import os
     for path in ("/about", "/t100"):
         html = get(ds, path).text
-        assert "/static/common/fonts.css" in html and "/static/common/mono.js" in html, path
+        assert "/static/common/fonts.css" in html and "mono.js" not in html, path
     css = open("static/common/fonts.css").read()
+    assert "data-mono" not in css and "B612 Mono" in css and "0.8125rem" in css
     for url in __import__("re").findall(r'url\("(/static/[^"]+)"\)', css):
         assert os.path.exists(url.lstrip("/")), url
 

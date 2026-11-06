@@ -1,13 +1,9 @@
-/* An experiment with monospace type, for the site's <code> and the data pages' SQL, schema and editor: DepartureMono at 11px, or B612 Mono
-   at 11, 13 or 14px, against the browser's own monospace (`system`). static/common/mono.js picks one from the URL's hash, #mono=... (remembered in
-   localStorage; a ?mono= would clash with Datasette's column filters) and puts it on <html data-mono>; with none chosen it uses b612-13. Loaded by t100_base.html and base.html. */
-@font-face { font-family: "Departure Mono"; src: url("/static/common/fonts/DepartureMono-Regular.woff") format("woff"); font-display: swap; }
+/* Monospace type: B612 Mono at 0.8125rem (13px at the browser's default size, and following the reader's own text size) for everything
+   that should be monospace: the site's <code>, and on the data pages the SQL, schema, <pre> blocks, keys and the SQL editor.
+   Loaded by t100_base.html (the site's pages) and base.html (Datasette's own). Datasette's app.css names `monospace` in many of its own
+   rules; the ones a read-only site shows are covered here, and anything else falls back to the browser's monospace. */
 @font-face { font-family: "B612 Mono"; src: url("/static/common/fonts/b612-mono-v16-latin-regular.woff2") format("woff2"); font-display: swap; }
 
-:root { --mono: ui-monospace, monospace; --mono-size: 13px; }
-html[data-mono="departure-11"] { --mono: "Departure Mono", ui-monospace, monospace; --mono-size: 11px; }
-html[data-mono="b612-11"] { --mono: "B612 Mono", ui-monospace, monospace; --mono-size: 11px; }
-html[data-mono="b612-13"] { --mono: "B612 Mono", ui-monospace, monospace; --mono-size: 13px; }
-html[data-mono="b612-14"] { --mono: "B612 Mono", ui-monospace, monospace; --mono-size: 14px; }
+:root { --mono: "B612 Mono", ui-monospace, monospace; --mono-size: 0.8125rem; }
 
-code, pre, kbd, samp, .wrapped-sql, form.sql textarea, .cm-editor, .cm-content { font-family: var(--mono); font-size: var(--mono-size); }
+code, pre, kbd, samp, tt, .wrapped-sql, form.sql textarea, .cm-editor, .cm-content { font-family: var(--mono); font-size: var(--mono-size); }
