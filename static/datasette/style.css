@@ -1,1 +1,56 @@
-/* Datasette's own pages in the site's style, light only (docs/superpowers/specs/2026-11-06-datasette-pages-design.md). Filled in below. */
+/* Datasette's own pages (database, table, canned query, row) in the site's style, light only.
+   Design: docs/superpowers/specs/2026-11-06-datasette-pages-design.md. templates/base.html links this after Datasette's app.css, so these
+   rules override it. The tokens are the light ones of static/common/base.css (a test holds them equal); there is deliberately no
+   prefers-color-scheme block here, as a dark data page is a later step of its own. The tables keep Datasette's compact layout: below
+   only colours are changed, never padding or type sizes. */
+
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --fg: #09090b;
+  --muted: #71717a;
+  --line: #d3d3d3;
+  --rule: #909091;
+  --accent: #e36d2a;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 "Helvetica Neue", "Helvetica", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+a:link, a:visited { color: var(--fg); }
+a:hover, a:focus, a:active { color: var(--accent); }
+
+/* the same column as the site's pages (base.css: main) */
+header.hd, section.content, footer.ft { max-width: 1280px; margin-left: 24px; margin-right: 24px; padding-left: 16px; padding-right: 16px; }
+header.hd { background: none; color: var(--fg); padding-top: 24px; padding-bottom: 0; min-height: 0; overflow: visible; }
+header.hd .crumbs { float: none; }
+header.hd a:link, header.hd a:visited { color: var(--fg); text-decoration: none; }
+header.hd a:hover, header.hd a:focus { color: var(--fg); text-decoration: underline; }
+header.hd .sections a:link, header.hd .sections a:visited { color: var(--muted); }
+header.hd .sections a:hover, header.hd .sections a:focus { color: var(--fg); }
+header.hd .site-header { margin-bottom: 16px; }
+section.content { padding-top: 0; }
+
+/* Datasette's blue footer bar holds the site's own footer line (templates/_footer.html), which has its rule and colours already */
+footer.ft { background: none; color: var(--muted); padding-top: 0; padding-bottom: 0; margin-top: 0; min-height: 0; overflow: visible; }
+footer.ft a:link, footer.ft a:visited { color: var(--muted); }
+footer.ft a:hover, footer.ft a:focus { color: var(--fg); }
+
+h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
+@media (max-width: 600px) { h1 { font-size: 26px; } }
+
+/* colours only for the compact tables, forms and panels */
+table.rows-and-columns td { border-top-color: var(--rule); border-right-color: var(--line); }
+table.rows-and-columns td em { color: var(--muted); }
+p.zero-results { border-color: var(--line); background-color: var(--bg); }
+.message-info, .message-warning, .message-error { color: var(--fg); }
+input.core[type=text], input.core[type=search], .core input[type=text], textarea, select { border-color: var(--muted); }
+/* the database's own colour bar, set inline by Datasette's templates */
+h1[style], h2[style], .page-header { border-left: 0 !important; padding-left: 0 !important; }
+.core input[type=submit], input.core[type=submit], .advanced-export input[type=submit] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.filters { --filter-accent: var(--fg); }
+.core button[type=button], button.core[type=button] { background-color: var(--bg); color: var(--fg); border-color: var(--muted); }
+.facet-info a:link, .facet-info a:visited { color: var(--fg); }
+navigation-search .result-item:hover, navigation-search .close-search:hover { background-color: var(--line); }
