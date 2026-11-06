@@ -1,17 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ origin }} over time · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}{{ origin }} over time{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
+
+{% block content %}
     <h1 id="title">{{ origin }}: over time</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
     {% if rank_line %}<p class="rank-line" id="rank-line">{{ rank_line }}</p>{% endif %}
@@ -31,8 +26,8 @@
     </p>
     <div id="places-chart" aria-live="polite">Loading chart…</div>
     <p class="note">{% include "_dir_note.html" %} Airlines are counted as groups, so a merged airline's flying is shown together; more on <a href="/about#groupings">how airlines are grouped</a>.</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <script type="module" src="{{ script_url('charts/airport.js') }}"></script>
-</body>
-</html>
+{% endblock %}

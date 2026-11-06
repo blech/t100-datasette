@@ -1,17 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ origin }} destinations over time · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}{{ origin }} destinations over time{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-origin="{{ origin }}" data-latest-year="{{ latest_year }}" data-min-year="{{ min_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-origin="{{ origin }}" data-latest-year="{{ latest_year }}" data-min-year="{{ min_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
+
+{% block content %}
     <h1 id="title">{{ origin }}: destinations over time</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
     {% set find = "airport" %}{% include "_find.html" %}
@@ -39,9 +34,9 @@
     <p class="note" id="scale-note" hidden></p>
     <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> <span id="flown-note"></span> Each cell is one destination in one year; click a cell or a row's code to see the route over time, with a cell's year marked (or the ranking year, for a code), and from there any year month by month. In city view, click a row to open it into its airports. Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <div id="label-tip" class="popover text" role="tooltip" hidden></div>
   <script type="module" src="{{ script_url('charts/routes.js') }}"></script>
-</body>
-</html>
+{% endblock %}

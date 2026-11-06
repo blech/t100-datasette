@@ -1,17 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ name }} · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}{{ name }}{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-group="{{ group }}" data-airline="{{ airline }}" data-members="{{ members|length }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-group="{{ group }}" data-airline="{{ airline }}" data-members="{{ members|length }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}"{% endblock %}
+
+{% block content %}
     <h1 id="airline-name">{{ name }}</h1>
     <p class="related" id="full-name" hidden></p>
     {% set find = "airline" %}{% include "_find.html" %}
@@ -44,9 +39,8 @@
       Airport pairs flown at least {% include "_airline_min.html" %} in the year, both directions together.
     </p>
     <div id="pairs-chart" aria-live="polite">Loading chart…</div>
+{% endblock %}
 
-    {% include "_footer.html" %}
-  </main>
+{% block scripts %}
   <script type="module" src="{{ script_url('charts/airline.js') }}"></script>
-</body>
-</html>
+{% endblock %}
