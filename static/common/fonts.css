@@ -1,6 +1,6 @@
 /* An experiment with monospace type, for the site's <code> and the data pages' SQL, schema and editor: DepartureMono at 11px, or B612 Mono
    at 11, 13 or 14px, against the browser's own monospace (`system`). static/common/mono.js picks one from the URL's hash, #mono=... (remembered in
-   localStorage; a ?mono= would clash with Datasette's column filters) and puts it on <html data-mono>; with none chosen it uses departure-11. Loaded by t100_base.html and base.html. */
+   localStorage; a ?mono= would clash with Datasette's column filters) and puts it on <html data-mono>; with none chosen it uses b612-13. Loaded by t100_base.html and base.html. */
 @font-face { font-family: "Departure Mono"; src: url("/static/common/fonts/DepartureMono-Regular.woff") format("woff"); font-display: swap; }
 @font-face { font-family: "B612 Mono"; src: url("/static/common/fonts/b612-mono-v16-latin-regular.woff2") format("woff2"); font-display: swap; }
 

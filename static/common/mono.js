@@ -7,5 +7,5 @@
     if (choices.indexOf(asked) >= 0) localStorage.setItem('mono', asked);
     var mono = localStorage.getItem('mono');
   } catch (e) {}
-  document.documentElement.dataset.mono = choices.indexOf(mono) >= 0 ? mono : choices.indexOf(asked) >= 0 ? asked : 'departure-11';
+  document.documentElement.dataset.mono = choices.indexOf(mono) >= 0 ? mono : choices.indexOf(asked) >= 0 ? asked : 'b612-13';
 })();
