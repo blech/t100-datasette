@@ -10,4 +10,11 @@
 .about li {
   margin: 0.4em 0;
 }
-/* (the size of <code> is the monospace experiment's: static/common/fonts.css) */
+
+.changes dt {
+  font-weight: 500;
+}
+.changes dd {
+  margin: 0;
+  padding-left: 0.5em;
+}
