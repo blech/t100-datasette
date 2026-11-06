@@ -1,0 +1,13 @@
+/* An experiment with monospace type, for the site's <code> and the data pages' SQL, schema and editor: DepartureMono at 11px, or B612 Mono
+   at 11, 13 or 14px, against the browser's own monospace (`system`). static/common/mono.js picks one from the URL's hash, #mono=... (remembered in
+   localStorage; a ?mono= would clash with Datasette's column filters) and puts it on <html data-mono>; with none chosen it uses departure-11. Loaded by t100_base.html and base.html. */
+@font-face { font-family: "Departure Mono"; src: url("/static/common/fonts/DepartureMono-Regular.woff") format("woff"); font-display: swap; }
+@font-face { font-family: "B612 Mono"; src: url("/static/common/fonts/b612-mono-v16-latin-regular.woff2") format("woff2"); font-display: swap; }
+
+:root { --mono: ui-monospace, monospace; --mono-size: 13px; }
+html[data-mono="departure-11"] { --mono: "Departure Mono", ui-monospace, monospace; --mono-size: 11px; }
+html[data-mono="b612-11"] { --mono: "B612 Mono", ui-monospace, monospace; --mono-size: 11px; }
+html[data-mono="b612-13"] { --mono: "B612 Mono", ui-monospace, monospace; --mono-size: 13px; }
+html[data-mono="b612-14"] { --mono: "B612 Mono", ui-monospace, monospace; --mono-size: 14px; }
+
+code, pre, kbd, samp, .wrapped-sql, form.sql textarea, .cm-editor, .cm-content { font-family: var(--mono); font-size: var(--mono-size); }

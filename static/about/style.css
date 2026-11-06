@@ -2,4 +2,4 @@
 .about h2 { margin-top: 2em; }
 .about ul.contents { padding-left: 1.2em; }
 .about li { margin: 0.4em 0; }
-.about code { font-size: 0.9em; }
+/* (the size of <code> is the monospace experiment's: static/common/fonts.css) */

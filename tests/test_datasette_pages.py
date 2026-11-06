@@ -16,7 +16,8 @@ def test_the_database_page_has_the_site_header(ds):
     assert re.search(r'<li><a href="/">t100\.husk\.org</a></li>', top)
     for section in ("airports", "aircraft", "airlines", "about"):
         assert f'href="/{section}"' in top
-    assert 'aria-current="true"' not in top and 'class="views"' not in top
+    assert 'aria-current="true"' not in top
+    assert re.search(r'<nav class="views" aria-label="Views"></nav>', top)  # empty: it only draws the header's rule
 
 
 def test_a_table_page_has_data_then_the_table_in_the_trail(ds):
@@ -44,3 +45,17 @@ def test_the_stylesheet_follows_app_css(ds):
     html = get(ds, "/t100").text
     assert html.index("/app.css") < html.index("/static/datasette/style.css")
     assert "/static/datasette/style.css" not in get(ds, "/about").text
+
+
+def test_the_data_page_header_has_its_rule(ds):
+    assert 'class="views"' in header(get(ds, "/t100").text)
+
+
+def test_both_kinds_of_page_load_the_monospace_experiment(ds):
+    import os
+    for path in ("/about", "/t100"):
+        html = get(ds, path).text
+        assert "/static/common/fonts.css" in html and "/static/common/mono.js" in html, path
+    css = open("static/common/fonts.css").read()
+    for url in __import__("re").findall(r'url\("(/static/[^"]+)"\)', css):
+        assert os.path.exists(url.lstrip("/")), url
