@@ -55,3 +55,6 @@ h1[style], h2[style], .page-header { border-left: 0 !important; padding-left: 0 
 .core button[type=button], button.core[type=button] { background-color: var(--bg); color: var(--fg); border-color: var(--muted); }
 .facet-info a:link, .facet-info a:visited { color: var(--fg); }
 navigation-search .result-item:hover, navigation-search .close-search:hover { background-color: var(--line); }
+
+/* a wide table is not scrolled inside its own box: the page scrolls sideways, while the header stays one viewport wide */
+.table-wrapper { overflow-x: visible; }
