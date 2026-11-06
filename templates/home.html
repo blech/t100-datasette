@@ -10,8 +10,12 @@
     {% from "_views.html" import views_line %}
     <h1>US air traffic, {{ min_year }}–{{ max_year }}</h1>
     <p class="intro">
-      Every scheduled and charter flight to, from and within the United States since {{ min_year }}, as reported by airlines to the
-      Department of Transportation: who flew it, between which airports, on what aircraft, and how many people and how much freight it carried.
+      Since {{ min_year }}, the US has collected a monthly summary of
+      every scheduled and chartered flight segment from airlines - the
+      airports at either end, the aircraft flown, passenger count, number of
+      seats, and amount of freight is recorded.<br />
+      This site uses visualisations and tables to try and help you to
+      understand the data.<br />
       <a href="/about">What the numbers mean</a>.
     </p>
 
@@ -29,16 +33,6 @@
       <nav class="views more" aria-label="Airports views">{{ views_line(section_views.airports) }}</nav>
     </section>
 
-    <section class="section" aria-labelledby="aircraft-heading">
-      <h2 id="aircraft-heading"><a href="/aircraft">Aircraft</a></h2>
-      {% if engines %}
-      <p class="story">In {{ engines.first_year }}, {{ engines.first_tri_quad }} of flights of 3,000 miles or more were flown by jets with three or four engines:
-        747s, DC-10s, TriStars. In {{ engines.last_year }} twin-engined jets flew {{ engines.last_twin }} of them.</p>
-      {% endif %}
-      <div class="graphic chart-box" id="engine-chart"><p class="graphic-status">Loading chart…</p></div>
-      <nav class="views more" aria-label="Aircraft views">{{ views_line(section_views.aircraft) }}</nav>
-    </section>
-
     <section class="section" aria-labelledby="airlines-heading">
       <h2 id="airlines-heading"><a href="/airlines">Airlines</a></h2>
       {% if concentration %}{% set c = concentration %}
@@ -50,6 +44,16 @@
       {% if carriers %}<p class="story">The biggest in {{ max_year }}:
         {% for x in carriers %}{{ x.name }} {{ x.share }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
       <nav class="views more" aria-label="Airlines views">{{ views_line(section_views.airlines) }}</nav>
+    </section>
+
+    <section class="section" aria-labelledby="aircraft-heading">
+      <h2 id="aircraft-heading"><a href="/aircraft">Aircraft</a></h2>
+      {% if engines %}
+      <p class="story">In {{ engines.first_year }}, {{ engines.first_tri_quad }} of flights of 3,000 miles or more were flown by jets with three or four engines:
+        747s, DC-10s, TriStars. In {{ engines.last_year }} twin-engined jets flew {{ engines.last_twin }} of them.</p>
+      {% endif %}
+      <div class="graphic chart-box" id="engine-chart"><p class="graphic-status">Loading chart…</p></div>
+      <nav class="views more" aria-label="Aircraft views">{{ views_line(section_views.aircraft) }}</nav>
     </section>
 
     <p class="note">
