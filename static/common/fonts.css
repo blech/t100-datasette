@@ -26,3 +26,6 @@ form.sql textarea,
   font-family: var(--mono);
   font-size: var(--mono-size);
 }
+/* in the charts only the numbers are monospace (axis ticks and the colour key's scale): names, titles and legends stay in the page's sans */
+svg[class^="plot-"] [aria-label$="tick label"] { font-family: var(--mono); }
+svg[class$="-ramp"] g text { font-family: var(--mono); }
