@@ -1,17 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ name }} over time · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}{{ name }} over time{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-query="aircraft_detail" data-param="aircraft" data-subject="{{ type_id }}" data-title="{{ name }}" data-family-name="{{ family }}" data-default-split="airline" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-query="aircraft_detail" data-param="aircraft" data-subject="{{ type_id }}" data-title="{{ name }}" data-family-name="{{ family }}" data-default-split="airline" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}"{% endblock %}
+
+{% block content %}
     <h1>{{ name }} over time</h1>
     {% set find = "aircraft" %}{% include "_find.html" %}
     <p class="intro" id="subtitle">
@@ -28,8 +23,8 @@
     <p class="note" id="click-hint"></p>
     <div id="family-chart" aria-live="polite">Loading chart…</div>
     <p class="note" id="family-note">Each bar is one year. Freight is in short tons (2,000 lb). BTS's aircraft lump a few variants together, so one aircraft may cover more than its name says.</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <script type="module" src="{{ script_url('charts/family.js') }}"></script>
-</body>
-</html>
+{% endblock %}

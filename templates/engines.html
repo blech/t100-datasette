@@ -1,17 +1,11 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Aircraft groups by distance · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}Aircraft groups by distance{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body>
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+
+{% block content %}
     <h1>Aircraft groups by distance</h1>
     <p class="intro">Each year's flights split by BTS aircraft group, jets by their number of engines, over the range of distances you choose. It opens on the long haul, 3,000 miles or more.</p>
     <p class="chart-sentence">
@@ -28,8 +22,8 @@
     </p>
     <p class="intro">Freight tells a slower version of the same story: jets with two engines carried 4% of long-haul freight in 1990 and 60% in 2025, while four-engined freighters, mostly 747s, still carry 55% of what dedicated freighters move.</p>
     <p class="note">Aircraft types are BTS's: jets with two engines include business jets, jets with three engines are the DC-10, MD-11 and L-1011 (and the shorter-range 727), jets with four or more engines are the 747, A340, A380 and older aircraft such as the DC-8 (BTS puts the very few six-engined aircraft in this group too). Distance is the segment's great-circle length. Freight is in short tons (2,000 lb); "freight flights" are flights classed by BTS as cargo, while "all flights" also counts cargo carried in the holds of passenger aircraft (<a href="/about#freight">freight-only and belly cargo</a>). Airlines flying small aircraft, and domestic cargo airlines such as FedEx, are only in the data from October 2002 (UPS from 2001), so turboprops, piston aircraft and helicopters, and short-haul freight, jump then (<a href="/about#breaks">known gaps</a>); long-haul flights, mostly international jets, barely change.</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <script type="module" src="{{ script_url('charts/engines.js') }}"></script>
-</body>
-</html>
+{% endblock %}

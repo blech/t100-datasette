@@ -1,17 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Aircraft · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}Aircraft{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-latest-year="{{ latest_year }}">
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-latest-year="{{ latest_year }}"{% endblock %}
+
+{% block content %}
     <h1>Aircraft</h1>
     <p class="intro">Every aircraft BTS reports, gathered into families (a 737-300 and a 737-800 are both Boeing 737s) so that one aircraft's decline and the next one's rise read as one story. Open a family to see its aircraft, search for an aircraft by name, or open a family's own page for it over time.</p>
     <p class="chart-sentence">
@@ -25,8 +20,8 @@
     <p class="note" id="at-status" aria-live="polite"></p>
     <div id="aircraft-table">Loading table…</div>
     <p class="note">Families group BTS's aircraft (a 737-300 and a 737-800 are both Boeing 737s). A family's maker and type are those of its busiest aircraft. The share is of the total for the chosen year, type and maker. Freight is in short tons (2,000 lb), and includes cargo in the holds of passenger aircraft. More on <a href="/about#groupings">how things are grouped</a>. Domestic cargo airlines such as FedEx, and airlines flying small aircraft, are only in the data from October 2002 (UPS from 2001), so figures jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <script type="module" src="{{ script_url('charts/aircrafttable.js') }}"></script>
-</body>
-</html>
+{% endblock %}

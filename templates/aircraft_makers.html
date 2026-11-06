@@ -1,17 +1,11 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Aircraft by maker · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}Aircraft by maker{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body>
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+
+{% block content %}
     <h1>Aircraft by maker</h1>
     {% set find = "aircraft" %}{% include "_find.html" %}
     <p class="intro">Who built the aircraft that flew, year by year.</p>
@@ -32,8 +26,8 @@
       </ul>
     </details>
     <p class="note">Each bar is one year. The eight biggest makers for the chosen flights are shown, the rest as Other. Freight is in short tons (2,000 lb).</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <script type="module" src="{{ script_url('charts/makers.js') }}"></script>
-</body>
-</html>
+{% endblock %}

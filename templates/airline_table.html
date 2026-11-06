@@ -1,17 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Airlines · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}Airlines{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-latest-year="{{ latest_year }}">
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-latest-year="{{ latest_year }}"{% endblock %}
+
+{% block content %}
     <h1>Airlines</h1>
     <p class="intro">Every US and foreign airline in the data, with airlines that merged counted together (Delta includes Northwest, American includes US Airways and TWA, and so on). Open a merged airline to see the airlines it's made of, search for one by name, or open an airline's own page for it over time.</p>
     <p class="chart-sentence">
@@ -25,8 +20,8 @@
     <p class="note" id="airline-status" aria-live="polite"></p>
     <div id="airline-table">Loading table…</div>
     <p class="note">Airlines that merged are counted together for every year, and a merged airline opens to show the airlines it's made of. Regional airlines flying under a major's name are listed on their own. The share is of the total for the chosen year, flights and routes. Freight is in short tons (2,000 lb). More on <a href="/about#groupings">how things are grouped</a>. Domestic cargo airlines such as FedEx, and airlines flying small aircraft, are only in the data from October 2002 (UPS from 2001), so figures jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <script type="module" src="{{ script_url('charts/airlinetable.js') }}"></script>
-</body>
-</html>
+{% endblock %}

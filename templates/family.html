@@ -1,17 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ family }} over time · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}{{ family }} over time{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-family="{{ family }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}">
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-family="{{ family }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}"{% endblock %}
+
+{% block content %}
     <h1>{{ family }} over time</h1>
     {% set find = "aircraft" %}{% include "_find.html" %}
     <p class="intro" id="subtitle"></p>
@@ -26,8 +21,8 @@
     <p class="note" id="click-hint"></p>
     <div id="family-chart" aria-live="polite">Loading chart…</div>
     <p class="note" id="family-note">Each bar is one year. Freight is in short tons (2,000 lb). Versions and families follow BTS's aircraft, which lump a few variants together (for example "737 NG (incl. MAX 7)"). Airlines that merged are counted together throughout. More on <a href="/about#groupings">how things are grouped</a> and on <a href="/about#freight">freight-only and belly cargo</a>.</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <script type="module" src="{{ script_url('charts/family.js') }}"></script>
-</body>
-</html>
+{% endblock %}
