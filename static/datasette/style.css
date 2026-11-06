@@ -42,7 +42,8 @@ h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px
 @media (max-width: 600px) { h1 { font-size: 26px; } }
 
 /* colours only for the compact tables, forms and panels */
-table.rows-and-columns td { border-top-color: var(--rule); border-right-color: var(--line); }
+/* horizontal rules only, as on the site's tables: no rules between the columns */
+table.rows-and-columns td { border-top-color: var(--rule); border-right: 0; }
 table.rows-and-columns td em { color: var(--muted); }
 p.zero-results { border-color: var(--line); background-color: var(--bg); }
 .message-info, .message-warning, .message-error { color: var(--fg); }
