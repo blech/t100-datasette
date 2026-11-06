@@ -104,7 +104,7 @@ input[type="search"] {
   color: var(--fg);
   background: transparent;
   border: 1px solid var(--muted);
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 3px 8px;
 }
 /* Safari's own menus ignore padding and sit shorter than the buttons beside them, so the menus draw their own arrow, as Chrome sizes them */

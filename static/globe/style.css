@@ -51,7 +51,7 @@ body {
   color: var(--fg);
   background: var(--panel);
   border: 1px solid var(--muted);
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 4px 10px;
   width: 16em;
   max-width: 60vw;
@@ -192,7 +192,7 @@ select {
   color: var(--fg);
   background-color: transparent;
   border: 1px solid var(--muted);
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 4px 10px;
   cursor: pointer;
 }
