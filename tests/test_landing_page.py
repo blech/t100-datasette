@@ -14,8 +14,9 @@ def test_root_is_no_longer_the_table(ds):
 
 
 def test_datasette_index_is_still_reachable(ds):
+    # its HTML page redirects to the database page (see test_datasette_pages); the JSON index is still there
     r = get(ds, "/-/")
-    assert r.status_code == 200 and "data-min-year" not in r.text
+    assert r.status_code == 302 and "data-min-year" not in r.text
     assert get(ds, "/.json").status_code == 200
 
 

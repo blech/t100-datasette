@@ -41,6 +41,7 @@ def redirect_to(target):
 def register_routes():
     return [
         (r"^/$", home_page),
+        (r"^/-/$", redirect_to("/t100")),  # Datasette's index page, with its one database: the database page is the data's front door
         (r"^/airports$", airports_index),
         (r"^/countries$", redirect_to("/airports?region=abroad&group=country")),
         (r"^/countries/(?P<slug>[a-z0-9-]+)$", country_page),

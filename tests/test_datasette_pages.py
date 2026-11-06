@@ -31,8 +31,8 @@ def test_a_canned_query_page_has_the_header(ds):
     assert "site-header" in header(response.text) and '<p class="crumbs">' not in response.text
 
 
-def test_the_index_page_trail_is_the_site_name_alone(ds):
-    top = header(get(ds, "/-/").text)
+def test_a_page_with_no_database_has_the_site_name_alone_as_its_trail(ds):
+    top = header(get(ds, "/-/versions").text)  # a Datasette page of its own, with no database
     assert re.search(r'<li aria-current="page">t100\.husk\.org</li>', top)
     assert top.count("<li") == 1 + 4  # the site name and the four sections
 
@@ -59,3 +59,10 @@ def test_both_kinds_of_page_load_the_monospace_experiment(ds):
     css = open("static/common/fonts.css").read()
     for url in __import__("re").findall(r'url\("(/static/[^"]+)"\)', css):
         assert os.path.exists(url.lstrip("/")), url
+
+
+def test_datasettes_own_index_goes_to_the_database_page(ds):
+    # one database, so its index page says nothing the database page doesn't
+    response = get(ds, "/-/")
+    assert response.status_code == 302 and response.headers["location"] == "/t100"
+    assert get(ds, "/-/versions").status_code == 200  # Datasette's other /-/ pages are untouched
