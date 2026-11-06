@@ -1,19 +1,15 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Most dedicated airports, {{ year }} · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}Most dedicated airports, {{ year }}{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/landing/style.css">
   <link rel="stylesheet" href="/static/dedicated/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
+{% endblock %}
+{% block head %}
   <script type="module" src="{{ script_url('dedicated/main.js') }}"></script>
-</head>
-<body>
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+
+{% block content %}
     <h1>Most dedicated airports</h1>
     <p class="intro">
       Airports where one airline carries most of what leaves, among the biggest US airports in {{ year }}: Southwest at Dallas Love, Allegiant at St. Petersburg, FedEx at Memphis.
@@ -84,7 +80,4 @@
       Share is the biggest airline's part of the airport's total. Airlines that merged are counted together (Southwest includes AirTran, Delta includes Northwest). Regional airlines flying under a major's name are listed on their own,
       so at that major's hubs its share is understated. Size rank is the airport's place among US airports by the same measure. More on <a href="/about#groupings">how things are grouped</a>.
     </p>
-    {% include "_footer.html" %}
-  </main>
-</body>
-</html>
+{% endblock %}

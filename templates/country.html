@@ -1,17 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Airports in {{ country }} · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}Airports in {{ country }}{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/landing/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-min-year="{{ min_year }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}" data-country="{{ country }}">
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-min-year="{{ min_year }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}" data-country="{{ country }}"{% endblock %}
+
+{% block content %}
     <h1>Airports in {{ country }}</h1>
     <p class="note" id="abroad-note">{{ country }} is outside the US. The T-100 data only covers flights to or from US airports, so only these airports' flights to and from the US are counted here, not their other routes. <a href="/about#direction">More on what the data covers</a>.</p>
 
@@ -43,8 +38,8 @@
     </div>
     <p id="status" role="status"></p>
     <p class="note">Cities are BTS city markets: a city's row adds up its airports, counts each destination once, and opens to list them, with any airport under 2% of the city's flights, passengers and freight added up as "other airports". Destinations counts US airports with at least {{ 24 if dir == "" else 12 }} flights {{ {"out": "from the airport", "in": "to the airport"}.get(dir, "to and from the airport") }} that year (for all years, in some year); the total row counts each US airport once for the whole country. Freight is in short tons (2,000 lb). <a href="/airports?region=abroad&amp;group=country">All countries</a>.</p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <script type="module" src="{{ script_url('landing/country.js') }}"></script>
-</body>
-</html>
+{% endblock %}
