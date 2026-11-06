@@ -6,7 +6,7 @@
     {%- set trail = [{"href": "/", "label": nav_site}] + (items[1:] if items else []) %}
     {%- for c in trail %}
     {%- set label = nav_crumb_label(c.label) if (loop.index == 2 and database) else c.label %}
-    {% if not loop.last %}<li><a href="{{ c.href }}">{{ label }}</a></li>{% else %}<li aria-current="page">{{ label }}</li>{% endif %}
+    {% if not loop.last %}<li><a href="{{ c.href }}">{{ label }}</a></li>{% elif loop.index == 2 and database %}<li><a href="{{ c.href }}" aria-current="page">{{ label }}</a></li>{% else %}<li aria-current="page">{{ label }}</li>{% endif %}
     {%- endfor %}
   </ol></nav>
   <nav class="sections" aria-label="Sections"><ul>
@@ -15,4 +15,8 @@
     {%- endfor %}
   </ul></nav>
 </div>
-<nav class="views" aria-label="Views"></nav>
+<nav class="views" aria-label="On this page">
+{%- if database and not table and request.path.rstrip("/") == urls.database(database).rstrip("/") %}
+  <a href="#queries">Queries</a> · <a href="#tables">Tables</a>{% if views %} · <a href="#views">Views</a>{% endif %}
+{%- else %}&nbsp;{% endif %}
+</nav>

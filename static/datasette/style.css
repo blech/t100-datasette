@@ -30,7 +30,7 @@ header.hd a:link, header.hd a:visited { color: var(--fg); text-decoration: none;
 header.hd a:hover, header.hd a:focus { color: var(--fg); text-decoration: underline; }
 header.hd .sections a:link, header.hd .sections a:visited { color: var(--muted); }
 header.hd .sections a:hover, header.hd .sections a:focus { color: var(--fg); }
-header.hd .site-header { margin-bottom: 16px; }
+header.hd .views a:link, header.hd .views a:visited { color: var(--muted); text-decoration: underline; }
 section.content { padding-top: 0; }
 
 /* Datasette's blue footer bar holds the site's own footer line (templates/_footer.html), which has its rule and colours already */

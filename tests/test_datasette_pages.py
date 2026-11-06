@@ -12,12 +12,19 @@ def test_the_database_page_has_the_site_header(ds):
     html = get(ds, "/t100").text
     top = header(html)
     assert "t100.husk.org" in top and '<p class="crumbs">' not in html and ">home<" not in html
-    assert re.search(r'<li aria-current="page">data</li>', top)
+    assert re.search(r'<li><a href="/t100" aria-current="page">data</a></li>', top)  # always a link
     assert re.search(r'<li><a href="/">t100\.husk\.org</a></li>', top)
     for section in ("airports", "aircraft", "airlines", "about"):
         assert f'href="/{section}"' in top
     assert 'aria-current="true"' not in top
-    assert re.search(r'<nav class="views" aria-label="Views"></nav>', top)  # empty: it only draws the header's rule
+    views = re.search(r'<nav class="views" aria-label="On this page">(.*?)</nav>', top, re.S).group(1)
+    assert 'href="#queries">Queries<' in views and 'href="#tables">Tables<' in views
+
+
+def test_the_views_line_is_never_empty_so_the_spacing_matches_the_site(ds):
+    for path in ("/t100/airport_names", "/t100/airports"):
+        views = re.search(r'<nav class="views"[^>]*>(.*?)</nav>', header(get(ds, path).text), re.S).group(1)
+        assert views.strip() == "&nbsp;"
 
 
 def test_a_table_page_has_data_then_the_table_in_the_trail(ds):
