@@ -1,0 +1,11 @@
+{# Datasette's own pages (database, table, query, row) in the site's style: blocks overridden only, so Datasette's templates are not copied.
+   Light only: no theme script and no base.css, which has the dark tokens. The site's pages extend t100_base.html instead. #}
+{% extends "default:base.html" %}
+
+{% block extra_head %}
+  <meta name="color-scheme" content="light">
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <link rel="stylesheet" href="/static/datasette/style.css">
+{% endblock %}
+
+{% block nav %}{% include "_data_header.html" %}{% endblock %}

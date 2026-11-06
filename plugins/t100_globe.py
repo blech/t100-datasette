@@ -153,13 +153,19 @@ def views_for(path):
     return []
 
 
+def crumb_label(database):
+    """What Datasette's pages call a database in the breadcrumb: the T-100 data is just 'data' there."""
+    return "data" if database == "t100" else database
+
+
 @hookimpl
-def extra_template_vars(request):
+def extra_template_vars(request, datasette):
     """The header's current section and the page's views, for every template rendered with a request. Prefixed, because
     these are merged over every page's own context, Datasette's included: its database page has a `views` of its own."""
     if request is None:
         return {}
-    return {"nav_section": section_of(request.path), "nav_views": views_for(request.path)}
+    site = (datasette.plugin_config("t100_globe") or {}).get("site_name", "t100.husk.org")
+    return {"nav_section": section_of(request.path), "nav_views": views_for(request.path), "nav_site": site, "nav_crumb_label": crumb_label}
 
 
 async def is_foreign(datasette, code):

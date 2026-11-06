@@ -1,0 +1,17 @@
+{# The site's header on Datasette's own pages: the markup of _nav.html, built from Datasette's own breadcrumb items (the site's `crumbs`
+   name is taken there by Datasette's macros). Datasette's "home" becomes the site name, the t100 database "data". #}
+{% set items = crumb_items(request=request, database=database, table=table) if crumb_items is defined else [] %}
+<div class="site-header">
+  <nav class="crumbs" aria-label="Breadcrumb"><ol>
+    {%- set trail = [{"href": "/", "label": nav_site}] + (items[1:] if items else []) %}
+    {%- for c in trail %}
+    {%- set label = nav_crumb_label(c.label) if (loop.index == 2 and database) else c.label %}
+    {% if not loop.last %}<li><a href="{{ c.href }}">{{ label }}</a></li>{% else %}<li aria-current="page">{{ label }}</li>{% endif %}
+    {%- endfor %}
+  </ol></nav>
+  <nav class="sections" aria-label="Sections"><ul>
+    {%- for key, label in [("airports", "Airports"), ("aircraft", "Aircraft"), ("airlines", "Airlines"), ("about", "About")] %}
+    <li><a href="/{{ key }}">{{ label }}</a></li>
+    {%- endfor %}
+  </ul></nav>
+</div>
