@@ -17,12 +17,10 @@ def test_the_database_page_has_the_site_header(ds):
     for section in ("airports", "aircraft", "airlines", "about"):
         assert f'href="/{section}"' in top
     assert 'aria-current="true"' not in top
-    views = re.search(r'<nav class="views" aria-label="On this page">(.*?)</nav>', top, re.S).group(1)
-    assert 'href="#queries">Queries<' in views and 'href="#tables">Tables<' in views
 
 
 def test_the_views_line_is_never_empty_so_the_spacing_matches_the_site(ds):
-    for path in ("/t100/airport_names", "/t100/airports"):
+    for path in ("/t100", "/t100/airport_names", "/t100/airports"):
         views = re.search(r'<nav class="views"[^>]*>(.*?)</nav>', header(get(ds, path).text), re.S).group(1)
         assert views.strip() == "&nbsp;"
 
@@ -74,3 +72,10 @@ def test_datasettes_own_index_goes_to_the_database_page(ds):
     response = get(ds, "/-/")
     assert response.status_code == 302 and response.headers["location"] == "/t100"
     assert get(ds, "/-/versions").status_code == 200  # Datasette's other /-/ pages are untouched
+
+
+def test_the_footer_credits_datasette_in_place_of_the_theme_menu(ds):
+    for path in ("/t100", "/t100/airport_names"):
+        f = re.search(r'<footer class="site-footer">.*?</footer>', get(ds, path).text, re.S).group(0)
+        assert 'Powered by <a href="https://datasette.io/">Datasette</a>' in f and 'id="theme"' not in f
+    assert "Powered by" not in get(ds, "/about").text

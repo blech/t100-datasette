@@ -15,8 +15,5 @@
     {%- endfor %}
   </ul></nav>
 </div>
-<nav class="views" aria-label="On this page">
-{%- if database and not table and request.path.rstrip("/") == urls.database(database).rstrip("/") %}
-  <a href="#queries">Queries</a> · <a href="#tables">Tables</a>{% if views %} · <a href="#views">Views</a>{% endif %}
-{%- else %}&nbsp;{% endif %}
-</nav>
+{# the views line is empty here (a space keeps its height): it draws the header's rule and keeps the spacing of the site's pages #}
+<nav class="views" aria-label="Views">&nbsp;</nav>
