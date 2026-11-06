@@ -1,6 +1,6 @@
 {# The page skeleton shared by the site's pages. A page extends this and fills in blocks:
    title (without the site suffix), styles (its own stylesheet links), head (anything else for the head),
-   body_attrs (attributes for <body>, with a leading space), main_class, content, footer (override empty for a page with none), scripts (after <main>).
+   body_attrs (attributes for <body>, with a leading space), content, footer (override empty for a page with none), scripts (after <main>).
    The maps don't use <main>; they override `body` as a whole. #}
 <!doctype html>
 <html lang="en">
@@ -18,7 +18,7 @@
 </head>
 <body{% block body_attrs %}{% endblock %}>
 {%- block body %}
-  <main{% block main_class %}{% endblock %}>
+  <main>
     {% include "_nav.html" %}
 {%- block content %}{% endblock %}
 {%- block footer %}
