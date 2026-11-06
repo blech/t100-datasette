@@ -5,7 +5,9 @@ export const MEASURES = {
   load_factor: 'Load factor (%)',
   seats: 'Seats',
 };
-export const SPLITS = { carrier: 'Carrier', aircraft: 'Aircraft', both: 'Carrier and aircraft', none: 'No split' };
+export const SPLITS = { carrier: 'Carrier', family: 'Family', aircraft: 'Aircraft', carrier_family: 'Carrier and family', both: 'Carrier and aircraft', none: 'No split' };
+// the splits that show airlines by name
+export const splitsByCarrier = (split) => split === 'carrier' || split === 'both' || split === 'carrier_family';
 
 const LB_PER_SHORT_TON = 2000;
 const num = (v) => Number(v) || 0;
@@ -14,7 +16,9 @@ const name = (v) => (v === null || v === undefined || String(v).trim() === '' ? 
 export const labelFor = (row, split) => {
   if (split === 'none') return 'All';
   if (split === 'carrier') return name(row.carrier);
+  if (split === 'family') return name(row.family);
   if (split === 'aircraft') return name(row.aircraft);
+  if (split === 'carrier_family') return `${name(row.carrier)} · ${name(row.family)}`;
   return `${name(row.carrier)} · ${name(row.aircraft)}`;
 };
 
@@ -77,15 +81,16 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
   return { points, series, periods, stackable: measure !== 'load_factor' };
 }
 
-// One row per carrier, aircraft, or carrier and aircraft pair (or a single row of totals), following the chart's
-// split, summed over the rows given, biggest passenger total first
+// One row per carrier, family, aircraft, or carrier and family or aircraft pair (or a single row of totals),
+// following the chart's split, summed over the rows given, biggest passenger total first. A family goes in the aircraft field
 export function aggregateTable(rows, split = 'both') {
-  const byCarrier = split === 'carrier' || split === 'both';
-  const byAircraft = split === 'aircraft' || split === 'both';
+  const byCarrier = splitsByCarrier(split);
+  const byFamily = split === 'family' || split === 'carrier_family';
+  const byAircraft = split === 'aircraft' || split === 'both' || byFamily;
   const groups = new Map();
   for (const r of rows) {
     const carrier = byCarrier ? name(r.carrier) : null;
-    const aircraft = byAircraft ? name(r.aircraft) : null;
+    const aircraft = byAircraft ? name(byFamily ? r.family : r.aircraft) : null;
     const key = `${carrier}\u0000${aircraft}`;
     const t = groups.get(key) || {
       carrier, aircraft, groupId: byCarrier ? r.group_id || null : null, family: byAircraft ? r.family || null : null,
