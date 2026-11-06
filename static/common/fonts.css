@@ -2,8 +2,27 @@
    that should be monospace: the site's <code>, and on the data pages the SQL, schema, <pre> blocks, keys and the SQL editor.
    Loaded by t100_base.html (the site's pages) and base.html (Datasette's own). Datasette's app.css names `monospace` in many of its own
    rules; the ones a read-only site shows are covered here, and anything else falls back to the browser's monospace. */
-@font-face { font-family: "B612 Mono"; src: url("/static/common/fonts/b612-mono-v16-latin-regular.woff2") format("woff2"); font-display: swap; }
+@font-face {
+  font-family: "B612 Mono";
+  src: url("/static/common/fonts/b612-mono-v16-latin-regular.woff2")
+    format("woff2");
+  font-display: swap;
+}
 
-:root { --mono: "B612 Mono", ui-monospace, monospace; --mono-size: 0.8125rem; }
+:root {
+  --mono: "B612 Mono", ui-monospace, monospace;
+  --mono-size: 0.8125rem;
+}
 
-code, pre, kbd, samp, tt, .wrapped-sql, form.sql textarea, .cm-editor, .cm-content { font-family: var(--mono); font-size: var(--mono-size); }
+code,
+pre,
+kbd,
+samp,
+tt,
+.wrapped-sql,
+form.sql textarea,
+.cm-editor,
+.cm-content {
+  font-family: var(--mono);
+  font-size: var(--mono-size);
+}

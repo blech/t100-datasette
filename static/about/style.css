@@ -1,5 +1,13 @@
-.about { max-width: 46rem; } /* the text only: the header above it keeps the full column */
-.about h2 { margin-top: 2em; }
-.about ul.contents { padding-left: 1.2em; }
-.about li { margin: 0.4em 0; }
+.about {
+  max-width: 46rem;
+} /* the text only: the header above it keeps the full column */
+.about h2 {
+  margin-top: 2em;
+}
+.about ul.contents {
+  padding-left: 1.2em;
+}
+.about li {
+  margin: 0.4em 0;
+}
 /* (the size of <code> is the monospace experiment's: static/common/fonts.css) */
