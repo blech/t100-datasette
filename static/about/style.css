@@ -1,4 +1,4 @@
-.about { max-width: 46rem; }
+.about { max-width: 46rem; } /* the text only: the header above it keeps the full column */
 .about h2 { margin-top: 2em; }
 .about ul.contents { padding-left: 1.2em; }
 .about li { margin: 0.4em 0; }

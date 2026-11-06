@@ -4,9 +4,8 @@
 {% block styles %}
   <link rel="stylesheet" href="/static/about/style.css">
 {% endblock %}
-{% block main_class %} class="about"{% endblock %}
-
 {% block content %}
+<div class="about">
     <h1>About the data</h1>
     <p class="intro">
       Everything here comes from the US Bureau of Transportation Statistics' T-100 segment data, {{ min_year }}&ndash;{{ max_year }}. It is easy to read more into it than it says, so this page sets out what each number means and where the data has gaps.
@@ -105,4 +104,5 @@
     <p>
       To see how the site is used, each page view is recorded as the time, the page (without any settings in its address), the referring site if there is one, and an anonymous token. The token comes from a hash of your address and browser together with a random value that is thrown away every day, so it can't be turned back into an IP address and doesn't link your visits on different days. Your IP address, your browser's details and anything that could follow you around are not kept. The site sets no cookies. The one thing it stores on your device is your theme choice, in your browser's local storage, and that never leaves it.
     </p>
+</div>
 {% endblock %}
