@@ -7,7 +7,10 @@ TEMPLATES = ["home", "airports", "rollup", "engines", "family", "airline", "rout
 
 def stylesheets(name):
     html = open(f"templates/{name}.html").read()
-    return re.findall(r'<link rel="stylesheet" href="([^"]+)"', html)
+    links = re.findall(r'<link rel="stylesheet" href="([^"]+)"', html)
+    if "{% extends" in html:  # the shared skeleton (t100_base.html) loads the base stylesheet before a page's own
+        links = ["/static/common/base.css"] + links
+    return links
 
 
 @pytest.mark.parametrize("name", TEMPLATES)

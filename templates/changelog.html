@@ -1,12 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Changes · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}Changes{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/about/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
+{% endblock %}
+{% block head %}
   <style type="text/css">
     dt {
         font-weight: 500;
@@ -16,11 +14,10 @@
         padding-left: 0.5em;
     }
   </style>
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body>
-  <main class="about">
-    {% include "_nav.html" %}
+{% endblock %}
+{% block main_class %} class="about"{% endblock %}
+
+{% block content %}
     <h1>Changes</h1>
 
     <p class="intro">
@@ -106,6 +103,4 @@
         <dt>Harden site against scraping</dt>
         <dt>Add aircraft pages</dt>
     </dl>
-  </main>
-</body>
-</html>
+{% endblock %}

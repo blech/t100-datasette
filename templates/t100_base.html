@@ -1,0 +1,29 @@
+{# The page skeleton shared by the site's pages. A page extends this and fills in blocks:
+   title (without the site suffix), styles (its own stylesheet links), head (anything else for the head),
+   body_attrs (attributes for <body>, with a leading space), main_class, content, footer (override empty for a page with none), scripts (after <main>).
+   The maps don't use <main>; they override `body` as a whole. #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}{% endblock %} · T-100</title>
+  <link rel="stylesheet" href="/static/common/base.css">
+{%- block styles %}{% endblock %}
+  <link rel="stylesheet" href="/static/nav/style.css">
+  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
+{%- block head %}{% endblock %}
+</head>
+<body{% block body_attrs %}{% endblock %}>
+{%- block body %}
+  <main{% block main_class %}{% endblock %}>
+    {% include "_nav.html" %}
+{%- block content %}{% endblock %}
+{%- block footer %}
+    {% include "_footer.html" %}
+{%- endblock %}
+  </main>
+{%- endblock %}
+{%- block scripts %}{% endblock %}
+</body>
+</html>
