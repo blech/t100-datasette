@@ -20,7 +20,7 @@ Datasette project visualising BTS T-100 flight data (1990-2025). `README.md` is 
 
 - `plugins/t100_globe.py`: the front page and all `/airports/...` page routes (old paths redirect). Other plugins are small: `t100_guard.py`, `t100_render_links.py`, `t100_usage.py`, `t100_direction.py`, `t100_schema.py`.
 - `datasette.yml`: settings and every canned query (the SQL behind the charts).
-- `templates/`: Jinja pages; `_nav.html`, `_footer.html` etc. are shared partials.
+- `templates/`: Jinja pages, all extending `t100_base.html` (the doctype, head, nav, footer; pages fill its blocks, and the maps override `body`); `_nav.html`, `_footer.html` etc. are shared partials.
 - `static/`: plain ES modules. Edit these; there is no build step in development. `common/` is shared (number formatting in `numbers.js`, palette, popovers), `nav/` is the header and theme chooser, `globe/`, `charts/`, `home/`, `dedicated/` are per-page code. Vendored libraries live in `vendor/` dirs.
 
 ## JavaScript bundle

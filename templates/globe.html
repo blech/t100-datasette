@@ -1,15 +1,13 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{% if origin %}{{ origin }} routes{% else %}Airport network{% endif %} · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}{% if origin %}{{ origin }} routes{% else %}Airport network{% endif %}{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/globe/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-origin="{{ origin }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}>
+{% endblock %}
+{% block body_attrs %} data-origin="{{ origin }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
+
+{# the maps fill the window, so no <main> and no footer #}
+{% block body %}
   <canvas id="globe" aria-label="Map of routes from the selected airport"></canvas>
 
   <header id="header">
@@ -59,10 +57,11 @@
     <div id="footnote"></div>
     <div id="foreign-note-box">{% include "_foreign_note.html" %}</div>
   </div>
+{% endblock %}
 
+{% block scripts %}
   <script src="/static/globe/vendor/d3-array.min.js"></script>
   <script src="/static/globe/vendor/d3-geo.min.js"></script>
   <script src="/static/globe/vendor/topojson-client.min.js"></script>
   <script type="module" src="{{ script_url('globe/main.js') }}"></script>
-</body>
-</html>
+{% endblock %}

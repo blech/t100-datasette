@@ -1,16 +1,14 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ name }} network · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}{{ name }} network{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/globe/style.css">
   <link rel="stylesheet" href="/static/charts/airlineglobe.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-</head>
-<body data-group="{{ group }}" data-airline="{{ airline }}">
+{% endblock %}
+{% block body_attrs %} data-group="{{ group }}" data-airline="{{ airline }}"{% endblock %}
+
+{# the maps fill the window, so no <main> and no footer #}
+{% block body %}
   <canvas id="globe" aria-label="Map of the airline's routes"></canvas>
 
   <header id="header">
@@ -51,10 +49,11 @@
     </div>
     <div id="footnote"></div>
   </div>
+{% endblock %}
 
+{% block scripts %}
   <script src="/static/globe/vendor/d3-array.min.js"></script>
   <script src="/static/globe/vendor/d3-geo.min.js"></script>
   <script src="/static/globe/vendor/topojson-client.min.js"></script>
   <script type="module" src="{{ script_url('charts/airlineglobe.js') }}"></script>
-</body>
-</html>
+{% endblock %}
