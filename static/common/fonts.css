@@ -37,3 +37,6 @@ form.sql textarea,
 :root { --figures: "B612 Mono digits", "Helvetica Neue", "Helvetica", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
 svg[class^="plot-"] [aria-label$="tick label"] { font-family: var(--figures); }
 svg[class$="-ramp"] g text { font-family: var(--figures); }
+/* a little air between a y axis's title and its top tick (Plot sets the title hard against it) */
+svg[class^="plot-"] { overflow: visible; }
+svg[class^="plot-"] [aria-label="y-axis label"] { translate: 0 -6px; }
