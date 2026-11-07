@@ -10,6 +10,7 @@
     <h1>{{ family }} over time</h1>
     {% set find = "aircraft" %}{% include "_find.html" %}
     <p class="intro" id="subtitle"></p>
+    {% if facts %}<p class="rank-line" id="family-facts">{{ facts }}</p>{% endif %}
     <p class="chart-sentence">
       Show <select id="fam-measure" aria-label="Measure"></select>
       for <select id="fam-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>

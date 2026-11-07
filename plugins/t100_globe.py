@@ -700,6 +700,23 @@ def slugify(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
+def and_join(names):
+    """'A', 'A and B', 'A, B and C'."""
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+async def family_facts(datasette, family):
+    """The line under a family's heading: who made its aircraft and what kind they are ("Made by McDonnell Douglas. Type: jet,
+    twin-engine."), commonest first when a family spans several makers or kinds; empty when BTS doesn't say."""
+    rows = (await datasette.get_database("t100").execute(
+        """SELECT t.maker, t.kind, COUNT(*) FROM aircraft_family f JOIN aircraft_types t ON t.ac_typeid = f.aircraft_type
+           WHERE f.family = ? GROUP BY t.maker, t.kind ORDER BY COUNT(*) DESC, t.maker, t.kind""", [family])).rows
+    makers = list(dict.fromkeys(m for m, _, _ in rows if m))
+    kinds = list(dict.fromkeys(k[0].lower() + k[1:] for _, k, _ in rows if k))
+    parts = ([f"Made by {and_join(makers)}."] if makers else []) + ([f"Type: {'; '.join(kinds)}."] if kinds else [])
+    return " ".join(parts)
+
+
 async def family_page(datasette, request):
     slug = request.url_vars["slug"]
     result = await datasette.get_database("t100").execute("SELECT DISTINCT family FROM family_year")
@@ -708,7 +725,7 @@ async def family_page(datasette, request):
         raise NotFound(f"No aircraft family {slug}")
     html = await datasette.render_template(
         "family.html",
-        {"family": family, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
+        {"family": family, "facts": await family_facts(datasette, family), "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
         request=request,
     )
     return Response.html(html)
