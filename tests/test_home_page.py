@@ -21,7 +21,7 @@ def test_home_page_tells_the_three_stories(ds, db_path):
     load(db_path)
     html = get(ds, "/").text
     headings = [re.sub(r"<[^>]+>", "", h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", html)]
-    assert headings == ["Airports", "Aircraft", "Airlines"]
+    assert headings == ["Airports", "Airlines", "Aircraft"]
     for section in ["airports", "aircraft", "airlines"]:  # each heading opens its section
         assert f'<h2 id="{section}-heading"><a href="/{section}">' in html, section
     assert "Atlanta, GA (ATL)" in html and "51.5 million" in html and "Chicago, IL (ORD)" in html
