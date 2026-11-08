@@ -166,6 +166,22 @@ databases:
           ORDER BY year, airport
 
       # the routes matrix: the airport pairs that could be among its top 50, by year, and every pair's totals for the shares of a year
+      # SPIKE (the busiest-routes globe, /airports/globe/routes): a year's busiest airport pairs, both directions together, by
+      # passengers; service is domestic or international (by which file most departures are in), or empty for both
+      busiest_routes_year:
+        title: "A year's busiest airport pairs"
+        description: "The top n airport pairs (both directions together) by passengers in one year, optionally only domestic or international ones."
+        sql: |
+          SELECT MIN(origin, dest) AS origin, MAX(origin, dest) AS dest,
+            CASE WHEN SUM(domestic_deps) * 2 >= SUM(deps) THEN 'domestic' ELSE 'international' END AS service,
+            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+          FROM route_year_totals
+          WHERE year = CAST(:year AS integer)
+          GROUP BY 1, 2
+          HAVING :service = '' OR service = :service
+          ORDER BY passengers DESC
+          LIMIT CAST(:n AS integer)
+
       top_routes_by_year:
         title: "The busiest airport pairs by year"
         description: "One row per airport pair (both directions together, origin before dest) and year, with its service and distance in miles, for the pairs in the top 50 of their service and distance band by flights, seats, passengers or freight, over all years or, with year set, in that year, and the busiest pair of each band in each year. Rows with rest = 1 are every pair's totals for a year, service and distance band (distance is the band's lower bound), counting those not listed."

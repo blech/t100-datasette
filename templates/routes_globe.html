@@ -1,0 +1,63 @@
+{% extends "t100_base.html" %}
+{# SPIKE: the busiest routes for a year, on the globe or a flat or azimuthal map. Settings live in the URL and the menus. #}
+
+{% block title %}Busiest routes map{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/static/globe/style.css">
+  <link rel="stylesheet" href="/static/charts/airlineglobe.css">
+{% endblock %}
+{% block body_attrs %} data-max-year="{{ max_year }}"{% endblock %}
+
+{# the maps fill the window, so no <main> and no footer #}
+{% block body %}
+  <canvas id="globe" aria-label="Map of the busiest routes"></canvas>
+
+  <header id="header">
+    {% include "_nav.html" %}
+    <div id="title">Busiest routes</div>
+    <div id="stats"></div>
+  </header>
+
+  <aside id="panel" hidden></aside>
+  <div id="tooltip" class="popover text" hidden></div>
+  <div id="status" role="status"></div>
+
+  <div id="controls">
+    <div id="legend">
+      <span id="legend-chips"></span>
+      <span class="note">The top <select id="n" aria-label="Number of routes"><option>50</option><option>100</option><option>150</option><option>250</option><option>500</option></select>
+        airport pairs by passengers, both directions together, on
+        <select id="service" aria-label="Flights"><option value="">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>.
+        Airports are sized by their passengers on these routes. <a href="/airports/routes">The routes table</a>.</span>
+    </div>
+    <div class="row">
+      <button id="play" type="button" aria-label="Play through the years">▶</button>
+      <div id="range">
+        <div id="range-fill"></div>
+        <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      </div>
+      <span id="year-label"></span>
+    </div>
+    <div class="row">
+      <select id="proj" aria-label="Map type">
+        <option value="globe">Globe</option>
+        <option value="flat">Flat map (Equal Earth)</option>
+        <option value="equirect">Flat map (equirectangular)</option>
+        <option value="kansas">Distance from the US (azimuthal, centred on Kansas)</option>
+        <option value="pole">Polar (azimuthal, centred on the North Pole)</option>
+      </select>
+      <select id="arcs" aria-label="Route lines"><option value="great">Lines: great circles</option><option value="bowed">Lines: bowed arcs</option></select>
+      <select id="sea" aria-label="Sea"><option value="sea">Sea: grey</option><option value="plain">Sea: none</option></select>
+      <select id="theme" aria-label="Theme"></select>
+      <a id="data-link" class="data-link" href="" hidden>This map's data</a>
+    </div>
+    <div id="footnote"></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/globe/vendor/d3-array.min.js"></script>
+  <script src="/static/globe/vendor/d3-geo.min.js"></script>
+  <script src="/static/globe/vendor/topojson-client.min.js"></script>
+  <script type="module" src="{{ script_url('charts/routesglobe.js') }}"></script>
+{% endblock %}
