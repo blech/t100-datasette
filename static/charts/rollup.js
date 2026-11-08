@@ -8,7 +8,7 @@ import { setMenus } from '/static/common/menus.js';
 import { rollupRows, routeRows, topRouteRows, topMarketRows, marketKey, marketLabel, marketPath, marketPairRows, rowsChoice, bandRange, BAND_FROM, BAND_TO, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, carriedSearch, airlineSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
-import { tableSearch, countrySlug } from '/static/landing/src/table.js';
+import { tableHref, countrySlug, TABLE_PATHS } from '/static/landing/src/table.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -94,7 +94,8 @@ function pushState() {
 // settings the airlines table reads too
 const carry = () => {
   for (const a of document.querySelectorAll('nav.views a')) {
-    if (kind === 'airports') { if (a.pathname === '/airports') a.search = tableSearch(location.search); } // the table takes the measure as its sort
+    // the table takes the measure as its sort, and its grouping's address (once carried, the link may be at any of them)
+    if (kind === 'airports') { if (Object.values(TABLE_PATHS).includes(a.pathname)) a.href = tableHref(location.search); }
     else if (kind === 'aircraft' || byYear) continue; // the aircraft views share no settings, nor the routes matrix the airports'
     else a.search = kind === 'routes' || kind === 'fleet' ? location.search : sharedQuery(location.search);
   }
@@ -161,7 +162,7 @@ const aircraftTitle = (code, name) => { const i = aircraftInfo.get(code); return
 function groupHref(r) {
   const q = new URLSearchParams(dir ? [['dir', dir]] : []);
   if (/^[0-9]{5}$/.test(r.key)) { if (rankYear() !== null) q.set('year', rankYear()); return `/airports/cities/${r.key}${q.size ? `?${q}` : ''}`; }
-  if (r.key.startsWith('country:')) return `/countries/${countrySlug(r.key.slice('country:'.length))}${q.size ? `?${q}` : ''}`;
+  if (r.key.startsWith('country:')) return `${TABLE_PATHS.country}/${countrySlug(r.key.slice('country:'.length))}${q.size ? `?${q}` : ''}`;
   return null;
 }
 function drawCities(box) {

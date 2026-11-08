@@ -122,9 +122,18 @@ def test_any_two_cities_with_flights_between_them_have_a_page_and_no_others(ds, 
     assert get(ds, "/airports/cities/32575/LAX").status_code == 404
 
 
-def test_the_cities_are_the_busiest_airports_table_by_city(ds):
-    r = get(ds, "/airports/cities")
-    assert r.status_code == 302 and r.headers["location"] == "/airports?group=city"
+def test_the_cities_are_the_busiest_airports_table_by_city_at_their_own_address(ds):
+    html = get(ds, "/airports/cities").text
+    assert 'data-group="city"' in html and 'data-region="us"' in html and "<h1>Busiest US cities</h1>" in html
+    assert "<title>Busiest cities, " in html
+    assert re.search(r'<li><a href="/airports">airports</a></li>\s*<li aria-current="page">cities</li>', html)
+    assert '<strong aria-current="page">Busiest airports</strong>' in html  # in the views line, the table grouped another way
+    assert "<h1>Busiest cities abroad</h1>" in get(ds, "/airports/cities?region=abroad").text
+    # its first address, the table's ?group=city, moves here with its other settings
+    r = get(ds, "/airports?group=city&sort=freight&year=2020")
+    assert r.status_code == 301 and r.headers["location"] == "/airports/cities?sort=freight&year=2020"
+    r = get(ds, "/airports?region=abroad&group=city")
+    assert r.status_code == 301 and r.headers["location"] == "/airports/cities?region=abroad"
 
 
 def test_the_city_pages_first_addresses_move_to_the_airports_section(ds):

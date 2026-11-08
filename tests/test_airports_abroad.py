@@ -75,15 +75,34 @@ def test_countries_are_a_grouping_only_abroad(ds):
 
 def test_a_country_has_a_page_and_unknown_ones_are_not_found(ds, db_path):
     abroad(db_path)
-    abroad_page = get(ds, "/countries/united-kingdom")
+    abroad_page = get(ds, "/airports/countries/united-kingdom")
     assert abroad_page.status_code == 200 and "<h1>Airports in United Kingdom</h1>" in abroad_page.text
     assert 'data-country="United Kingdom"' in abroad_page.text
-    assert get(ds, "/countries/atlantis").status_code == 404
+    assert get(ds, "/airports/countries/atlantis").status_code == 404
 
 
-def test_countries_goes_to_the_airports_table_grouped_by_country(ds):
-    r = get(ds, "/countries")
-    assert r.status_code == 302 and r.headers["location"] == "/airports?region=abroad&group=country"
+def test_the_countries_are_the_airports_table_grouped_by_country_abroad_at_their_own_address(ds):
+    html = get(ds, "/airports/countries").text
+    assert 'data-group="country"' in html and 'data-region="abroad"' in html and "<h1>Busiest countries</h1>" in html
+    assert '<option value="abroad" selected>abroad</option>' in sentence(html)
+    assert re.search(r'<li><a href="/airports">airports</a></li>\s*<li aria-current="page">countries</li>', html)
+
+
+def test_the_country_pages_first_addresses_move_to_the_airports_section(ds):
+    for old, new in (("/countries", "/airports/countries"), ("/countries/united-kingdom?dir=out", "/airports/countries/united-kingdom?dir=out"),
+                     ("/airports?region=abroad&group=country&sort=freight", "/airports/countries?sort=freight")):
+        r = get(ds, old)
+        assert r.status_code == 301 and r.headers["location"] == new, old
+    assert get(ds, "/airports?group=country").status_code == 200   # countries are only abroad: this is just the airports
+
+
+def test_a_countrys_trail_runs_through_the_countries(ds, db_path):
+    abroad(db_path)
+    html = get(ds, "/airports/countries/united-kingdom").text
+    assert re.search(r'<li><a href="/airports">airports</a></li>\s*<li><a href="/airports/countries">countries</a></li>\s*'
+                     r'<li aria-current="page">United Kingdom</li>', html)
+    assert '<a href="/airports/countries">All countries</a>' in html
+    assert '<strong aria-current="true">Airports</strong>' in html
 
 
 def test_country_slugs_drop_accents_and_punctuation():
@@ -94,7 +113,7 @@ def test_country_slugs_drop_accents_and_punctuation():
 
 def test_a_country_page_switches_between_airports_and_cities(ds, db_path):
     abroad(db_path)
-    text = get(ds, "/countries/united-kingdom").text
+    text = get(ds, "/airports/countries/united-kingdom").text
     assert '<select id="group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select> in United Kingdom' in text
 
 
@@ -105,7 +124,7 @@ def test_a_foreign_airports_country_links_to_its_page_and_a_us_airports_does_not
     conn.commit()
     conn.close()
     page = get(ds, "/airports/LHR").text
-    assert '<a href="/countries/united-kingdom">United Kingdom</a>' in page
+    assert '<a href="/airports/countries/united-kingdom">United Kingdom</a>' in page
     assert "/countries/" not in get(ds, "/airports/JFK").text
 
 
@@ -117,4 +136,4 @@ def test_a_route_page_links_the_country_of_each_foreign_end(ds, db_path):
     conn.close()
     for path in ("/airports/LHR/JFK", "/airports/JFK/LHR", "/airports/LHR/JFK?dir=out"):
         page = get(ds, path).text
-        assert page.count('<a href="/countries/united-kingdom">United Kingdom</a>') == 1, path
+        assert page.count('<a href="/airports/countries/united-kingdom">United Kingdom</a>') == 1, path

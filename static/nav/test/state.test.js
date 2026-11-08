@@ -13,6 +13,12 @@ test('targetOf recognises the site pages and nothing else', () => {
   assert.equal(targetOf('/airports/ATL/changes'), 'changes');
   assert.equal(targetOf('/airports/ATL/LAX'), 'route');
   assert.equal(targetOf('/airports/ATL/LAX/2024'), 'route');
+  // the cities and countries tables are the airports table; a city, a city pair or a country is a place, not an airport or a route
+  assert.equal(targetOf('/airports/cities'), 'home');
+  assert.equal(targetOf('/airports/countries'), 'home');
+  assert.equal(targetOf('/airports/cities/31703'), 'place');
+  assert.equal(targetOf('/airports/cities/31703/32575?b=VNY'), 'place');
+  assert.equal(targetOf('/airports/countries/united-kingdom'), 'place');
   for (const p of ['/t100', '/-/', '/static/x.js', '#toggle:a', 'https://example.com/airports/ATL', '', '/globe/ATL', '/routes/ATL', '/route/ATL/LAX', '/airports/ATL/LAX/2024/01']) assert.equal(targetOf(p), null, p);
 });
 
@@ -122,4 +128,8 @@ test('the airline split and unknown directions are not carried, nor is any direc
   assert.equal(carryParams('?dir=each', 'route').dir, undefined);
   assert.equal(carryParams('?dir=both', 'airport').dir, undefined);
   assert.equal(carryParams('?dir=out', 'home').dir, undefined);
+});
+
+test('a city or a country takes only the theme and the direction', () => {
+  assert.deepEqual(carryParams('?theme=dark&dir=out&measure=deps&service=domestic&group=city&n=10', 'place'), { theme: 'dark', dir: 'out' });
 });

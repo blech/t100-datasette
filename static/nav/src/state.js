@@ -9,7 +9,9 @@ const WIDTHS = ['passengers', 'deps', 'freight'];
 export function targetOf(href) {
   if (typeof href !== 'string' || !href.startsWith('/') || href.startsWith('//')) return null;
   const path = href.split(/[?#]/)[0];
-  if (path === '/' || path === '/airports') return 'home';
+  if (path === '/' || path === '/airports' || path === '/airports/cities' || path === '/airports/countries') return 'home';
+  // a city, a pair of cities or a country: groups of airports, not an airport or a route, though their paths have the same shape
+  if (/^\/airports\/(cities|countries)\//.test(path)) return 'place';
   if (path === '/globe' || path === '/airports/globe' || /^\/airports\/[^/]+\/globe$/.test(path)) return 'globe';
   if (/^\/airports\/[^/]+$/.test(path)) return 'airport';
   if (/^\/airports\/[^/]+\/destinations$/.test(path)) return 'routes';
@@ -34,7 +36,7 @@ export function carryParams(search, target) {
   // the direction (absent meaning both) means the same on route and airport pages
   const dir = parseDir(search);
   if (dir) out.dir = dir;
-  if (target === 'changes') return out;
+  if (target === 'changes' || target === 'place') return out;
   const service = q.get('service') ?? serviceFromHide(q.get('hide'));
   const measure = q.get('measure') ?? q.get('width');
   if (target === 'globe') {
