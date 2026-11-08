@@ -2,12 +2,13 @@ import { palette } from '../../common/palette.js';
 
 // Colours taken from the AirTrail app (src/app.css and the OpenFreeMap positron/dark basemap styles):
 // land is the style's background, ocean its water fill. Airports are a dark grey (a light one on dark), so they don't
-// read as a data colour. Data colours and the accent are the site's own, from static/common/palette.js.
+// read as a data colour; on light it's zinc-600, softer than near-black but still ~4.5:1 against the water.
+// Data colours and the accent are the site's own, from static/common/palette.js.
 export const THEMES = {
   light: {
     id: 'light', label: 'Light', dark: false,
     bg: '#ffffff', ocean: '#c2c8ca', land: '#f2f3f0', coast: '#c2c8ca',
-    settledAlpha: 0.35, activeAlpha: 0.95, dot: '#3f3f46',
+    settledAlpha: 0.35, activeAlpha: 0.95, dot: '#52525b',
     glow: null, outline: null,
     ui: { fg: '#09090b', muted: '#71717a', panel: 'rgba(255,255,255,0.85)', accent: palette(false).accent },
   },
