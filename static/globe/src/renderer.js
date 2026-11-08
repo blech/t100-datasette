@@ -4,6 +4,19 @@ import { fitView } from './camera.js';
 
 const ARC_SAMPLES = 24;
 
+// Map types. Rotating ones turn on both axes as you drag (the globe, and the azimuthal maps, whose centre moves); the
+// others only spin east-west. `clip` is how far from the centre an azimuthal map reaches, in degrees.
+const MODES = {
+  globe: { make: (d3) => d3.geoOrthographic().clipAngle(90), rotates: true, clip: 90 },
+  flat: { make: (d3) => d3.geoEqualEarth(), rotates: false },
+  equirect: { make: (d3) => d3.geoEquirectangular(), rotates: false },
+  azimuthal: { make: (d3) => d3.geoAzimuthalEquidistant().clipAngle(150), rotates: true, clip: 150 },
+};
+export const MAP_MODES = Object.keys(MODES);
+// whether a map type is drawn flat, so a route can be drawn as a bowed arc between its projected ends
+export const isPlanar = (mode) => mode !== 'globe';
+const BOW = 0.22; // the control point's offset, as a share of the route's length on screen (as scripts/flightmaps' bowed)
+
 export class NetworkRenderer {
   constructor(canvas, land) {
     const d3 = window.d3;
@@ -14,10 +27,7 @@ export class NetworkRenderer {
     this.w = 1;
     this.h = 1;
     this.mode = 'globe';
-    this.projections = {
-      globe: d3.geoOrthographic().clipAngle(90).precision(0.3),
-      flat: d3.geoEqualEarth().precision(0.3),
-    };
+    this.projections = Object.fromEntries(Object.entries(MODES).map(([k, m]) => [k, m.make(d3).precision(0.3)]));
     this.baseScale = 100;
     this.R = 100;
     this.viewCentre = [0, 0];
@@ -29,7 +39,7 @@ export class NetworkRenderer {
   setTheme(theme) { this.theme = theme; }
 
   setMode(mode) {
-    this.mode = mode;
+    this.mode = MODES[mode] ? mode : 'globe';
     this.path = window.d3.geoPath(this.proj, this.ctx);
     this.baseScale = this.computeBaseScale();
   }
@@ -47,7 +57,7 @@ export class NetworkRenderer {
 
   computeBaseScale() {
     if (this.mode === 'globe') return Math.min(this.w, this.h * 0.8) * 0.42;
-    const probe = window.d3.geoEqualEarth();
+    const probe = MODES[this.mode].make(window.d3);
     probe.fitExtent([[16, 130], [Math.max(17, this.w - 16), Math.max(131, this.h - 150)]], { type: 'Sphere' });
     return probe.scale();
   }
@@ -55,7 +65,7 @@ export class NetworkRenderer {
   // degrees of rotation per pixel of drag
   degPerPx() { return 57.2958 / Math.max(1, this.R); }
 
-  centre() { return [this.w / 2, this.mode === 'globe' ? this.h * 0.46 : this.h * 0.5]; }
+  centre() { return [this.w / 2, this.mode === 'globe' ? this.h * 0.46 : this.mode === 'azimuthal' ? (130 + this.h - 150) / 2 : this.h * 0.5]; }
 
   // the globe view that frames `points` inside `box` (see fitView)
   fit(points, box) {
@@ -63,8 +73,31 @@ export class NetworkRenderer {
   }
 
   visible(lon, lat) {
-    if (this.mode === 'flat') return true;
-    return window.d3.geoDistance([lon, lat], this.viewCentre) < Math.PI / 2 - 0.01;
+    const clip = MODES[this.mode].clip;
+    if (!clip) return true;
+    return window.d3.geoDistance([lon, lat], this.viewCentre) < (clip * Math.PI) / 180 - 0.01;
+  }
+
+  // a bowed route on a flat map: a quadratic curve between its projected ends, bulging to the left going west to east
+  // (north, on most maps), as airline route maps draw them; null when an end is off the map
+  bowedCurve(r) {
+    if (!this.visible(r.from[0], r.from[1]) || !this.visible(r.to[0], r.to[1])) return null;
+    let p = this.proj(r.from);
+    let q = this.proj(r.to);
+    if (!p || !q) return null;
+    if (p[0] > q[0]) [p, q] = [q, p];
+    const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
+    return { p, q, c: [(p[0] + q[0]) / 2 + dy * BOW, (p[1] + q[1]) / 2 - dx * BOW] };
+  }
+
+  // the screen points of a bowed curve, for hit-testing
+  bowedPoints(r) {
+    const k = this.bowedCurve(r);
+    if (!k) return [];
+    return Array.from({ length: ARC_SAMPLES + 1 }, (_, i) => {
+      const t = i / ARC_SAMPLES, u = 1 - t;
+      return [u * u * k.p[0] + 2 * u * t * k.c[0] + t * t * k.q[0], u * u * k.p[1] + 2 * u * t * k.c[1] + t * t * k.q[1]];
+    });
   }
 
   arcPoints(route) {
@@ -80,7 +113,7 @@ export class NetworkRenderer {
     const [cx, cy] = this.centre();
     this.R = this.baseScale * view.zoom;
     this.proj.scale(this.R).translate([cx, cy]);
-    if (this.mode === 'globe') {
+    if (MODES[this.mode].rotates) {
       this.proj.rotate([view.rot[0], view.rot[1]]);
       this.viewCentre = [-view.rot[0], -view.rot[1]];
     } else {
@@ -101,9 +134,11 @@ export class NetworkRenderer {
       ctx.fill();
     }
 
+    // `plain` leaves out the water, as on a printed route map: land on the page's own ground, inside a thin outline
+    const plain = opts.plain;
     ctx.beginPath();
     this.path({ type: 'Sphere' });
-    ctx.fillStyle = t.ocean;
+    ctx.fillStyle = plain ? t.bg : t.ocean;
     ctx.fill();
 
     ctx.beginPath();
@@ -114,11 +149,11 @@ export class NetworkRenderer {
     ctx.strokeStyle = t.coast;
     ctx.stroke();
 
-    if (t.outline) {
+    if (t.outline || plain) {
       ctx.beginPath();
       this.path({ type: 'Sphere' });
       ctx.lineWidth = 1;
-      ctx.strokeStyle = t.outline;
+      ctx.strokeStyle = t.outline || t.coast;
       ctx.stroke();
     }
 
@@ -127,11 +162,18 @@ export class NetworkRenderer {
     ctx.lineCap = 'round';
     // while a route is highlighted the rest step back
     const dim = opts.highlight >= 0 ? 0.6 : 1;
+    const bowed = opts.bowed && isPlanar(this.mode);
+    this.bowed = bowed;
     for (const i of order) {
       const r = routes[i];
       const s = opts.styles?.[i];
       ctx.beginPath();
-      this.path({ type: 'LineString', coordinates: [r.from, r.to] });
+      if (bowed) {
+        const k = this.bowedCurve(r);
+        if (!k) continue;
+        ctx.moveTo(k.p[0], k.p[1]);
+        ctx.quadraticCurveTo(k.c[0], k.c[1], k.q[0], k.q[1]);
+      } else this.path({ type: 'LineString', coordinates: [r.from, r.to] });
       ctx.strokeStyle = s?.colour ?? colourFor(r.service, t.dark);
       ctx.globalAlpha = i === opts.highlight ? 1 : (s?.alpha ?? 0.65) * dim;
       ctx.lineWidth = widthFor(r[key], opts.max) + (i === opts.highlight ? 1.5 : 0);
@@ -143,6 +185,7 @@ export class NetworkRenderer {
 
     ctx.font = '11px -apple-system, system-ui, sans-serif';
     ctx.textBaseline = 'alphabetic';
+    if (opts.airportDots) { this.drawAirportDots(opts.airportDots, opts.dotLabels ?? 40); return; }
     for (const r of routes) {
       if (!this.visible(r.to[0], r.to[1])) continue;
       const p = this.proj(r.to);
@@ -191,6 +234,64 @@ export class NetworkRenderer {
     }
   }
 
+  // airports as dots sized by their traffic (area by value), biggest drawn first so small ones stay on top, then labels
+  // for the biggest `labels` of them, each put in the first of a few spots round its dot that's clear of other labels and dots
+  drawAirportDots(dots, labels) {
+    const { ctx, theme: t } = this;
+    const max = Math.max(1, ...dots.map((d) => d.value));
+    const placed = [];
+    for (const d of dots) {
+      d.screen = this.visible(d.pos[0], d.pos[1]) ? this.proj(d.pos) : null;
+      d.r = 1.6 + 9 * Math.sqrt(d.value / max);
+    }
+    const order = dots.filter((d) => d.screen).sort((a, b) => b.value - a.value);
+    for (const d of order) {
+      ctx.beginPath();
+      ctx.arc(d.screen[0], d.screen[1], d.r, 0, Math.PI * 2);
+      ctx.fillStyle = t.dot;
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = t.bg;
+      ctx.stroke();
+    }
+    ctx.font = '600 11px -apple-system, system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    const hitsDot = (b) => order.some((d) => {
+      const cx = Math.max(b[0], Math.min(d.screen[0], b[2])), cy = Math.max(b[1], Math.min(d.screen[1], b[3]));
+      return Math.hypot(cx - d.screen[0], cy - d.screen[1]) < d.r + 1;
+    });
+    const hitsLabel = (b) => placed.some((o) => b[0] < o[2] + 3 && b[2] + 3 > o[0] && b[1] < o[3] && b[3] > o[1]);
+    for (const d of order.slice(0, labels)) {
+      const w = ctx.measureText(d.code).width, h = 11, g = d.r + 3;
+      const [x, y] = d.screen;
+      const spots = [[x + g, y - h / 2], [x - g - w, y - h / 2], [x - w / 2, y - g - h], [x - w / 2, y + g],
+        [x + g * 0.7, y - g * 0.7 - h], [x - g * 0.7 - w, y - g * 0.7 - h], [x + g * 0.7, y + g * 0.7], [x - g * 0.7 - w, y + g * 0.7]];
+      for (const [lx, ly] of spots) {
+        const b = [lx, ly, lx + w, ly + h];
+        if (hitsDot(b) || hitsLabel(b)) continue;
+        placed.push(b);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = t.bg;
+        ctx.strokeText(d.code, lx, ly + h / 2);
+        ctx.fillStyle = t.ui.fg;
+        ctx.fillText(d.code, lx, ly + h / 2);
+        break;
+      }
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  // the dot under (x, y) from the last drawAirportDots, or -1
+  hitTestDots(x, y, dots) {
+    let best = -1, bestD = Infinity;
+    dots.forEach((d, i) => {
+      if (!d.screen) return;
+      const dist = Math.hypot(d.screen[0] - x, d.screen[1] - y);
+      if (dist <= Math.max(d.r, 4) + 2 && dist < bestD) { bestD = dist; best = i; }
+    });
+    return best;
+  }
+
   // airport dots for the chooser page; the highlighted one is larger and labelled
   drawPoints(points, highlight = -1) {
     const { ctx, theme: t } = this;
@@ -231,6 +332,16 @@ export class NetworkRenderer {
     let bestD = maxPx;
     for (let i = 0; i < routes.length; i++) {
       let prev = null;
+      if (this.bowed) {
+        for (const s of this.bowedPoints(routes[i])) {
+          if (prev) {
+            const d = distPointSegment([x, y], prev, s);
+            if (d < bestD) { bestD = d; best = i; }
+          }
+          prev = s;
+        }
+        continue;
+      }
       for (const pt of this.arcPoints(routes[i])) {
         const s = this.visible(pt[0], pt[1]) ? this.proj(pt) : null;
         if (s && prev && Math.hypot(s[0] - prev[0], s[1] - prev[1]) < this.R * 0.9) {
