@@ -16,6 +16,7 @@ from t100_direction import DIRECTION_CHOICES_ABROAD, DIRECTION_CHOICES_AIRPORT, 
 
 
 CODE = r"[A-Za-z0-9]{3}"
+CITIES = "/airports/cities"  # a city (BTS market) is /airports/cities/<market>, a pair of them /airports/cities/<market>/<market>
 log = logging.getLogger(__name__)
 
 
@@ -51,10 +52,14 @@ def register_routes():
         (r"^/airports/movers$", airport_movers_page),
         (r"^/airports/over-time$", rollup_page("airports")),
         (r"^/airports/routes$", rollup_page("toproutes")),
-        # a pair of BTS city markets (Los Angeles is 32575, the Bay Area 32457): its airport pairs; the list of them is the routes matrix by city
-        (r"^/cities$", redirect_to("/airports/routes?group=city")),
-        (r"^/cities/(?P<a>[0-9]{5})/(?P<b>[0-9]{5})$", city_pair_page),
-        (r"^/cities/(?P<market>[0-9]{5})$", city_page),
+        # a BTS city market (Los Angeles is 32575, the Bay Area 32457) is a group of airports, so its pages are in the Airports section:
+        # the city's destinations, and a pair of cities' airport pairs; the list of cities is for now the busiest-airports table by city
+        (r"^/airports/cities$", redirect_to("/airports?group=city")),
+        (r"^/airports/cities/(?P<a>[0-9]{5})/(?P<b>[0-9]{5})$", city_pair_page),
+        (r"^/airports/cities/(?P<market>[0-9]{5})$", city_page),
+        (r"^/cities$", moved("/airports/cities")),  # the city pages' first addresses
+        (r"^/cities/(?P<a>[0-9]{5})/(?P<b>[0-9]{5})$", moved("/airports/cities/{a}/{b}")),
+        (r"^/cities/(?P<market>[0-9]{5})$", moved("/airports/cities/{market}")),
         (rf"^/airports/(?P<origin>{CODE})$", airport_page),
         (rf"^/airports/(?P<origin>{CODE})/destinations$", routes_page),
         (rf"^/airports/(?P<origin>{CODE})/changes$", airport_changes_page),
@@ -109,7 +114,7 @@ AIRPORT_CODE = re.compile(r"^[A-Za-z0-9]{3}$")
 def section_of(path):
     """The site section a path belongs to, from its first segment; None for the front page and Datasette's own pages."""
     first = path.strip("/").split("/")[0]
-    if first in ('countries', 'cities'):
+    if first == 'countries':
         first = 'airports'
     if first and first == 'changelog':
         first = 'about'
@@ -211,7 +216,7 @@ def airport_label(info, code):
 
 
 async def linked_label(datasette, info, code, foreign):
-    """airport_label with its city linked to the city's page (/cities/<market>), and the country of an airport outside the US
+    """airport_label with its city linked to the city's page (/airports/cities/<market>), and the country of an airport outside the US
     linked to its country page (the label is then markup)."""
     name, _, place = info.get(code, (None, None, None))
     if not place:
@@ -221,7 +226,7 @@ async def linked_label(datasette, info, code, foreign):
     town_part = place[: -len(country) - 2] if country else place   # "London" of "London, United Kingdom"; all of "Los Angeles, CA"
     market = (await datasette.get_database("t100").execute(
         "SELECT market_id FROM airport_market JOIN market_name USING (market_id) WHERE code = ?", [code])).first()
-    linked = Markup('<a href="/cities/{}">{}</a>').format(market[0], town_part) if market else town_part
+    linked = Markup('<a href="{}/{}">{}</a>').format(CITIES, market[0], town_part) if market else town_part
     if country:
         linked = Markup('{}, <a href="/countries/{}">{}</a>').format(linked, country_slug(country), country)
     return Markup(" · ").join(part for part in (name, linked) if part)
@@ -802,7 +807,7 @@ async def city_pair_page(datasette, request):
         """This page's address with side i narrowed to code (or widened, for None), its other settings kept."""
         args = [(k, v) for k in request.args.keys() if k not in ("a", "b") for v in request.args.getlist(k)]
         args += [(k, c) for k, c in zip(("a", "b"), chosen) if k != "ab"[i] and c] + ([("ab"[i], code)] if code else [])
-        return f"/cities/{a}/{b}" + (f"?{urlencode(args)}" if args else "")
+        return f"{CITIES}/{a}/{b}" + (f"?{urlencode(args)}" if args else "")
 
     info = await airport_info(datasette, set(sides[0]) | set(sides[1]))
     # each code narrows its side to it; the one chosen is marked, not linked
@@ -815,17 +820,17 @@ async def city_pair_page(datasette, request):
     market_names = (names[a], names[b])
     heading = Markup(" ↔ ").join(
         Markup('<a href="/airports/{0}/destinations" title="{1}">{0}</a>').format(chosen[i], airport_tip(info, chosen[i])) if chosen[i]
-        else Markup('<a href="/cities/{}" title="{}">{}</a>').format((a, b)[i], market_names[i], towns[i]) for i in (0, 1))
+        else Markup('<a href="{}/{}" title="{}">{}</a>').format(CITIES, (a, b)[i], market_names[i], towns[i]) for i in (0, 1))
     min_year, max_year = year_range(datasette)
-    steps = [("cities", "/cities"), (towns[0], f"/cities/{a}")]
-    steps += [(towns[1], f"/cities/{a}/{b}"), (chosen[0] or chosen[1], None)] if any(chosen) else [(towns[1], None)]
+    steps = [("airports", "/airports"), ("cities", CITIES), (towns[0], f"{CITIES}/{a}")]
+    steps += [(towns[1], f"{CITIES}/{a}/{b}"), (chosen[0] or chosen[1], None)] if any(chosen) else [(towns[1], None)]
     html = await datasette.render_template(
         "city_pair.html",
         {"ma": a, "mb": b, "title": title, "heading": heading, "name_a": names[a], "name_b": names[b], "airports_a": codes(0), "airports_b": codes(1),
          "chosen_a": chosen[0], "chosen_b": chosen[1], "town_a": towns[0], "town_b": towns[1],
          "widen_a": narrowed(0, None), "widen_b": narrowed(1, None),
          "pair_count": len({(r["origin"], r["dest"]) for r in shown}), "distance": weighted_distance(shown), "latest_year": max_year,
-         # as a route's trail is airports / ORD / LAX: the first city, then the second, then the airport it is narrowed to
+         # as a route's trail is airports / ORD / LAX: airports / cities, the first city, then the second, then the airport it is narrowed to
          "crumbs": trail(datasette, *steps)},
         request=request,
     )
@@ -856,7 +861,7 @@ async def city_page(datasette, request):
         {"market": market, "name": name[0], "town": town(name[0]), "origin": town(name[0]),
          "airports": [Markup('<a href="/airports/{}">{}</a>').format(c, airport_abbr(info, c)) for c in codes],
          "latest_year": max_year, "min_year": min_year, "foreign": foreign,
-         "crumbs": trail(datasette, ("cities", "/cities"), (town(name[0]), None)),
+         "crumbs": trail(datasette, ("airports", "/airports"), ("cities", CITIES), (town(name[0]), None)),
          **airport_direction(request)},
         request=request,
     )

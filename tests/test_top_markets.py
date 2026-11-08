@@ -84,7 +84,7 @@ def test_market_pairs_by_year_lists_a_market_pairs_airport_pairs_turned_to_the_m
 
 def test_a_city_pair_page_names_its_cities_and_airports_in_the_order_given(ds, db_path, monkeypatch):
     load(db_path, monkeypatch)
-    r = get(ds, "/cities/32575/31703")
+    r = get(ds, "/airports/cities/32575/31703")
     assert r.status_code == 200
     assert "<h1>Los Angeles ↔ New York</h1>" in plain(r.text) and 'data-kind="citypair"' in r.text
     assert 'data-ma="32575" data-mb="31703"' in r.text
@@ -92,15 +92,16 @@ def test_a_city_pair_page_names_its_cities_and_airports_in_the_order_given(ds, d
     assert "Los Angeles, CA (LAX, BUR) and New York, NY (JFK, EWR)" in intro and "2,474 miles" in r.text
     assert re.search(r'<abbr title="[^"]*LAX[^"]*">LAX</abbr>', r.text)
     # each city links to its own page, and the trail runs through the first, as a route's does through its origin
-    assert '<a href="/cities/32575">Los Angeles, CA</a>' in r.text and '<a href="/cities/31703">New York, NY</a>' in r.text
-    assert '<li><a href="/cities">cities</a></li> <li><a href="/cities/32575">Los Angeles</a></li>' in re.sub(r"\s+", " ", r.text)
+    assert '<a href="/airports/cities/32575">Los Angeles, CA</a>' in r.text and '<a href="/airports/cities/31703">New York, NY</a>' in r.text
+    assert ('<li><a href="/airports">airports</a></li> <li><a href="/airports/cities">cities</a></li> '
+            '<li><a href="/airports/cities/32575">Los Angeles</a></li>') in re.sub(r"\s+", " ", r.text)
     assert 'aria-current="page">New York<' in r.text
     # the cities settle domestic or international, and three pairs need no top-N menu
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', r.text, re.S).group(1)
     assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-rank"]
     words = lambda html: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html))
     assert "for all 3 routes," in words(sentence)
-    assert "for both routes," in words(get(ds, "/cities/32575/32457").text)
+    assert "for both routes," in words(get(ds, "/airports/cities/32575/32457").text)
     assert '<strong aria-current="true">Airports</strong>' in r.text  # a page of the airports section
 
 
@@ -113,17 +114,25 @@ def test_any_two_cities_with_flights_between_them_have_a_page_and_no_others(ds, 
     rebuild_pair_distance(conn)
     conn.close()
     assert table(db_path, "SELECT COUNT(*) FROM top_market_year WHERE mb = '32457'") == [(0,)]
-    r = get(ds, "/cities/31703/32457")
+    r = get(ds, "/airports/cities/31703/32457")
     assert r.status_code == 200 and "<h1>New York ↔ San Francisco</h1>" in plain(r.text) and "2,586 miles" in r.text
-    assert get(ds, "/cities/32457/99999").status_code == 404  # no such market
-    assert get(ds, "/cities/32575/32575").status_code == 404
-    assert get(ds, "/cities/32575/99999").status_code == 404
-    assert get(ds, "/cities/32575/LAX").status_code == 404
+    assert get(ds, "/airports/cities/32457/99999").status_code == 404  # no such market
+    assert get(ds, "/airports/cities/32575/32575").status_code == 404
+    assert get(ds, "/airports/cities/32575/99999").status_code == 404
+    assert get(ds, "/airports/cities/32575/LAX").status_code == 404
 
 
-def test_cities_is_the_routes_matrix_by_city(ds):
-    r = get(ds, "/cities")
-    assert r.status_code == 302 and r.headers["location"] == "/airports/routes?group=city"
+def test_the_cities_are_the_busiest_airports_table_by_city(ds):
+    r = get(ds, "/airports/cities")
+    assert r.status_code == 302 and r.headers["location"] == "/airports?group=city"
+
+
+def test_the_city_pages_first_addresses_move_to_the_airports_section(ds):
+    # /cities/... was where they were first built; each keeps its settings
+    for old, new in (("/cities", "/airports/cities"), ("/cities/32575", "/airports/cities/32575"),
+                     ("/cities/32575/31703?b=EWR&year=2024", "/airports/cities/32575/31703?b=EWR&year=2024")):
+        r = get(ds, old)
+        assert r.status_code == 301 and r.headers["location"] == new, old
 
 
 def test_a_city_pair_with_more_than_ten_airport_pairs_offers_the_shorter_top_ns_then_all_of_them(ds, db_path, monkeypatch):
@@ -139,7 +148,7 @@ def test_a_city_pair_with_more_than_ten_airport_pairs_offers_the_shorter_top_ns_
     finally:
         for c in ("LGB", "ONT", "SNA", "LGA"):
             CITY.pop(c)
-    menu = re.search(r'<select id="matrix-n"[^>]*>(.*?)</select>', get(ds, "/cities/32575/31703").text, re.S).group(1)
+    menu = re.search(r'<select id="matrix-n"[^>]*>(.*?)</select>', get(ds, "/airports/cities/32575/31703").text, re.S).group(1)
     assert re.findall(r'<option value="(\d+)"[^>]*>([^<]+)</option>', menu) == [("10", "top 10"), ("50", "all 15")]
     assert '<option value="50" selected>all 15</option>' in menu
 
@@ -157,15 +166,16 @@ def test_market_routes_by_year_counts_all_a_markets_airports_together_leaving_ou
 
 def test_a_city_page_lists_its_airports_then_draws_their_destinations(ds, db_path, monkeypatch):
     load(db_path, monkeypatch)
-    r = get(ds, "/cities/32575")
+    r = get(ds, "/airports/cities/32575")
     assert r.status_code == 200
     assert "<h1 id=\"title\">Los Angeles: destinations over time</h1>" in r.text
     assert 'data-market="32575" data-name="Los Angeles"' in r.text and "/static/charts/routes.js" in r.text
     # its airports, busiest first, each opening its own page, named on hover
     assert re.findall(r'<a href="/airports/([A-Z]{3})"><abbr title="[^"]*">\1</abbr></a>', r.text) == ["LAX", "BUR"]
-    assert '<a href="/cities">cities</a>' in r.text and 'aria-current="page">Los Angeles<' in r.text  # under the cities
+    assert re.search(r'<li><a href="/airports">airports</a></li>\s*<li><a href="/airports/cities">cities</a></li>\s*'
+                     r'<li aria-current="page">Los Angeles</li>', r.text)  # under the airports' cities
     assert '<strong aria-current="true">Airports</strong>' in r.text
-    assert get(ds, "/cities/99999").status_code == 404
+    assert get(ds, "/airports/cities/99999").status_code == 404
 
 
 def test_an_airports_city_links_to_its_city_page(ds, db_path, monkeypatch):
@@ -174,25 +184,25 @@ def test_an_airports_city_links_to_its_city_page(ds, db_path, monkeypatch):
     build_database.rebuild_airport_names(conn)
     conn.close()
     for path in ("/airports/BUR", "/airports/BUR/destinations", "/airports/BUR/LAX"):
-        assert '<a href="/cities/32575">Burbank, CA</a>' in get(ds, path).text, path
-    assert 'href="/cities/' not in get(ds, "/airports/ZZZ").text  # an airport with no market has no city page
+        assert '<a href="/airports/cities/32575">Burbank, CA</a>' in get(ds, path).text, path
+    assert 'href="/airports/cities/' not in get(ds, "/airports/ZZZ").text  # an airport with no market has no city page
 
 
 def test_a_city_pair_narrowed_to_one_airport_on_a_side(ds, db_path, monkeypatch):
     load(db_path, monkeypatch)
-    r = get(ds, "/cities/32575/31703?b=ewr&year=2024")  # Los Angeles ↔ just Newark, in any case
+    r = get(ds, "/airports/cities/32575/31703?b=ewr&year=2024")  # Los Angeles ↔ just Newark, in any case
     assert r.status_code == 200 and "<h1>Los Angeles ↔ EWR</h1>" in plain(r.text)
     assert 'data-b="EWR"' in r.text and 'data-a=""' in r.text
     # EWR is marked, JFK narrows to itself instead, LAX narrows the other side as well; the year is kept
     assert re.search(r'<strong><abbr title="[^"]*">EWR</abbr></strong>', r.text)
-    assert '<a href="/cities/32575/31703?year=2024&amp;b=JFK">' in r.text
-    assert '<a href="/cities/32575/31703?year=2024&amp;b=EWR&amp;a=LAX">' in r.text
-    assert '<a href="/cities/32575/31703?year=2024">all New York airports</a>' in r.text
+    assert '<a href="/airports/cities/32575/31703?year=2024&amp;b=JFK">' in r.text
+    assert '<a href="/airports/cities/32575/31703?year=2024&amp;b=EWR&amp;a=LAX">' in r.text
+    assert '<a href="/airports/cities/32575/31703?year=2024">all New York airports</a>' in r.text
     assert "2,452 miles" in r.text  # EWR's pairs alone: 2,454 and 2,450 miles, five passengers each
-    assert re.search(r'<li><a href="/cities/32575/31703">New York</a></li>\s*<li aria-current="page">EWR</li>', r.text)
+    assert re.search(r'<li><a href="/airports/cities/32575/31703">New York</a></li>\s*<li aria-current="page">EWR</li>', r.text)
     # a code not on that side is ignored; one airport on each side is a route
-    assert "<h1>Los Angeles ↔ New York</h1>" in plain(get(ds, "/cities/32575/31703?b=LAX").text)
-    r = get(ds, "/cities/32575/31703?a=BUR&b=EWR&year=2024")
+    assert "<h1>Los Angeles ↔ New York</h1>" in plain(get(ds, "/airports/cities/32575/31703?b=LAX").text)
+    r = get(ds, "/airports/cities/32575/31703?a=BUR&b=EWR&year=2024")
     assert r.status_code == 302 and r.headers["location"] == "/airports/BUR/EWR?year=2024"
 
 
@@ -200,7 +210,7 @@ def test_a_city_pairs_heading_opens_each_side(ds, db_path, monkeypatch):
     load(db_path, monkeypatch)
     h1 = lambda path: re.search(r"<h1>(.*?)</h1>", get(ds, path).text, re.S).group(1)
     # the first city up a level, the second across to its own page, each named in full on hover
-    assert re.findall(r'<a href="([^"]+)" title="([^"]+)">([^<]+)</a>', h1("/cities/32575/31703")) == [
-        ("/cities/32575", "Los Angeles, CA", "Los Angeles"), ("/cities/31703", "New York, NY", "New York")]
+    assert re.findall(r'<a href="([^"]+)" title="([^"]+)">([^<]+)</a>', h1("/airports/cities/32575/31703")) == [
+        ("/airports/cities/32575", "Los Angeles, CA", "Los Angeles"), ("/airports/cities/31703", "New York, NY", "New York")]
     # narrowed, that side is its airport, opening its destinations
-    assert re.findall(r'<a href="([^"]+)"', h1("/cities/32575/31703?b=EWR")) == ["/cities/32575", "/airports/EWR/destinations"]
+    assert re.findall(r'<a href="([^"]+)"', h1("/airports/cities/32575/31703?b=EWR")) == ["/airports/cities/32575", "/airports/EWR/destinations"]

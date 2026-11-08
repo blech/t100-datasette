@@ -20,7 +20,7 @@ const KINDS = {
   airlines: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
   routes: { query: 'carrier_route_by_year', key: 'route', noun: 'route' },
   toproutes: { query: 'top_routes_by_year', key: 'route', noun: 'route' }, // every airline's busiest pairs, by distance
-  citypair: { query: 'market_pairs_by_year', key: 'route', noun: 'route' }, // the airport pairs between two cities, at /cities/ma/mb
+  citypair: { query: 'market_pairs_by_year', key: 'route', noun: 'route' }, // the airport pairs between two cities, at /airports/cities/ma/mb
   airports: { query: 'airport_by_year', key: 'airport', noun: 'airport' },
   aircraft: { query: 'aircraft_by_year', key: 'family', noun: 'family' },
   fleet: { query: 'carrier_aircraft_by_year', key: 'family', noun: 'family' }, // one airline's aircraft, drawn as the aircraft matrix is
@@ -156,11 +156,11 @@ function groupedRows() {
     .map((r) => ({ ...r, dest: r.aircraft, market_id: slugify(r.family), group_label: r.family, city: r.aircraft_name }));
 }
 const aircraftTitle = (code, name) => { const i = aircraftInfo.get(code); return i ? `${name}\n${i.maker} · ${i.aircraft_kind}` : name; };
-// the airports matrix's city (a BTS market, /cities/<market>, its destinations ranked by this ranking year) or country page,
+// the airports matrix's city (a BTS market, /airports/cities/<market>, its destinations ranked by this ranking year) or country page,
 // counted this way; a "solo:" airport with no market has none
 function groupHref(r) {
   const q = new URLSearchParams(dir ? [['dir', dir]] : []);
-  if (/^[0-9]{5}$/.test(r.key)) { if (rankYear() !== null) q.set('year', rankYear()); return `/cities/${r.key}${q.size ? `?${q}` : ''}`; }
+  if (/^[0-9]{5}$/.test(r.key)) { if (rankYear() !== null) q.set('year', rankYear()); return `/airports/cities/${r.key}${q.size ? `?${q}` : ''}`; }
   if (r.key.startsWith('country:')) return `/countries/${countrySlug(r.key.slice('country:'.length))}${q.size ? `?${q}` : ''}`;
   return null;
 }

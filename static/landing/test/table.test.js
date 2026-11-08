@@ -151,7 +151,7 @@ test('a country opens to its five busiest airports and a sum of the rest, unless
 });
 
 test('a city row opens its city page, ranked by the table\'s year and counted its way; an airport with no market has none', () => {
-  assert.equal(cityHref('32575', { year: 2025, dir: '' }), '/cities/32575?year=2025');
-  assert.equal(cityHref('32575', { year: 'all', dir: 'out' }), '/cities/32575?dir=out');
+  assert.equal(cityHref('32575', { year: 2025, dir: '' }), '/airports/cities/32575?year=2025');
+  assert.equal(cityHref('32575', { year: 'all', dir: 'out' }), '/airports/cities/32575?dir=out');
   assert.equal(cityHref('solo:ZZZ'), null);
 });

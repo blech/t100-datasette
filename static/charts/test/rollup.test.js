@@ -238,8 +238,8 @@ const market = (year, passengers, extra = {}) => ({
 
 test('marketLabel names a market pair by its towns in alphabetical order, and marketPath puts them in that order', () => {
   assert.deepEqual(marketLabel(market(2025, 1)), { label: 'Los Angeles ↔ San Francisco', flip: true });
-  assert.equal(marketPath(market(2025, 1)), '/cities/32575/32457');
-  assert.equal(marketPath(market(2025, 1, { ma: '30977', mb: '31703', name_a: 'Chicago, IL', name_b: 'New York, NY' })), '/cities/30977/31703');
+  assert.equal(marketPath(market(2025, 1)), '/airports/cities/32575/32457');
+  assert.equal(marketPath(market(2025, 1, { ma: '30977', mb: '31703', name_a: 'Chicago, IL', name_b: 'New York, NY' })), '/airports/cities/30977/31703');
 });
 
 test('topMarketRows keys each market pair, and keeps only the pairs and totals in the distance range', () => {

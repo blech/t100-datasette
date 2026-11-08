@@ -198,7 +198,7 @@ databases:
           FROM market_band_year
           ORDER BY year, rest, passengers DESC
 
-      # a city market pair's airport pairs: the city pair page's matrix (/cities/ma/mb), for any two markets, read live from
+      # a city market pair's airport pairs: the city pair page's matrix (/airports/cities/ma/mb), for any two markets, read live from
       # route_year_totals through its origin and dest indexes
       market_pairs_by_year:
         title: "A city market pair's airport pairs by year"
@@ -220,7 +220,7 @@ databases:
           GROUP BY r.origin, r.dest, r.year
           ORDER BY r.year, passengers DESC
 
-      # a city market's routes: the city page's destinations matrix (/cities/market), as routes_by_year is an airport's, with
+      # a city market's routes: the city page's destinations matrix (/airports/cities/market), as routes_by_year is an airport's, with
       # every airport of the market counted together and flights within it left out
       market_routes_by_year:
         title: "Other airports from and to a city market, by year"

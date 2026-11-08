@@ -138,7 +138,7 @@ Questions:
   - City rows show the market's name only ("Los Angeles, CA"); every city row opens, a one-airport market too, and the airports inside are the links. The ▸ is a column of its own between the names and the cells (a small helper, `disclosureArrows`, shared by the airports matrix, the destinations matrix and the families matrix); for now the name opens and closes the row too.
   - The destinations matrix's city view takes the same labels: no codes beside the name (they're on hover and in the opened rows), and a label column sized to its longest label.
 - **Backlog: city pages.** A page for a BTS city market, so a city's name can link somewhere: what an airport has (over time, destinations, changes, map), added up across its airports.
-  - Address: `/airports/cities/{market}` (e.g. `/airports/cities/new-york-ny`, keeping it in the Airports section) or a section of its own at `/cities/{market}`.
+  - Address: `/airports/cities/{market}` and `/airports/cities/{market}/{market}` for a pair, in the Airports section, as a city is a group of airports (built first at `/cities/...`, which now redirects). `/airports/cities` is for now a redirect to the busiest-airports table by city; it could become that table's own address, with the table's group menu moving between addresses. Countries (`/countries/{slug}`) could follow to `/airports/countries/`.
   - The queries filter by `origin` and can take a market's list of codes instead.
   - Once they exist, a city's name links to its page and the ▸ alone opens the row, as the aircraft table separates a family's name from its disclosure.
   - Further on: city pairs for routes (New York–Miami across LGA, JFK, EWR and MIA, FLL), as `explore/12_market_routes.sql` on the `explore/sql-scripts` branch tried.
