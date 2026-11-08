@@ -1,23 +1,19 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ title }} · routes · T-100</title>
-  <link rel="stylesheet" href="/static/common/base.css">
+{% extends "t100_base.html" %}
+
+{% block title %}{{ title }} · routes{% endblock %}
+{% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
-  <link rel="stylesheet" href="/static/nav/style.css">
-  <script type="module" src="{{ script_url('nav/main.js') }}"></script>
-{{ modulepreload("/static/nav/main.js") }}
+{% endblock %}
+{% block head %}
 {{ modulepreload("/static/charts/rollup.js") }}
 {{ modulepreload("/static/charts/find.js") }}
   {# the chart's data, fetched while the modules load: these URLs are the ones rollup.js asks for (queryUrl), or the preload is wasted #}
   <link rel="preload" as="fetch" crossorigin href="/t100/market_pairs_by_year.json?_shape=objects&ma={{ ma }}&mb={{ mb }}">
   <link rel="preload" as="fetch" crossorigin href="/t100/airports.json?_shape=objects">
-</head>
-<body data-kind="citypair" data-ma="{{ ma }}" data-mb="{{ mb }}" data-a="{{ chosen_a }}" data-b="{{ chosen_b }}" data-latest-year="{{ latest_year }}">
-  <main>
-    {% include "_nav.html" %}
+{% endblock %}
+{% block body_attrs %} data-kind="citypair" data-ma="{{ ma }}" data-mb="{{ mb }}" data-a="{{ chosen_a }}" data-b="{{ chosen_b }}" data-latest-year="{{ latest_year }}"{% endblock %}
+
+{% block content %}
     <h1>{{ heading }}</h1>
     {% set find = "airport" %}{% include "_find.html" %}
     <p class="intro">
@@ -51,9 +47,9 @@
       The cities are BTS city markets, as the airports matrix groups them; any two with flights between them have a page like this, and the <a href="/airports/routes?group=city">routes matrix</a> ranks the busiest.
       Domestic cargo airlines such as FedEx, and airlines flying small aircraft, are only in the data from October 2002 (UPS from 2001): see <a href="/about#breaks">known gaps in the data</a>.
     </p>
-    {% include "_footer.html" %}
-  </main>
+{% endblock %}
+
+{% block scripts %}
   <div id="label-tip" class="popover text" role="tooltip" hidden></div>
   <script type="module" src="{{ script_url('charts/rollup.js') }}"></script>
-</body>
-</html>
+{% endblock %}
