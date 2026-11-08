@@ -107,6 +107,9 @@ function highlightLine(highlight, wanted, byAirline) {
   line.replaceChildren(msg.text, ...(msg.reverse ? ['; try the other way, ', other()] : []), ' · ', clear);
 }
 
+// a series under half a percent of every bar is a pixel or two at most: it isn't named in the legend
+const MIN_SHARE = 0.005;
+
 function drawChart() {
   const monthly = year !== null;
   // an airline carried here by ?highlight= (from its own pages) is picked out, and never folded into Other
@@ -117,7 +120,7 @@ function drawChart() {
   // dozen types, so only its pairings already among the largest are picked out, and the chart keeps its shape
   // load factor counts an airline in a year it flew the route at least 12 times, as the site counts flying a route, or
   // in a month at least 4, about weekly
-  const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year', keep: state.split === 'carrier' ? wanted : new Set(), minDeps: monthly ? 4 : 12 });
+  const res = buildSeries(viewRows, { ...state, periodKey: monthly ? 'month' : 'year', keep: state.split === 'carrier' ? wanted : new Set(), minDeps: monthly ? 4 : 12, minShare: MIN_SHARE });
   const pinned = new Set([...wanted].filter((l) => res.series.includes(l)));
   highlightLine(highlight, pinned, byAirline);
   const box = $('route-chart-plot');

@@ -16,7 +16,7 @@
     <p class="intro">
       {% if kind == "airports" and abroad %}Every airport outside the US in the data, counting its flights {{ {"out": "to the US", "in": "from the US"}.get(dir, "to and from the US") }}, by year, the way the US airports are. Only flights to or from a US airport are in the data. Click an airport's code to see which US airports it flies to.
       {% elif kind == "airports" %}Every US airport in the data, counting flights {{ {"out": "departing it", "in": "arriving at it"}.get(dir, "to and from it") }}, by year. Click an airport's code to see where it flies.
-      {% elif kind == "toproutes" %}The busiest airport pairs in the data, flown by any airline, with both directions counted together, by year. Pick a range of distances to compare routes of a similar length. Click a route to see it.
+      {% elif kind == "toproutes" %}The busiest airport pairs in the data, flown by any airline, with both directions counted together, by year. Pick a range of distances to compare routes of a similar length, or group the airports by city, so Los Angeles to the Bay Area counts LAX–SFO, BUR–OAK and the rest together. Click a route to see it.
       {% elif kind == "aircraft" %}Every aircraft family in the data, by year. Click a <span aria-hidden="true">▸</span> to list a family's aircraft, a family's name to see its page, or an aircraft's name to see that one.
       {% else %}Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.{% endif %}
     </p>
@@ -34,7 +34,8 @@
       {{ page.noun }}, ranked by <select id="matrix-rank" aria-label="Year used to rank rows">{% if kind == "toproutes" %}<option value="">all years</option>{% else %}<option value="all">all years</option><option value="latest">{{ latest_year }} only</option>{% endif %}</select>.
     </p>
     {% if kind == "toproutes" %}<p class="chart-sentence">
-      Routes from <select id="matrix-from" aria-label="Shortest distance"></select> miles
+      Routes between <select id="matrix-group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>,
+      from <select id="matrix-from" aria-label="Shortest distance"></select> miles
       up to <select id="matrix-to" aria-label="Longest distance"></select>.
     </p>{% endif %}
     {% endif %}
@@ -52,7 +53,7 @@
     <p class="note" id="rank-note"></p>
     <p class="note" id="about-note">
       {% if kind == "airports" %}Airports with fewer than {{ "730 flights, both ways," if dir == "" else "365 " ~ count_word|lower }} in every year are left out: <a href="/about#direction">more on directions</a>.
-      {% elif kind == "toproutes" %}A route's distance is BTS's, in its last year flown. Only the pairs that could be among the top 50 by some measure, over all years or in the year ranking them, are sent to this page, but the shares of a year count every route.
+      {% elif kind == "toproutes" %}A route's distance is BTS's, in its last year flown. Only the pairs that could be among the top 50 by some measure, over all years or in the year ranking them, are sent to this page, but the shares of a year count every route. Cities are BTS city markets, as the airports matrix groups them.
       {% elif kind == "aircraft" %}How aircraft are <a href="/about#groupings">grouped</a> into families. Aircraft the rules do not place are grouped by their maker.
       {% else %}How airlines are <a href="/about#groupings">grouped</a>.{% endif %}
       Domestic cargo airlines such as FedEx, and airlines flying small aircraft, are only in the data from October 2002 (UPS from 2001), so shares jump when they appear: see <a href="/about#breaks">known gaps in the data</a>.

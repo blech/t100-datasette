@@ -421,3 +421,8 @@ test('with hideSmall, an opened city lists the airports above 2% of it and one r
   assert.deepEqual(res.cells.filter((c) => c.row === '1/others').map((c) => [c.year, c.value]), [[2024, 1e6], [2025, 1205000]]);
   assert.deepEqual(res.rows.find((r) => r.kind === 'others').codes, ['ISP', 'NYS']);
 });
+
+test('the colour key labels shares with enough places for its ticks to differ', async () => {
+  const { percentTicks } = await import('../src/matrix.js');
+  assert.deepEqual([0.6, 0.05, 0.02, 0.00003].map(percentTicks), ['.0%', '.0%', '.2~p', '.2~p']);
+});

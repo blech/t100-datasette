@@ -202,3 +202,16 @@ test('aggregateTable by family has one row per family, linked to it and to no ai
   assert.equal(t[0].family, 'Boeing 787');
   assert.equal(t[0].groupId, null);
 });
+
+test('buildSeries folds a series too thin to see into Other, and leaves out an Other that is too', () => {
+  const rows = [row(2019, 'Big', 'B747', 1, 1000, 1000), row(2019, 'Mid', 'B777', 1, 400, 400), row(2019, 'Tiny', 'A340', 1, 2, 2),
+    row(2020, 'Big', 'B747', 1, 1000, 1000), row(2020, 'Tiny', 'A350', 1, 1, 1)];
+  const res = buildSeries(rows, { measure: 'passengers', split: 'carrier', minShare: 0.005 });
+  assert.deepEqual(res.series, ['Big', 'Mid']);
+  assert.ok(!res.points.some((p) => p.series === 'Other' || p.series === 'Tiny'));
+  // a sliver in one year that is a real share of another stays
+  const rising = [...rows, row(2021, 'Tiny', 'A350', 1, 100, 100)];
+  assert.ok(buildSeries(rising, { measure: 'passengers', split: 'carrier', minShare: 0.005 }).series.includes('Tiny'));
+  // without the option nothing changes
+  assert.deepEqual(buildSeries(rows, { measure: 'passengers', split: 'carrier' }).series, ['Big', 'Mid', 'Tiny']);
+});

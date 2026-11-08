@@ -98,7 +98,8 @@ def test_a_foreign_airport_has_its_note_on_each_page(ds, db_path):
 def test_a_routes_note_offers_the_airports_charts_and_matrix_by_their_names(ds):
     for path in ("/airports/ATL/LAX", "/airports/ATL/LAX/2024/table"):
         html = get(ds, path).text
-        assert 'More from ATL: <a href="/airports/ATL">over time</a> · <a href="/airports/ATL/destinations">destinations</a> · ' in html, path
+        assert re.search(r'More from <abbr title="[^"]*ATL[^"]*">ATL</abbr>: <a href="/airports/ATL">over time</a>', html), path
+        assert ': <a href="/airports/ATL">over time</a> · <a href="/airports/ATL/destinations">destinations</a> · ' in html, path
         assert "routes over time" not in html, path
 
 

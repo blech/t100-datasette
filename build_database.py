@@ -51,6 +51,10 @@ _LOOKUP_INDEXES = [
     ("idx_carriers_carrier_entity", "carriers", "carrier_entity"),
     ("idx_aircraft_types_ac_typeid", "aircraft_types", "ac_typeid"),
     ("idx_openflights_airports_iata", "openflights_airports", "iata_code"),
+    # an airport's routes either way, and a city market's airports: the destinations matrices and city pages read these live
+    ("idx_route_year_totals_origin", "route_year_totals", "origin, dest"),
+    ("idx_route_year_totals_dest", "route_year_totals", "dest, origin"),
+    ("idx_airport_market_market", "airport_market", "market_id"),
 ]
 
 _LOOKUP_TABLES = """
@@ -159,6 +163,24 @@ CREATE TABLE IF NOT EXISTS "top_route_year" (
 ) WITHOUT ROWID;
 -- Every airport pair's totals by year, service and distance band, for the routes matrix's shares of a year, by rebuild_top_route_year()
 CREATE TABLE IF NOT EXISTS "route_band_year" (
+   [year] INTEGER, [service] TEXT, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [service], [band])
+) WITHOUT ROWID;
+-- Each BTS city market's name ("San Francisco, CA" for SFO, OAK and SJC's): its busiest airport's city in its latest year; an
+-- airport with no market is a market of its own, "solo:" and its code. By rebuild_top_market_year()
+CREATE TABLE IF NOT EXISTS "market_name" (
+   [market_id] TEXT PRIMARY KEY, [name] TEXT
+) WITHOUT ROWID;
+-- The city market pairs (ma before mb, both directions) the routes matrix can list grouped by city, by year, as top_route_year
+-- keeps airport pairs, by rebuild_top_market_year(); a pair's distance is its airport pairs' distances weighted by passengers
+CREATE TABLE IF NOT EXISTS "top_market_year" (
+   [ma] TEXT, [mb] TEXT, [year] INTEGER, [service] TEXT, [distance] INTEGER, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [year_rank] INTEGER, [overall_rank] INTEGER,
+   PRIMARY KEY ([ma], [mb], [year])
+) WITHOUT ROWID;
+-- Every market pair's totals by year, service and its distance band, for the shares of a year, by rebuild_top_market_year()
+CREATE TABLE IF NOT EXISTS "market_band_year" (
    [year] INTEGER, [service] TEXT, [band] INTEGER,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [service], [band])
@@ -620,6 +642,113 @@ def rebuild_top_route_year(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM top_route_year").fetchone()[0]
 
 
+def rebuild_top_market_year(conn: sqlite3.Connection) -> int:
+    """Recompute market_name, top_market_year and market_band_year from route_year_totals, pair_distance,
+    airport_market and airport_dir_year (rebuild those first).
+
+    The routes matrix grouped by city ranks BTS city market pairs as rebuild_top_route_year ranks airport pairs: a market pair
+    is kept when it is in the top TOP_ROUTES of its service and band by some measure, in some year or over all years. Flights
+    within one market (JFK to LaGuardia) are left out. A market pair is in one band, by its passenger-weighted distance, so
+    Los Angeles to the Bay Area isn't split between BUR-SJC's 296 miles and LAX-SFO's 337. A market pair's airport pairs are
+    read live from route_year_totals (market_pairs_by_year), for any pair, so they aren't kept here."""
+    create_schema(conn)
+    band = _BAND_SQL.replace("distance", "md.distance")
+    ranks = lambda partition: ", ".join(
+        f"ROW_NUMBER() OVER (PARTITION BY {partition} ORDER BY {m} DESC) AS by_{m}" for m in _MEASURES)
+    best = f"MIN({', '.join(f'CASE WHEN {m} > 0 THEN by_{m} ELSE 1e9 END' for m in _MEASURES)})"
+    sums = ", ".join(f"SUM({m}) AS {m}" for m in _MEASURES)
+    temps = ("mkt", "mp", "md", "my", "mo")
+    with conn:
+        for t in ("market_name", "top_market_year", "market_band_year"):
+            conn.execute(f"DELETE FROM {t}")
+        for t in temps:
+            conn.execute(f"DROP TABLE IF EXISTS temp.{t}")
+        conn.execute(
+            """
+            CREATE TEMP TABLE mkt AS
+            SELECT code, COALESCE(m.market_id, 'solo:' || code) AS m FROM (
+              SELECT origin AS code FROM route_year_totals UNION SELECT dest FROM route_year_totals
+            ) LEFT JOIN airport_market AS m USING (code)
+            """
+        )
+        # each market's name: the city its airports carry the most passengers under between them, each airport by its city in
+        # its latest year (JFK and LaGuardia's "New York, NY" over Newark's "Newark, NJ"), or the most flights
+        conn.execute(
+            """
+            INSERT INTO market_name
+            SELECT m, city_name FROM (
+              SELECT k.m, n.city_name,
+                ROW_NUMBER() OVER (PARTITION BY k.m ORDER BY SUM(t.passengers) DESC, SUM(t.flights) DESC, n.city_name) AS rank
+              FROM mkt AS k
+              JOIN (SELECT airport, SUM(passengers_out + passengers_in) AS passengers, SUM(deps + arrs) AS flights, MAX(year) AS latest
+                    FROM airport_dir_year GROUP BY 1) AS t ON t.airport = k.code
+              JOIN airport_dir_year AS n ON n.airport = k.code AND n.year = t.latest
+              GROUP BY k.m, n.city_name
+            ) WHERE rank = 1
+            """
+        )
+        # every airport pair and year between two markets, turned so its first airport is in the first market
+        conn.execute(
+            f"""
+            CREATE TEMP TABLE mp AS
+            SELECT CASE WHEN x.m <= y.m THEN x.m ELSE y.m END AS ma, CASE WHEN x.m <= y.m THEN y.m ELSE x.m END AS mb,
+              CASE WHEN x.m <= y.m THEN p.a ELSE p.b END AS a, CASE WHEN x.m <= y.m THEN p.b ELSE p.a END AS b,
+              p.year, p.service, d.distance, p.deps, p.seats, p.passengers, p.freight
+            FROM (
+              SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, year,
+                CASE WHEN SUM(domestic_deps) * 2 > SUM(deps) THEN 'domestic' ELSE 'international' END AS service, {sums}
+              FROM route_year_totals WHERE origin != dest GROUP BY 1, 2, 3
+            ) AS p
+            LEFT JOIN pair_distance AS d ON d.a = p.a AND d.b = p.b
+            JOIN mkt AS x ON x.code = p.a JOIN mkt AS y ON y.code = p.b
+            WHERE x.m != y.m
+            """
+        )
+        # a market pair's distance: its airport pairs' distances weighted by passengers over all years, or by flights for freight
+        conn.execute(
+            """
+            CREATE TEMP TABLE md AS
+            SELECT ma, mb, CAST(ROUND(COALESCE(
+              SUM(CASE WHEN distance > 0 THEN distance * passengers END) * 1.0 / NULLIF(SUM(CASE WHEN distance > 0 THEN passengers END), 0),
+              SUM(CASE WHEN distance > 0 THEN distance * deps END) * 1.0 / NULLIF(SUM(CASE WHEN distance > 0 THEN deps END), 0))) AS integer) AS distance
+            FROM mp GROUP BY 1, 2
+            """
+        )
+        conn.execute(
+            f"""
+            CREATE TEMP TABLE my AS
+            SELECT ma, mb, year, service, distance, band, deps, seats, passengers, freight, {best} AS year_rank FROM (
+              SELECT *, {ranks("year, service, band")} FROM (
+                SELECT y.*, md.distance, {band} AS band FROM (
+                  SELECT ma, mb, year,
+                    CASE WHEN SUM(CASE WHEN service = 'domestic' THEN deps ELSE 0 END) * 2 > SUM(deps) THEN 'domestic' ELSE 'international' END AS service,
+                    {sums}
+                  FROM mp GROUP BY 1, 2, 3
+                ) AS y JOIN md USING (ma, mb)))
+            """
+        )
+        conn.execute(
+            f"""
+            CREATE TEMP TABLE mo AS
+            SELECT ma, mb, MIN({best}) AS overall_rank FROM (
+              SELECT *, {ranks("service, band")} FROM (SELECT ma, mb, service, band, {sums} FROM my GROUP BY 1, 2, 3, 4))
+            GROUP BY ma, mb
+            """
+        )
+        conn.execute(
+            f"""
+            INSERT INTO top_market_year
+            SELECT y.ma, y.mb, y.year, y.service, y.distance, y.band, y.deps, y.seats, y.passengers, y.freight, CAST(y.year_rank AS integer), o.overall_rank
+            FROM my AS y JOIN mo AS o ON o.ma = y.ma AND o.mb = y.mb
+            WHERE o.overall_rank <= {TOP_ROUTES} OR (y.ma, y.mb) IN (SELECT ma, mb FROM my WHERE year_rank <= {TOP_ROUTES})
+            """
+        )
+        conn.execute(f"INSERT INTO market_band_year SELECT year, service, band, {', '.join(f'SUM({m})' for m in _MEASURES)} FROM my GROUP BY 1, 2, 3")
+        for t in temps:
+            conn.execute(f"DROP TABLE temp.{t}")
+    return conn.execute("SELECT COUNT(*) FROM top_market_year").fetchone()[0]
+
+
 def rebuild_family_detail_year(conn: sqlite3.Connection) -> int:
     """Recompute family_detail_year: each aircraft family's yearly totals by subfamily and airline group."""
     create_schema(conn)
@@ -679,6 +808,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "top_route_year": rebuild_top_route_year(conn),
         "airport_dir_year": rebuild_airport_dir_year(conn),
         "airport_carrier_dir_year": rebuild_airport_carrier_dir_year(conn),
+        "top_market_year": rebuild_top_market_year(conn),  # names its markets from airport_dir_year
         "carrier_pair_year": rebuild_carrier_pair_year(conn),
     }
 

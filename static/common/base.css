@@ -73,6 +73,13 @@ h1 + #subtitle {
   margin-top: 0;
   max-width: none;
 }
+/* an airport's code in prose: its name, codes and city on hover, as a heading's code link has */
+abbr[title] {
+  text-decoration: underline dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+  cursor: help;
+}
 h2 {
   font-size: 18px;
   margin: 0;

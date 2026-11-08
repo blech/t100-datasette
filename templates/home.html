@@ -22,8 +22,8 @@
     <section class="section" aria-labelledby="airports-heading">
       <h2 id="airports-heading"><a href="/airports">Airports</a></h2>
       {% if airports %}{% set a = airports.airports %}
-      <p class="story">The busiest airport in {{ max_year }} was {{ a[0].city }} ({{ a[0].code }}), where {{ a[0].passengers }} passengers boarded or left,
-        ahead of {{ a[1].city }} ({{ a[1].code }}) and {{ a[2].city }} ({{ a[2].code }}).</p>
+      <p class="story">The busiest airport in {{ max_year }} was {{ a[0].city }} ({{ a[0].abbr }}), where {{ a[0].passengers }} passengers boarded or left,
+        ahead of {{ a[1].city }} ({{ a[1].abbr }}) and {{ a[2].city }} ({{ a[2].abbr }}).</p>
       {% endif %}
       <div class="graphic map-box" id="map-box">
         <canvas id="usa-map" aria-label="Map of the busiest US airports in {{ max_year }}"></canvas>

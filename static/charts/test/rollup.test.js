@@ -228,3 +228,51 @@ test('the matrix takes a year\'s totals from its total rows when it has them, so
   assert.equal(res.cells[0].share, 0.25);
   assert.equal(res.cells[0].peak, 1);
 });
+
+import { topMarketRows, marketKey, marketLabel, marketPath, marketPairRows } from '../src/rollup.js';
+
+const market = (year, passengers, extra = {}) => ({
+  ma: '32457', mb: '32575', name_a: 'San Francisco, CA', name_b: 'Los Angeles, CA', year, service: 'domestic', distance: 338, band: 0,
+  deps: 10, seats: 20, passengers, freight: 0, rest: 0, ...extra,
+});
+
+test('marketLabel names a market pair by its towns in alphabetical order, and marketPath puts them in that order', () => {
+  assert.deepEqual(marketLabel(market(2025, 1)), { label: 'Los Angeles ↔ San Francisco', flip: true });
+  assert.equal(marketPath(market(2025, 1)), '/cities/32575/32457');
+  assert.equal(marketPath(market(2025, 1, { ma: '30977', mb: '31703', name_a: 'Chicago, IL', name_b: 'New York, NY' })), '/cities/30977/31703');
+});
+
+test('topMarketRows keys each market pair, and keeps only the pairs and totals in the distance range', () => {
+  const rows = [market(2024, 100), market(2025, 120), { ...market(2025, 900), ma: '', mb: '', rest: 1 },
+    market(2025, 50, { ma: '30977', mb: '31703', name_a: 'Chicago, IL', name_b: 'New York, NY', band: 500, distance: 729 })];
+  assert.deepEqual(topMarketRows(rows).map((r) => [r.route, r.year, r.rest]),
+    [[marketKey(rows[0]), 2024, false], [marketKey(rows[0]), 2025, false], [undefined, 2025, true], ['30977~31703', 2025, false]]);
+  assert.deepEqual(topMarketRows(rows, { from: '500', to: 'any' }).map((r) => r.route), ['30977~31703']);
+});
+
+test('marketPairRows names each airport pair in the order its markets are given, not alphabetically', () => {
+  assert.deepEqual(marketPairRows([{ origin: 'SFO', dest: 'LAX', year: 2025 }]).map((r) => r.route), ['SFO ↔ LAX']);
+});
+
+import { rowsChoice } from '../src/rollup.js';
+
+test('a city pair offers the top Ns shorter than its list, then all of it, and only words for ten or fewer', () => {
+  const menu = (count, n) => { const c = rowsChoice(count, n); return [c.options.map((o) => `${o.value}:${o.label}`), c.value]; };
+  assert.deepEqual(menu(13), [['10:top 10', '50:all 13'], '50']);
+  assert.deepEqual(menu(32, 25), [['10:top 10', '25:top 25', '50:all 32'], '25']);
+  assert.deepEqual(menu(13, 25), [['10:top 10', '50:all 13'], '50']); // more asked for than there are: all of them
+  assert.deepEqual(menu(25), [['10:top 10', '50:all 25'], '50']);
+  assert.deepEqual(menu(60), [['10:top 10', '25:top 25', '50:top 50'], '50']);
+  assert.deepEqual([1, 2, 7, 10].map((n) => rowsChoice(n).text), ['its one route', 'both routes', 'all 7 routes', 'all 10 routes']);
+  assert.equal(rowsChoice(7).options, undefined);
+});
+
+test('a city pair narrowed to one airport keeps only its pairs as rows, and every pair as the year totals', () => {
+  const r = (origin, dest, passengers) => ({ origin, dest, year: 2024, service: 'domestic', passengers });
+  const rows = [r('JFK', 'LAX', 100), r('JFK', 'VNY', 2), r('EWR', 'VNY', 1)];
+  const narrowed = marketPairRows(rows, { b: 'VNY' });
+  assert.deepEqual(narrowed.filter((x) => !x.rest).map((x) => x.route), ['JFK ↔ VNY', 'EWR ↔ VNY']);
+  assert.equal(narrowed.filter((x) => x.rest).reduce((s, x) => s + x.passengers, 0), 103);
+  assert.deepEqual(marketPairRows(rows, { a: 'EWR' }).filter((x) => !x.rest).map((x) => x.route), ['EWR ↔ VNY']);
+  assert.ok(marketPairRows(rows).every((x) => !x.rest)); // not narrowed: no totals of its own
+});

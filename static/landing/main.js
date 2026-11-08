@@ -1,7 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { sortLabels, lowerFirst, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel, countryHref, splitAirports, sumOf } from './src/table.js';
+import { sortLabels, lowerFirst, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel, countryHref, cityHref, splitAirports, sumOf } from './src/table.js';
 import { exactCount } from '/static/common/numbers.js';
 import { splitSmall, othersLabel } from '/static/common/small.js';
 import { cell, countCell, tonsCell, percentCell, link } from './src/cells.js';
@@ -81,6 +81,7 @@ function render() {
     rank.prepend(toggle, ' ');
     const name = cell('', 'city');
     if (state.group === 'country') name.append(link(countryHref(c.name, { year: state.year, dir }, maxYear), c.name, tip)); // the country's own page lists every airport
+    else if (cityHref(c.key)) name.append(link(cityHref(c.key, { year: state.year, dir }), c.name, tip)); // a city's page draws its destinations
     else name.textContent = c.name;
     name.title = tip;
     tr.append(rank, cell('', 'code'), name, countCell(c.passengers, 'passengers'), countCell(c.deps, word), percentCell(loadFactor(c)),

@@ -105,6 +105,10 @@ export function pointerReach({ width, marginLeft, years, rowPx }) {
 
 // the colour key, drawn beside the Colour choice that sets it rather than inside the chart, between the settings and the cells;
 // `chart` is null when there is nothing to chart, which empties the key
+// the colour key's percent format for shares up to `max`: whole percents, or under 5% two significant figures, so the ticks
+// differ however small (a city pair narrowed to one small airport has shares of 0.003%, which whole percents label "0% 0%")
+export const percentTicks = (max) => (max >= 0.05 ? '.0%' : '.2~p');
+
 export function placeKey(box, chart) {
   if (box) box.replaceChildren(...(chart ? [chart.legend('color')] : []));
 }
