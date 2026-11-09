@@ -10,6 +10,8 @@ export const THEMES = {
     bg: '#ffffff', ocean: '#c2c8ca', land: '#f2f3f0', coast: '#c2c8ca',
     settledAlpha: 0.35, activeAlpha: 0.95, dot: '#52525b',
     glow: null, outline: null,
+    // with no sea (the map on the page's own ground), land a shade off the ground and a visible outline
+    plain: { land: '#f2f3f0', coast: '#c2c8ca' },
     ui: { fg: '#09090b', muted: '#71717a', panel: 'rgba(255,255,255,0.85)', accent: palette(false).accent },
   },
   dark: {
@@ -17,6 +19,7 @@ export const THEMES = {
     bg: '#09090b', ocean: '#1b1b1d', land: '#0c0c0c', coast: '#1b1b1d',
     settledAlpha: 0.4, activeAlpha: 0.95, dot: '#a1a1aa',
     glow: null, outline: null,
+    plain: { land: '#1f1f23', coast: '#3f3f46' },
     ui: { fg: '#fafafa', muted: '#a1a1aa', panel: 'rgba(9,9,11,0.8)', accent: palette(true).accent },
   },
 };

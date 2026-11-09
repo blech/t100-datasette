@@ -174,19 +174,20 @@ export class NetworkRenderer {
     ctx.fillStyle = plain ? t.bg : t.ocean;
     ctx.fill();
 
+    const ground = plain && t.plain ? t.plain : t;
     ctx.beginPath();
     this.path(this.land);
-    ctx.fillStyle = t.land;
+    ctx.fillStyle = ground.land;
     ctx.fill();
     ctx.lineWidth = 0.5;
-    ctx.strokeStyle = t.coast;
+    ctx.strokeStyle = ground.coast;
     ctx.stroke();
 
     if (t.outline || plain) {
       ctx.beginPath();
       this.path({ type: 'Sphere' });
       ctx.lineWidth = 1;
-      ctx.strokeStyle = t.outline || t.coast;
+      ctx.strokeStyle = t.outline || ground.coast;
       ctx.stroke();
     }
 
