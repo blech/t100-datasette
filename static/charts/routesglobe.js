@@ -3,7 +3,7 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
-import { defaultView } from '/static/globe/src/camera.js';
+import { defaultView, glide } from '/static/globe/src/camera.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { indexAirports } from '/static/globe/src/adapter.js';
@@ -202,6 +202,14 @@ function bindControls() {
     el.value = state[key];
     el.addEventListener('change', () => { state[key] = el.value; pushState(); dirty = true; });
   }
+  // frame the routes in the clear area between the header and the controls, with room for labels: on the globe by turning
+  // and zooming it, on the flat and azimuthal maps by moving the middle of the map too
+  $('fit').addEventListener('click', () => {
+    const points = shown.flatMap((r) => renderer.arcPoints(r));
+    const box = { left: 48, right: innerWidth - 64, top: $('header').getBoundingClientRect().bottom + 24, bottom: $('controls').getBoundingClientRect().top - 16 };
+    const fit = renderer.fitPlanar(points, box) || renderer.fit(points, box);
+    if (fit) { view.vel = [0, 0]; view.target = fit; }
+  });
   $('play').addEventListener('click', () => {
     if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
     $('play').textContent = '⏸';
@@ -256,7 +264,7 @@ function frame(last, now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   const moving = !view.dragging && (Math.abs(view.vel[0]) > 0.05 || Math.abs(view.vel[1]) > 0.05);
   applyInertia(view, dt);
-  if (moving) dirty = true;
+  if (glide(view, dt) || moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
     const styles = styleRoutes(shown, { mode: 'service', theme: THEMES[themeId], widthKey: 'passengers' });
@@ -280,6 +288,7 @@ async function main() {
   const [land, airportRes] = await Promise.all([loadLand(), fetchRows(queryUrl('airports'))]);
   airports = indexAirports(airportRes.rows);
   renderer = new NetworkRenderer(canvas, land);
+  renderer.panFlat = true;
   applyTheme(themeId);
   const resize = () => { renderer.resize(); dirty = true; };
   window.addEventListener('resize', resize);

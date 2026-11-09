@@ -1,6 +1,6 @@
 import { distPointSegment } from './geo.js';
 import { colourFor, widthFor, dashFor } from './scale.js';
-import { fitView } from './camera.js';
+import { fitView, ZMIN, ZMAX, clamp } from './camera.js';
 
 const ARC_SAMPLES = 24;
 
@@ -31,6 +31,9 @@ export class NetworkRenderer {
     this.baseScale = 100;
     this.R = 100;
     this.viewCentre = [0, 0];
+    // with panFlat, a map that only spins east-west also pans north-south: the view's second rotation is the latitude
+    // at its middle, so dragging up and down (and fitPlanar) can move it
+    this.panFlat = false;
     this.path = d3.geoPath(this.projections.globe, this.ctx);
   }
 
@@ -70,6 +73,34 @@ export class NetworkRenderer {
   // the globe view that frames `points` inside `box` (see fitView)
   fit(points, box) {
     return fitView(points, window.d3.geoOrthographic(), { centre: this.centre(), baseScale: this.baseScale, box });
+  }
+
+  // on a flat or azimuthal map, the view ({ rot, zoom }) that frames `points` ([lon, lat]) inside `box` (screen pixels):
+  // move the points' middle to the box's middle and scale their extent to fill it, a few times over, since moving a map
+  // changes its shape. Null on the globe, which has fit().
+  fitPlanar(points, box) {
+    if (!isPlanar(this.mode) || !points.length) return null;
+    const m = MODES[this.mode];
+    const probe = m.make(window.d3);
+    const [cx, cy] = this.centre();
+    const bc = [(box.left + box.right) / 2, (box.top + box.bottom) / 2];
+    let rot = [...(this.lastRot || [0, 0])];
+    let zoom = 1;
+    for (let pass = 0; pass < 4; pass++) {
+      probe.scale(this.baseScale * zoom).translate([cx, cy]);
+      if (m.rotates) probe.rotate(rot).center([0, 0]); else probe.rotate([rot[0], 0]).center([0, -rot[1]]);
+      const xy = points.map((p) => probe(p)).filter((p) => p && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+      if (!xy.length) return null;
+      const [x0, x1] = [Math.min(...xy.map((p) => p[0])), Math.max(...xy.map((p) => p[0]))];
+      const [y0, y1] = [Math.min(...xy.map((p) => p[1])), Math.max(...xy.map((p) => p[1]))];
+      const k = Math.min((box.right - box.left) / Math.max(1, x1 - x0), (box.bottom - box.top) / Math.max(1, y1 - y0));
+      // the place that should sit at the map's own middle, so the points' middle lands on the box's middle
+      const mid = probe.invert([cx + ((x0 + x1) / 2 - bc[0]), cy + ((y0 + y1) / 2 - bc[1])]);
+      if (!mid || !mid.every(Number.isFinite)) return null;
+      rot = [-mid[0], clamp(-mid[1], -90, 90)];
+      zoom = clamp(zoom * k, ZMIN, ZMAX);
+    }
+    return { rot, zoom };
   }
 
   visible(lon, lat) {
@@ -113,12 +144,13 @@ export class NetworkRenderer {
     const { ctx, theme: t } = this;
     const [cx, cy] = this.centre();
     this.R = this.baseScale * view.zoom;
+    this.lastRot = [view.rot[0], view.rot[1]];
     this.proj.scale(this.R).translate([cx, cy]);
     if (MODES[this.mode].rotates) {
       this.proj.rotate([view.rot[0], view.rot[1]]);
       this.viewCentre = [-view.rot[0], -view.rot[1]];
     } else {
-      this.proj.rotate([view.rot[0], 0]);
+      this.proj.rotate([view.rot[0], 0]).center([0, this.panFlat ? -view.rot[1] : 0]);
       this.viewCentre = [-view.rot[0], 0];
     }
 
