@@ -307,8 +307,9 @@ export class NetworkRenderer {
   // the dots from layoutDots, then labels, each put in the first of a few spots round its dot that's clear of other labels
   // and dots. Three levels: every dot faded; `focus.related` (the ends of a hovered route, or a hovered airport's
   // destinations) in the full dot colour; `focus.code` (the hovered airport) in the text colour. Focused dots are drawn
-  // last, on top, and labelled first, then the rest biggest first up to `labels` in all; while anything is focused the
-  // other labels fade too.
+  // last, on top. Labels: with nothing focused, the biggest `labels` dots; while anything is focused, only the focused
+  // ones, so the others don't shuffle round them. Each label tries the spot it had last time first, so it stays put
+  // while the map moves a little.
   drawAirportDots(dots, labels, focus = {}) {
     const { ctx, theme: t } = this;
     const placed = [];
@@ -336,17 +337,20 @@ export class NetworkRenderer {
       return Math.hypot(cx - d.screen[0], cy - d.screen[1]) < d.r + 1;
     });
     const hitsLabel = (b) => placed.some((o) => b[0] < o[2] + 3 && b[2] + 3 > o[0] && b[1] < o[3] && b[3] > o[1]);
-    const toLabel = [...bySize].sort((a, b) => level(b) - level(a));
-    for (const d of toLabel.slice(0, Math.max(labels, toLabel.filter((x) => level(x)).length))) {
+    const toLabel = focused ? bySize.filter((d) => level(d)).sort((a, b) => level(b) - level(a)) : bySize.slice(0, labels);
+    this.labelSpot ??= new Map();
+    for (const d of toLabel) {
       const lv = level(d);
-      ctx.globalAlpha = lv || !focused ? 1 : 0.4;
       const w = ctx.measureText(d.code).width, h = 11, g = d.r + 3 + (lv === 2 ? 1.5 : 0);
       const [x, y] = d.screen;
       const spots = [[x + g, y - h / 2], [x - g - w, y - h / 2], [x - w / 2, y - g - h], [x - w / 2, y + g],
         [x + g * 0.7, y - g * 0.7 - h], [x - g * 0.7 - w, y - g * 0.7 - h], [x + g * 0.7, y + g * 0.7], [x - g * 0.7 - w, y + g * 0.7]];
-      for (const [lx, ly] of spots) {
+      const last = this.labelSpot.get(d.code) ?? 0;
+      for (const s of [last, ...spots.keys()]) {
+        const [lx, ly] = spots[s];
         const b = [lx, ly, lx + w, ly + h];
         if (hitsDot(b) || hitsLabel(b)) continue;
+        this.labelSpot.set(d.code, s);
         placed.push(b);
         ctx.lineWidth = 3;
         ctx.lineJoin = 'round'; // a mitred halo spikes off the letters' corners

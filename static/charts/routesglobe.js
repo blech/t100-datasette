@@ -279,7 +279,7 @@ function frame(last, now) {
     const styles = styleRoutes(shown, { mode: 'service', theme: THEMES[themeId], widthKey: 'passengers' });
     renderer.draw(view, shown, {
       widthKey: 'passengers', max: maxOf(shown, 'passengers'), highlightSet: litRoutes(), fadeAll: true, styles,
-      bowed: state.arcs === 'bowed', plain: state.sea === 'plain', airportDots: dots, dotLabels: 60, dotFocus: dotFocus(),
+      bowed: state.arcs === 'bowed', plain: state.sea === 'plain', airportDots: dots, dotLabels: 20, dotFocus: dotFocus(),
     });
   }
   requestAnimationFrame((n) => frame(now, n));
