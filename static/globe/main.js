@@ -272,7 +272,7 @@ function bindControls() {
   proj.addEventListener('change', () => {
     state.proj = proj.value === 'flat' ? 'flat' : 'globe';
     renderer.setMode(state.proj);
-    $('fit').hidden = state.proj === 'flat';
+    if (state.proj === 'flat') view.rot[1] = 0; // the flat map opens on the equator, as it always has; dragging or fitting moves it
     pushState();
     dirty = true;
   });
@@ -283,13 +283,12 @@ function bindControls() {
   $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
   const a = airports.get(origin);
   $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: rotationFor(a.lon, a.lat), zoom: view.zoom }; });
-  // the flat map only turns east-west, so it can't frame routes north of its middle: fitting is for the globe
-  $('fit').hidden = state.proj === 'flat';
+  // on the flat map, fitting moves the map's middle north or south as well as zooming (the renderer's panFlat)
   $('fit').addEventListener('click', () => {
     const points = [[a.lon, a.lat], ...shown.map((r) => r.to)];
     // the clear area between the header and the controls, with room for the labels
     const box = { left: 24, right: innerWidth - 48, top: $('header').getBoundingClientRect().bottom + 24, bottom: $('controls').getBoundingClientRect().top - 8 };
-    const fit = renderer.fit(points, box);
+    const fit = renderer.fitPlanar(points, box) || renderer.fit(points, box);
     if (fit) { view.vel = [0, 0]; view.target = fit; }
   });
 
@@ -416,7 +415,9 @@ async function main() {
   const [land, airportRes] = await Promise.all([loadLand(), fetchRows(queryUrl('airports'))]);
   airports = indexAirports(airportRes.rows);
   renderer = new NetworkRenderer(canvas, land);
+  renderer.panFlat = true;
   renderer.setMode(state.proj);
+  if (state.proj === 'flat') view.rot[1] = 0;
   applyTheme(themeId);
   const resize = () => { renderer.resize(); dirty = true; };
   window.addEventListener('resize', resize);
@@ -442,7 +443,7 @@ async function main() {
   if (state.year === null || !years.includes(state.year)) state.year = years[years.length - 1];
   if (!years.includes(state.compare) || state.compare >= state.year || state.month !== null) state.compare = null;
   if (state.month !== null) await loadMonths();
-  if (a) view.rot = [-a.lon, clamp(-a.lat, -70, 70)];
+  if (a) view.rot = [-a.lon, state.proj === 'flat' ? 0 : clamp(-a.lat, -70, 70)];
   bindControls();
   refresh();
 }
