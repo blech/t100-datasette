@@ -82,8 +82,9 @@ export class NetworkRenderer {
   // (north, on most maps), as airline route maps draw them; null when an end is off the map
   bowedCurve(r) {
     if (!this.visible(r.from[0], r.from[1]) || !this.visible(r.to[0], r.to[1])) return null;
-    let p = this.proj(r.from);
-    let q = this.proj(r.to);
+    // ends at their airports' dots, where the dot layout has moved them apart
+    let p = this.moved?.get(r.origin) ?? this.proj(r.from);
+    let q = this.moved?.get(r.dest) ?? this.proj(r.to);
     if (!p || !q) return null;
     if (p[0] > q[0]) [p, q] = [q, p];
     const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
@@ -157,11 +158,14 @@ export class NetworkRenderer {
       ctx.stroke();
     }
 
+    this.moved = opts.airportDots ? this.layoutDots(opts.airportDots) : null;
     const key = opts.widthKey || 'passengers';
-    const order = routes.map((r, i) => i).sort((a, b) => Number(routes[b][key]) - Number(routes[a][key]));
+    // highlighted routes: one index, or a set of them (an airport's routes); they're drawn last, on top
+    const lit = opts.highlightSet ?? new Set(opts.highlight >= 0 ? [opts.highlight] : []);
+    const order = routes.map((r, i) => i).sort((a, b) => (lit.has(a) - lit.has(b)) || Number(routes[b][key]) - Number(routes[a][key]));
     ctx.lineCap = 'round';
-    // while a route is highlighted the rest step back
-    const dim = opts.highlight >= 0 ? 0.6 : 1;
+    // while a route is highlighted the rest step back; with fadeAll they always do, and only highlighted ones come forward
+    const dim = lit.size || opts.fadeAll ? 0.6 : 1;
     const bowed = opts.bowed && isPlanar(this.mode);
     this.bowed = bowed;
     for (const i of order) {
@@ -175,8 +179,8 @@ export class NetworkRenderer {
         ctx.quadraticCurveTo(k.c[0], k.c[1], k.q[0], k.q[1]);
       } else this.path({ type: 'LineString', coordinates: [r.from, r.to] });
       ctx.strokeStyle = s?.colour ?? colourFor(r.service, t.dark);
-      ctx.globalAlpha = i === opts.highlight ? 1 : (s?.alpha ?? 0.65) * dim;
-      ctx.lineWidth = widthFor(r[key], opts.max) + (i === opts.highlight ? 1.5 : 0);
+      ctx.globalAlpha = lit.has(i) ? 1 : (s?.alpha ?? 0.65) * dim;
+      ctx.lineWidth = widthFor(r[key], opts.max) + (lit.has(i) ? 1.5 : 0);
       ctx.setLineDash(s?.dashed ? dashFor(ctx.lineWidth) : []);
       ctx.stroke();
     }
@@ -234,16 +238,45 @@ export class NetworkRenderer {
     }
   }
 
-  // airports as dots sized by their traffic (area by value), biggest drawn first so small ones stay on top, then labels
-  // for the biggest `labels` of them, each put in the first of a few spots round its dot that's clear of other labels and dots
-  drawAirportDots(dots, labels) {
-    const { ctx, theme: t } = this;
+  // airports as dots sized by their traffic (area by value), placed on screen and pushed apart until they just touch, the
+  // bigger ones moving less (as scripts/flightmaps' separate); returns each code's moved position, for the routes to end at
+  layoutDots(dots) {
     const max = Math.max(1, ...dots.map((d) => d.value));
-    const placed = [];
     for (const d of dots) {
       d.screen = this.visible(d.pos[0], d.pos[1]) ? this.proj(d.pos) : null;
+      if (d.screen) d.screen = [...d.screen];
       d.r = 1.6 + 9 * Math.sqrt(d.value / max);
     }
+    const on = dots.filter((d) => d.screen);
+    const GAP = 0.5;
+    for (let it = 0; it < 120; it++) {
+      let moved = false;
+      for (let i = 0; i < on.length; i++) {
+        const a = on[i];
+        for (let j = i + 1; j < on.length; j++) {
+          const b = on[j];
+          const dx = b.screen[0] - a.screen[0], dy = b.screen[1] - a.screen[1];
+          const need = a.r + b.r + GAP;
+          if (Math.abs(dx) >= need || Math.abs(dy) >= need) continue;
+          const dist = Math.hypot(dx, dy);
+          if (dist >= need) continue;
+          const [ux, uy] = dist > 1e-9 ? [dx / dist, dy / dist] : [1, 0];
+          const push = need - dist, ma = a.r * a.r, mb = b.r * b.r;
+          a.screen[0] -= (ux * push * mb) / (ma + mb); a.screen[1] -= (uy * push * mb) / (ma + mb);
+          b.screen[0] += (ux * push * ma) / (ma + mb); b.screen[1] += (uy * push * ma) / (ma + mb);
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    return new Map(on.map((d) => [d.code, d.screen]));
+  }
+
+  // the dots from layoutDots, biggest drawn first so small ones stay on top, then labels for the biggest `labels` of them,
+  // each put in the first of a few spots round its dot that's clear of other labels and dots
+  drawAirportDots(dots, labels) {
+    const { ctx, theme: t } = this;
+    const placed = [];
     const order = dots.filter((d) => d.screen).sort((a, b) => b.value - a.value);
     for (const d of order) {
       ctx.beginPath();
@@ -271,6 +304,7 @@ export class NetworkRenderer {
         if (hitsDot(b) || hitsLabel(b)) continue;
         placed.push(b);
         ctx.lineWidth = 3;
+        ctx.lineJoin = 'round'; // a mitred halo spikes off the letters' corners
         ctx.strokeStyle = t.bg;
         ctx.strokeText(d.code, lx, ly + h / 2);
         ctx.fillStyle = t.ui.fg;

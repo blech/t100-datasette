@@ -243,6 +243,15 @@ function bindCanvas() {
   });
 }
 
+// the routes to bring forward: the selected or hovered one, or every route of the hovered airport
+function litRoutes() {
+  const i = selected >= 0 ? selected : hover;
+  if (i >= 0) return new Set([i]);
+  if (hoverDot < 0) return new Set();
+  const code = dots[hoverDot].code;
+  return new Set(shown.flatMap((r, k) => (r.origin === code || r.dest === code ? [k] : [])));
+}
+
 function frame(last, now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   const moving = !view.dragging && (Math.abs(view.vel[0]) > 0.05 || Math.abs(view.vel[1]) > 0.05);
@@ -252,7 +261,7 @@ function frame(last, now) {
     dirty = false;
     const styles = styleRoutes(shown, { mode: 'service', theme: THEMES[themeId], widthKey: 'passengers' });
     renderer.draw(view, shown, {
-      widthKey: 'passengers', max: maxOf(shown, 'passengers'), highlight: selected >= 0 ? selected : hover, styles,
+      widthKey: 'passengers', max: maxOf(shown, 'passengers'), highlightSet: litRoutes(), fadeAll: true, styles,
       bowed: state.arcs === 'bowed', plain: state.sea === 'plain', airportDots: dots, dotLabels: 60,
     });
   }
