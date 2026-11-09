@@ -144,8 +144,17 @@ async function load() {
 }
 
 function drawLegend() {
-  renderLegend($('legend-chips'), legendItems({ mode: 'service', comparing: false, hide: state.hide, routes, dark: THEMES[themeId].dark }),
-    (k) => { state.hide = toggleHide(state.hide, k); refresh(); });
+  const groups = legendItems({ mode: 'service', comparing: false, hide: state.hide, routes, dark: THEMES[themeId].dark });
+  renderLegend($('legend-chips'), groups, (k) => { state.hide = toggleHide(state.hide, k); refresh(); });
+  // a kind of route with none on the map: full screen hides its chip, so the key only lists what's there
+  const empty = new Set(groups.flatMap((g) => g.items.filter((i) => !i.count).map((i) => i.key)));
+  for (const b of $('legend-chips').querySelectorAll('.chip')) b.classList.toggle('empty', empty.has(b.dataset.key));
+}
+
+// what the map shows, in words, for full screen, where the sentence of menus is hidden
+function caption() {
+  const kind = state.service ? `${state.service} ` : '';
+  return `The top ${state.n} ${kind}airport pairs by passengers, both directions together`;
 }
 
 function refresh() {
@@ -159,6 +168,7 @@ function refresh() {
   $('year').value = String(years.indexOf(state.year));
   $('year-label').textContent = state.year;
   const pax = shown.reduce((s, r) => s + Number(r.passengers || 0), 0);
+  $('caption').textContent = caption();
   $('stats').textContent = `${state.year} · ${shown.length} airport pairs · ${dots.length} airports · ${countLabel(pax)} passengers`;
   drawLegend();
   $('footnote').textContent = skipped.length ? `Not shown (no coordinates): ${skipped.join(', ')}` : '';
@@ -210,15 +220,55 @@ function bindControls() {
     const fit = renderer.fitPlanar(points, box) || renderer.fit(points, box);
     if (fit) { view.vel = [0, 0]; view.target = fit; }
   });
-  $('play').addEventListener('click', () => {
-    if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
-    $('play').textContent = '⏸';
-    if (state.year === MAX_YEAR) { state.year = MIN_YEAR; load(); }
-    playTimer = setInterval(() => {
-      if (state.year >= MAX_YEAR) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
-      state.year += 1;
-      load();
-    }, 900);
+  $('play').addEventListener('click', togglePlay);
+  $('fullscreen').addEventListener('click', toggleFullscreen);
+  bindKeys();
+}
+
+function togglePlay() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
+  $('play').textContent = '⏸';
+  if (state.year === MAX_YEAR) { state.year = MIN_YEAR; load(); }
+  playTimer = setInterval(() => {
+    if (state.year >= MAX_YEAR) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
+    state.year += 1;
+    load();
+  }, 900);
+}
+
+// Presenting: html.presenting (static/globe/present.css) hides the navigation, the menus and the notes, and the page asks
+// to go full screen. Where it can't (iPhone Safari, or a refusal) it still presents, in the window, until Esc or F.
+function setPresenting(on) {
+  document.documentElement.classList.toggle('presenting', on);
+  document.activeElement?.blur(); // so space plays, rather than pressing the button that was clicked
+  $('fullscreen').textContent = on ? 'Leave full screen' : 'Full screen';
+}
+function toggleFullscreen() {
+  const on = !document.documentElement.classList.contains('presenting');
+  setPresenting(on);
+  if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+  if (!on && document.fullscreenElement) document.exitFullscreen();
+}
+// leaving full screen by the browser's own means (Esc, its exit control) stops presenting too
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) setPresenting(false); });
+
+function stepYear(by) {
+  const y = state.year + by;
+  if (y < MIN_YEAR || y > MAX_YEAR) return;
+  state.year = y;
+  load();
+}
+
+// ← → step through the years, space plays, F toggles full screen, 1–5 pick the map type; typing in a menu or box is left alone
+function bindKeys() {
+  const projKeys = Object.keys(PROJS);
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('select, textarea, input:not([type=range])')) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); stepYear(e.key === 'ArrowLeft' ? -1 : 1); }
+    else if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+    else if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+    else if (e.key === 'Escape' && document.documentElement.classList.contains('presenting')) setPresenting(false);
+    else if (/^[1-5]$/.test(e.key)) { const p = projKeys[Number(e.key) - 1]; $('proj').value = p; setProj(p); pushState(); }
   });
 }
 
