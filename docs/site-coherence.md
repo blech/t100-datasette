@@ -187,3 +187,13 @@ A shared set of base styles for both kinds of page could hold the column, the ty
 - **Extended saved queries (branch `extended_saved_queries`; started).** The saved queries are the site's open data, so the next idea is to make them answer the questions the charts raise.
   - Built so far: `family_detail` takes `year`, `service`, `kind` and `sort` (name, passengers or freight, within each year); a new `family_airlines` gives one row per airline for a family (or one of its aircraft) in a year or all years, summed over service and kind, with the same filters and sort. A bar on the family and aircraft charts opens it for that year (on the aircraft split a bar still opens the aircraft's page; a tooltip can't hold a link, so it is the bar).
   - Still to decide: derived columns (freight per departure, seats per departure, passengers per seat as a load factor; integer division in SQLite needs a `1.0 *`), and which of the other saved queries want the same year, filter and sort parameters.
+
+### 7. Map controls: not started (noted November 2026)
+
+The full-window maps (`/airports/SFO/globe`, `/airlines/delta/globe`, and the busiest-routes spike at `/airports/globe/routes`) put every control in rows along the bottom: the year slider, the legend chips, direction, map type, line width, colour, fit, theme and the explanatory notes. On HOU's map they wrap to two rows and take about a fifth of the window; on a phone it's much more. The set of options is still growing with the globe experiments (more map types, bowed arcs, no sea), so this waits until those settle.
+
+- **A first pass, split by how often a control changes:**
+  - **Always in view:** the year slider and play, the legend chips (they're filters too), and whatever chooses *which data* is shown: direction on an airport's map, the minimum on an airline's, top N and service on the routes map.
+  - **Behind a labelled "Map options" button,** not a bare cog, which is easy to miss on a data site: what changes *how it's drawn*: map type, line style, sea, line width, colour, and the theme. Fit could instead be a small icon on the map, as zoom buttons are on map apps.
+  - **Behind an "About this map" link:** the range hint, the "routes with fewer than 24 flights are hidden" note and the footnotes, which are useful once and then clutter.
+- **The theme menu is the site's own:** the maps override `t100_base.html`'s whole `body` block to fill the window, so they have no footer, and put `<select id="theme">` in their controls row instead; `static/nav/main.js` fills it as it fills the footer's. It would move into the options panel, not go away.
