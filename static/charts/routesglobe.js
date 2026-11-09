@@ -260,6 +260,15 @@ function litRoutes() {
   return new Set(shown.flatMap((r, k) => (r.origin === code || r.dest === code ? [k] : [])));
 }
 
+// which dots to bring forward: a hovered airport and the airports it flies to, or both ends of the hovered or selected route
+function dotFocus() {
+  const i = selected >= 0 ? selected : hover;
+  if (i >= 0) return { related: new Set([shown[i].origin, shown[i].dest]) };
+  if (hoverDot < 0) return {};
+  const code = dots[hoverDot].code;
+  return { code, related: new Set(shown.flatMap((r) => (r.origin === code ? [r.dest] : r.dest === code ? [r.origin] : []))) };
+}
+
 function frame(last, now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   const moving = !view.dragging && (Math.abs(view.vel[0]) > 0.05 || Math.abs(view.vel[1]) > 0.05);
@@ -270,7 +279,7 @@ function frame(last, now) {
     const styles = styleRoutes(shown, { mode: 'service', theme: THEMES[themeId], widthKey: 'passengers' });
     renderer.draw(view, shown, {
       widthKey: 'passengers', max: maxOf(shown, 'passengers'), highlightSet: litRoutes(), fadeAll: true, styles,
-      bowed: state.arcs === 'bowed', plain: state.sea === 'plain', airportDots: dots, dotLabels: 60,
+      bowed: state.arcs === 'bowed', plain: state.sea === 'plain', airportDots: dots, dotLabels: 60, dotFocus: dotFocus(),
     });
   }
   requestAnimationFrame((n) => frame(now, n));

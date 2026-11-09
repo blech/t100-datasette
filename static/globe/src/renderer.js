@@ -221,7 +221,7 @@ export class NetworkRenderer {
 
     ctx.font = '11px -apple-system, system-ui, sans-serif';
     ctx.textBaseline = 'alphabetic';
-    if (opts.airportDots) { this.drawAirportDots(opts.airportDots, opts.dotLabels ?? 40); return; }
+    if (opts.airportDots) { this.drawAirportDots(opts.airportDots, opts.dotLabels ?? 40, opts.dotFocus); return; }
     for (const r of routes) {
       if (!this.visible(r.to[0], r.to[1])) continue;
       const p = this.proj(r.to);
@@ -304,21 +304,31 @@ export class NetworkRenderer {
     return new Map(on.map((d) => [d.code, d.screen]));
   }
 
-  // the dots from layoutDots, biggest drawn first so small ones stay on top, then labels for the biggest `labels` of them,
-  // each put in the first of a few spots round its dot that's clear of other labels and dots
-  drawAirportDots(dots, labels) {
+  // the dots from layoutDots, then labels, each put in the first of a few spots round its dot that's clear of other labels
+  // and dots. Three levels: every dot faded; `focus.related` (the ends of a hovered route, or a hovered airport's
+  // destinations) in the full dot colour; `focus.code` (the hovered airport) in the text colour. Focused dots are drawn
+  // last, on top, and labelled first, then the rest biggest first up to `labels` in all; while anything is focused the
+  // other labels fade too.
+  drawAirportDots(dots, labels, focus = {}) {
     const { ctx, theme: t } = this;
     const placed = [];
-    const order = dots.filter((d) => d.screen).sort((a, b) => b.value - a.value);
+    const related = focus.related || new Set();
+    const level = (d) => (d.code === focus.code ? 2 : related.has(d.code) ? 1 : 0);
+    const focused = Boolean(focus.code) || related.size > 0;
+    const bySize = dots.filter((d) => d.screen).sort((a, b) => b.value - a.value);
+    const order = [...bySize].sort((a, b) => level(a) - level(b)); // stable: biggest first within each level
     for (const d of order) {
+      const lv = level(d);
       ctx.beginPath();
-      ctx.arc(d.screen[0], d.screen[1], d.r, 0, Math.PI * 2);
-      ctx.fillStyle = t.dot;
+      ctx.arc(d.screen[0], d.screen[1], d.r + (lv === 2 ? 1.5 : 0), 0, Math.PI * 2);
+      ctx.globalAlpha = lv ? 1 : focused ? 0.35 : 0.55;
+      ctx.fillStyle = lv === 2 ? t.ui.fg : t.dot;
       ctx.fill();
-      ctx.lineWidth = 1;
+      ctx.lineWidth = lv === 2 ? 2 : 1;
       ctx.strokeStyle = t.bg;
       ctx.stroke();
     }
+    ctx.globalAlpha = 1;
     ctx.font = '600 11px -apple-system, system-ui, sans-serif';
     ctx.textBaseline = 'middle';
     const hitsDot = (b) => order.some((d) => {
@@ -326,8 +336,11 @@ export class NetworkRenderer {
       return Math.hypot(cx - d.screen[0], cy - d.screen[1]) < d.r + 1;
     });
     const hitsLabel = (b) => placed.some((o) => b[0] < o[2] + 3 && b[2] + 3 > o[0] && b[1] < o[3] && b[3] > o[1]);
-    for (const d of order.slice(0, labels)) {
-      const w = ctx.measureText(d.code).width, h = 11, g = d.r + 3;
+    const toLabel = [...bySize].sort((a, b) => level(b) - level(a));
+    for (const d of toLabel.slice(0, Math.max(labels, toLabel.filter((x) => level(x)).length))) {
+      const lv = level(d);
+      ctx.globalAlpha = lv || !focused ? 1 : 0.4;
+      const w = ctx.measureText(d.code).width, h = 11, g = d.r + 3 + (lv === 2 ? 1.5 : 0);
       const [x, y] = d.screen;
       const spots = [[x + g, y - h / 2], [x - g - w, y - h / 2], [x - w / 2, y - g - h], [x - w / 2, y + g],
         [x + g * 0.7, y - g * 0.7 - h], [x - g * 0.7 - w, y - g * 0.7 - h], [x + g * 0.7, y + g * 0.7], [x - g * 0.7 - w, y + g * 0.7]];
@@ -344,6 +357,7 @@ export class NetworkRenderer {
         break;
       }
     }
+    ctx.globalAlpha = 1;
     ctx.textBaseline = 'alphabetic';
   }
 
