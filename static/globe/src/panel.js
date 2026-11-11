@@ -11,5 +11,7 @@ export function routeFigures(r, dir = '') {
     count('Seats', r.seats, 'seats'),
     count('Passengers', r.passengers, 'passengers'),
     { label: 'Freight', shown: formatTons(r.freight), title: unitless(`${exactCount(r.freight)} lb`) },
+    // where the rows carry it (an airport's map): the airports' great-circle distance, which is exact, so not rounded
+    ...(r.distance ? [{ label: 'Distance', shown: `${exactCount(r.distance)} miles`, title: 'Great-circle distance between the airports' }] : []),
   ];
 }

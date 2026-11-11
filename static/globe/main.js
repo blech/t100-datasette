@@ -143,7 +143,9 @@ function showPanel(r) {
   const status = r.status === 'between' ? `added then dropped, figures for ${figuresYear}` : r.status;
   sub.textContent = `${r.destCity || ''} (${r.service}${status ? `, ${status}` : ''})`;
   const dl = document.createElement('dl');
-  for (const f of routeFigures(r, state.dir)) {
+  // the month rows have no distance; the pair's yearly rows do
+  const distance = r.distance ?? yearRaw.find((y) => y.dest === r.dest)?.distance;
+  for (const f of routeFigures({ ...r, distance }, state.dir)) {
     const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
     dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
