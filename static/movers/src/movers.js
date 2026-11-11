@@ -2,9 +2,12 @@
 // median airport's line. Rows are airport_movers and airport_movers_series (datasette.yml). The page's design:
 // docs/superpowers/specs/2026-11-11-airport-movers-design.md
 
-// a log axis has no zero: an airport with nothing left sits at the bottom of the chart instead
-export const FLOOR = 0.01;
+// a log axis has no zero, and an airport that lost nearly everything would stretch the chart to fit it: growth against the
+// median is drawn no lower than ×0.05, and an index (first year = 100) no lower than 5, so those airports sit on the bottom edge
+export const FLOOR = 0.05;
+export const INDEX_FLOOR = 5;
 export const clampRatio = (v) => Math.max(Number(v), FLOOR);
+export const clampIndex = (v) => Math.max(Number(v), INDEX_FLOOR);
 
 // The `n` furthest above the median and the `n` furthest below it (by how many times faster or slower, so a half and a double
 // are as far from it), each beyond it, furthest first. Rows with no comparison (a median of 0) have none.

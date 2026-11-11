@@ -4,7 +4,7 @@ import { palette, isDark } from '/static/common/palette.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { formatCount, formatMultiple as multiple, exactCount, millionsAxis } from '/static/common/numbers.js';
-import { clampRatio, extremes, indexSeries, medianIndex } from '/static/movers/src/movers.js';
+import { clampRatio, clampIndex, INDEX_FLOOR, extremes, indexSeries, medianIndex } from '/static/movers/src/movers.js';
 
 const $ = (id) => document.getElementById(id);
 const page = $('movers');
@@ -80,8 +80,8 @@ function drawLines() {
   box.replaceChildren();
   const { risers, fallers } = extremes(movers, LABELLED);
   const group = new Map([...risers.map((r) => [r.airport, FASTER]), ...fallers.map((r) => [r.airport, SLOWER])]);
-  const lines = indexSeries(series, first, new Set(group.keys())).map((p) => ({ ...p, series: p.airport, group: group.get(p.airport) }));
-  const median = medianIndex(series, first).map((p) => ({ ...p, series: MEDIAN, group: MEDIAN }));
+  const lines = indexSeries(series, first, new Set(group.keys())).map((p) => ({ ...p, index: clampIndex(p.index), series: p.airport, group: group.get(p.airport) }));
+  const median = medianIndex(series, first).map((p) => ({ ...p, index: clampIndex(p.index), series: MEDIAN, group: MEDIAN }));
   if (!lines.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const tone = colours();
   const all = [...lines, ...median];
@@ -97,7 +97,7 @@ function drawLines() {
     marginRight: 64,
     style: { background: 'transparent', fontSize: '12px' },
     x: { label: null, tickFormat: 'd' },
-    y: { type: 'log', grid: true, label: `Passengers (${first} = 100)`, tickFormat: exactCount },
+    y: { type: 'log', grid: true, label: `Passengers (${first} = 100)`, tickFormat: exactCount, domain: [INDEX_FLOOR, Math.max(...all.map((p) => p.index)) * 1.1] },
     color: { domain: [FASTER, SLOWER, MEDIAN], range: [tone[FASTER], tone[SLOWER], tone[MEDIAN]], legend: true },
     marks: [
       Plot.ruleY([100], { strokeOpacity: 0.4 }),

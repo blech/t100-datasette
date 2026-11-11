@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampRatio, extremes, indexSeries, medianIndex, FLOOR } from '../src/movers.js';
+import { clampRatio, clampIndex, extremes, indexSeries, medianIndex, FLOOR, INDEX_FLOOR } from '../src/movers.js';
+
+test('an index that has all but gone is drawn at the floor of the lines chart', () => {
+  assert.equal(clampIndex(0.1), INDEX_FLOOR);
+  assert.equal(clampIndex(40), 40);
+});
 
 test('a ratio of nothing is put at the floor of a log axis', () => {
   assert.equal(clampRatio(0), FLOOR);
