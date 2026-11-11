@@ -1,0 +1,8 @@
+{# The header's section links and search icon, shared by _nav.html (the site's pages) and _data_header.html (Datasette's own), so what is added to one is in both.
+   `nav_section` marks the current section; Datasette's pages have none. #}
+<nav class="sections" aria-label="Sections"><ul>
+    {%- for key, label in [("airports", "Airports"), ("aircraft", "Aircraft"), ("airlines", "Airlines"), ("about", "About")] %}
+    {% if key == nav_section %}<li><strong aria-current="{{ 'page' if request.path.rstrip('/') == '/' ~ key else 'true' }}">{{ label }}</strong></li>{% else %}<li><a href="/{{ key }}">{{ label }}</a></li>{% endif %}
+    {%- endfor %}
+    <li><a href="#search" id="search-open" class="search-open" role="button" aria-label="Search" aria-haspopup="dialog" aria-expanded="false" title="Search (press /)"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12.7 12.7 18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a></li>
+  </ul></nav>

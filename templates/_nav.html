@@ -4,11 +4,7 @@
     {% if c.href %}<li><a href="{{ c.href }}">{{ c.label }}</a></li>{% else %}<li aria-current="page">{{ c.label }}</li>{% endif %}
     {%- endfor %}
   </ol></nav>
-  <nav class="sections" aria-label="Sections"><ul>
-    {%- for key, label in [("airports", "Airports"), ("aircraft", "Aircraft"), ("airlines", "Airlines"), ("about", "About")] %}
-    {% if key == nav_section %}<li><strong aria-current="{{ 'page' if request.path.rstrip('/') == '/' ~ key else 'true' }}">{{ label }}</strong></li>{% else %}<li><a href="/{{ key }}">{{ label }}</a></li>{% endif %}
-    {%- endfor %}
-  </ul></nav>
+  {% include "_sections.html" %}
 </div>
 {% from "_views.html" import views_line %}
 <nav class="views" aria-label="Views">

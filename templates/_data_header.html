@@ -1,4 +1,4 @@
-{# The site's header on Datasette's own pages: the markup of _nav.html, built from Datasette's own breadcrumb items (the site's `crumbs`
+{# The site's header on Datasette's own pages: the markup of _nav.html (its section links are the shared _sections.html), built from Datasette's own breadcrumb items (the site's `crumbs`
    name is taken there by Datasette's macros). Datasette's "home" becomes the site name, the t100 database "data". #}
 {% set items = crumb_items(request=request, database=database, table=table) if crumb_items is defined else [] %}
 <div class="site-header">
@@ -9,11 +9,7 @@
     {% if not loop.last %}<li><a href="{{ c.href }}">{{ label }}</a></li>{% elif loop.index == 2 and database %}<li><a href="{{ c.href }}" aria-current="page">{{ label }}</a></li>{% else %}<li aria-current="page">{{ label }}</li>{% endif %}
     {%- endfor %}
   </ol></nav>
-  <nav class="sections" aria-label="Sections"><ul>
-    {%- for key, label in [("airports", "Airports"), ("aircraft", "Aircraft"), ("airlines", "Airlines"), ("about", "About")] %}
-    <li><a href="/{{ key }}">{{ label }}</a></li>
-    {%- endfor %}
-  </ul></nav>
+  {% include "_sections.html" %}
 </div>
 {# the views line is empty here (a space keeps its height): it draws the header's rule and keeps the spacing of the site's pages #}
 <nav class="views" aria-label="Views">&nbsp;</nav>

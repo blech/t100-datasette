@@ -756,6 +756,37 @@ databases:
           GROUP BY y.airport
           ORDER BY deps DESC
 
+      # the header search: up to three typed words (t1, t2, t3, any left empty), each of which must start a word of the thing's terms;
+      # at most 6 airports, 6 airlines and 6 aircraft, an exact code first, then a label that starts with the first word, then the busiest;
+      # the kind with the best match leads, so the first row is the best match overall (airports, airlines, aircraft when kinds tie)
+      search:
+        title: "Search for an airport, airline or aircraft"
+        description: "Up to six airports, six airlines and six aircraft (families included) each, for up to three words (t1, t2, t3) that each start a word of its code, name, city or country. An exact code comes first, then a name starting with the first word, then the busiest."
+        sql: |
+          WITH q AS (
+            SELECT lower(trim(COALESCE(:t1, ''))) AS t1, lower(trim(COALESCE(:t2, ''))) AS t2, lower(trim(COALESCE(:t3, ''))) AS t3
+          ), e AS (
+            SELECT t1, t2, t3,
+              replace(replace(replace(t1, '\', '\\'), '%', '\%'), '_', '\_') AS e1,
+              replace(replace(replace(t2, '\', '\\'), '%', '\%'), '_', '\_') AS e2,
+              replace(replace(replace(t3, '\', '\\'), '%', '\%'), '_', '\_') AS e3
+            FROM q
+          ), hits AS (
+            SELECT s.kind, s.href, s.label, s.hint, s.rank,
+              CASE WHEN s.code <> '' AND lower(s.code) = e.t1 THEN 0
+                   WHEN lower(s.label) LIKE e.e1 || '%' ESCAPE '\' THEN 1 ELSE 2 END AS score
+            FROM search_index s, e
+            WHERE e.t1 <> ''
+              AND ' ' || s.terms LIKE '% ' || e.e1 || '%' ESCAPE '\'
+              AND (e.t2 = '' OR ' ' || s.terms LIKE '% ' || e.e2 || '%' ESCAPE '\')
+              AND (e.t3 = '' OR ' ' || s.terms LIKE '% ' || e.e3 || '%' ESCAPE '\')
+          ), ranked AS (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY kind ORDER BY score, rank DESC, label) AS n,
+              MIN(score) OVER (PARTITION BY kind) AS best FROM hits
+          )
+          SELECT kind, href, label, hint FROM ranked WHERE n <= 6
+          ORDER BY best, CASE kind WHEN 'airport' THEN 0 WHEN 'airline' THEN 1 ELSE 2 END, score, rank DESC, label
+
       # what the aircraft search offers: every aircraft flown, with its family, named as the aircraft pages name them, busiest first
       aircraft_list:
         title: "Every aircraft flown, with its family, busiest first"

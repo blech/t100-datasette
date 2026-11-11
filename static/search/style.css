@@ -1,0 +1,109 @@
+/* the header's search button and its panel */
+.search-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  color: var(--muted);
+  vertical-align: middle;
+}
+.sections .search-open:hover,
+.sections .search-open:focus-visible {
+  color: var(--fg);
+  text-decoration: none;
+}
+.search-dialog {
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 24px));
+  margin: 10vh auto 0;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.sections .search-open[aria-expanded="true"] {
+  color: var(--fg);
+}
+.search-dialog::backdrop {
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+}
+/* a wide window: the panel hangs from the icon like a menu, over a page left undimmed */
+@media (min-width: 601px) {
+  .search-dialog {
+    position: fixed;
+    inset: var(--search-top, 60px) var(--search-right, 12px) auto auto;
+    margin: 0;
+  }
+  .search-dialog::backdrop {
+    background: transparent;
+  }
+}
+.search-dialog input {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  font-size: 16px;
+  padding: 6px 8px;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.search-status {
+  margin: 0;
+  color: var(--muted);
+  /* spoken (it is a live region) but not shown: the list itself says how many */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.search-status.shown {
+  margin: 6px 0 0;
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+}
+.search-results {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.search-results h2 {
+  margin: 10px 0 2px;
+  font-size: 12px;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.search-results ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.search-results a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  color: var(--fg);
+  text-decoration: none;
+}
+.search-results a.selected,
+.search-results a:hover {
+  background: var(--panel);
+  outline: 1px solid var(--line);
+}
+.search-label {
+  font-weight: 600;
+}
+.search-hint {
+  color: var(--muted);
+}
