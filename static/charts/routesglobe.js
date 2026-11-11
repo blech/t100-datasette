@@ -1,5 +1,5 @@
 // SPIKE: a year's busiest airport pairs on the globe, or on a flat or azimuthal map (/airports/globe/routes).
-// Everything is in the URL: year, n, service, proj (globe, flat, equirect, kansas, pole), arcs=bowed, sea=plain, theme.
+// Everything is in the URL: year, n, service, proj (globe, flat for Equal Earth, azimuthal centred on Kansas), arcs=bowed, sea=plain, theme.
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
@@ -24,9 +24,7 @@ const NS = ['50', '100', '150', '250', '500'];
 const PROJS = {
   globe: { mode: 'globe', rot: [96, -38] },
   flat: { mode: 'flat', rot: [100, 0] },
-  equirect: { mode: 'equirect', rot: [100, 0] },
-  kansas: { mode: 'azimuthal', rot: [98, -39] },
-  pole: { mode: 'azimuthal', rot: [100, -90] },
+  azimuthal: { mode: 'azimuthal', rot: [98, -39] },
 };
 const pick = (v, ok, fallback) => (ok.includes(v) ? v : fallback);
 const state = {
@@ -259,7 +257,7 @@ function stepYear(by) {
   load();
 }
 
-// ← → step through the years, space plays, F toggles full screen, 1–5 pick the map type; typing in a menu or box is left alone
+// ← → step through the years, space plays, F toggles full screen, 1–3 pick the map type; typing in a menu or box is left alone
 function bindKeys() {
   const projKeys = Object.keys(PROJS);
   document.addEventListener('keydown', (e) => {
@@ -268,7 +266,7 @@ function bindKeys() {
     else if (e.key === ' ') { e.preventDefault(); togglePlay(); }
     else if (e.key === 'f' || e.key === 'F') toggleFullscreen();
     else if (e.key === 'Escape' && document.documentElement.classList.contains('presenting')) setPresenting(false);
-    else if (/^[1-5]$/.test(e.key)) { const p = projKeys[Number(e.key) - 1]; $('proj').value = p; setProj(p); pushState(); }
+    else if (/^[1-3]$/.test(e.key)) { const p = projKeys[Number(e.key) - 1]; $('proj').value = p; setProj(p); pushState(); }
   });
 }
 

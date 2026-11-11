@@ -9,7 +9,6 @@ const ARC_SAMPLES = 24;
 const MODES = {
   globe: { make: (d3) => d3.geoOrthographic().clipAngle(90), rotates: true, clip: 90 },
   flat: { make: (d3) => d3.geoEqualEarth(), rotates: false },
-  equirect: { make: (d3) => d3.geoEquirectangular(), rotates: false },
   azimuthal: { make: (d3) => d3.geoAzimuthalEquidistant().clipAngle(150), rotates: true, clip: 150 },
 };
 export const MAP_MODES = Object.keys(MODES);
