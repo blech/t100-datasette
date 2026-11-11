@@ -128,3 +128,10 @@ def test_the_charts_have_somewhere_to_go_and_say_how_the_numbers_are_counted(ds,
 def test_the_stylesheet_is_linked(ds):
     assert '<link rel="stylesheet" href="/static/movers/style.css">' in page(ds)
     assert (ROOT / "static/movers/style.css").exists()
+
+
+@pytest.mark.parametrize("value, written", [(4.8366, "×4.84"), (4, "×4"), (1 / 3, "×0.333"), (0, "×0"), (0.001, "×0.001"), (0.000075, "<×0.001"),
+                                            (1234.5, "×1,234"), (None, "–")])
+def test_a_multiple_has_three_significant_figures_and_never_an_exponent(value, written):
+    from plugins.t100_globe import multiple
+    assert multiple(value) == written

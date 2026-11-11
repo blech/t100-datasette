@@ -1,6 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampRatio, clampIndex, extremes, indexSeries, medianIndex, FLOOR, INDEX_FLOOR } from '../src/movers.js';
+import { clampRatio, clampIndex, extremes, indexSeries, medianIndex, lineLabel, spreadLabels, FLOOR, INDEX_FLOOR } from '../src/movers.js';
+
+test('a line is named by its code and the name of its city', () => {
+  assert.equal(lineLabel('TTN', 'Trenton, NJ'), 'TTN Trenton');
+  assert.equal(lineLabel('SRQ', 'Sarasota/Bradenton, FL'), 'SRQ Sarasota/Braden…');
+  assert.equal(lineLabel('XYZ', null), 'XYZ');
+  assert.equal(lineLabel('XYZ', ''), 'XYZ');
+});
+
+test('labels far enough apart stay where they are', () => {
+  assert.deepEqual(spreadLabels([100, 200], 14, 0, 500), [100, 200]);
+});
+
+test('labels too close are moved apart about the middle of where they wanted to be', () => {
+  assert.deepEqual(spreadLabels([100, 104], 14, 0, 500), [95, 109]);
+  assert.deepEqual(spreadLabels([100, 110, 120], 14, 0, 500), [96, 110, 124]);
+});
+
+test('the positions come back in the order given', () => {
+  assert.deepEqual(spreadLabels([104, 100], 14, 0, 500), [109, 95]);
+});
+
+test('labels stay inside the chart, pushing their neighbours', () => {
+  assert.deepEqual(spreadLabels([5, 6], 14, 0, 500), [0, 14]);
+  assert.deepEqual(spreadLabels([495, 496], 14, 0, 500), [486, 500]);
+  assert.deepEqual(spreadLabels([490, 497, 498], 14, 0, 500), [472, 486, 500]);
+});
+
+test('no labels is no positions', () => {
+  assert.deepEqual(spreadLabels([], 14, 0, 500), []);
+});
 
 test('an index that has all but gone is drawn at the floor of the lines chart', () => {
   assert.equal(clampIndex(0.1), INDEX_FLOOR);

@@ -68,6 +68,8 @@ test('a multiple has three significant figures and a thousands separator from a 
   assert.equal(formatMultiple(4), '×4');
   assert.equal(formatMultiple(1234.5), '×1,235');
   assert.equal(formatMultiple(0), '×0');
+  assert.equal(formatMultiple(0.0000750), '<×0.001');
+  assert.equal(formatMultiple(0.001), '×0.001');
   assert.equal(formatMultiple(null), '–');
   assert.equal(formatMultiple(undefined), '–');
 });

@@ -18,6 +18,40 @@ export function extremes(rows, n = 5) {
   return { risers, fallers };
 }
 
+// "TTN Trenton": an airport's code and its city's name (not the state), shortened, for the end of a line and the popover
+export function lineLabel(airport, city, longest = 16) {
+  const name = (city || '').split(',')[0].trim();
+  if (!name) return airport;
+  return `${airport} ${name.length > longest ? `${name.slice(0, longest - 1).trimEnd()}…` : name}`;
+}
+
+// Labels at the ends of lines, which often sit close together: positions (pixels down the chart, in the order given) moved
+// the least that keeps every pair `gap` apart, each cluster of neighbours centred where its labels wanted to be, and all of
+// them within `top` to `bottom`. Returns the new positions in the order given.
+export function spreadLabels(positions, gap, top, bottom) {
+  const order = positions.map((y, i) => i).sort((a, b) => positions[a] - positions[b]);
+  const clusters = [];
+  for (const i of order) {
+    clusters.push({ items: [i], start: positions[i] });
+    // a cluster of n labels starts at the mean of where each would start if all were stacked at the gap
+    while (clusters.length > 1) {
+      const [a, b] = clusters.slice(-2);
+      if (a.start + a.items.length * gap <= b.start) break;
+      const items = [...a.items, ...b.items];
+      clusters.splice(-2, 2, { items, start: items.reduce((s, j, k) => s + positions[j] - k * gap, 0) / items.length });
+    }
+  }
+  const result = [];
+  let floor = top;
+  for (const [n, c] of clusters.entries()) {
+    const left = clusters.slice(n).reduce((s, d) => s + d.items.length, 0); // labels still to place, this cluster's included
+    const start = Math.max(floor, Math.min(c.start, bottom - (left - 1) * gap));
+    c.items.forEach((j, k) => { result[j] = start + k * gap; });
+    floor = start + c.items.length * gap;
+  }
+  return result;
+}
+
 // series rows (airport, year, pax) -> one point per airport and year, passengers as a percentage of the airport's first year
 // in the range (so every line starts at 100); airports without a first-year figure have no line
 export function indexSeries(series, firstYear, codes = null) {

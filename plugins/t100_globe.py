@@ -425,9 +425,11 @@ MOVERS_LISTED = 10
 
 
 def multiple(v):
-    """A ratio as the tables print it: ×4.84, ×0.333, ×1,200 (three significant figures)."""
+    """A ratio as the tables print it: ×4.84, ×0.333, ×1,200 (three significant figures), and <×0.001 for anything smaller."""
     if v is None or v != v:
         return "–"
+    if 0 < v < 0.001:
+        return "<×0.001"
     return f"×{v:,.0f}" if v >= 1000 else f"×{v:.3g}"
 
 

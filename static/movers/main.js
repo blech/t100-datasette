@@ -4,7 +4,7 @@ import { palette, isDark } from '/static/common/palette.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { formatCount, formatMultiple as multiple, exactCount, millionsAxis } from '/static/common/numbers.js';
-import { clampRatio, clampIndex, INDEX_FLOOR, extremes, indexSeries, medianIndex } from '/static/movers/src/movers.js';
+import { clampRatio, clampIndex, INDEX_FLOOR, extremes, indexSeries, medianIndex, lineLabel, spreadLabels } from '/static/movers/src/movers.js';
 
 const $ = (id) => document.getElementById(id);
 const page = $('movers');
@@ -80,30 +80,50 @@ function drawLines() {
   box.replaceChildren();
   const { risers, fallers } = extremes(movers, LABELLED);
   const group = new Map([...risers.map((r) => [r.airport, FASTER]), ...fallers.map((r) => [r.airport, SLOWER])]);
-  const lines = indexSeries(series, first, new Set(group.keys())).map((p) => ({ ...p, index: clampIndex(p.index), series: p.airport, group: group.get(p.airport) }));
+  // a line is named by its code and its city ("TTN Trenton"), in the chart and in the popover
+  const name = new Map(movers.map((r) => [r.airport, lineLabel(r.airport, r.city)]));
+  const lines = indexSeries(series, first, new Set(group.keys())).map((p) => ({ ...p, index: clampIndex(p.index), series: name.get(p.airport) ?? p.airport, group: group.get(p.airport) }));
   const median = medianIndex(series, first).map((p) => ({ ...p, index: clampIndex(p.index), series: MEDIAN, group: MEDIAN }));
   if (!lines.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const tone = colours();
   const all = [...lines, ...median];
-  // the last point of each line, where its name goes (points are in year order within a series)
-  const ends = [...new Map(all.map((p) => [p.series, p])).values()];
   const tips = periodRows(all, {
     key: (p) => p.year, value: (p) => p.index, format: (v) => String(Math.round(v)),
   });
+
+  // The axis spans the lines drawn (to the floor at the lowest), not the whole range an index could have
+  const HEIGHT = 460, TOP = 16, BOTTOM = 30, LEFT = 56, RIGHT = 150, GAP = 14, LEAD = 14;
+  const values = all.map((p) => p.index);
+  const lo = Math.max(INDEX_FLOOR, Math.min(...values) / 1.1);
+  const hi = Math.max(...values) * 1.1;
+  const w = width(box);
+  // Names at the line ends, moved apart where lines finish close together, each joined to its line by a short leader. The
+  // log axis is mapped by hand (its margins and domain are fixed above) so the labels can be spread in pixels.
+  const toPixel = (v) => TOP + ((Math.log(hi) - Math.log(v)) / (Math.log(hi) - Math.log(lo))) * (HEIGHT - TOP - BOTTOM);
+  const fromPixel = (px) => Math.exp(Math.log(hi) - ((px - TOP) / (HEIGHT - TOP - BOTTOM)) * (Math.log(hi) - Math.log(lo)));
+  const years = last - first;
+  const perYear = (w - LEFT - RIGHT) / years; // pixels in a year along the x axis
+  const ends = [...new Map(all.map((p) => [p.series, p])).values()];
+  const spread = spreadLabels(ends.map((d) => toPixel(d.index)), GAP, TOP + 6, HEIGHT - BOTTOM - 6);
+  ends.forEach((d, i) => { d.labelY = fromPixel(spread[i]); d.labelX = d.year + LEAD / perYear; });
   const chart = Plot.plot({
-    width: width(box),
-    height: 460,
-    marginLeft: 56,
-    marginRight: 64,
+    width: w,
+    height: HEIGHT,
+    marginTop: TOP,
+    marginBottom: BOTTOM,
+    marginLeft: LEFT,
+    marginRight: RIGHT,
     style: { background: 'transparent', fontSize: '12px' },
-    x: { label: null, tickFormat: 'd' },
-    y: { type: 'log', grid: true, label: `Passengers (${first} = 100)`, tickFormat: exactCount, domain: [INDEX_FLOOR, Math.max(...all.map((p) => p.index)) * 1.1] },
+    // a short range gets a tick for every year (left to itself Plot puts them at half years, which all print as whole ones)
+    x: { label: null, tickFormat: 'd', domain: [first, last], ticks: years <= 10 ? Array.from({ length: years + 1 }, (_, i) => first + i) : undefined },
+    y: { type: 'log', grid: true, label: `Passengers (${first} = 100)`, tickFormat: exactCount, domain: [lo, hi] },
     color: { domain: [FASTER, SLOWER, MEDIAN], range: [tone[FASTER], tone[SLOWER], tone[MEDIAN]], legend: true },
     marks: [
       Plot.ruleY([100], { strokeOpacity: 0.4 }),
       Plot.line(lines, { x: 'year', y: 'index', z: 'series', stroke: 'group', strokeWidth: 1.6, strokeOpacity: 0.9 }),
       Plot.line(median, { x: 'year', y: 'index', stroke: 'group', strokeWidth: 3.5 }),
-      Plot.text(ends, { x: 'year', y: 'index', text: (d) => (d.series === MEDIAN ? 'Median' : d.series), fill: 'group', dx: 6, textAnchor: 'start', fontWeight: 600 }),
+      Plot.link(ends, { x1: 'year', y1: 'index', x2: 'labelX', y2: 'labelY', stroke: 'group', strokeOpacity: 0.6 }),
+      Plot.text(ends, { x: 'labelX', y: 'labelY', text: (d) => (d.series === MEDIAN ? 'Median' : d.series), fill: 'group', dx: 3, textAnchor: 'start', fontWeight: 600 }),
       Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0.3 })),
     ],
   });
