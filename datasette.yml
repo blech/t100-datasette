@@ -184,13 +184,15 @@ databases:
       # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
       busiest_airports:
         sql: |
-          -- passengers boarding or leaving there: both directions
-          SELECT airport, city_name AS city, passengers_out + passengers_in AS passengers
-          FROM airport_dir_year
-          WHERE year = CAST(:year AS integer)
-            AND wac BETWEEN 1 AND 93
-            AND passengers_out + passengers_in > 0
-          ORDER BY passengers DESC, airport
+          -- passengers boarding or leaving there: both directions; market_id is the BTS city market, which the front page map
+          -- adds up when it shows cities (the airports are the top 100, so a market is the part of it among them)
+          SELECT d.airport, d.city_name AS city, d.passengers_out + d.passengers_in AS passengers, m.market_id
+          FROM airport_dir_year AS d
+          LEFT JOIN airport_market AS m ON m.code = d.airport
+          WHERE d.year = CAST(:year AS integer)
+            AND d.wac BETWEEN 1 AND 93
+            AND d.passengers_out + d.passengers_in > 0
+          ORDER BY passengers DESC, d.airport
           LIMIT 100
 
       # the network globe's list and dots: US airports by passengers boarding or leaving there, over all years

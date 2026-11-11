@@ -24,6 +24,13 @@ def test_busiest_airports_are_us_only_and_ordered_by_passengers(ds, db_path):
     assert rows[0]["city"] == "Atlanta, GA"
 
 
+def test_busiest_airports_carry_their_city_market(ds, db_path):
+    put_airport_years(db_path, [apt(2025, "JFK", "New York, NY", 22, 300), apt(2025, "LGA", "New York, NY", 22, 200)])
+    put(db_path, "airport_market", [dict(code="JFK", market_id="31703"), dict(code="LGA", market_id="31703")])
+    rows = get_json(ds, "/t100/busiest_airports.json?_shape=objects&year=2025")["rows"]
+    assert [(r["airport"], r["market_id"]) for r in rows] == [("JFK", "31703"), ("LGA", "31703")]
+
+
 def test_carrier_concentration_sums_each_airline_and_ranks_ties_by_id(ds, db_path):
     # five airlines; A is split across domestic and international and must be summed first
     put(db_path, "carrier_group_year", [

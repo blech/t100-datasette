@@ -8,6 +8,39 @@
   padding-top: 0;
   margin: 8px 0 0;
 }
+/* two squares in the map's dot colour, like the airlines chart's key: the one chosen is solid, the other faded */
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 1.5em;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.map-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.map-controls button[aria-checked="false"] {
+  opacity: 0.45;
+}
+.map-controls button:hover,
+.map-controls button:focus-visible {
+  opacity: 1;
+}
+.key-square {
+  width: 15px;
+  height: 15px;
+  background: var(--dot, currentColor);
+  opacity: 0.75;
+}
 /* each graphic leaves room on screen for the next section to show */
 .graphic {
   position: relative;

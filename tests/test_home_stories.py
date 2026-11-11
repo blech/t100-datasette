@@ -9,6 +9,16 @@ def test_airport_story_names_the_top_three():
     assert story["airports"][0] == {"code": "ATL", "city": "ATL city", "passengers": "51.5 million"}
 
 
+def test_airport_story_adds_cities_up_by_market_and_ranks_them():
+    rows = [dict(airport=c, city=city, passengers=p, market_id=m) for c, city, p, m in [
+        ("JFK", "New York, NY", 300, "1"), ("ATL", "Atlanta, GA", 250, "2"), ("LGA", "New York, NY", 100, "1"), ("XXX", "Nowhere, TX", 50, None)]]
+    story = airport_story(rows)
+    assert [a["code"] for a in story["airports"]] == ["JFK", "ATL", "LGA"]
+    assert story["cities"] == [{"code": "JFK", "city": "New York, NY", "passengers": "400"},
+                               {"code": "ATL", "city": "Atlanta, GA", "passengers": "250"},
+                               {"code": "XXX", "city": "Nowhere, TX", "passengers": "50"}]
+
+
 def eng(year, group, band, deps, kind="passenger"):
     return dict(year=year, aircraft_group=group, distance_band=band, service="international", kind=kind, deps=deps)
 

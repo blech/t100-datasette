@@ -29,7 +29,7 @@ export function placePoints(rows, airports) {
   for (const r of rows) {
     const a = airports.get(r.airport);
     if (!a) continue;
-    pts.push({ code: r.airport, city: r.city, pos: [a.lon, a.lat], passengers: r.passengers });
+    pts.push({ code: r.airport, city: r.city, pos: [a.lon, a.lat], passengers: r.passengers, marketId: r.market_id || null });
   }
   return pts;
 }

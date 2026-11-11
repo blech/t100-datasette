@@ -21,10 +21,16 @@
 
     <section class="section" aria-labelledby="airports-heading">
       <h2 id="airports-heading"><a href="/airports">Airports</a></h2>
-      {% if airports %}{% set a = airports.airports %}
-      <p class="story">The busiest airport in {{ max_year }} was {{ a[0].city }} ({{ a[0].code }}), where {{ a[0].passengers }} passengers boarded or left,
-        ahead of {{ a[1].city }} ({{ a[1].code }}) and {{ a[2].city }} ({{ a[2].code }}).</p>
+      {% if busiest %}{% set airports = busiest.airports %}{% set cities = busiest.cities %}
+      <p class="story">The busiest airport for passengers in {{ max_year }} was {{ airports[0].city }} ({{ airports[0].code }}), where {{ airports[0].passengers }} passengers boarded or left,
+        ahead of {{ airports[1].city }} ({{ airports[1].code }}) and {{ airports[2].city }} ({{ airports[2].code }}). For cities overall, though, the busiest was {{ cities[0].city }} with
+        {{ cities[0].passengers }} passengers, followed by {{ cities[1].city }} and {{ cities[2].city }}.</p>
       {% endif %}
+      <div class="map-controls" role="radiogroup" aria-label="Group the 50 busiest by passengers">
+        <span>50 busiest</span>
+        <button type="button" role="radio" aria-checked="{{ 'false' if group == 'city' else 'true' }}" data-group="airport"><span class="key-square"></span>Airports</button>
+        <button type="button" role="radio" aria-checked="{{ 'true' if group == 'city' else 'false' }}" data-group="city"><span class="key-square"></span>Cities</button>
+      </div>
       <div class="graphic map-box" id="map-box">
         <canvas id="usa-map" aria-label="Map of the busiest US airports in {{ max_year }}"></canvas>
         <div id="map-tip" class="map-tip popover text" hidden></div>
@@ -57,7 +63,7 @@
     </section>
 
     <p class="note">
-      Map: the 100 busiest US airports by passengers in {{ max_year }}; Guam, Saipan and American Samoa are not shown.
+      Map: the 50 busiest US <span id="map-note-what">airports</span> by passengers in {{ max_year }}; Guam, Saipan and American Samoa are not shown.
       Long haul means flights of 3,000 miles or more, counted by departures.
       T-100 counts the airline that operates each flight. Regional airlines such as SkyWest fly many flights sold under the big brands' names,
       so those brands' real reach is larger than the airline chart shows. <a href="/about">More about the data</a>.

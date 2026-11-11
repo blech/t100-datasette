@@ -68,7 +68,7 @@ test('placePoints turns listed airports into dots, skipping those with no coordi
   ];
   const pts = placePoints(rows, airports);
   assert.equal(pts.length, airports.has('SEL') ? 2 : 1);
-  assert.deepEqual(pts[0], { code: 'ATL', city: 'Atlanta, GA', pos: [airports.get('ATL').lon, airports.get('ATL').lat], passengers: 51 });
+  assert.deepEqual(pts[0], { code: 'ATL', city: 'Atlanta, GA', pos: [airports.get('ATL').lon, airports.get('ATL').lat], passengers: 51, marketId: null });
 });
 
 test('place falls back to city and country when the query gives none', () => {

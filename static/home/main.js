@@ -6,7 +6,7 @@ import { geoAlbersUsaTerritories } from '/static/globe/src/usamap.js';
 import * as Plot from '/static/charts/vendor/plot.js';
 import { buildEngineShares, ENGINE_SERIES } from '/static/charts/src/rollup.js';
 import { palette, isDark } from '/static/common/palette.js';
-import { placeOnMap, hitTest, drawMap } from './src/map.js';
+import { placeOnMap, hitTest, drawMap, topDots, rankPhrase, dotColour } from './src/map.js';
 import { airlineLines, passengerBands, OTHER_AIRLINES, airlineColours } from './src/airlines.js';
 import { periodRows, attachPopover } from '/static/common/popover.js';
 import { attachHighlight } from '/static/common/highlight.js';
@@ -44,7 +44,10 @@ async function showMap() {
   const [outline, airportRes, busyRes] = await Promise.all([
     loadOutline(), fetchRows(queryUrl('airports')), fetchRows(queryUrl('busiest_airports', { year: maxYear })),
   ]);
-  const points = placePoints(busyRes.rows, indexAirports(airportRes.rows));
+  const candidates = placePoints(busyRes.rows, indexAirports(airportRes.rows));
+  const keys = [...document.querySelectorAll('.map-controls button')];
+  let group = new URLSearchParams(location.search).get('group') === 'city' ? 'city' : 'airport';
+  let points = [];
   const proj = geoAlbersUsaTerritories(window.d3);
   const ctx = canvas.getContext('2d');
   const path = window.d3.geoPath(proj, ctx);
@@ -53,7 +56,33 @@ async function showMap() {
   let w = 1;
   let h = 1;
 
-  const draw = () => drawMap(ctx, { w, h, path, frames: proj.insetFrames(), ...outline, placed, theme, highlight });
+  const describe = () => {
+    const what = group === 'city' ? 'cities' : 'airports';
+    for (const k of keys) {
+      k.setAttribute('aria-checked', String(k.dataset.group === group));
+      k.firstElementChild.style.setProperty('--dot', dotColour(k.dataset.group, theme.dark));
+    }
+    canvas.setAttribute('aria-label', `Map of the ${points.length} busiest US ${what} in ${maxYear}`);
+    $('map-note-what').textContent = group === 'city' ? 'cities (BTS city markets, so New York is JFK, LaGuardia and Newark together)' : 'airports';
+  };
+  const draw = () => drawMap(ctx, { w, h, path, frames: proj.insetFrames(), ...outline, placed, theme, highlight, group });
+  function regroup() {
+    points = topDots(candidates, group);
+    describe();
+    ({ placed } = placeOnMap(points, proj));
+    highlight = -1;
+    hideTip();
+    draw();
+  }
+  for (const k of keys) {
+    k.addEventListener('click', () => {
+      group = k.dataset.group;
+      const q = new URLSearchParams(location.search);
+      if (group === 'city') q.set('group', 'city'); else q.delete('group');
+      history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}${location.hash}`);
+      regroup();
+    });
+  }
   function layout() {
     const r = canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -63,35 +92,42 @@ async function showMap() {
     canvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     proj.fitSize([w, h]);
-    ({ placed } = placeOnMap(points, proj));
-    highlight = -1;
-    draw();
+    regroup();
   }
 
   function pointAt(e) {
     const r = canvas.getBoundingClientRect();
     return hitTest(placed, e.clientX - r.left, e.clientY - r.top);
   }
+  // pointing at a dot shows its label at once and the full popover after a pause, as the browser's own hover text for an
+  // airport's code does (a delay the browser sets, so this one is ours: TIP_DELAY)
+  const TIP_DELAY = 1000;
+  let tipTimer = 0;
+  const hideTip = () => { clearTimeout(tipTimer); tip.hidden = true; };
+  const showTip = (i) => {
+    const p = placed[i];
+    // placed is busiest first, so a dot's place in it is its rank
+    const where = p.airports.length > 1 ? `${p.city} · ${p.airports.join(', ')}` : `${p.code} · ${p.city}`;
+    tip.textContent = `${where} · ${formatCount(p.passengers)} passengers · ${rankPhrase(i + 1, group)}`;
+    tip.style.left = `${Math.min(p.x + p.r + 6, w - 220)}px`;
+    tip.style.top = `${Math.max(0, p.y - 30)}px`;
+    tip.hidden = false;
+  };
   canvas.addEventListener('pointermove', (e) => {
     const i = pointAt(e);
     if (i === highlight) return;
     highlight = i;
     canvas.classList.toggle('pointing', i >= 0);
-    if (i >= 0) {
-      const p = placed[i];
-      tip.textContent = `${p.code} · ${p.city} · ${formatCount(p.passengers)} passengers`;
-      tip.style.left = `${Math.min(p.x + p.r + 6, w - 220)}px`;
-      tip.style.top = `${Math.max(0, p.y - 30)}px`;
-    }
-    tip.hidden = i < 0;
+    hideTip();
+    if (i >= 0) tipTimer = setTimeout(() => showTip(i), TIP_DELAY);
     draw();
   });
-  canvas.addEventListener('pointerleave', () => { highlight = -1; tip.hidden = true; canvas.classList.remove('pointing'); draw(); });
+  canvas.addEventListener('pointerleave', () => { highlight = -1; hideTip(); canvas.classList.remove('pointing'); draw(); });
   canvas.addEventListener('click', (e) => {
     const i = pointAt(e);
     if (i >= 0) location.href = `/airports/${encodeURIComponent(placed[i].code)}`;
   });
-  document.addEventListener('t100:theme', (e) => { theme = THEMES[e.detail.id] || theme; draw(); });
+  document.addEventListener('t100:theme', (e) => { theme = THEMES[e.detail.id] || theme; describe(); draw(); });
   new ResizeObserver(layout).observe(box);
   $('map-status').remove();
 }

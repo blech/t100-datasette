@@ -243,11 +243,22 @@ def percent(fraction, places=0):
 
 
 def airport_story(rows):
-    """busiest_airports rows (busiest first) -> the top three airports."""
+    """busiest_airports rows (busiest first) -> the top three airports, and the top three cities (BTS city markets, as the map
+    adds them up: an airport with no market is a city of its own). A city's code is its busiest airport's."""
     if len(rows) < 3:
         return None
-    return {"airports": [{"code": r["airport"], "city": r["city"], "passengers": prose_count(r["passengers"])}
-                         for r in rows[:3]]}
+    markets = {}
+    for r in rows:
+        markets.setdefault(r.get("market_id") or f"solo:{r['airport']}", []).append(r)
+    cities = []
+    for members in markets.values():
+        names = {}
+        for r in members:
+            names[r["city"]] = names.get(r["city"], 0) + r["passengers"]
+        cities.append({"code": members[0]["airport"], "city": max(names, key=names.get), "total": sum(r["passengers"] for r in members)})
+    cities.sort(key=lambda c: (-c["total"], c["code"]))
+    return {"airports": [{"code": r["airport"], "city": r["city"], "passengers": prose_count(r["passengers"])} for r in rows[:3]],
+            "cities": [{"code": c["code"], "city": c["city"], "passengers": prose_count(c["total"])} for c in cities[:3]]}
 
 
 def engine_shares(rows, year):
@@ -532,7 +543,8 @@ async def home_page(datasette, request):
             "min_year": min_year,
             "max_year": max_year,
             "crumbs": trail(datasette),
-            "airports": await story(datasette, "busiest_airports", airport_story, {"year": max_year}),
+            "busiest": await story(datasette, "busiest_airports", airport_story, {"year": max_year}),
+            "group": "city" if request.args.get("group") == "city" else "airport",  # what the map starts on
             "engines": await story(datasette, "engines_by_year", lambda rows: engine_story(rows, min_year, max_year)),
             "concentration": await story(datasette, "carrier_concentration", lambda rows: concentration_story(rows, min_year, max_year)),
             "carriers": await story(datasette, "top_carriers", carrier_shares, {"year": max_year}),
