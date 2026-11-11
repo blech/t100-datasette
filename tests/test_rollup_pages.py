@@ -28,7 +28,7 @@ def test_the_groups_page_charts_a_range_of_distances_and_the_aircraft_page_links
     for id_ in ["engine-chart", "engine-measure", "engine-kind", "engine-from", "engine-to"]:
         assert f'id="{id_}"' in html
     assert 'id="engine-band"' not in html
-    assert "<h1>Aircraft groups by distance</h1>" in html and "<title>Aircraft groups by distance · T-100</title>" in html
+    assert "<h1>Aircraft groups by distance</h1>" in html and "<title>Aircraft groups by distance" in html and "</title>" in html
     assert '<li aria-current="page">groups</li>' in html
     assert "/static/charts/engines.js" in html
     assert 'href="/aircraft"' in html

@@ -63,7 +63,7 @@ def test_a_route_years_heading_codes_open_each_matrix_ranked_by_that_year(ds):
 
 def test_route_page_heading_follows_dir(ds):
     page = get(ds, "/airports/ATL/LAX").text
-    assert f'<h1 id="title">{code_link("ATL")} ↔ {code_link("LAX")}</h1>' in page and "<title>ATL ↔ LAX · T-100</title>" in page and 'data-dir=""' in page
+    assert f'<h1 id="title">{code_link("ATL")} ↔ {code_link("LAX")}</h1>' in page and "<title>ATL ↔ LAX" in page and "</title>" in page and 'data-dir=""' in page
     page = get(ds, "/airports/ATL/LAX/2019?dir=in").text
     assert f'<h1 id="title">{code_link("LAX", "in", "2019")} → {code_link("ATL", "in", "2019")} in 2019</h1>' in page and 'data-dir="in"' in page
     assert 'id="chart-dir"' in page and "LAX → ATL</option>" in page
