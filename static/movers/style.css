@@ -9,3 +9,23 @@ td.city {
 #movers figure {
   margin: 0;
 }
+
+/* pointing at an airport (its line, its name, or its row in a table) picks it out in the lines chart and the tables: the other
+   lines fade (the .faded of static/nav/style.css), its own is drawn heavier and its name underlined, and its row is shaded */
+#movers-lines path.active {
+  stroke-width: 3.5px;
+  stroke-opacity: 1;
+}
+#movers-lines text.active {
+  text-decoration: underline;
+}
+#movers-lines .m-link .active {
+  stroke-opacity: 1;
+}
+#movers-lines .m-label text,
+#movers-lines .m-hit path {
+  cursor: pointer;
+}
+tr[data-code].current td {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}

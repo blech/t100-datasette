@@ -22,6 +22,44 @@ for (const id of ['from', 'to', 'min']) $(id)?.addEventListener('change', (e) =>
 let movers = [];
 let series = [];
 
+// The airport the pointer is on, in the lines chart (its line, its leader or its name) or in a table row: that airport's
+// elements are picked out in both and the other lines fade. `tagged` is the lines chart's elements, each with its airport.
+let active = null;
+let tagged = [];
+let linesChart = null;
+let nameOf = new Map();
+
+function applyActive() {
+  for (const el of tagged) {
+    const code = el.dataset.code;
+    el.classList.toggle('faded', active !== null && code !== active && code !== 'median');
+    el.classList.toggle('active', active !== null && code === active);
+  }
+  for (const tr of document.querySelectorAll('tr[data-code]')) tr.classList.toggle('current', active !== null && tr.dataset.code === active);
+  if (linesChart) {
+    // the year popover shows the airport's row in bold (static/common/popover.js)
+    linesChart.dataset.highlight = active !== null ? nameOf.get(active) ?? '' : '';
+    linesChart.dispatchEvent(new CustomEvent('highlight'));
+  }
+}
+
+function setActive(code) {
+  if (code === active) return;
+  active = code;
+  applyActive();
+}
+
+// pointing at, or tabbing to, a table row does the same as pointing at its line
+function coupleTables() {
+  for (const tr of document.querySelectorAll('tr[data-code]')) {
+    const code = tr.dataset.code;
+    tr.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') setActive(code); });
+    tr.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') setActive(null); });
+    tr.addEventListener('focusin', () => setActive(code));
+    tr.addEventListener('focusout', () => setActive(null));
+  }
+}
+
 const width = (box) => Math.min(box.clientWidth || 900, 1100);
 const groupOf = (r) => (r.vs_median > 1 ? FASTER : SLOWER);
 const share = (v) => `${Math.round(v * 100)}%`;
@@ -82,6 +120,7 @@ function drawLines() {
   const group = new Map([...risers.map((r) => [r.airport, FASTER]), ...fallers.map((r) => [r.airport, SLOWER])]);
   // a line is named by its code and its city ("TTN Trenton"), in the chart and in the popover
   const name = new Map(movers.map((r) => [r.airport, lineLabel(r.airport, r.city)]));
+  nameOf = name;
   const lines = indexSeries(series, first, new Set(group.keys())).map((p) => ({ ...p, index: clampIndex(p.index), series: name.get(p.airport) ?? p.airport, group: group.get(p.airport) }));
   const median = medianIndex(series, first).map((p) => ({ ...p, index: clampIndex(p.index), series: MEDIAN, group: MEDIAN }));
   if (!lines.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
@@ -120,19 +159,42 @@ function drawLines() {
     color: { domain: [FASTER, SLOWER, MEDIAN], range: [tone[FASTER], tone[SLOWER], tone[MEDIAN]], legend: true },
     marks: [
       Plot.ruleY([100], { strokeOpacity: 0.4 }),
-      Plot.line(lines, { x: 'year', y: 'index', z: 'series', stroke: 'group', strokeWidth: 1.6, strokeOpacity: 0.9 }),
-      Plot.line(median, { x: 'year', y: 'index', stroke: 'group', strokeWidth: 3.5 }),
-      Plot.link(ends, { x1: 'year', y1: 'index', x2: 'labelX', y2: 'labelY', stroke: 'group', strokeOpacity: 0.6 }),
-      Plot.text(ends, { x: 'labelX', y: 'labelY', text: (d) => (d.series === MEDIAN ? 'Median' : d.series), fill: 'group', dx: 3, textAnchor: 'start', fontWeight: 600 }),
+      Plot.line(lines, { x: 'year', y: 'index', z: 'series', stroke: 'group', strokeWidth: 1.6, strokeOpacity: 0.9, className: 'm-line' }),
+      Plot.line(median, { x: 'year', y: 'index', stroke: 'group', strokeWidth: 3.5, className: 'm-median' }),
+      // an invisible, wider copy of each line to point at: the lines themselves are too thin to hit
+      Plot.line(lines, { x: 'year', y: 'index', z: 'series', stroke: 'black', strokeOpacity: 0, strokeWidth: 12, pointerEvents: 'stroke', className: 'm-hit' }),
+      Plot.link(ends, { x1: 'year', y1: 'index', x2: 'labelX', y2: 'labelY', stroke: 'group', strokeOpacity: 0.6, className: 'm-link' }),
+      Plot.text(ends, { x: 'labelX', y: 'labelY', text: (d) => (d.series === MEDIAN ? 'Median' : d.series), fill: 'group', dx: 3, textAnchor: 'start', fontWeight: 600, className: 'm-label' }),
       Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0.3 })),
     ],
   });
+  // each element of the chart knows its airport, in the order the marks were given their data (a series' line, in order of its
+  // first point; a leader or a name, in order of `ends`)
+  const lineCodes = [...new Set(lines.map((p) => p.airport))];
+  const endCodes = ends.map((d) => d.airport ?? 'median');
+  tagged = [];
+  const tag = (selector, codes) => {
+    const els = [...chart.querySelectorAll(selector)];
+    if (els.length !== codes.length) return [];
+    els.forEach((el, i) => { el.dataset.code = codes[i]; tagged.push(el); });
+    return els;
+  };
+  tag('.m-line path', lineCodes);
+  tag('.m-median path', ['median']);
+  // pointing at any of these picks the airport out
+  for (const el of [...tag('.m-hit path', lineCodes), ...tag('.m-link line, .m-link path', endCodes), ...tag('.m-label text', endCodes)]) {
+    if (el.dataset.code === 'median') continue;
+    el.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') setActive(el.dataset.code); });
+    el.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') setActive(null); });
+  }
+  linesChart = chart;
   const keyColour = new Map(all.map((p) => [p.series, tone[p.group]]));
   box.append(...attachPopover(chart, {
     keyOf: (label) => ({ kind: 'square', colour: keyColour.get(label) }),
     at: (d) => [d.period, d.top],
     content: (d) => ({ title: String(d.period), rows: d.rows }),
   }));
+  applyActive(); // a redraw (the theme changing) keeps whatever the pointer is on
 }
 
 function draw() {
@@ -150,7 +212,12 @@ async function main() {
     for (const id of ['movers-scatter', 'movers-lines']) $(id).textContent = 'Could not load the chart data.';
     return;
   }
+  // an airport that kept under 1% of its passengers is named on the page and counts for nothing here (the median included)
+  const gone = new Set(movers.filter((r) => r.lost).map((r) => r.airport));
+  movers = movers.filter((r) => !r.lost);
+  series = series.filter((r) => !gone.has(r.airport));
   draw();
+  coupleTables();
   document.addEventListener('t100:theme', draw);
 }
 

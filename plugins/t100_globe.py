@@ -453,11 +453,18 @@ def movers_tables(rows):
     shown = lambda r: {"code": r["airport"], "city": r["city"], "then": prose_count(r["pax_from"]), "now": prose_count(r["pax_to"]),
                        "growth": multiple(r["ratio"]), "against": multiple(r["vs_median"]), "peak_year": r["peak_year"],
                        "vs_peak": percent(r["vs_peak"])}
+    # an airport with under 1% of its first year's passengers left has probably lost its service: it is named below the tables,
+    # and is in neither the median (the query leaves it out) nor the tables, the charts or the total
+    lost = [r for r in rows if r["lost"]]
+    rows = [r for r in rows if not r["lost"]]
+    if not rows:
+        return {}
     before, after = sum(r["pax_from"] for r in rows), sum(r["pax_to"] for r in rows)
     return {
         "median": f"{rows[0]['median_ratio']:.3g}", "together": f"{after / before:.3g}",
         "risers": [shown(r) for r in rows if (r["vs_median"] or 0) > 1][:MOVERS_LISTED],
         "fallers": [shown(r) for r in reversed(rows) if r["vs_median"] is not None and r["vs_median"] < 1][:MOVERS_LISTED],
+        "lost": [shown(r) for r in sorted(lost, key=lambda r: -r["pax_from"])],
     }
 
 
@@ -468,8 +475,8 @@ async def airport_movers_page(datasette, request):
     params = {"from_year": first, "to_year": last, "min_pax": size}
     movers = await story(datasette, "airport_movers", lambda rows: movers_tables(rows) if rows else {}, params)
     if movers:
-        info = await airport_info(datasette, {r["code"] for t in ("risers", "fallers") for r in movers[t]})
-        for t in ("risers", "fallers"):
+        info = await airport_info(datasette, {r["code"] for t in ("risers", "fallers", "lost") for r in movers[t]})
+        for t in ("risers", "fallers", "lost"):
             for r in movers[t]:
                 r["tip"] = airport_tip(info, r["code"])
     html = await datasette.render_template(

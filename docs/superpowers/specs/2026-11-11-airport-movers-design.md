@@ -18,6 +18,14 @@ Two canned queries, both reading `airport_dir_year` (one row per airport and yea
 - `airport_movers_series`: the same airports (same `from_year`, `to_year`, `min_pax`), one row per airport and year, for the
   lines. Passengers are both directions, as elsewhere.
 
+An airport with under 1% of its first-year passengers left (`lost`) has probably lost its service, not grown slowly. It is
+flagged by the query, left out of the median, the total, the tables and the charts, and named in a note under the tables
+(Detroit City, DET, is the one at the default settings: 720,000 passengers in 1990, 54 in 2025).
+
+Pointing at an airport's line, its name, its leader or its row in either table picks it out everywhere: the other lines fade
+(`.faded`), its line is drawn heavier, its name underlined, its row shaded and its row bold in the year popover. The lines
+are too thin to hit, so each has an invisible wider copy to point at. Touch screens don't use it (a tap follows the link).
+
 Passengers are segment passengers: a connecting passenger counts once on each flight, so hubs count higher than the people
 who started or ended a trip there. Airports closed or recoded in the last year count as a ratio of 0.
 

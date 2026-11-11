@@ -31,7 +31,7 @@ def table(html, name):
     """The rows of the table with this id, as lists of cell texts."""
     body = re.search(rf'<table id="{name}".*?</table>', html, re.S).group(0)
     return [[re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
-            for row in re.findall(r"<tr>(.*?)</tr>", body, re.S) if "<td" in row]
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", body, re.S) if "<td" in row]
 
 
 def test_risers_and_fallers_are_ranked_against_the_median_airport(ds, db_path):
@@ -66,6 +66,27 @@ def test_the_median_and_the_whole_are_quoted_above_the_tables(ds, db_path):
     html = page(ds)
     intro = re.search(r'<p class="intro">(.*?)</p>', html, re.S).group(1)
     assert "1.5 times" in intro and "1990" in intro and "2025" in intro and "2 times" in intro
+
+
+def test_an_airport_left_with_under_one_percent_is_named_below_the_tables_and_counts_for_nothing(ds, db_path):
+    five(db_path)
+    grow(db_path, "DET", 1_000_000, 5_000)
+    html = page(ds)
+    assert "DET" not in [r[0] for r in table(html, "fallers")] and "DET" not in [r[0] for r in table(html, "risers")]
+    note = re.search(r'<p class="note" id="lost">(.*?)</p>', html, re.S).group(1)
+    assert "under 1%" in note and '<a href="/airports/DET" title="DET">DET</a> DET City, ST, 1 million to 5,000.' in re.sub(r"\s+", " ", note)
+    intro = re.search(r'<p class="intro">(.*?)</p>', html, re.S).group(1)
+    assert "1.5 times" in intro and "2 times" in intro  # the median and the total as without it
+
+
+def test_the_rows_say_which_airport_they_are_for_so_the_chart_can_follow_the_pointer(ds, db_path):
+    five(db_path)
+    assert '<tr data-code="FOUR">' in page(ds) and '<tr data-code="HALF">' in page(ds)
+
+
+def test_without_a_lost_airport_there_is_no_note(ds, db_path):
+    five(db_path)
+    assert 'id="lost"' not in page(ds)
 
 
 def test_a_small_airport_is_left_out_unless_the_size_is_lowered(ds, db_path):

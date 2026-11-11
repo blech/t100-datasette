@@ -26,7 +26,7 @@
           </thead>
           <tbody>
             {%- for r in rows %}
-            <tr>
+            <tr data-code="{{ r.code }}">
               <td class="code"><a href="/airports/{{ r.code }}" title="{{ r.tip }}">{{ r.code }}</a></td>
               <td class="city">{{ r.city or "" }}</td>
               <td class="num">{{ r.then }}</td>
@@ -93,6 +93,14 @@
       <h2 id="fallers-heading">Fallers</h2>
       {% if movers.fallers %}{{ airports_table("fallers", movers.fallers) }}{% else %}<p class="note">No airport grew more slowly than the median.</p>{% endif %}
     </section>
+    {% if movers.lost %}
+    <p class="note" id="lost">
+      Left out of the median, the tables and the charts, because under 1% of their {{ first }} passengers were left in {{ last }} (probably no longer served):
+      {% for r in movers.lost -%}
+      <a href="/airports/{{ r.code }}" title="{{ r.tip }}">{{ r.code }}</a> {{ r.city or "" }}, {{ r.then }} to {{ r.now }}{{ ", " if not loop.last else "." }}
+      {%- endfor %}
+    </p>
+    {% endif %}
     {% elif movers is none %}
     <p class="note">These tables could not be built right now.</p>
     {% else %}
@@ -102,6 +110,6 @@
     <p class="note">
       Growth is an airport's passengers in {{ last }} divided by its passengers in {{ first }}. Against median is that growth divided by the median airport's: ×2 grew twice as fast, ×0.5 half as fast.
       Passengers are those boarding or leaving there, on flights to and from the airport, domestic and international. A passenger changing planes at a hub counts once on each flight, so hubs count higher than the people whose trip began or ended there.
-      An airport with no passengers in {{ last }} counts as ×0. The charts' axes stop at ×0.05 and at 5 (first year = 100), so an airport that lost nearly everything sits on the bottom edge, whatever its real figure. Peak year is the airport's busiest in the range, and the last column is {{ last }}'s passengers as a share of that peak, which tells an airport that never grew from one that grew and lost it.
+      An airport left with under 1% of its passengers is not counted at all (see above). The charts' axes stop at ×0.05 and at 5 (first year = 100), so an airport that lost nearly everything sits on the bottom edge, whatever its real figure. Peak year is the airport's busiest in the range, and the last column is {{ last }}'s passengers as a share of that peak, which tells an airport that never grew from one that grew and lost it.
     </p>
 {% endblock %}

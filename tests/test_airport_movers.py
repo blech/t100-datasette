@@ -108,3 +108,22 @@ def test_the_series_counts_both_ways_and_has_no_row_for_a_year_the_airport_had_n
     put(db_path, 1990, "AAA", 60, 40)
     put(db_path, 2025, "AAA", 10, 5)
     assert movers_series(ds) == [("AAA", 1990, 100), ("AAA", 2025, 15)]
+
+
+def test_an_airport_with_under_one_percent_left_is_marked_lost_and_is_not_in_the_median(ds, db_path):
+    for code, after in (("AAA", 100), ("BBB", 200), ("CCC", 300)):
+        series(db_path, code, y1990=100, y2025=after)
+    series(db_path, "DET", y1990=1000, y2025=9)  # 0.9%
+    series(db_path, "LOW", y1990=1000, y2025=10)  # 1%: a fall, but not lost
+    rows = movers(ds)
+    assert {c: rows[c]["lost"] for c in rows} == {"AAA": 0, "BBB": 0, "CCC": 0, "DET": 1, "LOW": 0}
+    # AAA 1, BBB 2, CCC 3 and LOW 0.01 have a median of 1.5; with DET it would be 1
+    assert {r["median_ratio"] for r in rows.values()} == {1.5}
+    assert rows["DET"]["ratio"] == pytest.approx(0.009)
+
+
+def test_an_airport_with_nothing_in_the_last_year_is_lost(ds, db_path):
+    series(db_path, "GONE", y1990=100)
+    series(db_path, "STAY", y1990=100, y2025=100)
+    rows = movers(ds)
+    assert rows["GONE"]["lost"] == 1 and rows["STAY"]["lost"] == 0
