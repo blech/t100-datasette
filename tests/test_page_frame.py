@@ -39,8 +39,8 @@ def test_every_page_loads_the_base_stylesheet_first(name):
 
 @pytest.mark.parametrize("name", TEMPLATES)
 def test_only_the_airport_tables_load_their_own_stylesheet(name):
-    # /airports, a country's airports and the dedicated-airports table share the airports table's look
-    assert ("/static/landing/style.css" in stylesheets(name)) == (name in ("airports", "country", "airports_dedicated"))
+    # /airports, a country's airports, the dedicated-airports table and the risers and fallers share the airports table's look
+    assert ("/static/landing/style.css" in stylesheets(name)) == (name in ("airports", "country", "airports_dedicated", "airports_movers"))
 
 
 def test_search_fields_are_drawn_like_the_menus_beside_them():
