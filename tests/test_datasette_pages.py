@@ -39,7 +39,7 @@ def test_a_canned_query_page_has_the_header(ds):
 def test_a_page_with_no_database_has_the_site_name_alone_as_its_trail(ds):
     top = header(get(ds, "/-/versions").text)  # a Datasette page of its own, with no database
     assert re.search(r'<li aria-current="page">t100\.husk\.org</li>', top)
-    assert top.count("<li") == 1 + 4  # the site name and the four sections
+    assert top.count("<li") == 1 + 4 + 1  # the site name, the four sections and the search icon
 
 
 def test_only_t100_is_called_data():
@@ -79,3 +79,20 @@ def test_the_footer_credits_datasette_in_place_of_the_theme_menu(ds):
         f = re.search(r'<footer class="site-footer">.*?</footer>', get(ds, path).text, re.S).group(0)
         assert 'Powered by <a href="https://datasette.io/">Datasette</a>' in f and 'id="theme"' not in f
     assert "Powered by" not in get(ds, "/about").text
+
+
+def sections(html):
+    return re.search(r'<nav class="sections".*?</nav>', html, re.S).group(0)
+
+
+def test_datasettes_own_pages_have_the_search_icon_and_what_it_needs(ds):
+    for path in ("/t100", "/t100/airport_names"):
+        html = get(ds, path).text
+        assert sections(header(html)).count('id="search-open"') == 1, path
+        assert "/static/search/main.js" in html and "/static/search/style.css" in html, path
+
+
+def test_both_headers_share_one_sections_list(ds):
+    site = re.sub(r"<strong[^>]*>(.*?)</strong>", r'<a href="/x">\1</a>', sections(get(ds, "/airports/SFO").text))
+    assert re.sub(r'<a href="/[a-z]+">', "<a>", re.sub(r"\s+", " ", sections(header(get(ds, "/t100").text)))) == \
+        re.sub(r'<a href="/[a-z]+">|<a href="/x">', "<a>", re.sub(r"\s+", " ", site))

@@ -1,5 +1,5 @@
 {# Datasette's own pages (database, table, query, row) in the site's style: blocks overridden only, so Datasette's templates are not copied.
-   Light only: no theme script and no base.css, which has the dark tokens. The site's pages extend t100_base.html instead. #}
+   Light only: no theme script (nav/main.js) and no base.css, which has the dark tokens; the search script is the one the site's header shares. The site's pages extend t100_base.html instead. #}
 {% extends "default:base.html" %}
 
 {% block extra_head %}
@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="/static/nav/style.css">
   <link rel="stylesheet" href="/static/common/fonts.css">
   <link rel="stylesheet" href="/static/datasette/style.css">
+  <link rel="stylesheet" href="/static/search/style.css">
+{# Datasette's error pages are rendered without the site's template helpers: they get the source module #}
+  {% if script_url is defined %}<script type="module" src="{{ script_url('search/main.js') }}"></script>
+{{ modulepreload("/static/search/main.js") }}{% else %}<script type="module" src="/static/search/main.js"></script>{% endif %}
 {% endblock %}
 
 {% block nav %}{% include "_data_header.html" %}{% endblock %}
