@@ -1,8 +1,27 @@
+import pathlib
 import re
 
 import pytest
 
-TEMPLATES = ["home", "airports", "rollup", "engines", "family", "airline", "routes", "route", "about", "globe", "airline_globe", "aircraft_table", "aircraft_makers", "route_table", "airline_changes", "airline_table", "airline_routes", "airline_aircraft", "airport", "airport_changes"]
+# Every page of the site, read from templates/ so a new page is checked without being listed: all but partials (_nav.html),
+# the shared skeleton, and Datasette's own pages in the site's style (base.html, query.html and its per-query query-*.html)
+TEMPLATES = sorted(
+    p.stem for p in pathlib.Path("templates").glob("*.html")
+    if not p.name.startswith("_") and p.stem not in ("t100_base", "base", "query") and not p.name.startswith("query-")
+)
+
+
+def test_the_page_list_finds_the_pages():
+    assert {"home", "airports", "route", "city", "city_pair"} <= set(TEMPLATES)
+
+
+@pytest.mark.parametrize("name", TEMPLATES)
+def test_every_page_extends_the_shared_skeleton(name):
+    # t100_base.html holds the head every page needs (base.css, fonts.css, the header's script): a page with a <head> of
+    # its own misses whatever is added there later, as the city pages missed B612 Mono for their axes
+    html = open(f"templates/{name}.html").read()
+    assert re.match(r'(\s*\{#.*?#\})*\s*\{% extends "t100_base.html" %\}', html, re.S), name
+    assert not re.search(r"<!doctype|<head\b|<body\b", html, re.I), name
 
 
 def stylesheets(name):
@@ -19,8 +38,9 @@ def test_every_page_loads_the_base_stylesheet_first(name):
 
 
 @pytest.mark.parametrize("name", TEMPLATES)
-def test_only_the_airports_table_loads_its_own_stylesheet(name):
-    assert ("/static/landing/style.css" in stylesheets(name)) == (name == "airports")
+def test_only_the_airport_tables_load_their_own_stylesheet(name):
+    # /airports, a country's airports, the dedicated-airports table and the risers and fallers share the airports table's look
+    assert ("/static/landing/style.css" in stylesheets(name)) == (name in ("airports", "country", "airports_dedicated", "airports_movers"))
 
 
 def test_search_fields_are_drawn_like_the_menus_beside_them():

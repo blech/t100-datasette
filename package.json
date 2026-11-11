@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/check_syntax.js && node --test static/common/test/*.test.js static/globe/test/*.test.js static/landing/test/*.test.js static/charts/test/*.test.js static/nav/test/*.test.js static/home/test/*.test.js",
+    "test": "node scripts/check_syntax.js && node --test static/common/test/*.test.js static/globe/test/*.test.js static/landing/test/*.test.js static/charts/test/*.test.js static/nav/test/*.test.js static/home/test/*.test.js static/movers/test/*.test.js static/search/test/*.test.js",
     "bundle": "node scripts/bundle.mjs"
   },
   "devDependencies": {

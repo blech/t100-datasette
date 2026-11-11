@@ -8,7 +8,7 @@ import { setMenus } from '/static/common/menus.js';
 import { rollupRows, routeRows, topRouteRows, topMarketRows, marketKey, marketLabel, marketPath, marketPairRows, rowsChoice, bandRange, BAND_FROM, BAND_TO, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, carriedSearch, airlineSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
-import { tableSearch, countrySlug } from '/static/landing/src/table.js';
+import { tableHref, countrySlug, TABLE_PATHS } from '/static/landing/src/table.js';
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -20,7 +20,7 @@ const KINDS = {
   airlines: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
   routes: { query: 'carrier_route_by_year', key: 'route', noun: 'route' },
   toproutes: { query: 'top_routes_by_year', key: 'route', noun: 'route' }, // every airline's busiest pairs, by distance
-  citypair: { query: 'market_pairs_by_year', key: 'route', noun: 'route' }, // the airport pairs between two cities, at /cities/ma/mb
+  citypair: { query: 'market_pairs_by_year', key: 'route', noun: 'route' }, // the airport pairs between two cities, at /airports/cities/ma/mb
   airports: { query: 'airport_by_year', key: 'airport', noun: 'airport' },
   aircraft: { query: 'aircraft_by_year', key: 'family', noun: 'family' },
   fleet: { query: 'carrier_aircraft_by_year', key: 'family', noun: 'family' }, // one airline's aircraft, drawn as the aircraft matrix is
@@ -94,7 +94,8 @@ function pushState() {
 // settings the airlines table reads too
 const carry = () => {
   for (const a of document.querySelectorAll('nav.views a')) {
-    if (kind === 'airports') { if (a.pathname === '/airports') a.search = tableSearch(location.search); } // the table takes the measure as its sort
+    // the table takes the measure as its sort, and its grouping's address (once carried, the link may be at any of them)
+    if (kind === 'airports') { if (Object.values(TABLE_PATHS).includes(a.pathname)) a.href = tableHref(location.search); }
     else if (kind === 'aircraft' || byYear) continue; // the aircraft views share no settings, nor the routes matrix the airports'
     else a.search = kind === 'routes' || kind === 'fleet' ? location.search : sharedQuery(location.search);
   }
@@ -156,12 +157,12 @@ function groupedRows() {
     .map((r) => ({ ...r, dest: r.aircraft, market_id: slugify(r.family), group_label: r.family, city: r.aircraft_name }));
 }
 const aircraftTitle = (code, name) => { const i = aircraftInfo.get(code); return i ? `${name}\n${i.maker} · ${i.aircraft_kind}` : name; };
-// the airports matrix's city (a BTS market, /cities/<market>, its destinations ranked by this ranking year) or country page,
+// the airports matrix's city (a BTS market, /airports/cities/<market>, its destinations ranked by this ranking year) or country page,
 // counted this way; a "solo:" airport with no market has none
 function groupHref(r) {
   const q = new URLSearchParams(dir ? [['dir', dir]] : []);
-  if (/^[0-9]{5}$/.test(r.key)) { if (rankYear() !== null) q.set('year', rankYear()); return `/cities/${r.key}${q.size ? `?${q}` : ''}`; }
-  if (r.key.startsWith('country:')) return `/countries/${countrySlug(r.key.slice('country:'.length))}${q.size ? `?${q}` : ''}`;
+  if (/^[0-9]{5}$/.test(r.key)) { if (rankYear() !== null) q.set('year', rankYear()); return `/airports/cities/${r.key}${q.size ? `?${q}` : ''}`; }
+  if (r.key.startsWith('country:')) return `${TABLE_PATHS.country}/${countrySlug(r.key.slice('country:'.length))}${q.size ? `?${q}` : ''}`;
   return null;
 }
 function drawCities(box) {

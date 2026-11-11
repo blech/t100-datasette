@@ -16,6 +16,8 @@ from t100_direction import DIRECTION_CHOICES_ABROAD, DIRECTION_CHOICES_AIRPORT, 
 
 
 CODE = r"[A-Za-z0-9]{3}"
+CITIES = "/airports/cities"  # a city (BTS market) is /airports/cities/<market>, a pair of them /airports/cities/<market>/<market>
+COUNTRIES = "/airports/countries"  # a country abroad is /airports/countries/<slug>
 log = logging.getLogger(__name__)
 
 
@@ -43,18 +45,26 @@ def register_routes():
     return [
         (r"^/$", home_page),
         (r"^/-/$", redirect_to("/t100")),  # Datasette's index page, with its one database: the database page is the data's front door
-        (r"^/airports$", airports_index),
-        (r"^/countries$", redirect_to("/airports?region=abroad&group=country")),
-        (r"^/countries/(?P<slug>[a-z0-9-]+)$", country_page),
+        # the busiest-airports table, of airports, cities or (abroad) countries: one table, at an address for each grouping
+        (r"^/airports$", airports_table("airport")),
+        (r"^/airports/cities$", airports_table("city")),
+        (r"^/airports/countries$", airports_table("country")),
+        (r"^/airports/countries/(?P<slug>[a-z0-9-]+)$", country_page),
+        (r"^/countries$", moved("/airports/countries")),  # the country pages' first addresses
+        (r"^/countries/(?P<slug>[a-z0-9-]+)$", moved("/airports/countries/{slug}")),
         (r"^/airports/globe$", globe_page),
         (r"^/airports/globe/routes$", routes_globe_page),  # SPIKE: the busiest routes for a year, on any of the map types
         (r"^/airports/dedicated$", dedicated_airports_page),
+        (r"^/airports/movers$", airport_movers_page),
         (r"^/airports/over-time$", rollup_page("airports")),
         (r"^/airports/routes$", rollup_page("toproutes")),
-        # a pair of BTS city markets (Los Angeles is 32575, the Bay Area 32457): its airport pairs; the list of them is the routes matrix by city
-        (r"^/cities$", redirect_to("/airports/routes?group=city")),
-        (r"^/cities/(?P<a>[0-9]{5})/(?P<b>[0-9]{5})$", city_pair_page),
-        (r"^/cities/(?P<market>[0-9]{5})$", city_page),
+        # a BTS city market (Los Angeles is 32575, the Bay Area 32457) is a group of airports, so its pages are in the Airports section:
+        # the city's destinations, and a pair of cities' airport pairs; the list of cities is the busiest-airports table by city
+        (r"^/airports/cities/(?P<a>[0-9]{5})/(?P<b>[0-9]{5})$", city_pair_page),
+        (r"^/airports/cities/(?P<market>[0-9]{5})$", city_page),
+        (r"^/cities$", moved("/airports/cities")),  # the city pages' first addresses
+        (r"^/cities/(?P<a>[0-9]{5})/(?P<b>[0-9]{5})$", moved("/airports/cities/{a}/{b}")),
+        (r"^/cities/(?P<market>[0-9]{5})$", moved("/airports/cities/{market}")),
         (rf"^/airports/(?P<origin>{CODE})$", airport_page),
         (rf"^/airports/(?P<origin>{CODE})/destinations$", routes_page),
         (rf"^/airports/(?P<origin>{CODE})/changes$", airport_changes_page),
@@ -109,8 +119,6 @@ AIRPORT_CODE = re.compile(r"^[A-Za-z0-9]{3}$")
 def section_of(path):
     """The site section a path belongs to, from its first segment; None for the front page and Datasette's own pages."""
     first = path.strip("/").split("/")[0]
-    if first in ('countries', 'cities'):
-        first = 'airports'
     if first and first == 'changelog':
         first = 'about'
     return first if first in SECTIONS else None
@@ -125,10 +133,14 @@ def views_for(path):
         return [{"label": label, "href": href, "current": i == current, "id": id_} for i, (label, href, id_) in enumerate(items)]
 
     match parts:
-        case ["airports"] | ["airports", "dedicated"] | ["airports", "over-time"] | ["airports", "routes"] | ["airports", "globe"]:
+        case ["airports"] | ["airports", "dedicated"] | ["airports", "movers"] | ["airports", "over-time"] | ["airports", "routes"] | \
+                ["airports", "globe"] | ["airports", "cities"] | ["airports", "countries"]:
+            # the cities and countries are the busiest-airports table grouped another way
+            view = {"cities": [], "countries": []}.get(parts[1], parts[1:]) if parts[1:] else []
             return make(("Busiest airports", "/airports", None), ("Over time", "/airports/over-time", None),
-                        ("Most dedicated", "/airports/dedicated", None), ("Routes", "/airports/routes", None), ("Map", "/airports/globe", None),
-                        current=[[], ["over-time"], ["dedicated"], ["routes"], ["globe"]].index(parts[1:]))
+                        ("Most dedicated", "/airports/dedicated", None), ("Risers and fallers", "/airports/movers", None),
+                        ("Routes", "/airports/routes", None), ("Map", "/airports/globe", None),
+                        current=[[], ["over-time"], ["dedicated"], ["movers"], ["routes"], ["globe"]].index(view))
         case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
@@ -210,7 +222,7 @@ def airport_label(info, code):
 
 
 async def linked_label(datasette, info, code, foreign):
-    """airport_label with its city linked to the city's page (/cities/<market>), and the country of an airport outside the US
+    """airport_label with its city linked to the city's page (/airports/cities/<market>), and the country of an airport outside the US
     linked to its country page (the label is then markup)."""
     name, _, place = info.get(code, (None, None, None))
     if not place:
@@ -220,9 +232,9 @@ async def linked_label(datasette, info, code, foreign):
     town_part = place[: -len(country) - 2] if country else place   # "London" of "London, United Kingdom"; all of "Los Angeles, CA"
     market = (await datasette.get_database("t100").execute(
         "SELECT market_id FROM airport_market JOIN market_name USING (market_id) WHERE code = ?", [code])).first()
-    linked = Markup('<a href="/cities/{}">{}</a>').format(market[0], town_part) if market else town_part
+    linked = Markup('<a href="{}/{}">{}</a>').format(CITIES, market[0], town_part) if market else town_part
     if country:
-        linked = Markup('{}, <a href="/countries/{}">{}</a>').format(linked, country_slug(country), country)
+        linked = Markup('{}, <a href="{}/{}">{}</a>').format(linked, COUNTRIES, country_slug(country), country)
     return Markup(" · ").join(part for part in (name, linked) if part)
 
 
@@ -321,10 +333,10 @@ def airport_direction(request):
     return {"dir": dir, "count_word": count_word(dir), "dir_choices": DIRECTION_CHOICES_AIRPORT}
 
 
-def airport_region(request):
-    """Which airports the busiest-airports table ranks, 'us' or 'abroad' (outside the US), and what that changes: the directions
-    are named for the US and the flight count says which way."""
-    region = "abroad" if request.args.get("region") == "abroad" else "us"
+def airport_region(request, abroad=False):
+    """Which airports the busiest-airports table ranks, 'us' or 'abroad' (outside the US; always, for the countries), and what that
+    changes: the directions are named for the US and the flight count says which way."""
+    region = "abroad" if abroad or request.args.get("region") == "abroad" else "us"
     if region == "us":
         return {"region": region, "abroad": False}
     dir = parse_dir(request.args.get("dir"))
@@ -353,7 +365,7 @@ async def country_page(datasette, request):
     min_year, max_year = year_range(datasette)
     html = await datasette.render_template(
         "country.html",
-        {"min_year": min_year, "max_year": max_year, "country": name, "crumbs": trail(datasette, ("airports", "/airports"), ("abroad", "/airports?region=abroad"), (name, None)),
+        {"min_year": min_year, "max_year": max_year, "country": name, "crumbs": trail(datasette, ("airports", "/airports"), ("countries", COUNTRIES), (name, None)),
          "dir_choices": DIRECTION_CHOICES_ABROAD, "dir": parse_dir(request.args.get("dir")), "count_word": count_word(parse_dir(request.args.get("dir")), abroad=True),
          "years": list(range(max_year, min_year - 1, -1))},
         request=request,
@@ -387,16 +399,34 @@ def year_range(datasette):
     return config.get("min_year", 1990), config.get("max_year", 2025)
 
 
-async def airports_index(datasette, request):
-    """The busiest-airports table, which was the front page before the front page told stories."""
-    min_year, max_year = year_range(datasette)
-    html = await datasette.render_template(
-        "airports.html",
-        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airports", None)), **airport_direction(request), **airport_region(request),
-         "ranks": [("all", "all years")] + [(str(y), str(y)) for y in range(max_year, min_year - 1, -1)]},
-        request=request,
-    )
-    return Response.html(html)
+# the busiest-airports table's address for each grouping (static/landing/src/table.js has the same), and its name in the crumbs
+TABLE_PATHS = {"airport": "/airports", "city": CITIES, "country": COUNTRIES}
+TABLE_CRUMBS = {"city": "cities", "country": "countries"}
+
+
+def airports_table(group):
+    """The busiest-airports table, which was the front page before the front page told stories, grouped by airport, city or
+    (abroad only, so the address means abroad) country. Its first addresses for the groupings, /airports?group=city and
+    ?region=abroad&group=country, move to their own."""
+
+    async def view(datasette, request):
+        asked = request.args.get("group")
+        if group == "airport" and asked in ("city", "country"):
+            args = [(k, v) for k in request.args.keys() if k != "group" and not (asked == "country" and k == "region") for v in request.args.getlist(k)]
+            if asked == "city" or request.args.get("region") == "abroad":
+                return Response.redirect(TABLE_PATHS[asked] + (f"?{urlencode(args)}" if args else ""), status=301)
+        min_year, max_year = year_range(datasette)
+        crumbs = [("airports", None)] if group == "airport" else [("airports", "/airports"), (TABLE_CRUMBS[group], None)]
+        html = await datasette.render_template(
+            "airports.html",
+            {"min_year": min_year, "max_year": max_year, "group": group, "things": TABLE_CRUMBS.get(group, "airports"), "crumbs": trail(datasette, *crumbs),
+             **airport_direction(request), **airport_region(request, abroad=group == "country"),
+             "ranks": [("all", "all years")] + [(str(y), str(y)) for y in range(max_year, min_year - 1, -1)]},
+            request=request,
+        )
+        return Response.html(html)
+
+    return view
 
 
 # the most-dedicated page: one table per measure; the pool is how many of the biggest airports compete (see the dedicated_airports query)
@@ -438,6 +468,89 @@ async def dedicated_airports_page(datasette, request):
         "airports_dedicated.html",
         {"min_year": min_year, "max_year": max_year, "year": year, "tables": tables,
          "crumbs": trail(datasette, ("airports", "/airports"), ("most dedicated", None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+# the risers-and-fallers page: how fast each US airport's passengers, flights or destinations grew between two years against the median
+# airport (airport_movers). Each measure has the smallest airports it can start from, a default giving about as many airports (100 to 150)
+MOVERS_MEASURES = {
+    "passengers": {"label": "Passengers", "default": 500_000,
+                   "sizes": ((100_000, "100,000"), (500_000, "500,000"), (1_000_000, "1 million"), (5_000_000, "5 million"))},
+    "flights": {"label": "Flights", "default": 10_000, "sizes": ((5_000, "5,000"), (10_000, "10,000"), (25_000, "25,000"), (50_000, "50,000"))},
+    "destinations": {"label": "Destinations", "default": 10, "sizes": ((5, "5"), (10, "10"), (20, "20"), (40, "40"))},
+}
+MOVERS_DEFAULT_MEASURE = "passengers"
+MOVERS_LISTED = 10
+
+
+def multiple(v):
+    """A ratio as the tables print it: ×4.84, ×0.333, ×1,200 (three significant figures), and <×0.001 for anything smaller."""
+    if v is None or v != v:
+        return "–"
+    if 0 < v < 0.001:
+        return "<×0.001"
+    return f"×{v:,.0f}" if v >= 1000 else f"×{v:.3g}"
+
+
+def movers_settings(request, min_year, max_year):
+    """(first year, last year, measure, smallest airport in the first year) from the query string, each falling back to its default.
+    The smallest is of the measure chosen, so one left over from another measure is not one of its sizes and becomes its default."""
+    def whole(key):
+        try:
+            return int(request.args.get(key, ""))
+        except ValueError:
+            return None
+
+    first, last = whole("from"), whole("to")
+    if first is None or last is None or not (min_year <= first < last <= max_year):
+        first, last = min_year, max_year
+    asked = request.args.get("measure", "")
+    measure = asked if asked in MOVERS_MEASURES else MOVERS_DEFAULT_MEASURE
+    config = MOVERS_MEASURES[measure]
+    size = whole("min")
+    return first, last, measure, size if size in dict(config["sizes"]) else config["default"]
+
+
+def movers_tables(rows):
+    """airport_movers rows (fastest first) -> the sentence's numbers and the risers and fallers tables' rows."""
+    shown = lambda r: {"code": r["airport"], "city": r["city"], "then": prose_count(r["value_from"]), "now": prose_count(r["value_to"]),
+                       "growth": multiple(r["ratio"]), "against": multiple(r["vs_median"]), "peak_year": r["peak_year"],
+                       "vs_peak": percent(r["vs_peak"])}
+    # an airport with under 1% of its first year's figure left has probably lost its service: it is named below the tables,
+    # and is in neither the median (the query leaves it out) nor the tables, the charts or the total
+    lost = [r for r in rows if r["lost"]]
+    rows = [r for r in rows if not r["lost"]]
+    if not rows:
+        return {}
+    before, after = sum(r["value_from"] for r in rows), sum(r["value_to"] for r in rows)
+    return {
+        "median": f"{rows[0]['median_ratio']:.3g}", "together": f"{after / before:.3g}",
+        "risers": [shown(r) for r in rows if (r["vs_median"] or 0) > 1][:MOVERS_LISTED],
+        "fallers": [shown(r) for r in reversed(rows) if r["vs_median"] is not None and r["vs_median"] < 1][:MOVERS_LISTED],
+        "lost": [shown(r) for r in sorted(lost, key=lambda r: -r["value_from"])],
+    }
+
+
+async def airport_movers_page(datasette, request):
+    """Risers and fallers: the airports growing fastest and slowest against the median airport between two years, as tables, and (with scripts) charts."""
+    min_year, max_year = year_range(datasette)
+    first, last, measure, size = movers_settings(request, min_year, max_year)
+    config = MOVERS_MEASURES[measure]
+    params = {"measure": measure, "from_year": first, "to_year": last, "min_value": size}
+    movers = await story(datasette, "airport_movers", lambda rows: movers_tables(rows) if rows else {}, params)
+    if movers:
+        info = await airport_info(datasette, {r["code"] for t in ("risers", "fallers", "lost") for r in movers[t]})
+        for t in ("risers", "fallers", "lost"):
+            for r in movers[t]:
+                r["tip"] = airport_tip(info, r["code"])
+    html = await datasette.render_template(
+        "airports_movers.html",
+        {"min_year": min_year, "max_year": max_year, "first": first, "last": last, "measure": measure, "label": config["label"],
+         "noun": measure, "measures": [(key, c["label"]) for key, c in MOVERS_MEASURES.items()],
+         "size": size, "sizes": config["sizes"], "size_label": dict(config["sizes"])[size], "movers": movers,
+         "crumbs": trail(datasette, ("airports", "/airports"), ("risers and fallers", None))},
         request=request,
     )
     return Response.html(html)
@@ -727,7 +840,7 @@ async def city_pair_page(datasette, request):
         """This page's address with side i narrowed to code (or widened, for None), its other settings kept."""
         args = [(k, v) for k in request.args.keys() if k not in ("a", "b") for v in request.args.getlist(k)]
         args += [(k, c) for k, c in zip(("a", "b"), chosen) if k != "ab"[i] and c] + ([("ab"[i], code)] if code else [])
-        return f"/cities/{a}/{b}" + (f"?{urlencode(args)}" if args else "")
+        return f"{CITIES}/{a}/{b}" + (f"?{urlencode(args)}" if args else "")
 
     info = await airport_info(datasette, set(sides[0]) | set(sides[1]))
     # each code narrows its side to it; the one chosen is marked, not linked
@@ -740,17 +853,17 @@ async def city_pair_page(datasette, request):
     market_names = (names[a], names[b])
     heading = Markup(" ↔ ").join(
         Markup('<a href="/airports/{0}/destinations" title="{1}">{0}</a>').format(chosen[i], airport_tip(info, chosen[i])) if chosen[i]
-        else Markup('<a href="/cities/{}" title="{}">{}</a>').format((a, b)[i], market_names[i], towns[i]) for i in (0, 1))
+        else Markup('<a href="{}/{}" title="{}">{}</a>').format(CITIES, (a, b)[i], market_names[i], towns[i]) for i in (0, 1))
     min_year, max_year = year_range(datasette)
-    steps = [("cities", "/cities"), (towns[0], f"/cities/{a}")]
-    steps += [(towns[1], f"/cities/{a}/{b}"), (chosen[0] or chosen[1], None)] if any(chosen) else [(towns[1], None)]
+    steps = [("airports", "/airports"), ("cities", CITIES), (towns[0], f"{CITIES}/{a}")]
+    steps += [(towns[1], f"{CITIES}/{a}/{b}"), (chosen[0] or chosen[1], None)] if any(chosen) else [(towns[1], None)]
     html = await datasette.render_template(
         "city_pair.html",
         {"ma": a, "mb": b, "title": title, "heading": heading, "name_a": names[a], "name_b": names[b], "airports_a": codes(0), "airports_b": codes(1),
          "chosen_a": chosen[0], "chosen_b": chosen[1], "town_a": towns[0], "town_b": towns[1],
          "widen_a": narrowed(0, None), "widen_b": narrowed(1, None),
          "pair_count": len({(r["origin"], r["dest"]) for r in shown}), "distance": weighted_distance(shown), "latest_year": max_year,
-         # as a route's trail is airports / ORD / LAX: the first city, then the second, then the airport it is narrowed to
+         # as a route's trail is airports / ORD / LAX: airports / cities, the first city, then the second, then the airport it is narrowed to
          "crumbs": trail(datasette, *steps)},
         request=request,
     )
@@ -781,7 +894,7 @@ async def city_page(datasette, request):
         {"market": market, "name": name[0], "town": town(name[0]), "origin": town(name[0]),
          "airports": [Markup('<a href="/airports/{}">{}</a>').format(c, airport_abbr(info, c)) for c in codes],
          "latest_year": max_year, "min_year": min_year, "foreign": foreign,
-         "crumbs": trail(datasette, ("cities", "/cities"), (town(name[0]), None)),
+         "crumbs": trail(datasette, ("airports", "/airports"), ("cities", CITIES), (town(name[0]), None)),
          **airport_direction(request)},
         request=request,
     )
@@ -839,6 +952,23 @@ def slugify(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
+def and_join(names):
+    """'A', 'A and B', 'A, B and C'."""
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+async def family_facts(datasette, family):
+    """The line under a family's heading: who made its aircraft and what kind they are ("Made by McDonnell Douglas. Type: jet,
+    twin-engine."), commonest first when a family spans several makers or kinds; empty when BTS doesn't say."""
+    rows = (await datasette.get_database("t100").execute(
+        """SELECT t.maker, t.kind, COUNT(*) FROM aircraft_family f JOIN aircraft_types t ON t.ac_typeid = f.aircraft_type
+           WHERE f.family = ? GROUP BY t.maker, t.kind ORDER BY COUNT(*) DESC, t.maker, t.kind""", [family])).rows
+    makers = list(dict.fromkeys(m for m, _, _ in rows if m))
+    kinds = list(dict.fromkeys(k[0].lower() + k[1:] for _, k, _ in rows if k))
+    parts = ([f"Made by {and_join(makers)}."] if makers else []) + ([f"Type: {'; '.join(kinds)}."] if kinds else [])
+    return " ".join(parts)
+
+
 async def family_page(datasette, request):
     slug = request.url_vars["slug"]
     result = await datasette.get_database("t100").execute("SELECT DISTINCT family FROM family_year")
@@ -847,7 +977,7 @@ async def family_page(datasette, request):
         raise NotFound(f"No aircraft family {slug}")
     html = await datasette.render_template(
         "family.html",
-        {"family": family, "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
+        {"family": family, "facts": await family_facts(datasette, family), "min_year": year_range(datasette)[0], "max_year": year_range(datasette)[1], "crumbs": trail(datasette, ("aircraft", "/aircraft"), (family, None))},
         request=request,
     )
     return Response.html(html)

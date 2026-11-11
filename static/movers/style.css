@@ -1,0 +1,36 @@
+/* the risers-and-fallers page: the tables keep an airport and its city on one line; the charts fill the width */
+td.city {
+  white-space: nowrap;
+}
+#movers-scatter,
+#movers-lines {
+  min-height: 12rem;
+}
+#movers figure {
+  margin: 0;
+}
+/* room around the headings of the charts and tables (the site's h2 has no margin; the settings bar's own heading is styled apart) */
+section h2 {
+  margin: 16px 0 8px;
+}
+
+/* pointing at an airport (its line, its name, or its row in a table) picks it out in the lines chart and the tables: the other
+   lines fade (the .faded of static/nav/style.css), its own is drawn heavier and its name underlined, and its row is shaded */
+/* only the drawn line: the invisible copy above it (.m-hit) must stay invisible, or the picked-out line turns black */
+#movers-lines .m-line path.active {
+  stroke-width: 3.5px;
+  stroke-opacity: 1;
+}
+#movers-lines text.active {
+  text-decoration: underline;
+}
+#movers-lines .m-link .active {
+  stroke-opacity: 1;
+}
+#movers-lines .m-label text,
+#movers-lines .m-hit path {
+  cursor: pointer;
+}
+tr[data-code].current td {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}

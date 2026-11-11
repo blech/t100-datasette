@@ -28,7 +28,7 @@ def test_the_groups_page_charts_a_range_of_distances_and_the_aircraft_page_links
     for id_ in ["engine-chart", "engine-measure", "engine-kind", "engine-from", "engine-to"]:
         assert f'id="{id_}"' in html
     assert 'id="engine-band"' not in html
-    assert "<h1>Aircraft groups by distance</h1>" in html and "<title>Aircraft groups by distance · T-100</title>" in html
+    assert "<h1>Aircraft groups by distance</h1>" in html and "<title>Aircraft groups by distance" in html and "</title>" in html
     assert '<li aria-current="page">groups</li>' in html
     assert "/static/charts/engines.js" in html
     assert 'href="/aircraft"' in html
@@ -49,6 +49,17 @@ def test_a_family_page_is_found_by_its_slug(ds, db_path):
     assert 'data-family="DC-9 / MD-80 / MD-90"' in r.text
     assert "/static/charts/family.js" in r.text
     assert 'aria-current="page">DC-9 / MD-80 / MD-90<' in r.text
+
+
+def test_a_family_page_says_who_made_it_and_what_kind(ds, db_path):
+    from tests.helpers import _insert
+    put(db_path, "family_year", [fam(2019, "DC-9 / MD-80 / MD-90", 1, "F", 3), fam(2019, "Mixed", 2, "F", 3)])
+    for ac, family, maker, kind in [("1", "DC-9 / MD-80 / MD-90", "McDonnell Douglas", "Jet, twin-engine"), ("2", "DC-9 / MD-80 / MD-90", "McDonnell Douglas", "Jet, twin-engine"),
+                                    ("3", "Mixed", "Avro", "Jet, four-engine"), ("4", "Mixed", "British Aerospace", "Jet, four-engine"), ("5", "Mixed", "British Aerospace", "Turboprop, one or two engines")]:
+        _insert(db_path, "aircraft_family", [dict(aircraft_type=ac, family=family)])
+        _insert(db_path, "aircraft_types", [dict(ac_typeid=ac, maker=maker, kind=kind)])
+    assert 'id="family-facts">Made by McDonnell Douglas. Type: jet, twin-engine.</p>' in get(ds, "/aircraft/dc-9-md-80-md-90").text
+    assert "Made by Avro and British Aerospace. Type: jet, four-engine; turboprop, one or two engines." in get(ds, "/aircraft/mixed").text
 
 
 def test_an_unknown_family_is_404_and_engines_is_not_a_family(ds):

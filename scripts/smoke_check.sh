@@ -19,6 +19,7 @@ check 200 /                                                         "usa-map"
 check 200 /airports                                                 "Busiest"
 check 200 /airports/globe                                           "data-origin"
 check 200 /airports/over-time                                       "data-kind=\"airports\""
+check 200 /airports/movers                                          "Risers and fallers"
 check 200 /airports/SFO                                             "size-chart"
 check 200 /airports/SFO/destinations                                "matrix"
 check 200 /airports/SFO/changes                                     "change-table"
@@ -65,6 +66,7 @@ check 200 "/t100/engines_by_year.json?_shape=objects"               '"distance_b
 check 200 "/t100/carrier_concentration.json?_shape=objects"         '"top4"'
 check 200 "/t100/top_carrier_history.json?year=2025&_shape=objects"  '"Southwest Airlines Co."'
 check 200 "/t100/domestic_routes.json?year=2025&_shape=objects"      '"ATL"'
+check 200 "/t100/airport_movers.json?measure=destinations&from_year=1990&to_year=2025&min_value=10&_shape=objects"  '"vs_median"'  # the slowest query: all 36 years' routes, under the 5 second limit
 check 200 "/t100/busiest_airports.json?year=2025&_shape=objects"    '"ATL"'
 check 200 "/t100/family_detail.json?family=Boeing+737&_shape=objects" '"737 NG"'
 check 200 "/t100/family_aircraft.json?family=Boeing+737&_shape=objects"   '"Boeing 737-800"'

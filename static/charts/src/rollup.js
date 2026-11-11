@@ -61,7 +61,7 @@ export function marketLabel(r) {
 // a city market pair's page, its markets in the order its name has them
 export function marketPath(r) {
   const { flip } = marketLabel(r);
-  return `/cities/${flip ? r.mb : r.ma}/${flip ? r.ma : r.mb}`;
+  return `/airports/cities/${flip ? r.mb : r.ma}/${flip ? r.ma : r.mb}`;
 }
 
 // Rows from top_markets_by_year -> the routes matrix's rows by city for one range of distance bands (from bandRange), as

@@ -1,0 +1,214 @@
+import re
+
+import pytest
+
+from tests.helpers import ROOT, get, put_airport_years
+
+
+def put(db_path, code, year, passengers, wac=34):
+    put_airport_years(db_path, [dict(year=year, origin=code, origin_city_name=f"{code} City, ST", origin_wac=wac, deps=1, seats=1,
+                                     passengers=passengers, freight=0)])
+
+
+def grow(db_path, code, before, after, first=1990, last=2025):
+    put(db_path, code, first, before)
+    put(db_path, code, last, after)
+
+
+def five(db_path):
+    # growth 4, 3, 1.5 (the median), 1 and 0.5; five million passengers in 1990 and ten million in 2025 all together
+    for code, after in (("FOUR", 4_000_000), ("THRE", 3_000_000), ("MEDI", 1_500_000), ("FLAT", 1_000_000), ("HALF", 500_000)):
+        grow(db_path, code, 1_000_000, after)
+
+
+def page(ds, path="/airports/movers"):
+    r = get(ds, path)
+    assert r.status_code == 200, r.text[:300]
+    return r.text
+
+
+def table(html, name):
+    """The rows of the table with this id, as lists of cell texts."""
+    body = re.search(rf'<table id="{name}".*?</table>', html, re.S).group(0)
+    return [[re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", body, re.S) if "<td" in row]
+
+
+def test_risers_and_fallers_are_ranked_against_the_median_airport(ds, db_path):
+    five(db_path)
+    html = page(ds)
+    assert [r[0] for r in table(html, "risers")] == ["FOUR", "THRE"]
+    assert [r[0] for r in table(html, "fallers")] == ["HALF", "FLAT"]  # the median airport itself is neither
+
+
+def test_a_row_gives_the_city_the_passengers_then_and_now_the_growth_and_the_growth_against_the_median(ds, db_path):
+    five(db_path)
+    html = page(ds)
+    assert table(html, "risers")[0][:7] == ["FOUR", "FOUR City, ST", "1 million", "4 million", "×4", "×2.67", "2025"]
+    assert table(html, "fallers")[0][4:6] == ["×0.5", "×0.333"]
+
+
+def test_the_peak_year_and_how_far_the_airport_is_from_it_are_shown(ds, db_path):
+    five(db_path)
+    put(db_path, "HALF", 2000, 2_000_000)
+    html = page(ds)
+    assert table(html, "fallers")[0][0:1] + table(html, "fallers")[0][6:8] == ["HALF", "2000", "25%"]
+    assert table(html, "risers")[0][6:8] == ["2025", "100%"]  # at its peak
+
+
+def test_the_airports_link_to_their_pages_with_their_name_as_the_hover(ds, db_path):
+    five(db_path)
+    assert '<a href="/airports/FOUR" title="FOUR">FOUR</a>' in page(ds)
+
+
+def test_the_median_and_the_whole_are_quoted_above_the_tables(ds, db_path):
+    five(db_path)
+    html = page(ds)
+    intro = re.search(r'<p class="intro">(.*?)</p>', html, re.S).group(1)
+    assert "1.5 times" in intro and "1990" in intro and "2025" in intro and "2 times" in intro
+
+
+def test_an_airport_left_with_under_one_percent_is_named_below_the_tables_and_counts_for_nothing(ds, db_path):
+    five(db_path)
+    grow(db_path, "DET", 1_000_000, 5_000)
+    html = page(ds)
+    assert "DET" not in [r[0] for r in table(html, "fallers")] and "DET" not in [r[0] for r in table(html, "risers")]
+    note = re.search(r'<p class="note" id="lost">(.*?)</p>', html, re.S).group(1)
+    assert "under 1%" in note and '<a href="/airports/DET" title="DET">DET</a> DET City, ST, 1 million to 5,000.' in re.sub(r"\s+", " ", note)
+    intro = re.search(r'<p class="intro">(.*?)</p>', html, re.S).group(1)
+    assert "1.5 times" in intro and "2 times" in intro  # the median and the total as without it
+
+
+def test_the_rows_say_which_airport_they_are_for_so_the_chart_can_follow_the_pointer(ds, db_path):
+    five(db_path)
+    assert '<tr data-code="FOUR">' in page(ds) and '<tr data-code="HALF">' in page(ds)
+
+
+def test_without_a_lost_airport_there_is_no_note(ds, db_path):
+    five(db_path)
+    assert 'id="lost"' not in page(ds)
+
+
+def test_a_small_airport_is_left_out_unless_the_size_is_lowered(ds, db_path):
+    five(db_path)
+    grow(db_path, "TINY", 200_000, 6_000_000)
+    assert "TINY" not in page(ds)
+    assert "TINY" in page(ds, "/airports/movers?min=100000")
+
+
+def test_the_years_are_the_ones_asked_for(ds, db_path):
+    five(db_path)
+    grow(db_path, "OLD", 1_000_000, 9_000_000, first=2005, last=2015)
+    grow(db_path, "FLT", 1_000_000, 1_000_000, first=2005, last=2015)  # the median of two is between them, so OLD is above it
+    html = page(ds, "/airports/movers?from=2005&to=2015")
+    assert [r[0] for r in table(html, "risers")] == ["OLD"] and [r[0] for r in table(html, "fallers")] == ["FLT"]
+    assert "FOUR" not in html
+
+
+@pytest.mark.parametrize("query", ["from=abc&to=", "from=2030&to=1800", "from=2025&to=1990", "from=2010&to=2010", "min=7&to=2999", "min=-5"])
+def test_nonsense_settings_fall_back_to_the_defaults(ds, db_path, query):
+    five(db_path)
+    assert "FOUR" in page(ds, f"/airports/movers?{query}")
+
+
+def test_the_settings_are_selects_that_change_the_page_by_themselves(ds):
+    html = page(ds)
+    assert '<script type="module" src="/static/movers/main.js">' in html
+    for name in ("from", "to", "measure", "min"):
+        assert f'<select name="{name}" id="{name}"' in html
+    outside = re.sub(r"<noscript>.*?</noscript>", "", html, flags=re.S)
+    assert "<button" not in outside and re.search(r"<noscript>.*<button[^>]*>Show</button>.*</noscript>", html, re.S)
+
+
+def flights(db_path, code, year, deps):
+    put_airport_years(db_path, [dict(year=year, origin=code, origin_city_name=f"{code} City, ST", origin_wac=34, deps=deps, arrs=0, seats=1,
+                                     passengers=1, freight=0)])
+
+
+def test_passengers_are_the_measure_unless_another_is_chosen(ds, db_path):
+    five(db_path)
+    html = page(ds)
+    assert '<option value="passengers" selected>Passengers</option>' in html and 'data-measure="passengers"' in html
+    assert "Passengers 1990" in html and "passengers in 1990" in html
+    assert page(ds, "/airports/movers?measure=nonsense") == html
+
+
+def test_flights_are_a_measure_with_their_own_sizes_and_wording(ds, db_path):
+    for code, after in (("AAA", 24_000), ("BBB", 12_000), ("CCC", 6_000)):
+        flights(db_path, code, 1990, 12_000)
+        flights(db_path, code, 2025, after)
+    html = page(ds, "/airports/movers?measure=flights")
+    assert [r[0] for r in table(html, "risers")] == ["AAA"] and [r[0] for r in table(html, "fallers")] == ["CCC"]
+    assert table(html, "risers")[0][2:6] == ["12,000", "24,000", "×2", "×2"]
+    assert "Flights 1990" in html and "flights in 1990" in html and "departures and arrivals" in html
+    assert 'data-measure="flights"' in html and 'data-label="Flights"' in html and 'data-min="10000"' in html
+    assert '<option value="10000" selected>10,000</option>' in html and '<option value="500000"' not in html
+
+
+def test_a_size_from_another_measure_is_the_chosen_measures_default(ds, db_path):
+    assert 'data-min="10000"' in page(ds, "/airports/movers?measure=flights&min=500000")
+    assert 'data-min="10"' in page(ds, "/airports/movers?measure=destinations&min=500000")
+    assert 'data-min="500000"' in page(ds, "/airports/movers?measure=passengers&min=10000")
+    assert 'data-min="25000"' in page(ds, "/airports/movers?measure=flights&min=25000")
+
+
+def test_destinations_are_a_measure_counting_the_other_airports_flown_to(ds, db_path):
+    from tests.test_airport_movers import route
+    for year, hub, low in ((1990, 12, 10), (2025, 24, 5)):
+        for code in ("HUB", "LOW"):
+            put(db_path, code, year, 1)
+        for i in range(hub):
+            route(db_path, year, "HUB", f"H{i:02d}", 12, 12)
+        for i in range(low):
+            route(db_path, year, "LOW", f"L{i:02d}", 12, 12)
+    html = page(ds, "/airports/movers?measure=destinations")
+    assert [r[0] for r in table(html, "risers")] == ["HUB"] and [r[0] for r in table(html, "fallers")] == ["LOW"]
+    assert table(html, "risers")[0][2:5] == ["12", "24", "×2"]
+    assert "Destinations 1990" in html and "destinations in 1990" in html and "24 in the year both ways" in html
+    assert "1.25 times as many" in html
+
+
+def test_the_chosen_settings_are_selected_and_given_to_the_script(ds, db_path):
+    five(db_path)
+    html = page(ds, "/airports/movers?from=2005&to=2015&min=1000000")
+    assert re.search(r'<option value="2005" selected>', html) and re.search(r'<option value="2015" selected>', html)
+    assert re.search(r'<option value="1000000" selected>', html)
+    assert 'data-from="2005"' in html and 'data-to="2015"' in html and 'data-min="1000000"' in html
+
+
+def test_the_page_is_in_the_airports_views_line_after_most_dedicated(ds):
+    html = page(ds)
+    assert '<a href="/airports/dedicated">Most dedicated</a> · <strong aria-current="page">Risers and fallers</strong> · <a href="/airports/routes">Routes</a>' in html
+    assert "<h1>Risers and fallers</h1>" in html and "<title>Risers and fallers" in html
+
+
+def test_the_page_renders_without_data(ds):
+    html = page(ds)
+    assert "No airports" in html and "<table" not in html
+
+
+def test_the_charts_have_somewhere_to_go_and_say_how_the_numbers_are_counted(ds, db_path):
+    five(db_path)
+    html = page(ds)
+    assert 'id="movers-scatter"' in html and 'id="movers-lines"' in html
+    assert "boarding or leaving" in html and "once on each flight" in html
+
+
+def test_the_picked_out_line_keeps_its_colour(ds):
+    # the invisible wider copy of each line (.m-hit) is a black stroke at no opacity: a rule that made every path in the chart
+    # opaque when picked out would draw a black line over the coloured one
+    css = (ROOT / "static/movers/style.css").read_text()
+    assert re.search(r"#movers-lines \.m-line path\.active\s*\{[^}]*stroke-opacity:\s*1", css)
+    assert not re.search(r"#movers-lines path\.active", css)
+
+
+def test_the_stylesheet_is_linked(ds):
+    assert '<link rel="stylesheet" href="/static/movers/style.css">' in page(ds)
+    assert (ROOT / "static/movers/style.css").exists()
+
+
+@pytest.mark.parametrize("value, written", [(4.8366, "×4.84"), (4, "×4"), (1 / 3, "×0.333"), (0, "×0"), (0.001, "×0.001"), (0.000075, "<×0.001"),
+                                            (1234.5, "×1,234"), (None, "–")])
+def test_a_multiple_has_three_significant_figures_and_never_an_exponent(value, written):
+    from plugins.t100_globe import multiple
+    assert multiple(value) == written

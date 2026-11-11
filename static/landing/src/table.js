@@ -21,31 +21,37 @@ export const SERVICES = ['all', 'domestic', 'international'];
 export const ROW_COUNTS = [10, 25, 50];
 export const DEFAULT_ROWS = 50;
 
-export function parseState(search, minYear, maxYear) {
+// The table's address for each grouping (plugins/t100_globe.py has the same): its airports, cities, or (only abroad) countries
+export const TABLE_PATHS = { airport: '/airports', city: '/airports/cities', country: '/airports/countries' };
+const groupOf = (path) => Object.keys(TABLE_PATHS).find((g) => TABLE_PATHS[g] === path) || 'airport';
+
+// The table's settings from its address: the grouping from the path, the rest from the query (the countries are abroad by their address)
+export function parseState(search, minYear, maxYear, path = '/airports') {
   const q = new URLSearchParams(search || '');
   const year = Number.parseInt(q.get('year'), 10);
   const sort = q.get('sort');
   const n = Number.parseInt(q.get('n'), 10);
-  const region = q.get('region') === 'abroad' ? 'abroad' : 'us';
+  const group = groupOf(path);
+  const region = group === 'country' || q.get('region') === 'abroad' ? 'abroad' : 'us';
   return {
     region,
     n: ROW_COUNTS.includes(n) ? n : DEFAULT_ROWS,
     service: region === 'us' && SERVICES.includes(q.get('service')) ? q.get('service') : 'all', // abroad, every flight is international
     year: q.get('year') === 'all' ? 'all' : Number.isFinite(year) && year >= minYear && year <= maxYear ? year : maxYear,
     sort: Object.hasOwn(SORTS, sort) ? sort : 'passengers',
-    group: q.get('group') === 'city' ? 'city' : q.get('group') === 'country' && region === 'abroad' ? 'country' : 'airport',
+    group,
   };
 }
 
 // the heading's years: one year, or the whole span for all years
 export const yearLabel = (year, minYear, maxYear) => (year === 'all' ? `${minYear}–${maxYear}` : String(year));
 
+// the query for the table's settings, the grouping being in the path (tableHref)
 export function toSearch(state, maxYear) {
   const q = new URLSearchParams();
   if (state.year !== maxYear) q.set('year', state.year);
   if (state.sort !== 'passengers') q.set('sort', state.sort);
-  if (state.group === 'city' || state.group === 'country') q.set('group', state.group);
-  if (state.region === 'abroad') q.set('region', 'abroad');
+  if (state.region === 'abroad' && state.group !== 'country') q.set('region', 'abroad');
   if (state.n && state.n !== DEFAULT_ROWS) q.set('n', state.n);
   if (state.service && state.service !== 'all') q.set('service', state.service);
   const s = q.toString();
@@ -66,16 +72,17 @@ export const matrixSearch = (sort, group = 'airport', { n = DEFAULT_ROWS, servic
   if (service !== 'all') q.set('service', service);
   return search(q);
 };
-export const tableSearch = (s) => {
+// the table's address for the airports matrix's settings (its query), at the path for the matrix's grouping
+export const tableHref = (s) => {
   const from = new URLSearchParams(s || '');
   const q = new URLSearchParams();
   if (SHARED.includes(from.get('measure'))) q.set('sort', from.get('measure'));
   const abroad = from.get('region') === 'abroad';
-  if (from.get('group') === 'city' || (abroad && from.get('group') === 'country')) q.set('group', from.get('group'));
-  if (abroad) q.set('region', 'abroad');
+  const group = from.get('group') === 'city' || (abroad && from.get('group') === 'country') ? from.get('group') : 'airport';
+  if (abroad && group !== 'country') q.set('region', 'abroad');
   if (ROW_COUNTS.includes(Number(from.get('n'))) && Number(from.get('n')) !== DEFAULT_ROWS) q.set('n', from.get('n'));
   if (SERVICES.includes(from.get('service')) && from.get('service') !== 'all') q.set('service', from.get('service'));
-  return search(q);
+  return `${TABLE_PATHS[group]}${search(q)}`;
 };
 
 // top_airports rows -> one row per BTS city market: its airports' totals (busiest first), named after the busiest airport's
@@ -110,17 +117,17 @@ export const countryHref = (name, { year = 'all', dir = '' } = {}, maxYear) => {
   const q = new URLSearchParams();
   if (year !== maxYear) q.set('year', year);
   if (dir) q.set('dir', dir);
-  return `/countries/${countrySlug(name)}${q.size ? `?${q}` : ''}`;
+  return `${TABLE_PATHS.country}/${countrySlug(name)}${q.size ? `?${q}` : ''}`;
 };
 
-// a city row's page, /cities/<market>, for a BTS market (a "solo:" airport has none): its destinations ranked by the table's
+// a city row's page, /airports/cities/<market>, for a BTS market (a "solo:" airport has none): its destinations ranked by the table's
 // year (the page's own default is all years), counted the table's way
 export const cityHref = (key, { year = 'all', dir = '' } = {}) => {
   if (!/^[0-9]{5}$/.test(String(key))) return null;
   const q = new URLSearchParams();
   if (year !== 'all') q.set('year', year);
   if (dir) q.set('dir', dir);
-  return `/cities/${key}${q.size ? `?${q}` : ''}`;
+  return `/airports/cities/${key}${q.size ? `?${q}` : ''}`;
 };
 
 // a country opens to its busiest airports and one row adding up the rest (a lone leftover airport is listed, not summed)

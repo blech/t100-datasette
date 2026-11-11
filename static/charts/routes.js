@@ -10,7 +10,7 @@ import { replaceSearch } from '/static/nav/src/state.js';
 import { parseDir, setDir } from '/static/common/direction.js';
 
 const origin = document.body.dataset.origin;
-// a city page (/cities/<market>) draws the same matrix for all of a BTS city market's airports together, named by its town
+// a city page (/airports/cities/<market>) draws the same matrix for all of a BTS city market's airports together, named by its town
 const market = document.body.dataset.market || null;
 const here = market ? document.body.dataset.name : origin;
 const query = market ? ['market_routes_by_year', { market }] : ['routes_by_year', { origin }];
@@ -116,7 +116,7 @@ const routeHref = (dest, year = null) => {
 function cityHref(other, year = null, airport = null) {
   if (!market || !other || !/^[0-9]{5}$/.test(other)) return null;
   const q = new URLSearchParams([...(airport ? [['b', airport]] : []), ...(year === null ? [] : [['year', year]])]);
-  return `/cities/${market}/${other}${q.size ? `?${q}` : ''}`;
+  return `/airports/cities/${market}/${other}${q.size ? `?${q}` : ''}`;
 }
 const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);

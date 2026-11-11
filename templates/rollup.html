@@ -12,7 +12,6 @@
 
 {% block content %}
     <h1>{{ page.title }} over time</h1>
-    {% set find = {"airlines": "airline", "airports": "airport", "toproutes": "airport", "aircraft": "aircraft"}[kind] %}{% include "_find.html" %}
     <p class="intro">
       {% if kind == "airports" and abroad %}Every airport outside the US in the data, counting its flights {{ {"out": "to the US", "in": "from the US"}.get(dir, "to and from the US") }}, by year, the way the US airports are. Only flights to or from a US airport are in the data. Click an airport's code to see which US airports it flies to.
       {% elif kind == "airports" %}Every US airport in the data, counting flights {{ {"out": "departing it", "in": "arriving at it"}.get(dir, "to and from it") }}, by year. Click an airport's code to see where it flies.
