@@ -89,6 +89,6 @@ def test_with_a_bundle_scripts_load_from_it_and_preload_its_chunks(bundle):
 def test_pages_use_and_preload_their_scripts(ds):
     for path in ("/airports/over-time", "/aircraft/over-time"):
         html = get(ds, path).text
-        for entry in ("charts/rollup.js", "nav/main.js", "charts/find.js"):
+        for entry in ("charts/rollup.js", "nav/main.js", "search/main.js"):
             assert f'<link rel="modulepreload" href="{t100_assets.script_url(entry)}">' in html
         assert f'<script type="module" src="{t100_assets.script_url("charts/rollup.js")}"></script>' in html

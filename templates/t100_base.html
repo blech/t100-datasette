@@ -12,8 +12,11 @@
   <link rel="stylesheet" href="/static/common/fonts.css">
 {%- block styles %}{% endblock %}
   <link rel="stylesheet" href="/static/nav/style.css">
+  <link rel="stylesheet" href="/static/search/style.css">
   <script type="module" src="{{ script_url('nav/main.js') }}"></script>
+  <script type="module" src="{{ script_url('search/main.js') }}"></script>
 {{ modulepreload("/static/nav/main.js") }}
+{{ modulepreload("/static/search/main.js") }}
 {%- block head %}{% endblock %}
 </head>
 <body{% block body_attrs %}{% endblock %}>

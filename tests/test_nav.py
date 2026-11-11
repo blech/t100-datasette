@@ -65,3 +65,13 @@ def test_the_theme_chooser_is_in_the_footer_or_on_a_map_in_its_controls(ds):
         html = get(ds, path).text
         controls = html[html.index('<div id="controls">'):]
         assert 'id="theme"' in controls and '<footer class="site-footer"' not in html, path
+
+
+def test_every_page_header_has_the_search_button_after_about(ds):
+    for path in ("/", "/about", "/airports", "/airports/SFO", "/airports/globe"):
+        html = get(ds, path).text
+        header = re.search(r'<nav class="sections".*?</nav>', html, re.S).group(0)
+        assert header.count('id="search-open"') == 1, path
+        assert header.index(">About<") < header.index('id="search-open"'), path
+        assert 'aria-label="Search"' in header and "<svg" in header, path
+        assert "/static/search/main.js" in html and "/static/search/style.css" in html, path
