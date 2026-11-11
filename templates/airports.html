@@ -1,13 +1,13 @@
 {% extends "t100_base.html" %}
 
-{% block title %}Busiest airports, {{ min_year }}–{{ max_year }}{% endblock %}
+{% block title %}Busiest {{ things }}, {{ min_year }}–{{ max_year }}{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="/static/landing/style.css">
 {% endblock %}
-{% block body_attrs %} data-min-year="{{ min_year }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}" data-region="{{ region }}"{% endblock %}
+{% block body_attrs %} data-min-year="{{ min_year }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}" data-region="{{ region }}" data-group="{{ group }}"{% endblock %}
 
 {% block content %}
-    <h1>Busiest {% if abroad %}airports abroad{% else %}US airports{% endif %}</h1>
+    <h1>Busiest {% if group == "country" %}countries{% elif abroad %}{{ things }} abroad{% else %}US {{ things }}{% endif %}</h1>
     {% set find = "airport" %}{% include "_find.html" %}
     <p class="intro">
       {% if abroad %}The airports outside the US with the most flights to and from the US in any year since {{ min_year }}, by passengers, flights, destinations or freight.
@@ -23,7 +23,7 @@
     <p class="chart-sentence">
       Show {{ airport_ranking("table", ranks, dir, dir_choices, region) }}
     </p>
-    <h2 id="heading">Busiest {% if abroad %}airports abroad{% else %}airports{% endif %}</h2>
+    <h2 id="heading">Busiest {{ things }}{% if abroad %} abroad{% endif %}</h2>
     <div class="scroll">
       <table id="airports">
         <thead>

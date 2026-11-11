@@ -74,7 +74,7 @@ def test_the_routes_matrix_page(ds):
     assert '<a href="/airports">airports</a>' in r.text and 'aria-current="page">routes<' in r.text
     sentences = re.findall(r'<p class="chart-sentence">(.*?)</p>', r.text, re.S)
     assert re.findall(r'<select id="([^"]+)"', sentences[0]) == ["matrix-measure", "matrix-service", "matrix-n", "matrix-rank"]
-    assert re.findall(r'<select id="([^"]+)"', sentences[1]) == ["matrix-from", "matrix-to"]
+    assert re.findall(r'<select id="([^"]+)"', sentences[1]) == ["matrix-group", "matrix-from", "matrix-to"]
 
 
 def test_routes_by_year_gives_each_other_airports_distance_whichever_end_it_is(ds, db_path, monkeypatch):

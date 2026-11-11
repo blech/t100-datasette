@@ -1,7 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { sortLabels, lowerFirst, topBy, parseState, toSearch, airportHref, loadFactor, matrixSearch, groupCities, yearLabel, countryHref, splitAirports, sumOf } from './src/table.js';
+import { sortLabels, lowerFirst, topBy, parseState, toSearch, TABLE_PATHS, airportHref, loadFactor, matrixSearch, groupCities, yearLabel, countryHref, cityHref, splitAirports, sumOf } from './src/table.js';
 import { exactCount } from '/static/common/numbers.js';
 import { splitSmall, othersLabel } from '/static/common/small.js';
 import { cell, countCell, tonsCell, percentCell, link } from './src/cells.js';
@@ -10,7 +10,7 @@ import { parseDir, setDir } from '/static/common/direction.js';
 
 const minYear = Number(document.body.dataset.minYear);
 const maxYear = Number(document.body.dataset.maxYear);
-const state = parseState(location.search, minYear, maxYear);
+const state = parseState(location.search, minYear, maxYear, location.pathname); // the grouping is the address's: /airports/cities
 const $ = (id) => document.getElementById(id);
 
 let rows = [];
@@ -81,6 +81,7 @@ function render() {
     rank.prepend(toggle, ' ');
     const name = cell('', 'city');
     if (state.group === 'country') name.append(link(countryHref(c.name, { year: state.year, dir }, maxYear), c.name, tip)); // the country's own page lists every airport
+    else if (cityHref(c.key)) name.append(link(cityHref(c.key, { year: state.year, dir }), c.name, tip)); // a city's page draws its destinations
     else name.textContent = c.name;
     name.title = tip;
     tr.append(rank, cell('', 'code'), name, countCell(c.passengers, 'passengers'), countCell(c.deps, word), percentCell(loadFactor(c)),
@@ -129,9 +130,13 @@ carryToMatrix();
 const ranking = $('table-rank');
 ranking.value = String(state.year);
 ranking.addEventListener('change', () => { state.year = ranking.value === 'all' ? 'all' : Number(ranking.value); pushState(); load(); });
+// each grouping is a page of its own (/airports, /airports/cities, /airports/countries), so the menu goes to it, with the settings kept
 const grouping = $('table-group');
 grouping.value = state.group;
-grouping.addEventListener('change', () => { state.group = grouping.value; pushState(); render(); });
+grouping.addEventListener('change', () => {
+  const to = { ...state, group: grouping.value };
+  location.href = `${TABLE_PATHS[to.group]}${replaceSearch(location.search, ['year', 'sort', 'group', 'region', 'n', 'service'], toSearch(to, maxYear))}`;
+});
 const rowCount = $('table-n');
 rowCount.value = String(state.n);
 rowCount.addEventListener('change', () => { state.n = Number(rowCount.value); pushState(); render(); });
@@ -140,12 +145,15 @@ if (!abroad) { // abroad, the flights menu is only words
   service.value = state.service;
   service.addEventListener('change', () => { state.service = service.value; pushState(); load(); });
 }
-// US or abroad changes what the directions mean and what the page says, so the page reloads, with the way and flights back to their defaults
+// US or abroad changes what the directions mean and what the page says, so the page reloads, with the way and flights back to their defaults;
+// the countries are only abroad, so in the US they are its airports again
 $('table-region').addEventListener('change', (e) => {
   const q = new URLSearchParams(location.search);
-  q.delete('dir'); q.delete('service');
-  if (e.target.value === 'abroad') q.set('region', 'abroad'); else q.delete('region');
-  location.search = q.size ? `?${q}` : '';
+  q.delete('dir'); q.delete('service'); q.delete('region');
+  const abroadNow = e.target.value === 'abroad';
+  const group = state.group === 'country' && !abroadNow ? 'airport' : state.group;
+  if (abroadNow && group !== 'country') q.set('region', 'abroad');
+  location.href = `${TABLE_PATHS[group]}${q.size ? `?${q}` : ''}`;
 });
 
 for (const th of document.querySelectorAll('th[data-sort]')) {

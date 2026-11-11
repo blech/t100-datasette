@@ -85,6 +85,16 @@ CREATE TABLE "family_year" (
    PRIMARY KEY ([year], [family], [domestic], [service_class])
 ) WITHOUT ROWID;
 
+CREATE TABLE "market_band_year" (
+   [year] INTEGER, [service] TEXT, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [service], [band])
+) WITHOUT ROWID;
+
+CREATE TABLE "market_name" (
+   [market_id] TEXT PRIMARY KEY, [name] TEXT
+) WITHOUT ROWID;
+
 CREATE TABLE "openflights_airports" (
    "id" INTEGER, "name" TEXT, "city" TEXT, "country" TEXT, "iata_code" TEXT,
    "icao_code" TEXT, "latitude" REAL, "longitude" REAL, "altitude" REAL,
@@ -175,6 +185,12 @@ CREATE TABLE "t100_international" (
    [wac] INTEGER
 );
 
+CREATE TABLE "top_market_year" (
+   [ma] TEXT, [mb] TEXT, [year] INTEGER, [service] TEXT, [distance] INTEGER, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [year_rank] INTEGER, [overall_rank] INTEGER,
+   PRIMARY KEY ([ma], [mb], [year])
+) WITHOUT ROWID;
+
 CREATE TABLE "top_route_year" (
    [a] TEXT, [b] TEXT, [year] INTEGER, [service] TEXT, [distance] INTEGER, [band] INTEGER,
    [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [year_rank] INTEGER, [overall_rank] INTEGER,
@@ -189,9 +205,15 @@ CREATE TABLE "type_year" (
 
 CREATE INDEX idx_aircraft_types_ac_typeid ON aircraft_types (ac_typeid);
 
+CREATE INDEX idx_airport_market_market ON airport_market (market_id);
+
 CREATE INDEX idx_carriers_carrier_entity ON carriers (carrier_entity);
 
 CREATE INDEX idx_openflights_airports_iata ON openflights_airports (iata_code);
+
+CREATE INDEX idx_route_year_totals_dest ON route_year_totals (dest, origin);
+
+CREATE INDEX idx_route_year_totals_origin ON route_year_totals (origin, dest);
 
 CREATE INDEX idx_t100_domestic_origin_date_dest ON t100_domestic (origin, year, month, dest);
 

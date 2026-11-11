@@ -22,8 +22,8 @@
     <section class="section" aria-labelledby="airports-heading">
       <h2 id="airports-heading"><a href="/airports">Airports</a></h2>
       {% if busiest %}{% set airports = busiest.airports %}{% set cities = busiest.cities %}
-      <p class="story">The busiest airport for passengers in {{ max_year }} was {{ airports[0].city }} ({{ airports[0].code }}), where {{ airports[0].passengers }} passengers boarded or left,
-        ahead of {{ airports[1].city }} ({{ airports[1].code }}) and {{ airports[2].city }} ({{ airports[2].code }}). For cities overall, though, the busiest was {{ cities[0].city }} with
+      <p class="story">The busiest airport for passengers in {{ max_year }} was {{ airports[0].city }} ({{ airports[0].abbr }}), where {{ airports[0].passengers }} passengers boarded or left,
+        ahead of {{ airports[1].city }} ({{ airports[1].abbr }}) and {{ airports[2].city }} ({{ airports[2].abbr }}). For cities overall, though, the busiest was {{ cities[0].city }} with
         {{ cities[0].passengers }} passengers, followed by {{ cities[1].city }} and {{ cities[2].city }}.</p>
       {% endif %}
       <div class="map-controls" role="radiogroup" aria-label="Group the 50 busiest by passengers">

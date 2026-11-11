@@ -46,6 +46,57 @@ export function topRouteRows(rows, { from = '0', to = 'any' } = {}) {
   }));
 }
 
+// a city market pair's key, from top_markets_by_year's ma and mb (market ids, or "solo:" and an airport code)
+export const marketKey = (r) => `${r.ma}~${r.mb}`;
+// "San Francisco, CA" -> "San Francisco"
+const town = (name) => String(name || '').split(', ')[0];
+// a market pair's name, its two towns in alphabetical order, and whether that puts mb's first
+export function marketLabel(r) {
+  const a = town(r.name_a) || r.ma;
+  const b = town(r.name_b) || r.mb;
+  const flip = b.localeCompare(a) < 0;
+  return { label: flip ? `${b} ↔ ${a}` : `${a} ↔ ${b}`, flip };
+}
+
+// a city market pair's page, its markets in the order its name has them
+export function marketPath(r) {
+  const { flip } = marketLabel(r);
+  return `/airports/cities/${flip ? r.mb : r.ma}/${flip ? r.ma : r.mb}`;
+}
+
+// Rows from top_markets_by_year -> the routes matrix's rows by city for one range of distance bands (from bandRange), as
+// topRouteRows gives airport pairs: each market pair is a row keyed by marketKey (its name is marketLabel's), and the year's
+// totals for the range's bands (rest)
+export function topMarketRows(rows, { from = '0', to = 'any' } = {}) {
+  const inRange = (band) => Number(band) >= Number(from) && (to === 'any' || Number(band) < Number(to));
+  return rows.filter((r) => inRange(r.band)).map((r) => ({
+    ...(r.rest ? {} : { route: marketKey(r) }),
+    year: r.year, service: r.service, distance: r.distance, rest: Boolean(r.rest),
+    deps: r.deps, seats: r.seats, passengers: r.passengers, freight: r.freight,
+  }));
+}
+
+// Rows from market_pairs_by_year -> a city pair page's rows: each airport pair named in the order of the page's markets
+// ("LAX ↔ SFO" on Los Angeles ↔ San Francisco), not alphabetically as routeRows names them. Narrowed to one airport on a side
+// (`a` in the first market, `b` in the second: ?b=VNY), only its pairs are rows, and every pair comes again as a rest row, so a
+// year's shares are still of all the flying between the two cities
+export function marketPairRows(rows, { a = '', b = '' } = {}) {
+  const named = rows.map((r) => ({ ...r, route: `${r.origin} ↔ ${r.dest}` }));
+  if (!a && !b) return named;
+  const kept = named.filter((r) => (!a || r.origin === a) && (!b || r.dest === b));
+  return [...kept, ...rows.map((r) => ({ ...r, rest: true }))];
+}
+
+// A city pair page's choice of rows, for the `count` airport pairs its settings can show: more than ten, a menu of the top Ns shorter
+// than that, then all of them (as n=50, which no city pair has more pairs than); ten or fewer, just the words. `n` is the one asked for.
+export function rowsChoice(count, n = 50) {
+  const route = count === 1 ? 'route' : 'routes';
+  if (count <= 10) return { text: `${count === 1 ? 'its one' : count === 2 ? 'both' : `all ${count}`} ${route}` };
+  const options = [10, 25].filter((k) => k < count).map((k) => ({ value: String(k), label: `top ${k}` }));
+  options.push({ value: '50', label: count <= 50 ? `all ${count}` : 'top 50' });
+  return { options, value: options.some((o) => o.value === String(n)) ? String(n) : '50', text: route };
+}
+
 // the page's single band menu before it had a range (?eband=), as the same range
 export function legacyBand(band) {
   if (band === null || band === undefined) return null;

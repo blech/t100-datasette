@@ -181,6 +181,81 @@ databases:
           FROM route_band_year
           ORDER BY year, rest, passengers DESC
 
+      # the routes matrix grouped by city: the BTS city market pairs that could be among its top 50, as top_routes_by_year
+      top_markets_by_year:
+        title: "The busiest city market pairs by year"
+        description: "One row per pair of BTS city markets (New York is JFK, LaGuardia and Newark; both directions together) and year, with each market's name, the pair's service, and its distance in miles (its airport pairs' distances weighted by passengers), for the market pairs in the top 50 of their service and distance band by flights, seats, passengers or freight, over all years or, with year set, in that year, and the busiest of each band in each year. Flights within one market are left out. Rows with rest = 1 are every market pair's totals for a year, service and distance band (distance is the band's lower bound). market_pairs_by_year lists a market pair's airport pairs."
+        sql: |
+          WITH kept AS (
+            SELECT DISTINCT ma, mb FROM top_market_year
+            WHERE year_rank = 1 OR (CASE WHEN :year = '' THEN overall_rank WHEN year = CAST(:year AS integer) THEN year_rank END) <= 50
+          )
+          SELECT t.ma, t.mb, na.name AS name_a, nb.name AS name_b, year, service, distance, band, deps, seats, passengers, freight, 0 AS rest
+          FROM top_market_year AS t JOIN kept USING (ma, mb)
+          LEFT JOIN market_name AS na ON na.market_id = t.ma LEFT JOIN market_name AS nb ON nb.market_id = t.mb
+          UNION ALL
+          SELECT '', '', '', '', year, service, band, band, deps, seats, passengers, freight, 1
+          FROM market_band_year
+          ORDER BY year, rest, passengers DESC
+
+      # a city market pair's airport pairs: the city pair page's matrix (/airports/cities/ma/mb), for any two markets, read live from
+      # route_year_totals through its origin and dest indexes
+      market_pairs_by_year:
+        title: "A city market pair's airport pairs by year"
+        description: "One row per airport pair (both directions together) and year between two BTS city markets (ids as airport_market's market_id, in either order), with origin in the market given as ma and dest in mb, and the pair's service and distance in miles."
+        sql: |
+          WITH a AS (SELECT code FROM airport_market WHERE market_id = :ma AND :ma <> :mb),
+               b AS (SELECT code FROM airport_market WHERE market_id = :mb)
+          SELECT r.origin, r.dest, r.year,
+            CASE WHEN SUM(r.domestic_deps) * 2 > SUM(r.deps) THEN 'domestic' ELSE 'international' END AS service,
+            d.distance, SUM(r.deps) AS deps, SUM(r.seats) AS seats, SUM(r.passengers) AS passengers, SUM(r.freight) AS freight
+          FROM (
+            SELECT t.origin, t.dest, t.year, t.deps, t.domestic_deps, t.seats, t.passengers, t.freight
+            FROM a JOIN route_year_totals AS t ON t.origin = a.code WHERE t.dest IN b
+            UNION ALL
+            SELECT t.dest, t.origin, t.year, t.deps, t.domestic_deps, t.seats, t.passengers, t.freight
+            FROM b JOIN route_year_totals AS t ON t.origin = b.code WHERE t.dest IN a
+          ) AS r
+          LEFT JOIN pair_distance AS d ON d.a = MIN(r.origin, r.dest) AND d.b = MAX(r.origin, r.dest)
+          GROUP BY r.origin, r.dest, r.year
+          ORDER BY r.year, passengers DESC
+
+      # a city market's routes: the city page's destinations matrix (/airports/cities/market), as routes_by_year is an airport's, with
+      # every airport of the market counted together and flights within it left out
+      market_routes_by_year:
+        title: "Other airports from and to a city market, by year"
+        description: "One row per airport outside the BTS city market (dest) and year, counting flights both ways from every airport in the market, or set dir to out (departures) or in (arrivals), with routes under the minimum flights (24 both ways, 12 one way, when empty) left out, and the distance in miles from the market's airports, weighted by passengers."
+        sql: |
+          WITH here AS (SELECT code FROM airport_market WHERE market_id = :market)
+          SELECT
+            r.dest,
+            m.market_id,
+            n.name AS city,
+            CAST(ROUND(COALESCE(
+              SUM(CASE WHEN d.distance > 0 THEN d.distance * r.passengers END) * 1.0 / NULLIF(SUM(CASE WHEN d.distance > 0 THEN r.passengers END), 0),
+              SUM(CASE WHEN d.distance > 0 THEN d.distance * r.deps END) * 1.0 / NULLIF(SUM(CASE WHEN d.distance > 0 THEN r.deps END), 0))) AS integer) AS distance,
+            r.year,
+            SUM(r.deps) AS deps,
+            SUM(r.seats) AS seats,
+            SUM(r.passengers) AS passengers,
+            SUM(r.freight) AS freight,
+            CASE WHEN SUM(r.domestic_deps) * 2 > SUM(r.deps) THEN 'domestic' ELSE 'international' END AS service
+          FROM (
+            SELECT t.origin AS airport, t.dest, t.year, t.deps, t.domestic_deps, t.seats, t.passengers, t.freight
+            FROM here JOIN route_year_totals AS t ON t.origin = here.code WHERE :dir <> 'in'
+            UNION ALL
+            SELECT t.dest, t.origin, t.year, t.deps, t.domestic_deps, t.seats, t.passengers, t.freight
+            FROM here JOIN route_year_totals AS t ON t.dest = here.code WHERE :dir <> 'out'
+          ) AS r
+          LEFT JOIN airport_names n ON n.code = r.dest
+          LEFT JOIN airport_market m ON m.code = r.dest
+          LEFT JOIN pair_distance d ON d.a = MIN(r.airport, r.dest) AND d.b = MAX(r.airport, r.dest)
+          WHERE r.dest NOT IN here
+          GROUP BY r.dest, r.year
+          HAVING SUM(r.deps) >= CAST(COALESCE(NULLIF(:min_deps, ''), CASE WHEN :dir IN ('out', 'in') THEN 12 ELSE 24 END) AS integer)
+            AND (SUM(r.deps) > 0 OR SUM(r.passengers) > 0 OR SUM(r.freight) > 0)
+          ORDER BY r.year, r.dest
+
       # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
       busiest_airports:
         sql: |

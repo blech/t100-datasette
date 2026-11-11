@@ -1,0 +1,42 @@
+{% extends "t100_base.html" %}
+
+{% block title %}{{ town }} destinations over time{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/static/charts/style.css">
+{% endblock %}
+{# routes.js draws an airport's destinations matrix; data-market makes it a city market's, all its airports counted together #}
+{% block body_attrs %} data-market="{{ market }}" data-name="{{ town }}" data-latest-year="{{ latest_year }}" data-min-year="{{ min_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
+
+{% block content %}
+    <h1 id="title">{{ town }}: destinations over time</h1>
+    <p class="intro" id="subtitle">The {{ name }} city market: {{ airports|join(", ") }}</p>
+    {% set find = "airport" %}{% include "_find.html" %}
+    <p class="note" id="truncated" hidden>Too many rows: some routes are missing from this chart.</p>
+    <p class="chart-sentence">
+      Show <select id="matrix-measure" aria-label="Measure"></select>
+      {% if foreign %}on <span id="matrix-service">international flights</span>{# every flight abroad is to or from the US #}
+      {% else %}on <select id="matrix-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>{% endif %}
+      for the top <select id="matrix-n" aria-label="Number of destinations"><option>10</option><option selected>25</option><option>50</option></select>
+      <select id="matrix-group" aria-label="Group rows by"><option value="city">cities (BTS markets)</option><option value="airport">airports</option></select>
+      <select id="matrix-flown" aria-label="Which destinations"><option value="ever">ever flown</option><option value="after">first flown after {{ min_year }}</option><option value="dropped">dropped by {{ latest_year }}</option></select>,
+      ranked by <select id="matrix-rank" aria-label="Year used to rank destinations"><option value="">all years</option></select>.
+    </p>
+    <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
+    <div class="key-row">
+      <fieldset id="matrix-scale" class="scale-choice">
+        <legend>Colour</legend>
+        <label><input type="radio" name="scale" value="absolute" checked> Amount</label>
+        <label><input type="radio" name="scale" value="year"> Share of each year</label>
+        <label><input type="radio" name="scale" value="busiest"> Compared to top destination</label>
+      </fieldset>
+      <div id="matrix-key" class="matrix-key"></div>
+    </div>
+    <p class="note" id="scale-note" hidden></p>
+    <div id="matrix" aria-live="polite">Loading chart…</div>
+    <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> <span id="flown-note"></span> Each cell is one destination in one year, counting the flights of all {{ town }}'s airports together; flights between them are left out. Click a city, or a cell, to see its airport pairs with {{ town }}, with a cell's year marked; ▸ opens a city into its airports. Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}</p>
+{% endblock %}
+
+{% block scripts %}
+  <div id="label-tip" class="popover text" role="tooltip" hidden></div>
+  <script type="module" src="{{ script_url('charts/routes.js') }}"></script>
+{% endblock %}

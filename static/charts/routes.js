@@ -1,7 +1,7 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey, fullYears, rankYearFrom, yearTick, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, percentTicks, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey, fullYears, rankYearFrom, yearTick, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
@@ -10,6 +10,11 @@ import { replaceSearch } from '/static/nav/src/state.js';
 import { parseDir, setDir } from '/static/common/direction.js';
 
 const origin = document.body.dataset.origin;
+// a city page (/airports/cities/<market>) draws the same matrix for all of a BTS city market's airports together, named by its town
+const market = document.body.dataset.market || null;
+const here = market ? document.body.dataset.name : origin;
+const query = market ? ['market_routes_by_year', { market }] : ['routes_by_year', { origin }];
+const defaultGroup = market ? 'city' : 'airport';
 const foreign = document.body.dataset.foreign === '1'; // all of a foreign airport's flights are international, so there is nothing to choose
 const dir = parseDir(location.search);
 const MATRIX_MEASURES = matrixMeasures(dir);
@@ -20,7 +25,7 @@ const state = {
   measure: pick('measure', Object.keys(MATRIX_MEASURES), 'passengers'),
   service: foreign ? 'all' : pick('service', ['all', 'domestic', 'international'], 'all'),
   n: Number(pick('n', ['10', '25', '50'], '25')),
-  group: pick('group', ['airport', 'city'], 'airport'),
+  group: pick('group', ['airport', 'city'], defaultGroup),
   year: null, // the year ranking the destinations, or null for all years; read from the address once the rows are in
   flown: pick('flown', FLOWN, 'ever'),
   scale: pick('scale', ['absolute', 'year', 'busiest'], 'absolute'),
@@ -29,7 +34,8 @@ const state = {
 let rows = [];
 let cities = new Map();
 let airportInfo = new Map();
-const far = { from: origin, distances: new Map() }; // each other airport's distance from this one, for its hover text
+let marketOf = new Map(); // a city page's destinations: airport code -> its market, for the city pair it opens
+const far = { from: here, distances: new Map() }; // each other airport's distance from this one, for its hover text
 
 const ROW_PX = 20;
 const latestFullYear = Number(document.body.dataset.latestYear);
@@ -45,7 +51,7 @@ function pushState() {
   if (state.measure !== 'passengers') q.set('measure', state.measure);
   if (state.service !== 'all') q.set('service', state.service);
   if (state.n !== 25) q.set('n', state.n);
-  if (state.group !== 'airport') q.set('group', state.group);
+  if (state.group !== defaultGroup) q.set('group', state.group);
   if (state.year !== null) q.set('year', state.year);
   if (state.flown !== 'ever') q.set('flown', state.flown);
   if (state.scale !== 'absolute') q.set('scale', state.scale);
@@ -83,7 +89,7 @@ function drawAirports() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: null },
     y: { type: 'band', domain: res.dests, axis: null },
-    color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
+    color: colourScale(res.cells),
     marks: [
       ...yearAxes(labelEvery),
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
@@ -100,17 +106,25 @@ function drawAirports() {
 // links keep the direction: departing here is the route's out, arriving its in
 // a cell opens its route over time with its year marked, and a row's label the route with the ranking year marked, if
 // any; the route's heading leads on to the other airport, and its bars down to months
+// on a city page a city opens the city pair (which counts both ways), and an airport the city pair narrowed to it (?b=VNY),
+// with the year marked
 const routeHref = (dest, year = null) => {
+  if (market) return cityHref(marketOf.get(dest), year, dest) || `/airports/${encodeURIComponent(dest)}`;
   const q = new URLSearchParams([...(dir ? [['dir', dir]] : []), ...(year === null ? [] : [['year', year]])]);
   return `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}${q.size ? `?${q}` : ''}`;
 };
+function cityHref(other, year = null, airport = null) {
+  if (!market || !other || !/^[0-9]{5}$/.test(other)) return null;
+  const q = new URLSearchParams([...(airport ? [['b', airport]] : []), ...(year === null ? [] : [['year', year]])]);
+  return `/airports/cities/${market}/${other}${q.size ? `?${q}` : ''}`;
+}
 const relative = () => state.scale !== 'absolute';
 const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination` });
-const colourScale = (max) => (relative()
-  ? { type: 'sqrt', scheme: 'YlOrRd', label: SCALE_LEGEND()[state.scale], tickFormat: '.0%' }
-  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(max, axisLabel(state.measure, MATRIX_MEASURES[state.measure])) });
+const colourScale = (cells) => (relative()
+  ? { type: 'sqrt', scheme: 'YlOrRd', label: SCALE_LEGEND()[state.scale], tickFormat: percentTicks(Math.max(0, ...cells.map((c) => c[fillField()]))) }
+  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) });
 // a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
   { label: MATRIX_MEASURES[state.measure], value: measureFormat(state.measure, formatCount)(c.value) },
@@ -143,14 +157,14 @@ function drawCities() {
     const more = c.parts && c.parts.length > 5 ? [{ label: `+${c.parts.length - 5} more`, value: '' }] : [];
     const head = row.kind === 'airport' ? `${row.code}${row.name ? ` · ${row.name}` : ''}` : row.label;
     // a city's cell opens the route, that year marked, when the city has one airport; a city with several opens into them
-    const href = row.kind === 'airport' ? routeHref(row.code, c.year) : row.codes.length === 1 ? routeHref(row.codes[0], c.year) : `#toggle:${row.key}`;
+    const href = row.kind === 'airport' ? routeHref(row.code, c.year) : cityHref(row.key, c.year) || (row.codes.length === 1 ? routeHref(row.codes[0], c.year) : `#toggle:${row.key}`);
     return { ...c, year: String(c.year), href, head, rows: [...cellRows(c), ...parts, ...more] };
   });
   // a city is its name, opening into its airports (the links); an airport under it is its code, named on hover
   const labels = res.rows.map((r) => ({
     ...r,
     text: r.kind === 'airport' ? r.code : r.label,
-    href: r.kind === 'airport' ? routeHref(r.code, rankYear()) : `#toggle:${r.key}`,
+    href: r.kind === 'airport' ? routeHref(r.code, rankYear()) : cityHref(r.key, rankYear()) || `#toggle:${r.key}`, // ▸ still opens it
     tip: r.kind === 'airport' ? airportTip(r.code, airportInfo, far) : groupTip(r, airportInfo, far),
   }));
   const width = Math.min(box.clientWidth || 900, 1200);
@@ -164,7 +178,7 @@ function drawCities() {
     style: { background: 'transparent', fontSize: '12px' },
     x: { type: 'band', domain: years, label: null, axis: null },
     y: { type: 'band', domain: res.rows.map((r) => r.key), axis: null },
-    color: colourScale(Math.max(0, ...res.cells.map((c) => c.value))),
+    color: colourScale(res.cells),
     marks: [
       ...yearAxes(labelEvery),
       Plot.cell(data, { x: 'year', y: 'row', fill: fillField(), href: 'href' }),
@@ -201,8 +215,8 @@ function draw() {
   note.hidden = !relative();
   note.textContent = {
     absolute: '',
-    year: `Colour shows each destination's share of ${origin}'s ${unit()} in that year, counting every destination (not just those listed), not the amount itself. A route can keep its colour while carrying more if the airport grew as fast. Hover over a cell for both.`,
-    busiest: `Colour compares each cell with ${origin}'s top ${state.group === 'city' ? 'city' : 'destination'} that year, the one with the most ${unit()}: the top one is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own, so colours show how a destination ranked then, not how much it carried. Hover over a cell for both.`,
+    year: `Colour shows each destination's share of ${here}'s ${unit()} in that year, counting every destination (not just those listed), not the amount itself. A route can keep its colour while carrying more if the airport grew as fast. Hover over a cell for both.`,
+    busiest: `Colour compares each cell with ${here}'s top ${state.group === 'city' ? 'city' : 'destination'} that year, the one with the most ${unit()}: the top one is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own, so colours show how a destination ranked then, not how much it carried. Hover over a cell for both.`,
   }[state.scale];
   $('matrix-rank').value = state.year === null ? '' : String(state.year);
   $('flown-note').innerHTML = {
@@ -232,11 +246,11 @@ $('matrix').addEventListener('click', (e) => {
 $('dir').addEventListener('change', (e) => setDir(e.target.value));
 
 async function main() {
-  setDataLink('routes_by_year', { origin, min_deps: '', dir });
+  setDataLink(query[0], { ...query[1], min_deps: '', dir });
   fillControls();
   try {
     const [byYear, airports] = await Promise.all([
-      fetchRows(queryUrl('routes_by_year', { origin, dir })),
+      fetchRows(queryUrl(query[0], { ...query[1], dir })),
       fetchRows(queryUrl('airports')),
     ]);
     rows = byYear.rows;
@@ -246,13 +260,14 @@ async function main() {
     cities = new Map(airports.rows.map((a) => [a.code, a.place]));
     airportInfo = new Map(airports.rows.map((a) => [a.code, a]));
     far.distances = new Map(rows.filter((r) => r.distance).map((r) => [r.dest, r.distance]));
+    marketOf = new Map(rows.map((r) => [r.dest, r.market_id]));
     $('truncated').hidden = !byYear.truncated;
   } catch (err) {
     console.error(err);
     $('matrix').textContent = 'Could not load the chart data.';
     return;
   }
-  if (!rows.length) { $('matrix').textContent = `No flights ${{ '': 'to or from', out: 'from', in: 'to' }[dir]} ${origin} in the data.`; return; }
+  if (!rows.length) { $('matrix').textContent = `No flights ${{ '': 'to or from', out: 'from', in: 'to' }[dir]} ${here} in the data.`; return; }
   draw();
 }
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { countrySlug, countryHref, splitAirports, sumOf, lowerFirst, yearLabel, groupCities, matrixSearch, tableSearch, topBy, parseState, toSearch, SORTS, sortLabels, airportHref, loadFactor } from '../src/table.js';
+import { countrySlug, countryHref, cityHref, splitAirports, sumOf, lowerFirst, yearLabel, groupCities, matrixSearch, tableHref, topBy, parseState, toSearch, TABLE_PATHS, SORTS, sortLabels, airportHref, loadFactor } from '../src/table.js';
 
 test('topBy sorts descending by the chosen measure and keeps the top n', () => {
   const rows = [
@@ -52,18 +52,21 @@ test('the table and the airports matrix carry the measure each way, where both h
   assert.equal(matrixSearch('deps'), '?measure=deps');
   assert.equal(matrixSearch('freight'), '?measure=freight');
   assert.equal(matrixSearch('dests'), '');           // the matrix has no destinations
-  assert.equal(tableSearch('?measure=deps&n=25&theme=dark'), '?sort=deps&n=25');   // the number of rows is shared too
-  assert.equal(tableSearch('?measure=seats'), '');   // the table has no seats column
-  assert.equal(tableSearch(''), '');
+  assert.equal(tableHref('?measure=deps&n=25&theme=dark'), '/airports?sort=deps&n=25');   // the number of rows is shared too
+  assert.equal(tableHref('?measure=seats'), '/airports');   // the table has no seats column
+  assert.equal(tableHref(''), '/airports');
   assert.equal(matrixSearch('deps', 'city'), '?measure=deps&group=city');   // cities carry each way too
   assert.equal(matrixSearch('passengers', 'city'), '?group=city');
-  assert.equal(tableSearch('?group=city&open=31703'), '?group=city');
+  assert.equal(tableHref('?group=city&open=31703'), '/airports/cities');   // the cities are the table's own page
 });
 
-test('the group setting is read and written with the year and sort', () => {
-  assert.equal(parseState('?group=city', 1990, 2025).group, 'city');
-  assert.equal(parseState('?group=bogus', 1990, 2025).group, 'airport');
-  assert.equal(toSearch({ year: 2025, sort: 'passengers', group: 'city' }, 2025), '?group=city');
+test('the grouping is read from the path, and is not in the query', () => {
+  assert.equal(parseState('', 1990, 2025, '/airports/cities').group, 'city');
+  assert.equal(parseState('', 1990, 2025, '/airports').group, 'airport');
+  assert.equal(parseState('', 1990, 2025).group, 'airport');
+  assert.equal(parseState('?group=city', 1990, 2025, '/airports').group, 'airport');   // the old query is redirected by the server
+  assert.equal(toSearch({ year: 2025, sort: 'passengers', group: 'city' }, 2025), '');
+  assert.deepEqual(TABLE_PATHS, { airport: '/airports', city: '/airports/cities', country: '/airports/countries' });
 });
 
 const ap = (origin, market_id, city, passengers, extra = {}) =>
@@ -106,8 +109,8 @@ test('how many rows and which flights are read and written, and carry to the air
   assert.equal(toSearch({ year: 2025, sort: 'passengers', group: 'airport', n: 10, service: 'international' }, 2025), '?n=10&service=international');
   assert.equal(matrixSearch('deps', 'city', { n: 25, service: 'domestic' }), '?measure=deps&group=city&n=25&service=domestic');
   assert.equal(matrixSearch('passengers', 'airport', { n: 50, service: 'all' }), '');
-  assert.equal(tableSearch('?measure=deps&n=25&service=international&scale=year'), '?sort=deps&n=25&service=international');
-  assert.equal(tableSearch('?n=50&service=all&n=7'), '');   // defaults and values the table has no menu for are dropped
+  assert.equal(tableHref('?measure=deps&n=25&service=international&scale=year'), '/airports?sort=deps&n=25&service=international');
+  assert.equal(tableHref('?n=50&service=all&n=7'), '/airports');   // defaults and values the table has no menu for are dropped
 });
 
 test('airports abroad: the region is read and written, every flight is international and the directions are named for the US', () => {
@@ -122,14 +125,16 @@ test('airports abroad: the region is read and written, every flight is internati
   assert.equal(matrixSearch('deps', 'city', { region: 'abroad' }), '?measure=deps&group=city&region=abroad');   // Over time knows abroad too
   assert.equal(matrixSearch('deps', 'country', { region: 'abroad' }), '?measure=deps&group=country&region=abroad');
   assert.equal(matrixSearch('deps', 'country'), '?measure=deps');   // countries are an abroad grouping
-  assert.equal(tableSearch('?region=abroad&group=country&measure=freight'), '?sort=freight&group=country&region=abroad');
-  assert.equal(tableSearch('?group=country'), '');
+  assert.equal(tableHref('?region=abroad&group=country&measure=freight'), '/airports/countries?sort=freight');   // abroad by its address
+  assert.equal(tableHref('?region=abroad&group=city'), '/airports/cities?region=abroad');
+  assert.equal(tableHref('?group=country'), '/airports');
 });
 
 test('abroad, airports group by country, with the country\'s own destination count', () => {
-  assert.equal(parseState('?region=abroad&group=country', 1990, 2025).group, 'country');
-  assert.equal(parseState('?group=country', 1990, 2025).group, 'airport');   // only abroad
-  assert.equal(toSearch({ region: 'abroad', year: 2025, sort: 'passengers', group: 'country', n: 50, service: 'all' }, 2025), '?group=country&region=abroad');
+  const countries = parseState('', 1990, 2025, '/airports/countries');   // the countries' address means abroad
+  assert.deepEqual([countries.group, countries.region], ['country', 'abroad']);
+  assert.equal(toSearch({ region: 'abroad', year: 2025, sort: 'passengers', group: 'country', n: 50, service: 'all' }, 2025), '');
+  assert.equal(toSearch({ region: 'abroad', year: 2025, sort: 'passengers', group: 'city', n: 50, service: 'all' }, 2025), '?region=abroad');
   const row = (airport, city, country, passengers, country_dests) => ({ airport, city, country, passengers, deps: 1, seats: 2, freight: 0, dests: 1, market_id: airport, market_dests: 1, country_dests });
   const [uk, fr] = groupCities([row('MAN', 'Manchester, United Kingdom', 'United Kingdom', 5, 4), row('LHR', 'London, United Kingdom', 'United Kingdom', 9, 4), row('CDG', 'Paris, France', 'France', 7, 2)], 'country');
   assert.deepEqual([uk.name, uk.passengers, uk.dests, uk.airports.map((a) => a.airport)], ['United Kingdom', 14, 4, ['LHR', 'MAN']]);
@@ -138,8 +143,8 @@ test('abroad, airports group by country, with the country\'s own destination cou
 
 test('a country\'s address is its name as a slug, with the year and way carried', () => {
   assert.deepEqual(['United Kingdom', 'Congo (Kinshasa)', 'Côte d\'Ivoire', 'U.S.S.R.'].map(countrySlug), ['united-kingdom', 'congo-kinshasa', 'cote-d-ivoire', 'u-s-s-r']);
-  assert.equal(countryHref('United Kingdom', { year: 2025, dir: '' }, 2025), '/countries/united-kingdom');
-  assert.equal(countryHref('United Kingdom', { year: 'all', dir: 'out' }, 2025), '/countries/united-kingdom?year=all&dir=out');
+  assert.equal(countryHref('United Kingdom', { year: 2025, dir: '' }, 2025), '/airports/countries/united-kingdom');
+  assert.equal(countryHref('United Kingdom', { year: 'all', dir: 'out' }, 2025), '/airports/countries/united-kingdom?year=all&dir=out');
 });
 
 test('a country opens to its five busiest airports and a sum of the rest, unless only one would be left over', () => {
@@ -148,4 +153,10 @@ test('a country opens to its five busiest airports and a sum of the rest, unless
   const { shown, others } = splitAirports(list(9));
   assert.deepEqual([shown.length, others.length], [5, 4]);
   assert.deepEqual(sumOf(others), { passengers: 40, deps: 4, seats: 80, freight: 8 });
+});
+
+test('a city row opens its city page, ranked by the table\'s year and counted its way; an airport with no market has none', () => {
+  assert.equal(cityHref('32575', { year: 2025, dir: '' }), '/airports/cities/32575?year=2025');
+  assert.equal(cityHref('32575', { year: 'all', dir: 'out' }), '/airports/cities/32575?dir=out');
+  assert.equal(cityHref('solo:ZZZ'), null);
 });
