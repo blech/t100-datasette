@@ -6,7 +6,7 @@ import { placePopover } from '/static/common/popover.js';
 import { defaultView, glide } from '/static/globe/src/camera.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
-import { indexAirports } from '/static/globe/src/adapter.js';
+import { indexAirports, placeRoutes, forYear } from '/static/globe/src/adapter.js';
 import { NetworkRenderer } from '/static/globe/src/renderer.js';
 import { parseMapType, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
 import { maxOf } from '/static/globe/src/scale.js';
@@ -53,6 +53,8 @@ let renderer;
 let latest = 0;
 const view = defaultView();
 const cache = new Map();
+const networks = new Map(); // each hovered airport's own map's rows (routes_by_year, every year), fetched once
+let tipAt = null; // where the tooltip was last placed, to fill it in again once an airport's network arrives
 const canvas = $('globe');
 
 new ResizeObserver(() => {
@@ -164,6 +166,49 @@ function refresh() {
 
 const place = (code) => airports.get(code)?.place || '';
 
+// the kinds of route on the map: the menu's service, less any the legend hides
+const servicesShown = () => ['domestic', 'international'].filter((s) => (!state.service || state.service === s) && !state.hide.includes(s));
+
+// An airport's own map, carrying over what this one shows: the year, the map type, the theme, and as hidden whichever
+// of domestic and international this map leaves out
+function airportMapHref(code) {
+  const q = new URLSearchParams({ year: state.year });
+  if (state.proj !== 'globe') q.set('proj', state.proj);
+  const hidden = ['domestic', 'international'].filter((s) => !servicesShown().includes(s));
+  if (hidden.length) q.set('hide', hidden.join(','));
+  if (themeChosen !== 'auto') q.set('theme', themeChosen);
+  return `/airports/${code}/globe?${q}`;
+}
+
+// What the airport's own map shows for this year and these kinds of route, counted as that map counts: its
+// destinations (with coordinates, at its 24-flight minimum) and their passengers. Null until its rows have arrived.
+function networkLine(code) {
+  if (!networks.has(code)) {
+    const p = fetchRows(queryUrl('routes_by_year', { origin: code, dir: '', min_deps: '' }));
+    networks.set(code, p);
+    p.then((res) => { networks.set(code, res); if (hoverDot >= 0 && dots[hoverDot]?.code === code) showDotTip(); })
+      .catch((err) => { console.error(err); networks.delete(code); });
+  }
+  const res = networks.get(code);
+  if (res instanceof Promise) return null;
+  const kinds = servicesShown();
+  const rows = forYear(placeRoutes(res.rows, code, airports).routes, state.year).filter((r) => kinds.includes(r.service));
+  const pax = rows.reduce((s, r) => s + Number(r.passengers || 0), 0);
+  const kind = kinds.length === 1 ? `${kinds[0]} ` : '';
+  const places = airports.get(code)?.isUs === false ? 'US destinations' : 'destinations';
+  return `All its ${kind}routes: ${fmt(rows.length)} ${places}\n${countLabel(pax)} passengers · click for its map`;
+}
+
+// the hovered airport: its passengers on the routes shown, then all of its own map's, which a click opens
+function showDotTip() {
+  const tip = $('tooltip');
+  if (hoverDot < 0 || !tipAt) return;
+  const a = dots[hoverDot];
+  const all = networkLine(a.code);
+  tip.textContent = `${a.code} · ${place(a.code)}\n${fmt(a.value)} passengers on these routes\n${all ?? 'Counting all its routes…\nClick for its map'}`;
+  placePopover(tip, tipAt[0], tipAt[1], { dx: 14, dy: 14 });
+}
+
 function showPanel(r) {
   const p = $('panel');
   p.replaceChildren();
@@ -234,10 +279,9 @@ function bindCanvas() {
       const i = d >= 0 ? -1 : renderer.hitTest(x, y, shown);
       if (i !== hover || d !== hoverDot) { hover = i; hoverDot = d; dirty = true; }
       const tip = $('tooltip');
-      if (d >= 0) {
-        const a = dots[d];
-        tip.textContent = `${a.code} · ${place(a.code)}\n${fmt(a.value)} passengers on these routes`;
-      } else if (i >= 0) {
+      tipAt = [x, y];
+      if (d >= 0) { showDotTip(); return; }
+      if (i >= 0) {
         const r = shown[i];
         tip.textContent = `${r.origin} – ${r.dest}\n${place(r.origin)} – ${place(r.dest)}\n${fmt(r.passengers)} passengers · ${fmt(r.deps)} departures`;
       } else { tip.hidden = true; return; }
@@ -245,7 +289,7 @@ function bindCanvas() {
     },
     onTap: (x, y) => {
       const d = renderer.hitTestDots(x, y, dots);
-      if (d >= 0) { location.href = `/airports/${dots[d].code}/globe?year=${state.year}`; return; }
+      if (d >= 0) { location.href = airportMapHref(dots[d].code); return; }
       selected = renderer.hitTest(x, y, shown, 10);
       if (selected >= 0) showPanel(shown[selected]); else $('panel').hidden = true;
       dirty = true;
