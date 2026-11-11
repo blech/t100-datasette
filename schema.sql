@@ -108,6 +108,11 @@ CREATE TABLE "route_year_totals" (
    PRIMARY KEY ([year], [origin], [dest])
 ) WITHOUT ROWID;
 
+CREATE TABLE "search_index" (
+   [kind] TEXT, [href] TEXT, [label] TEXT, [hint] TEXT, [terms] TEXT, [code] TEXT, [rank] INTEGER,
+   PRIMARY KEY ([kind], [href])
+) WITHOUT ROWID;
+
 CREATE TABLE "t100_domestic" (
    [year] INTEGER,
    [month] INTEGER,

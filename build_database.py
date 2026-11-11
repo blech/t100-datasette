@@ -171,6 +171,11 @@ CREATE TABLE IF NOT EXISTS "airport_names" (
 CREATE TABLE IF NOT EXISTS "airport_market" (
    [code] TEXT PRIMARY KEY, [market_id] TEXT
 ) WITHOUT ROWID;
+-- One row per airport, airline, aircraft family and aircraft the header search can open: its page (href), what to show (label, hint), the lowercase words it is found by (terms), its exact code if it has one and its size (rank), by rebuild_search_index()
+CREATE TABLE IF NOT EXISTS "search_index" (
+   [kind] TEXT, [href] TEXT, [label] TEXT, [hint] TEXT, [terms] TEXT, [code] TEXT, [rank] INTEGER,
+   PRIMARY KEY ([kind], [href])
+) WITHOUT ROWID;
 """
 
 
@@ -660,6 +665,102 @@ def rebuild_aircraft_group_band_year(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM aircraft_group_band_year").fetchone()[0]
 
 
+def _slugify(name) -> str:
+    """The short form a name takes in a URL (boeing-737-800); the same as slugify in static/charts/src/rollup.js."""
+    return re.sub(r"[^a-z0-9]+", "-", str(name).lower()).strip("-")
+
+
+def _words(*texts) -> str:
+    """The lowercase words of some texts, each once, for search_index.terms: split on spaces, commas, slashes and brackets, so A340-600 stays whole."""
+    seen = {}
+    for text in texts:
+        for word in re.findall(r"[^\s,/()]+", str(text or "").lower()):
+            seen[word] = None
+    return " ".join(seen)
+
+
+def _years(first, last) -> str:
+    return f"{first}\u2013{last}"
+
+
+def rebuild_search_index(conn: sqlite3.Connection) -> int:
+    """Recompute search_index: every airport, airline (each merged group and each of its members), aircraft family and aircraft that has a page.
+
+    The rows are those the *_list canned queries give; the rank is all-years departures (airports: with arrivals).
+    """
+    create_schema(conn)
+    rows = []
+    for code, place, name, icao, city, country, first, last, size in conn.execute(
+        """
+        SELECT y.airport, COALESCE(n.name, MAX(y.city_name)), o.name, o.icao, o.city, o.country, MIN(y.year), MAX(y.year), SUM(y.deps + y.arrs)
+        FROM airport_dir_year y
+        LEFT JOIN airport_names n ON n.code = y.airport
+        LEFT JOIN (SELECT iata_code, MIN(name) AS name, MIN(icao_code) AS icao, MIN(city) AS city, MIN(country) AS country
+                   FROM openflights_airports GROUP BY iata_code) o ON o.iata_code = y.airport
+        GROUP BY y.airport
+        """
+    ).fetchall():
+        about = " \u2013 ".join(filter(None, [place, name]))
+        hint = f"{about} \u00b7 {_years(first, last)}" if about else _years(first, last)
+        rows.append(("airport", f"/airports/{code}", code, hint, _words(code, icao, place, name, city, country), code, size))
+
+    codes = {}
+    for airline_id, code in conn.execute("SELECT airline_id, MIN(unique_carrier) FROM carriers WHERE unique_carrier <> '' GROUP BY airline_id"):
+        codes[airline_id] = code
+    members = {}
+    for group_id, airline_id in conn.execute("SELECT DISTINCT group_id, airline_id FROM carrier_group_year"):
+        members.setdefault(group_id, []).append(airline_id)
+    for group_id, name, first, last, size in conn.execute(
+        "SELECT group_id, group_name, MIN(year), MAX(year), SUM(deps) FROM carrier_group_year GROUP BY group_id, group_name"
+    ).fetchall():
+        member_codes = sorted(filter(None, (codes.get(a) for a in members.get(group_id, []))))
+        rows.append(("airline", f"/airlines/{group_id}", name, _years(first, last), _words(name, *member_codes), member_codes[0] if member_codes else "", size))
+    merged = {g for g, a in members.items() if len(a) > 1}
+    for airline_id, name, parent, first, last, size in conn.execute(
+        """
+        SELECT d.airline_id, COALESCE(g.airline_name, d.group_name), d.group_name, MIN(d.year), MAX(d.year), SUM(d.deps)
+        FROM carrier_group_year d LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
+        WHERE d.group_id IN (SELECT group_id FROM carrier_group_year GROUP BY group_id HAVING COUNT(DISTINCT airline_id) > 1)
+        GROUP BY d.airline_id, COALESCE(g.airline_name, d.group_name), d.group_name
+        """
+    ).fetchall():
+        code = codes.get(airline_id, "")
+        rows.append(("airline", f"/airlines/{airline_id}", name, f"{_years(first, last)} \u00b7 part of {parent}", _words(name, parent, code), code, size))
+
+    families = {}
+    types = []
+    for family, name, short, maker, first, last, size in conn.execute(
+        """
+        SELECT COALESCE(f.family, 'Unknown'),
+               COALESCE(t.name, CASE y.aircraft_type WHEN 'unknown' THEN 'Type not reported' ELSE 'Type ' || y.aircraft_type END),
+               t.short_name, t.maker, MIN(y.year), MAX(y.year), SUM(y.deps)
+        FROM type_year y
+        LEFT JOIN aircraft_types t ON t.ac_typeid = y.aircraft_type
+        LEFT JOIN aircraft_family f ON f.aircraft_type = y.aircraft_type
+        WHERE y.deps > 0
+        GROUP BY y.aircraft_type
+        """
+    ).fetchall():
+        f = families.setdefault(family, [first, last, 0])
+        families[family] = [min(f[0], first), max(f[1], last), f[2] + size]
+        types.append((family, name, short, maker, first, last, size))
+    named = set()
+    for family, (first, last, size) in families.items():
+        named.add(family.lower())
+        rows.append(("aircraft", f"/aircraft/{_slugify(family)}", family, f"Family \u00b7 {_years(first, last)}", _words(family), "", size))
+    for family, name, short, maker, first, last, size in types:
+        if name.lower() in named:
+            continue
+        named.add(name.lower())
+        rows.append(("aircraft", f"/aircraft/{_slugify(family)}/{_slugify(name)}", name, f"{family} \u00b7 {_years(first, last)}",
+                     _words(name, short, family, maker), short or "", size))
+
+    with conn:
+        conn.execute("DELETE FROM search_index")
+        conn.executemany("INSERT OR IGNORE INTO search_index (kind, href, label, hint, terms, code, rank) VALUES (?, ?, ?, ?, ?, ?, ?)", rows)
+    return conn.execute("SELECT COUNT(*) FROM search_index").fetchone()[0]
+
+
 def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
     """Rebuild everything derived from the segment tables. Run after loading or changing segment data."""
     return {
@@ -680,6 +781,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "airport_dir_year": rebuild_airport_dir_year(conn),
         "airport_carrier_dir_year": rebuild_airport_carrier_dir_year(conn),
         "carrier_pair_year": rebuild_carrier_pair_year(conn),
+        "search_index": rebuild_search_index(conn),
     }
 
 
