@@ -5,7 +5,6 @@
 {% block styles %}
   <link rel="stylesheet" href="/static/globe/style.css">
   <link rel="stylesheet" href="/static/charts/airlineglobe.css">
-  <link rel="stylesheet" href="/static/globe/present.css">
 {% endblock %}
 {% block body_attrs %} data-max-year="{{ max_year }}"{% endblock %}
 
@@ -16,7 +15,6 @@
   <header id="header">
     {% include "_nav.html" %}
     <div id="title">Busiest routes</div>
-    <div id="caption"></div>
     <div id="stats"></div>
   </header>
 
@@ -40,8 +38,7 @@
       </div>
       <span id="year-label"></span>
     </div>
-    <div class="row" id="options">
-      <button id="fullscreen" type="button" title="Full screen, for presenting (F)">Full screen</button>
+    <div class="row">
       <select id="proj" aria-label="Map type">
         <option value="globe">Globe</option>
         <option value="flat">Equal Earth</option>
