@@ -146,6 +146,14 @@ def test_the_charts_have_somewhere_to_go_and_say_how_the_numbers_are_counted(ds,
     assert "boarding or leaving" in html and "once on each flight" in html
 
 
+def test_the_picked_out_line_keeps_its_colour(ds):
+    # the invisible wider copy of each line (.m-hit) is a black stroke at no opacity: a rule that made every path in the chart
+    # opaque when picked out would draw a black line over the coloured one
+    css = (ROOT / "static/movers/style.css").read_text()
+    assert re.search(r"#movers-lines \.m-line path\.active\s*\{[^}]*stroke-opacity:\s*1", css)
+    assert not re.search(r"#movers-lines path\.active", css)
+
+
 def test_the_stylesheet_is_linked(ds):
     assert '<link rel="stylesheet" href="/static/movers/style.css">' in page(ds)
     assert (ROOT / "static/movers/style.css").exists()

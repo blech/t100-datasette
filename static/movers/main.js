@@ -164,7 +164,7 @@ function drawLines() {
       // an invisible, wider copy of each line to point at: the lines themselves are too thin to hit
       Plot.line(lines, { x: 'year', y: 'index', z: 'series', stroke: 'black', strokeOpacity: 0, strokeWidth: 12, pointerEvents: 'stroke', className: 'm-hit' }),
       Plot.link(ends, { x1: 'year', y1: 'index', x2: 'labelX', y2: 'labelY', stroke: 'group', strokeOpacity: 0.6, className: 'm-link' }),
-      Plot.text(ends, { x: 'labelX', y: 'labelY', text: (d) => (d.series === MEDIAN ? 'Median' : d.series), fill: 'group', dx: 3, textAnchor: 'start', fontWeight: 600, className: 'm-label' }),
+      Plot.text(ends, { x: 'labelX', y: 'labelY', text: (d) => (d.series === MEDIAN ? 'Median' : d.series), fill: 'group', dx: 3, textAnchor: 'start', fontWeight: 600, className: 'm-label', href: (d) => (d.airport ? `/airports/${d.airport}` : null) }),
       Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0.3 })),
     ],
   });

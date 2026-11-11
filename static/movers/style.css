@@ -12,7 +12,8 @@ td.city {
 
 /* pointing at an airport (its line, its name, or its row in a table) picks it out in the lines chart and the tables: the other
    lines fade (the .faded of static/nav/style.css), its own is drawn heavier and its name underlined, and its row is shaded */
-#movers-lines path.active {
+/* only the drawn line: the invisible copy above it (.m-hit) must stay invisible, or the picked-out line turns black */
+#movers-lines .m-line path.active {
   stroke-width: 3.5px;
   stroke-opacity: 1;
 }
