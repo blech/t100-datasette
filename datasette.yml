@@ -236,55 +236,94 @@ databases:
           ORDER BY share DESC, l.total DESC, l.airport
           LIMIT 10
 
-      # airport risers and fallers: each US airport's passengers (both ways, as the other airport queries count them) in a first and a last
-      # year, as a ratio and against the median ratio of the airports considered, with its busiest year in between. Reads
-      # airport_dir_year (one row an airport and year), so it is a small query for any range
+      # airport risers and fallers: each US airport's passengers, flights or destinations in a first and a last year, as a ratio and against
+      # the median ratio of the airports considered, with its busiest year in between. measure: passengers (both ways, as the other
+      # airport queries count them, and what anything else means), flights (departures and arrivals) or destinations (the other airports
+      # it has 24 flights both ways with in the year, and 12 or more one way: the rule top_airports and the matrices use). Reads
+      # airport_dir_year (one row an airport and year) and, for destinations, route_year_totals (one a pair and year): a small query
+      # for any range
       airport_movers:
         title: "Airports growing faster or slower than the median"
-        description: "One row per US airport with at least min_pax passengers (both directions) in from_year: its passengers then and in to_year (nothing if it had none), the ratio of the two, that ratio against the median ratio of the airports listed (vs_median, 1 is the median airport; lost is 1 for an airport with under 1% of its first year's passengers left, which the median leaves out), and the busiest year from from_year to to_year with the passengers then and the latest year's share of it (vs_peak). Fastest growing first."
+        description: "One row per US airport with at least min_value passengers (measure passengers, both directions), flights (departures and arrivals) or destinations (other airports it has at least 24 flights both ways with in the year, 12 one way) in from_year: its figure then and in to_year (nothing if it had none), the ratio of the two, that ratio against the median ratio of the airports listed (vs_median, 1 is the median airport; lost is 1 for an airport with under 1% of its first year's figure left, which the median leaves out), and the busiest year from from_year to to_year with the figure then and the latest year's share of it (vs_peak). Fastest growing first."
         sql: |
-          WITH yr AS (
-            SELECT airport, year, city_name AS city, passengers_out + passengers_in AS pax
+          WITH pairs AS (
+            -- destinations: each airport pair once a year, if it has 12+ flights one way and 24+ both ways. A flight from an airport to
+            -- itself (a sightseeing loop, at Grand Canyon or Kenai say) is not a destination: top_airports counts those, so its dests
+            -- can be one more than this for an airport that has them
+            SELECT r.year, MIN(r.origin, r.dest) AS x, MAX(r.origin, r.dest) AS y
+            FROM route_year_totals AS r
+            LEFT JOIN route_year_totals AS back ON back.year = r.year AND back.origin = r.dest AND back.dest = r.origin
+            WHERE :measure = 'destinations' AND r.year BETWEEN CAST(:from_year AS integer) AND CAST(:to_year AS integer)
+              AND r.origin <> r.dest AND r.deps >= 12 AND r.deps + COALESCE(back.deps, 0) >= 24
+            GROUP BY r.year, x, y
+          ), dests AS (
+            SELECT year, airport, COUNT(*) AS n
+            FROM (SELECT year, x AS airport FROM pairs UNION ALL SELECT year, y FROM pairs)
+            GROUP BY year, airport
+          ), yr AS (
+            SELECT airport, year, city_name AS city, CASE :measure WHEN 'flights' THEN deps + arrs ELSE passengers_out + passengers_in END AS value
             FROM airport_dir_year
-            WHERE wac BETWEEN 1 AND 93 AND year BETWEEN CAST(:from_year AS integer) AND CAST(:to_year AS integer)
+            WHERE :measure <> 'destinations' AND wac BETWEEN 1 AND 93 AND year BETWEEN CAST(:from_year AS integer) AND CAST(:to_year AS integer)
+            UNION ALL
+            SELECT d.airport, d.year, a.city_name, d.n
+            FROM dests AS d JOIN airport_dir_year AS a ON a.airport = d.airport AND a.year = d.year
+            WHERE :measure = 'destinations' AND a.wac BETWEEN 1 AND 93
           ), ends AS (
             -- an airport with nothing in the last year is a ratio of 0, the biggest fall there is
-            -- lost: under 1% of the first year's passengers left, which is an airport that has probably lost its service
-            -- (Detroit City, DET: 720,000 in 1990, 54 in 2025), not one that grew slowly: it is not in the median
-            SELECT a.airport, COALESCE(b.city, a.city) AS city, a.pax AS pax_from, COALESCE(b.pax, 0) AS pax_to,
-                   1.0 * COALESCE(b.pax, 0) / a.pax AS ratio, COALESCE(b.pax, 0) < 0.01 * a.pax AS lost
+            -- lost: under 1% of the first year's figure left, which is an airport that has probably lost its service
+            -- (Detroit City, DET: 720,000 passengers in 1990, 54 in 2025), not one that grew slowly: it is not in the median
+            SELECT a.airport, COALESCE(b.city, a.city) AS city, a.value AS value_from, COALESCE(b.value, 0) AS value_to,
+                   1.0 * COALESCE(b.value, 0) / a.value AS ratio, COALESCE(b.value, 0) < 0.01 * a.value AS lost
             FROM yr AS a LEFT JOIN yr AS b ON b.airport = a.airport AND b.year = CAST(:to_year AS integer)
-            WHERE a.year = CAST(:from_year AS integer) AND a.pax > 0 AND a.pax >= CAST(:min_pax AS integer)
+            WHERE a.year = CAST(:from_year AS integer) AND a.value > 0 AND a.value >= CAST(:min_value AS integer)
           ), ranked AS (
             SELECT ratio, ROW_NUMBER() OVER (ORDER BY ratio) AS place, COUNT(*) OVER () AS n FROM ends WHERE NOT lost
           ), median AS (
             -- the middle airport's ratio, or the mean of the middle two
             SELECT AVG(ratio) AS ratio FROM ranked WHERE place IN ((n + 1) / 2, (n + 2) / 2)
           ), peaks AS (
-            SELECT airport, year AS peak_year, pax AS peak_pax,
-                   ROW_NUMBER() OVER (PARTITION BY airport ORDER BY pax DESC, year DESC) AS place
+            SELECT airport, year AS peak_year, value AS peak_value,
+                   ROW_NUMBER() OVER (PARTITION BY airport ORDER BY value DESC, year DESC) AS place
             FROM yr
           )
-          SELECT e.airport, e.city, e.pax_from, e.pax_to, e.ratio, m.ratio AS median_ratio, e.ratio / m.ratio AS vs_median, e.lost,
-                 p.peak_year, p.peak_pax, 1.0 * e.pax_to / p.peak_pax AS vs_peak
+          SELECT e.airport, e.city, e.value_from, e.value_to, e.ratio, m.ratio AS median_ratio, e.ratio / m.ratio AS vs_median, e.lost,
+                 p.peak_year, p.peak_value, 1.0 * e.value_to / p.peak_value AS vs_peak
           FROM ends AS e
           CROSS JOIN median AS m
           JOIN peaks AS p ON p.airport = e.airport AND p.place = 1
           ORDER BY e.ratio DESC, e.airport
 
-      # the lines under airport_movers: every airport it lists (same from_year, to_year and min_pax), one row per year with passengers
+      # the lines under airport_movers: every airport it lists (same measure, from_year, to_year and min_value), one row per year with its figure
       airport_movers_series:
-        title: "Passengers by year of the airports airport_movers lists"
-        description: "One row per US airport with at least min_pax passengers (both directions) in from_year and per year from from_year to to_year in which it had any: pax. The airports are the ones airport_movers lists, for the lines of the risers and fallers page."
+        title: "Passengers, flights or destinations by year of the airports airport_movers lists"
+        description: "One row per US airport airport_movers lists (the same measure, from_year, to_year and min_value) and per year from from_year to to_year in which it had any: value, its passengers, flights or destinations that year. For the lines of the risers and fallers page."
         sql: |
-          SELECT airport, year, passengers_out + passengers_in AS pax
-          FROM airport_dir_year
-          WHERE wac BETWEEN 1 AND 93 AND year BETWEEN CAST(:from_year AS integer) AND CAST(:to_year AS integer)
-            AND passengers_out + passengers_in > 0
+          WITH pairs AS (
+            SELECT r.year, MIN(r.origin, r.dest) AS x, MAX(r.origin, r.dest) AS y
+            FROM route_year_totals AS r
+            LEFT JOIN route_year_totals AS back ON back.year = r.year AND back.origin = r.dest AND back.dest = r.origin
+            WHERE :measure = 'destinations' AND r.year BETWEEN CAST(:from_year AS integer) AND CAST(:to_year AS integer)
+              AND r.origin <> r.dest AND r.deps >= 12 AND r.deps + COALESCE(back.deps, 0) >= 24
+            GROUP BY r.year, x, y
+          ), dests AS (
+            SELECT year, airport, COUNT(*) AS n
+            FROM (SELECT year, x AS airport FROM pairs UNION ALL SELECT year, y FROM pairs)
+            GROUP BY year, airport
+          ), yr AS (
+            SELECT airport, year, CASE :measure WHEN 'flights' THEN deps + arrs ELSE passengers_out + passengers_in END AS value
+            FROM airport_dir_year
+            WHERE :measure <> 'destinations' AND wac BETWEEN 1 AND 93 AND year BETWEEN CAST(:from_year AS integer) AND CAST(:to_year AS integer)
+            UNION ALL
+            SELECT d.airport, d.year, d.n
+            FROM dests AS d JOIN airport_dir_year AS a ON a.airport = d.airport AND a.year = d.year
+            WHERE :measure = 'destinations' AND a.wac BETWEEN 1 AND 93
+          )
+          SELECT airport, year, value
+          FROM yr
+          WHERE value > 0
             AND airport IN (
-              SELECT airport FROM airport_dir_year
-              WHERE wac BETWEEN 1 AND 93 AND year = CAST(:from_year AS integer)
-                AND passengers_out + passengers_in > 0 AND passengers_out + passengers_in >= CAST(:min_pax AS integer)
+              SELECT airport FROM yr
+              WHERE year = CAST(:from_year AS integer) AND value > 0 AND value >= CAST(:min_value AS integer)
             )
           ORDER BY airport, year
 

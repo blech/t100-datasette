@@ -10,14 +10,16 @@ const $ = (id) => document.getElementById(id);
 const page = $('movers');
 const first = Number(page.dataset.from);
 const last = Number(page.dataset.to);
-const minPax = page.dataset.min;
+const minValue = page.dataset.min;
+const measure = page.dataset.measure; // passengers, flights or destinations
+const label = page.dataset.label; // Passengers, Flights or Destinations
 const FASTER = 'Faster than the median';
 const SLOWER = 'Slower than the median';
 const MEDIAN = 'Median airport';
 const LABELLED = 5; // airports named on the charts in each direction
 
 // the settings select reloads the page on change, as the other pages' selects do; without scripts the form's button does it
-for (const id of ['from', 'to', 'min']) $(id)?.addEventListener('change', (e) => e.target.form.requestSubmit());
+for (const id of ['from', 'to', 'measure', 'min']) $(id)?.addEventListener('change', (e) => e.target.form.requestSubmit());
 
 let movers = [];
 let series = [];
@@ -74,11 +76,11 @@ function drawScatter() {
   box.replaceChildren();
   const points = movers
     .filter((r) => r.vs_median !== null && r.vs_median !== undefined)
-    .map((r) => ({ ...r, x: r.pax_from, y: clampRatio(r.vs_median), group: groupOf(r) }));
+    .map((r) => ({ ...r, x: r.value_from, y: clampRatio(r.vs_median), group: groupOf(r) }));
   if (!points.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const { risers, fallers } = extremes(points, LABELLED);
   const tone = colours();
-  const xAxis = millionsAxis(Math.max(...points.map((p) => p.x)), `Passengers in ${first}`);
+  const xAxis = millionsAxis(Math.max(...points.map((p) => p.x)), `${label} in ${first}`);
   const chart = Plot.plot({
     width: width(box),
     height: 460,
@@ -103,8 +105,8 @@ function drawScatter() {
     content: (d) => ({
       title: `${d.airport}${d.city ? ` · ${d.city}` : ''}`,
       rows: [
-        { label: `Passengers ${first}`, value: formatCount(d.pax_from) },
-        { label: `Passengers ${last}`, value: formatCount(d.pax_to) },
+        { label: `${label} ${first}`, value: formatCount(d.value_from) },
+        { label: `${label} ${last}`, value: formatCount(d.value_to) },
         { label: 'Growth', value: multiple(d.ratio) },
         { label: 'Against median', value: multiple(d.vs_median) },
         { label: `Peak: ${d.peak_year}`, value: share(d.vs_peak) },
@@ -155,7 +157,7 @@ function drawLines() {
     style: { background: 'transparent', fontSize: '12px' },
     // a short range gets a tick for every year (left to itself Plot puts them at half years, which all print as whole ones)
     x: { label: null, tickFormat: 'd', domain: [first, last], ticks: years <= 10 ? Array.from({ length: years + 1 }, (_, i) => first + i) : undefined },
-    y: { type: 'log', grid: true, label: `Passengers (${first} = 100)`, tickFormat: exactCount, domain: [lo, hi] },
+    y: { type: 'log', grid: true, label: `${label} (${first} = 100)`, tickFormat: exactCount, domain: [lo, hi] },
     color: { domain: [FASTER, SLOWER, MEDIAN], range: [tone[FASTER], tone[SLOWER], tone[MEDIAN]], legend: true },
     marks: [
       Plot.ruleY([100], { strokeOpacity: 0.4 }),
@@ -203,7 +205,7 @@ function draw() {
 }
 
 async function main() {
-  const params = { from_year: first, to_year: last, min_pax: minPax };
+  const params = { measure, from_year: first, to_year: last, min_value: minValue };
   setDataLink('airport_movers', params);
   try {
     [movers, series] = (await Promise.all([fetchRows(queryUrl('airport_movers', params)), fetchRows(queryUrl('airport_movers_series', params))])).map((r) => r.rows);

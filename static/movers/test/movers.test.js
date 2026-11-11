@@ -56,7 +56,7 @@ test('the median airport is neither, and rows with no comparison are left out', 
   assert.deepEqual([risers, fallers], [[], []]);
 });
 
-const s = (airport, year, pax) => ({ airport, year, pax });
+const s = (airport, year, value) => ({ airport, year, value });
 
 test('a series is indexed to the first year, and only for the airports asked for', () => {
   const series = [s('A', 1990, 200), s('A', 2000, 400), s('B', 1990, 100), s('B', 2000, 50)];

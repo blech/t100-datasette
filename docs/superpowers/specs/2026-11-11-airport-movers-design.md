@@ -55,7 +55,17 @@ other); the median is grey. No new colour convention.
 
 Numbers go through `static/common/numbers.js` (counts) and a shared multiple formatter ("×4.84": three significant figures).
 
+## Measures
+
+`measure` is passengers (the default), flights or destinations; everything above works the same for each. Flights are departures
+plus arrivals, of any kind. Destinations are the other airports an airport has flights with in the year: 12 or more one way and
+24 both ways, the rule `top_airports` and the matrices use, but not an airport's own sightseeing loops. They tell network growth
+from traffic growth: St. Louis kept its destinations (85 in 1990, 83 in 2025) while halving its passengers after 2000.
+The smallest airport to start from has its own list for each measure (passengers 100,000 to 5 million, flights 5,000 to 50,000,
+destinations 5 to 40), and one from another measure is the chosen measure's default. Destinations are computed in the query from
+`route_year_totals` for the years asked for (under a second for all 36), so there is no new rollup table.
+
 ## Not in scope
 
-Freight, flights or seats as the measure (passengers only); airports outside the US; per-airport adjustment for population or
+Freight or seats as the measure; airports outside the US; per-airport adjustment for population or
 region; a pick-your-own-airports lines chart.

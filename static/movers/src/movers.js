@@ -52,13 +52,13 @@ export function spreadLabels(positions, gap, top, bottom) {
   return result;
 }
 
-// series rows (airport, year, pax) -> one point per airport and year, passengers as a percentage of the airport's first year
+// series rows (airport, year, value) -> one point per airport and year, the value as a percentage of the airport's first year
 // in the range (so every line starts at 100); airports without a first-year figure have no line
 export function indexSeries(series, firstYear, codes = null) {
-  const base = new Map(series.filter((r) => r.year === firstYear).map((r) => [r.airport, r.pax]));
+  const base = new Map(series.filter((r) => r.year === firstYear).map((r) => [r.airport, r.value]));
   return series
     .filter((r) => base.get(r.airport) > 0 && (!codes || codes.has(r.airport)))
-    .map((r) => ({ airport: r.airport, year: r.year, index: (100 * r.pax) / base.get(r.airport) }));
+    .map((r) => ({ airport: r.airport, year: r.year, index: (100 * r.value) / base.get(r.airport) }));
 }
 
 const median = (values) => {

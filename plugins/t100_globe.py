@@ -418,9 +418,15 @@ async def dedicated_airports_page(datasette, request):
     return Response.html(html)
 
 
-# the risers-and-fallers page: how fast each US airport's passengers grew between two years against the median airport (airport_movers)
-MOVERS_SIZES = ((100_000, "100,000"), (500_000, "500,000"), (1_000_000, "1 million"), (5_000_000, "5 million"))
-MOVERS_DEFAULT_SIZE = 500_000
+# the risers-and-fallers page: how fast each US airport's passengers, flights or destinations grew between two years against the median
+# airport (airport_movers). Each measure has the smallest airports it can start from, a default giving about as many airports (100 to 150)
+MOVERS_MEASURES = {
+    "passengers": {"label": "Passengers", "default": 500_000,
+                   "sizes": ((100_000, "100,000"), (500_000, "500,000"), (1_000_000, "1 million"), (5_000_000, "5 million"))},
+    "flights": {"label": "Flights", "default": 10_000, "sizes": ((5_000, "5,000"), (10_000, "10,000"), (25_000, "25,000"), (50_000, "50,000"))},
+    "destinations": {"label": "Destinations", "default": 10, "sizes": ((5, "5"), (10, "10"), (20, "20"), (40, "40"))},
+}
+MOVERS_DEFAULT_MEASURE = "passengers"
 MOVERS_LISTED = 10
 
 
@@ -434,7 +440,8 @@ def multiple(v):
 
 
 def movers_settings(request, min_year, max_year):
-    """(first year, last year, minimum passengers in the first year) from the query string, each falling back to its default."""
+    """(first year, last year, measure, smallest airport in the first year) from the query string, each falling back to its default.
+    The smallest is of the measure chosen, so one left over from another measure is not one of its sizes and becomes its default."""
     def whole(key):
         try:
             return int(request.args.get(key, ""))
@@ -444,35 +451,39 @@ def movers_settings(request, min_year, max_year):
     first, last = whole("from"), whole("to")
     if first is None or last is None or not (min_year <= first < last <= max_year):
         first, last = min_year, max_year
+    asked = request.args.get("measure", "")
+    measure = asked if asked in MOVERS_MEASURES else MOVERS_DEFAULT_MEASURE
+    config = MOVERS_MEASURES[measure]
     size = whole("min")
-    return first, last, size if size in dict(MOVERS_SIZES) else MOVERS_DEFAULT_SIZE
+    return first, last, measure, size if size in dict(config["sizes"]) else config["default"]
 
 
 def movers_tables(rows):
     """airport_movers rows (fastest first) -> the sentence's numbers and the risers and fallers tables' rows."""
-    shown = lambda r: {"code": r["airport"], "city": r["city"], "then": prose_count(r["pax_from"]), "now": prose_count(r["pax_to"]),
+    shown = lambda r: {"code": r["airport"], "city": r["city"], "then": prose_count(r["value_from"]), "now": prose_count(r["value_to"]),
                        "growth": multiple(r["ratio"]), "against": multiple(r["vs_median"]), "peak_year": r["peak_year"],
                        "vs_peak": percent(r["vs_peak"])}
-    # an airport with under 1% of its first year's passengers left has probably lost its service: it is named below the tables,
+    # an airport with under 1% of its first year's figure left has probably lost its service: it is named below the tables,
     # and is in neither the median (the query leaves it out) nor the tables, the charts or the total
     lost = [r for r in rows if r["lost"]]
     rows = [r for r in rows if not r["lost"]]
     if not rows:
         return {}
-    before, after = sum(r["pax_from"] for r in rows), sum(r["pax_to"] for r in rows)
+    before, after = sum(r["value_from"] for r in rows), sum(r["value_to"] for r in rows)
     return {
         "median": f"{rows[0]['median_ratio']:.3g}", "together": f"{after / before:.3g}",
         "risers": [shown(r) for r in rows if (r["vs_median"] or 0) > 1][:MOVERS_LISTED],
         "fallers": [shown(r) for r in reversed(rows) if r["vs_median"] is not None and r["vs_median"] < 1][:MOVERS_LISTED],
-        "lost": [shown(r) for r in sorted(lost, key=lambda r: -r["pax_from"])],
+        "lost": [shown(r) for r in sorted(lost, key=lambda r: -r["value_from"])],
     }
 
 
 async def airport_movers_page(datasette, request):
     """Risers and fallers: the airports growing fastest and slowest against the median airport between two years, as tables, and (with scripts) charts."""
     min_year, max_year = year_range(datasette)
-    first, last, size = movers_settings(request, min_year, max_year)
-    params = {"from_year": first, "to_year": last, "min_pax": size}
+    first, last, measure, size = movers_settings(request, min_year, max_year)
+    config = MOVERS_MEASURES[measure]
+    params = {"measure": measure, "from_year": first, "to_year": last, "min_value": size}
     movers = await story(datasette, "airport_movers", lambda rows: movers_tables(rows) if rows else {}, params)
     if movers:
         info = await airport_info(datasette, {r["code"] for t in ("risers", "fallers", "lost") for r in movers[t]})
@@ -481,8 +492,9 @@ async def airport_movers_page(datasette, request):
                 r["tip"] = airport_tip(info, r["code"])
     html = await datasette.render_template(
         "airports_movers.html",
-        {"min_year": min_year, "max_year": max_year, "first": first, "last": last, "size": size, "sizes": MOVERS_SIZES,
-         "size_label": dict(MOVERS_SIZES)[size], "movers": movers,
+        {"min_year": min_year, "max_year": max_year, "first": first, "last": last, "measure": measure, "label": config["label"],
+         "noun": measure, "measures": [(key, c["label"]) for key, c in MOVERS_MEASURES.items()],
+         "size": size, "sizes": config["sizes"], "size_label": dict(config["sizes"])[size], "movers": movers,
          "crumbs": trail(datasette, ("airports", "/airports"), ("risers and fallers", None))},
         request=request,
     )

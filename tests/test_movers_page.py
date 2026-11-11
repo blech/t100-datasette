@@ -114,10 +114,58 @@ def test_nonsense_settings_fall_back_to_the_defaults(ds, db_path, query):
 def test_the_settings_are_selects_that_change_the_page_by_themselves(ds):
     html = page(ds)
     assert '<script type="module" src="/static/movers/main.js">' in html
-    for name in ("from", "to", "min"):
+    for name in ("from", "to", "measure", "min"):
         assert f'<select name="{name}" id="{name}"' in html
     outside = re.sub(r"<noscript>.*?</noscript>", "", html, flags=re.S)
     assert "<button" not in outside and re.search(r"<noscript>.*<button[^>]*>Show</button>.*</noscript>", html, re.S)
+
+
+def flights(db_path, code, year, deps):
+    put_airport_years(db_path, [dict(year=year, origin=code, origin_city_name=f"{code} City, ST", origin_wac=34, deps=deps, arrs=0, seats=1,
+                                     passengers=1, freight=0)])
+
+
+def test_passengers_are_the_measure_unless_another_is_chosen(ds, db_path):
+    five(db_path)
+    html = page(ds)
+    assert '<option value="passengers" selected>Passengers</option>' in html and 'data-measure="passengers"' in html
+    assert "Passengers 1990" in html and "passengers in 1990" in html
+    assert page(ds, "/airports/movers?measure=nonsense") == html
+
+
+def test_flights_are_a_measure_with_their_own_sizes_and_wording(ds, db_path):
+    for code, after in (("AAA", 24_000), ("BBB", 12_000), ("CCC", 6_000)):
+        flights(db_path, code, 1990, 12_000)
+        flights(db_path, code, 2025, after)
+    html = page(ds, "/airports/movers?measure=flights")
+    assert [r[0] for r in table(html, "risers")] == ["AAA"] and [r[0] for r in table(html, "fallers")] == ["CCC"]
+    assert table(html, "risers")[0][2:6] == ["12,000", "24,000", "×2", "×2"]
+    assert "Flights 1990" in html and "flights in 1990" in html and "departures and arrivals" in html
+    assert 'data-measure="flights"' in html and 'data-label="Flights"' in html and 'data-min="10000"' in html
+    assert '<option value="10000" selected>10,000</option>' in html and '<option value="500000"' not in html
+
+
+def test_a_size_from_another_measure_is_the_chosen_measures_default(ds, db_path):
+    assert 'data-min="10000"' in page(ds, "/airports/movers?measure=flights&min=500000")
+    assert 'data-min="10"' in page(ds, "/airports/movers?measure=destinations&min=500000")
+    assert 'data-min="500000"' in page(ds, "/airports/movers?measure=passengers&min=10000")
+    assert 'data-min="25000"' in page(ds, "/airports/movers?measure=flights&min=25000")
+
+
+def test_destinations_are_a_measure_counting_the_other_airports_flown_to(ds, db_path):
+    from tests.test_airport_movers import route
+    for year, hub, low in ((1990, 12, 10), (2025, 24, 5)):
+        for code in ("HUB", "LOW"):
+            put(db_path, code, year, 1)
+        for i in range(hub):
+            route(db_path, year, "HUB", f"H{i:02d}", 12, 12)
+        for i in range(low):
+            route(db_path, year, "LOW", f"L{i:02d}", 12, 12)
+    html = page(ds, "/airports/movers?measure=destinations")
+    assert [r[0] for r in table(html, "risers")] == ["HUB"] and [r[0] for r in table(html, "fallers")] == ["LOW"]
+    assert table(html, "risers")[0][2:5] == ["12", "24", "×2"]
+    assert "Destinations 1990" in html and "destinations in 1990" in html and "24 in the year both ways" in html
+    assert "1.25 times as many" in html
 
 
 def test_the_chosen_settings_are_selected_and_given_to_the_script(ds, db_path):

@@ -16,8 +16,8 @@
             <tr>
               <th scope="col" class="left">Airport</th>
               <th scope="col" class="left">City</th>
-              <th scope="col" class="num">Passengers {{ first }}</th>
-              <th scope="col" class="num">Passengers {{ last }}</th>
+              <th scope="col" class="num">{{ label }} {{ first }}</th>
+              <th scope="col" class="num">{{ label }} {{ last }}</th>
               <th scope="col" class="num">Growth</th>
               <th scope="col" class="num">Against median</th>
               <th scope="col" class="num">Peak year</th>
@@ -46,7 +46,7 @@
     <h1>Risers and fallers</h1>
     {% if movers %}
     <p class="intro">
-      Which US airports grew faster or slower than the rest? The median airport with at least {{ size_label }} passengers in {{ first }} carried {{ movers.median }} times that number in {{ last }}; all of them together, {{ movers.together }} times.
+      Which US airports grew faster or slower than the rest? The median airport with at least {{ size_label }} {{ noun }} in {{ first }} had {{ movers.median }} times as many in {{ last }}; all of them together, {{ movers.together }} times.
       Here are the ones furthest from the median in each direction, including some that peaked years ago and never got back.
     </p>
     {% else %}
@@ -65,21 +65,26 @@
           <option value="{{ y }}"{% if y == last %} selected{% endif %}>{{ y }}</option>
           {%- endfor %}
         </select></label>
-      <label>Airports with at least <select name="min" id="min" aria-label="Smallest airport">
-          {%- for value, label in sizes %}
-          <option value="{{ value }}"{% if value == size %} selected{% endif %}>{{ label }}</option>
+      <label>Measure <select name="measure" id="measure" aria-label="Measure">
+          {%- for key, name in measures %}
+          <option value="{{ key }}"{% if key == measure %} selected{% endif %}>{{ name }}</option>
           {%- endfor %}
-        </select> passengers in {{ first }}</label>
+        </select></label>
+      <label>Airports with at least <select name="min" id="min" aria-label="Smallest airport">
+          {%- for value, text in sizes %}
+          <option value="{{ value }}"{% if value == size %} selected{% endif %}>{{ text }}</option>
+          {%- endfor %}
+        </select> {{ noun }} in {{ first }}</label>
       <noscript><button type="submit">Show</button></noscript>
     </form>
 
-    <div id="movers" data-from="{{ first }}" data-to="{{ last }}" data-min="{{ size }}">
+    <div id="movers" data-from="{{ first }}" data-to="{{ last }}" data-min="{{ size }}" data-measure="{{ measure }}" data-label="{{ label }}">
       <section aria-labelledby="scatter-heading">
         <h2 id="scatter-heading">Growth against size</h2>
         <div id="movers-scatter"></div>
       </section>
       <section aria-labelledby="lines-heading">
-        <h2 id="lines-heading">Passengers over time, {{ first }} = 100</h2>
+        <h2 id="lines-heading">{{ label }} over time, {{ first }} = 100</h2>
         <div id="movers-lines"></div>
       </section>
     </div>
@@ -95,7 +100,7 @@
     </section>
     {% if movers.lost %}
     <p class="note" id="lost">
-      Left out of the median, the tables and the charts, because under 1% of their {{ first }} passengers were left in {{ last }} (probably no longer served):
+      Left out of the median, the tables and the charts, because under 1% of their {{ first }} {{ noun }} were left in {{ last }} (probably no longer served):
       {% for r in movers.lost -%}
       <a href="/airports/{{ r.code }}" title="{{ r.tip }}">{{ r.code }}</a> {{ r.city or "" }}, {{ r.then }} to {{ r.now }}{{ ", " if not loop.last else "." }}
       {%- endfor %}
@@ -104,12 +109,18 @@
     {% elif movers is none %}
     <p class="note">These tables could not be built right now.</p>
     {% else %}
-    <p class="note">No airports had {{ size_label }} passengers in {{ first }}.</p>
+    <p class="note">No airports had {{ size_label }} {{ noun }} in {{ first }}.</p>
     {% endif %}
 
     <p class="note">
-      Growth is an airport's passengers in {{ last }} divided by its passengers in {{ first }}. Against median is that growth divided by the median airport's: ×2 grew twice as fast, ×0.5 half as fast.
+      Growth is an airport's {{ noun }} in {{ last }} divided by its {{ noun }} in {{ first }}. Against median is that growth divided by the median airport's: ×2 grew twice as fast, ×0.5 half as fast.
+      {% if measure == "flights" -%}
+      Flights are the airport's departures and arrivals, of any kind: passenger and freight, scheduled and charter, domestic and international.
+      {%- elif measure == "destinations" -%}
+      Destinations are the other airports, in the US or abroad, it has flights with: at least 24 in the year both ways together and 12 one way, the rule the airport maps and matrices use. An airport that gained one big route gains one destination, so this tells network growth from traffic growth.
+      {%- else -%}
       Passengers are those boarding or leaving there, on flights to and from the airport, domestic and international. A passenger changing planes at a hub counts once on each flight, so hubs count higher than the people whose trip began or ended there.
-      An airport left with under 1% of its passengers is not counted at all (see above). The charts' axes stop at ×0.05 and at 5 (first year = 100), so an airport that lost nearly everything sits on the bottom edge, whatever its real figure. Peak year is the airport's busiest in the range, and the last column is {{ last }}'s passengers as a share of that peak, which tells an airport that never grew from one that grew and lost it.
+      {%- endif %}
+      An airport left with under 1% of its {{ noun }} is not counted at all (see above). The charts' axes stop at ×0.05 and at 5 (first year = 100), so an airport that lost nearly everything sits on the bottom edge, whatever its real figure. Peak year is the airport's busiest in the range, and the last column is {{ last }}'s {{ noun }} as a share of that peak, which tells an airport that never grew from one that grew and lost it.
     </p>
 {% endblock %}
