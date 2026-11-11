@@ -8,7 +8,6 @@
 
 {% block content %}
     <h1>{{ family }} over time</h1>
-    {% set find = "aircraft" %}{% include "_find.html" %}
     <p class="intro" id="subtitle"></p>
     {% if facts %}<p class="rank-line" id="family-facts">{{ facts }}</p>{% endif %}
     <p class="chart-sentence">

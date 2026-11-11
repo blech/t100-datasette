@@ -12,6 +12,7 @@
   --line: #d3d3d3;
   --rule: #909091;
   --accent: #e36d2a;
+  --panel: rgba(255, 255, 255, 0.85);  /* the light theme's, as the search panel uses it */
 }
 
 body {
