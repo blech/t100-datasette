@@ -8,6 +8,7 @@ import { attachInteraction, applyInertia } from '/static/globe/src/interaction.j
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { indexAirports } from '/static/globe/src/adapter.js';
 import { NetworkRenderer } from '/static/globe/src/renderer.js';
+import { parseMapType, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
 import { maxOf } from '/static/globe/src/scale.js';
 import { styleRoutes, legendItems, toggleHide } from '/static/globe/src/routestyle.js';
 import { renderLegend } from '/static/globe/src/controls.js';
@@ -20,18 +21,14 @@ const MIN_YEAR = 1990;
 const MAX_YEAR = Number(document.body.dataset.maxYear) || 2025;
 const years = Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, i) => MIN_YEAR + i);
 const NS = ['50', '100', '150', '250', '500'];
-// the menu's map types: which renderer mode each uses, and where it starts (a rotation, as the view keeps it)
-const PROJS = {
-  globe: { mode: 'globe', rot: [96, -38] },
-  flat: { mode: 'flat', rot: [100, 0] },
-  azimuthal: { mode: 'azimuthal', rot: [98, -39] },
-};
+// every map type opens on the middle of the US (Kansas), so the azimuthal map shows distances from there
+const KANSAS = [-98, 39];
 const pick = (v, ok, fallback) => (ok.includes(v) ? v : fallback);
 const state = {
   year: pick(Number(params.get('year')), years, MAX_YEAR),
   n: pick(params.get('n'), NS, '50'),
   service: pick(params.get('service'), ['', 'domestic', 'international'], ''),
-  proj: pick(params.get('proj'), Object.keys(PROJS), 'globe'),
+  proj: parseMapType(params.get('proj')),
   arcs: params.get('arcs') === 'bowed' ? 'bowed' : 'great',
   sea: params.get('sea') === 'plain' ? 'plain' : 'sea',
   hide: [],
@@ -90,8 +87,9 @@ function pushState() {
 
 function setProj(p) {
   state.proj = p;
-  renderer.setMode(PROJS[p].mode);
-  Object.assign(view, { rot: [...PROJS[p].rot], zoom: 1, vel: [0, 0], target: null });
+  $('proj').value = p;
+  renderer.setMode(p);
+  Object.assign(view, { rot: openingRot(p, KANSAS), zoom: 1, vel: [0, 0], target: null });
   dirty = true;
 }
 
@@ -193,23 +191,19 @@ function bindControls() {
     el.addEventListener('change', () => { state[key] = el.value; load(); });
   }
   const proj = $('proj');
-  proj.value = state.proj;
+  fillMapTypeMenu(proj, state.proj, 'Centred on Kansas, so distances and directions from the middle of the US are true');
   proj.addEventListener('change', () => { setProj(proj.value); pushState(); });
   for (const key of ['arcs', 'sea']) {
     const el = $(key);
     el.value = state[key];
     el.addEventListener('change', () => { state[key] = el.value; pushState(); dirty = true; });
   }
-  // frame the routes in the clear area between the header and the controls, with room for labels: on the globe by turning
-  // and zooming it, on the flat and azimuthal maps by moving the middle of the map too
   $('fit').addEventListener('click', () => {
-    const points = shown.flatMap((r) => renderer.arcPoints(r));
-    const box = { left: 48, right: innerWidth - 64, top: $('header').getBoundingClientRect().bottom + 24, bottom: $('controls').getBoundingClientRect().top - 16 };
-    const fit = renderer.fitPlanar(points, box) || renderer.fit(points, box);
+    const fit = fitRoutes(renderer, shown.flatMap((r) => renderer.arcPoints(r)));
     if (fit) { view.vel = [0, 0]; view.target = fit; }
   });
   $('play').addEventListener('click', togglePlay);
-  bindKeys();
+  bindMapKeys({ step: stepYear, play: togglePlay, mapType: (p) => { setProj(p); pushState(); } });
 }
 
 function togglePlay() {
@@ -228,17 +222,6 @@ function stepYear(by) {
   if (y < MIN_YEAR || y > MAX_YEAR) return;
   state.year = y;
   load();
-}
-
-// ← → step through the years, space plays, 1–3 pick the map type; typing in a menu or box is left alone
-function bindKeys() {
-  const projKeys = Object.keys(PROJS);
-  document.addEventListener('keydown', (e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('select, textarea, input:not([type=range])')) return;
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); stepYear(e.key === 'ArrowLeft' ? -1 : 1); }
-    else if (e.key === ' ') { e.preventDefault(); togglePlay(); }
-    else if (/^[1-3]$/.test(e.key)) { const p = projKeys[Number(e.key) - 1]; $('proj').value = p; setProj(p); pushState(); }
-  });
 }
 
 function bindCanvas() {

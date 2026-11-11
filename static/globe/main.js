@@ -1,7 +1,8 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from './src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
-import { defaultView, clamp, glide, rotationFor } from './src/camera.js';
+import { defaultView, glide } from './src/camera.js';
+import { openingRot, centreRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from './src/maptypes.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
@@ -53,6 +54,8 @@ const latestYear = document.body.dataset.maxYear;
 let selected = -1;
 let playTimer = null;
 const view = defaultView();
+// what the map is centred on: the airport, or on the chooser the middle of the US, as the default view has it
+let home = [-view.rot[0], -view.rot[1]];
 
 const canvas = $('globe');
 let renderer;
@@ -261,31 +264,41 @@ function showChooserTip(i, x, y) {
   placePopover(tip, x, y, { dx: 14, dy: 14 });
 }
 
+// a new map type opens afresh on the airport: the azimuthal map is centred on it, so its distances and directions are true
+function setProj(p) {
+  state.proj = p;
+  $('proj').value = p;
+  renderer.setMode(p);
+  Object.assign(view, { rot: openingRot(p, home), zoom: 1, vel: [0, 0], target: null });
+  pushState();
+  dirty = true;
+}
+
+// ← → step the year (in the month view, the month), as the sliders do; space plays; 1–3 pick the map type
+function stepPeriod(by) {
+  const el = state.month !== null ? $('month') : range.to;
+  const v = Number(el.value) + by;
+  if (v < Number(el.min) || v > Number(el.max)) return;
+  el.value = String(v);
+  el.dispatchEvent(new Event('input'));
+}
+
 function bindControls() {
   const proj = $('proj');
-  proj.value = state.proj;
-  proj.addEventListener('change', () => {
-    state.proj = proj.value === 'flat' ? 'flat' : 'globe';
-    renderer.setMode(state.proj);
-    if (state.proj === 'flat') view.rot[1] = 0; // the flat map opens on the equator, as it always has; dragging or fitting moves it
-    pushState();
-    dirty = true;
-  });
+  fillMapTypeMenu(proj, state.proj, `Centred on ${origin}, so distances and directions from it are true`);
+  proj.addEventListener('change', () => setProj(proj.value));
   const width = $('width');
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
   $('dir')?.addEventListener('change', (e) => setDir(e.target.value)); // only an airport's map has one; a new direction reloads
   $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
-  const a = airports.get(origin);
-  $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: rotationFor(a.lon, a.lat), zoom: view.zoom }; });
-  // on the flat map, fitting moves the map's middle north or south as well as zooming (the renderer's panFlat)
+  $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: centreRot(state.proj, home), zoom: view.zoom }; });
+  // the azimuthal map keeps the airport in the middle and only zooms; the others move their middle too
   $('fit').addEventListener('click', () => {
-    const points = [[a.lon, a.lat], ...shown.map((r) => r.to)];
-    // the clear area between the header and the controls, with room for the labels
-    const box = { left: 24, right: innerWidth - 48, top: $('header').getBoundingClientRect().bottom + 24, bottom: $('controls').getBoundingClientRect().top - 8 };
-    const fit = renderer.fitPlanar(points, box) || renderer.fit(points, box);
+    const fit = fitRoutes(renderer, [home, ...shown.map((r) => r.to)], { keepCentre: state.proj === 'azimuthal' });
     if (fit) { view.vel = [0, 0]; view.target = fit; }
   });
+  bindMapKeys({ step: stepPeriod, play: () => $('play').click(), mapType: setProj });
 
   for (const el of [range.from, range.to]) { el.min = '0'; el.max = String(years.length - 1); }
   const move = (which, el) => async () => {
@@ -335,7 +348,7 @@ function bindCanvas() {
   const hooks = {
     degPerPx: () => renderer.degPerPx(),
     onUserMove: () => { dirty = true; $('tooltip').hidden = true; },
-    onReset: () => { Object.assign(view, defaultView()); dirty = true; },
+    onReset: () => { Object.assign(view, defaultView(), { rot: openingRot(state.proj, home) }); dirty = true; },
     onHover: (x, y) => {
       if (!origin) {
         const i = renderer.hitTestPoints(x, y, chooserPoints);
@@ -412,7 +425,7 @@ async function main() {
   renderer = new NetworkRenderer(canvas, land);
   renderer.panFlat = true;
   renderer.setMode(state.proj);
-  if (state.proj === 'flat') view.rot[1] = 0;
+  view.rot = openingRot(state.proj, home);
   applyTheme(themeId);
   const resize = () => { renderer.resize(); dirty = true; };
   window.addEventListener('resize', resize);
@@ -438,7 +451,7 @@ async function main() {
   if (state.year === null || !years.includes(state.year)) state.year = years[years.length - 1];
   if (!years.includes(state.compare) || state.compare >= state.year || state.month !== null) state.compare = null;
   if (state.month !== null) await loadMonths();
-  if (a) view.rot = [-a.lon, state.proj === 'flat' ? 0 : clamp(-a.lat, -70, 70)];
+  if (a) { home = [a.lon, a.lat]; view.rot = openingRot(state.proj, home); }
   bindControls();
   refresh();
 }

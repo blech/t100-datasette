@@ -9,6 +9,8 @@ test('defaults', () => {
 });
 test('parses valid values', () => {
   assert.deepEqual(parseState('?year=2019&month=3&proj=flat&width=freight'), { ...DEFAULTS, year: 2019, month: 3, proj: 'flat', width: 'freight' });
+  assert.equal(parseState('?proj=azimuthal').proj, 'azimuthal');
+  assert.equal(parseState('?proj=equirect').proj, 'globe');
   assert.deepEqual(parseState('?year=2024&compare=2019&colour=service&hide=dropped'), { ...DEFAULTS, year: 2024, compare: 2019, colour: 'service', hide: ['dropped'] });
 });
 test('rejects out-of-range and garbage', () => {
@@ -19,6 +21,7 @@ test('rejects out-of-range and garbage', () => {
 test('round trips and omits defaults', () => {
   assert.equal(toSearch(DEFAULTS), '');
   assert.equal(toSearch({ ...DEFAULTS, year: 2019, proj: 'flat', width: 'deps' }), '?year=2019&proj=flat&width=deps');
+  assert.equal(toSearch({ ...DEFAULTS, proj: 'azimuthal' }), '?proj=azimuthal');
   const full = { ...DEFAULTS, year: 2024, compare: 2019, proj: 'flat', width: 'freight', colour: 'change', hide: ['domestic', 'dropped'] };
   assert.deepEqual(parseState(toSearch(full)), full);
 });

@@ -76,12 +76,31 @@ export class NetworkRenderer {
 
   // on a flat or azimuthal map, the view ({ rot, zoom }) that frames `points` ([lon, lat]) inside `box` (screen pixels):
   // move the points' middle to the box's middle and scale their extent to fill it, a few times over, since moving a map
-  // changes its shape. Null on the globe, which has fit().
-  fitPlanar(points, box) {
+  // changes its shape. With keepCentre the map's middle stays where it is (an azimuthal map centred on an airport) and
+  // only the zoom changes, so the points reach as far towards the box's edges as the middle allows. Null on the globe,
+  // which has fit().
+  fitPlanar(points, box, { keepCentre = false } = {}) {
     if (!isPlanar(this.mode) || !points.length) return null;
     const m = MODES[this.mode];
     const probe = m.make(window.d3);
     const [cx, cy] = this.centre();
+    if (keepCentre) {
+      const rot = [...(this.lastRot || [0, 0])];
+      probe.scale(this.baseScale).translate([cx, cy]);
+      if (m.rotates) probe.rotate(rot).center([0, 0]); else probe.rotate([rot[0], 0]).center([0, -rot[1]]);
+      // at zoom 1, how far each point sits from the middle; each side of the box limits the zoom that keeps it inside
+      let zoom = ZMAX;
+      for (const p of points) {
+        const xy = probe(p);
+        if (!xy || !xy.every(Number.isFinite)) continue;
+        const [dx, dy] = [xy[0] - cx, xy[1] - cy];
+        if (dx > 0.5) zoom = Math.min(zoom, (box.right - cx) / dx);
+        if (dx < -0.5) zoom = Math.min(zoom, (box.left - cx) / dx);
+        if (dy > 0.5) zoom = Math.min(zoom, (box.bottom - cy) / dy);
+        if (dy < -0.5) zoom = Math.min(zoom, (box.top - cy) / dy);
+      }
+      return { rot, zoom: clamp(zoom, ZMIN, ZMAX) };
+    }
     const bc = [(box.left + box.right) / 2, (box.top + box.bottom) / 2];
     let rot = [...(this.lastRot || [0, 0])];
     let zoom = 1;
