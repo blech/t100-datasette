@@ -25,6 +25,20 @@
   font-size: 15px;
   line-height: 1.5;
 }
+.sections .search-open[aria-expanded="true"] {
+  color: var(--fg);
+}
+/* a wide window: the panel hangs from the icon like a menu, over a page left undimmed */
+@media (min-width: 601px) {
+  .search-dialog {
+    position: fixed;
+    inset: var(--search-top, 60px) var(--search-right, 12px) auto auto;
+    margin: 0;
+  }
+  .search-dialog::backdrop {
+    background: transparent;
+  }
+}
 .search-dialog::backdrop {
   background: color-mix(in srgb, var(--bg) 60%, transparent);
 }

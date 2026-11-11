@@ -27,12 +27,25 @@ function build() {
   input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, DEBOUNCE_MS); });
   input.addEventListener('keydown', onKey);
   dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
-  dialog.addEventListener('close', () => opener.focus());
+  dialog.addEventListener('close', () => {
+    opener.setAttribute('aria-expanded', 'false');
+    opener.focus();
+  });
+  addEventListener('resize', place);
+}
+
+// On a wide window the panel hangs from the icon, its right edge under the icon's (the stylesheet centres it on a phone)
+function place() {
+  const box = opener.getBoundingClientRect();
+  dialog.style.setProperty('--search-top', `${Math.round(box.bottom + 8)}px`);
+  dialog.style.setProperty('--search-right', `${Math.max(12, Math.round(document.documentElement.clientWidth - box.right))}px`);
 }
 
 function open() {
   if (!dialog) build();
+  place();
   if (!dialog.open) dialog.showModal();
+  opener.setAttribute('aria-expanded', 'true');
   input.select();
 }
 
