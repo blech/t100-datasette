@@ -29,7 +29,14 @@
 
   <div id="controls">
     <div id="legend">
-      <span id="legend-chips"></span>
+      {# the key on the left; on the right, the month view, which narrows the same routes to one month of the year #}
+      <div class="legend-row">
+        <span id="legend-chips"></span>
+        <span class="months">
+          <input id="month" type="range" min="1" max="12" value="1" step="1" aria-label="Month" hidden>
+          <label class="chip months-toggle"><input id="month-toggle" type="checkbox"> Months</label>
+        </span>
+      </div>
       <span class="note">{% if origin %}Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}{% else %}Routes with fewer than 24 flights a year, both ways, are hidden. <a href="/about#direction">What a route means</a>.{% endif %}</span>
     </div>
     <div class="row">
@@ -43,8 +50,6 @@
     </div>
     <div id="range-hint">Drag the hollow handle back to compare with an earlier year: new routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</div>
     <div class="row">
-      <label class="check"><input id="month-toggle" type="checkbox"> Months</label>
-      <input id="month" type="range" min="1" max="12" value="1" step="1" aria-label="Month" hidden>
       {% if origin %}{% include "_dir_choice.html" %}{% endif %}
       <select id="proj" aria-label="Map type"></select>
       <button id="centre" type="button">Centre {{ origin }}</button>

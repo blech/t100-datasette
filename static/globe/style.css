@@ -300,6 +300,70 @@ select {
   font-size: 12px;
 }
 /* legend chips: a toggle per category; the swatch shows the colour only for the dimension being coloured */
+/* the key, with the month view's switch (an airport's map) at the right of the same line */
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 4px 10px;
+  flex-wrap: wrap;
+}
+.legend-row .months {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* the month slider drawn as the year slider is: a thin muted line and a filled handle */
+.legend-row #month {
+  width: 160px;
+  height: 16px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.legend-row #month::-webkit-slider-runnable-track {
+  height: 2px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+.legend-row #month::-moz-range-track {
+  height: 2px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+.legend-row #month::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+}
+.legend-row #month::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+}
+/* a chip like the key's, with the checkbox drawn small inside it */
+.months-toggle {
+  border: 1px solid var(--muted);
+  border-radius: 3px;
+  cursor: pointer;
+  gap: 5px;
+}
+.months-toggle:hover {
+  border-color: var(--accent);
+}
+.months-toggle input {
+  margin: 0;
+  width: 12px;
+  height: 12px;
+  accent-color: var(--accent);
+}
 #legend-chips {
   display: flex;
   flex-wrap: wrap;
