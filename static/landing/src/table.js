@@ -113,6 +113,16 @@ export const countryHref = (name, { year = 'all', dir = '' } = {}, maxYear) => {
   return `/countries/${countrySlug(name)}${q.size ? `?${q}` : ''}`;
 };
 
+// a city row's page, /cities/<market>, for a BTS market (a "solo:" airport has none): its destinations ranked by the table's
+// year (the page's own default is all years), counted the table's way
+export const cityHref = (key, { year = 'all', dir = '' } = {}) => {
+  if (!/^[0-9]{5}$/.test(String(key))) return null;
+  const q = new URLSearchParams();
+  if (year !== 'all') q.set('year', year);
+  if (dir) q.set('dir', dir);
+  return `/cities/${key}${q.size ? `?${q}` : ''}`;
+};
+
 // a country opens to its busiest airports and one row adding up the rest (a lone leftover airport is listed, not summed)
 export const SHOWN_IN_COUNTRY = 5;
 export function splitAirports(airports, shown = SHOWN_IN_COUNTRY) {

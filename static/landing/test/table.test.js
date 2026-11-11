@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { countrySlug, countryHref, splitAirports, sumOf, lowerFirst, yearLabel, groupCities, matrixSearch, tableSearch, topBy, parseState, toSearch, SORTS, sortLabels, airportHref, loadFactor } from '../src/table.js';
+import { countrySlug, countryHref, cityHref, splitAirports, sumOf, lowerFirst, yearLabel, groupCities, matrixSearch, tableSearch, topBy, parseState, toSearch, SORTS, sortLabels, airportHref, loadFactor } from '../src/table.js';
 
 test('topBy sorts descending by the chosen measure and keeps the top n', () => {
   const rows = [
@@ -148,4 +148,10 @@ test('a country opens to its five busiest airports and a sum of the rest, unless
   const { shown, others } = splitAirports(list(9));
   assert.deepEqual([shown.length, others.length], [5, 4]);
   assert.deepEqual(sumOf(others), { passengers: 40, deps: 4, seats: 80, freight: 8 });
+});
+
+test('a city row opens its city page, ranked by the table\'s year and counted its way; an airport with no market has none', () => {
+  assert.equal(cityHref('32575', { year: 2025, dir: '' }), '/cities/32575?year=2025');
+  assert.equal(cityHref('32575', { year: 'all', dir: 'out' }), '/cities/32575?dir=out');
+  assert.equal(cityHref('solo:ZZZ'), null);
 });

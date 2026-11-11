@@ -36,9 +36,13 @@ function valueOf(measure, t) {
 // Rows from the `route` or `route_year` query -> one value per (period, series).
 // Series beyond the `top` biggest overall are folded into "Other", listed last. Load factor leaves out a series' periods
 // with fewer than `minDeps` departures, where a single full flight would be a spike to 100%.
-export function buildSeries(rows, { measure = 'passengers', split = 'carrier', top = 8, periodKey = 'year', keep = new Set(), minDeps = 0 } = {}) {
+// Stacked, a series that never reaches `minShare` of any period's total would be a sliver too thin to see: it goes into
+// "Other" rather than taking a name and a colour, and an "Other" that never reaches it either is left out of the chart.
+export function buildSeries(rows, { measure = 'passengers', split = 'carrier', top = 8, periodKey = 'year', keep = new Set(), minDeps = 0, minShare = 0 } = {}) {
+  const weightOf = (t) => (measure === 'load_factor' ? t.passengers : Math.abs(valueOf(measure, t) ?? 0));
   const cells = new Map(); // `${period}\u0000${label}` -> sums
   const overall = new Map(); // label -> total of the measure's base quantity
+  const periodTotals = new Map(); // period -> total of the measure's base quantity
   for (const r of rows) {
     const label = labelFor(r, split);
     const t = { deps: num(r.deps), seats: num(r.total_seats), passengers: num(r.total_passengers), freight: num(r.total_freight) };
@@ -47,15 +51,25 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
     const sum = cells.get(key) || { period, label, deps: 0, seats: 0, passengers: 0, freight: 0 };
     for (const k of ['deps', 'seats', 'passengers', 'freight']) sum[k] += t[k];
     cells.set(key, sum);
-    const weight = measure === 'load_factor' ? t.passengers : Math.abs(valueOf(measure, t) ?? 0);
+    const weight = weightOf(t);
     overall.set(label, (overall.get(label) || 0) + weight);
+    periodTotals.set(period, (periodTotals.get(period) || 0) + weight);
   }
 
+  const stackable = measure !== 'load_factor';
+  // whether a series (its cells, by period) would show in any period of a stacked chart
+  const visible = (sums) => !stackable || minShare <= 0 || sums.some((c) => weightOf(c) >= minShare * (periodTotals.get(c.period) || 0) && weightOf(c) > 0);
+  const byLabel = new Map();
+  for (const c of cells.values()) {
+    if (!byLabel.has(c.label)) byLabel.set(c.label, []);
+    byLabel.get(c.label).push(c);
+  }
   const ranked = [...overall.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([l]) => l);
+  const named = ranked.filter((l) => keep.has(l) || visible(byLabel.get(l)));
   // the top series; one asked for by name from further down (a highlighted airline) takes the last places instead,
   // so there are never more than `top` named series and each keeps a colour of its own
-  const extra = ranked.slice(top).filter((l) => keep.has(l));
-  const kept = new Set([...ranked.slice(0, Math.max(0, top - extra.length)), ...extra]);
+  const extra = named.slice(top).filter((l) => keep.has(l));
+  const kept = new Set([...named.slice(0, Math.max(0, top - extra.length)), ...extra]);
   const folded = ranked.length > kept.size;
 
   // merge folded series into "Other" before taking the measure (so load factor stays a ratio)
@@ -68,9 +82,12 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
     merged.set(key, m);
   }
 
+  const others = [...merged.values()].filter((m) => m.label === 'Other');
+  const dropOther = folded && !visible(others);
   const points = [];
   for (const m of merged.values()) {
     if (measure === 'load_factor' && m.deps < minDeps) continue;
+    if (dropOther && m.label === 'Other') continue;
     const value = valueOf(measure, m);
     if (value !== null) points.push({ period: m.period, series: m.label, value });
   }
@@ -78,7 +95,7 @@ export function buildSeries(rows, { measure = 'passengers', split = 'carrier', t
   const series = ranked.filter((l) => kept.has(l) && points.some((p) => p.series === l));
   if (folded && points.some((p) => p.series === 'Other')) series.push('Other');
   const periods = [...new Set(points.map((p) => p.period))].sort((a, b) => a - b);
-  return { points, series, periods, stackable: measure !== 'load_factor' };
+  return { points, series, periods, stackable };
 }
 
 // One row per carrier, family, aircraft, or carrier and family or aircraft pair (or a single row of totals),
