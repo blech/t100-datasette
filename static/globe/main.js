@@ -6,6 +6,7 @@ import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
 import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
+import { pickerOptions } from './src/picker.js';
 import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
@@ -209,13 +210,7 @@ function refresh() {
 
 function fillPicker() {
   const list = $('airport-list');
-  for (const a of airports.values()) {
-    if (!a.isUs) continue;
-    const o = document.createElement('option');
-    o.value = a.code;
-    o.label = `${a.place} – ${a.name}`;
-    list.append(o);
-  }
+  for (const { value, label } of pickerOptions(airports.values())) list.append(Object.assign(document.createElement('option'), { value, label }));
   $('picker').value = origin;
   $('picker').addEventListener('change', (e) => {
     const code = e.target.value.trim().toUpperCase();
