@@ -375,7 +375,7 @@ async def country_page(datasette, request):
 
 async def globe_page(datasette, request):
     origin = (request.url_vars.get("origin") or "").upper()
-    steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
+    steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("map", None)] if origin else [("airports", "/airports"), ("map", None)]
     html = await datasette.render_template(
         "globe.html",
         {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1],
@@ -388,7 +388,7 @@ async def globe_page(datasette, request):
 async def routes_globe_page(datasette, request):
     """SPIKE: a year's busiest airport pairs on the globe, or on a flat or azimuthal map; its settings are in the URL."""
     html = await datasette.render_template(
-        "routes_globe.html", {"crumbs": trail(datasette, ("airports", "/airports"), ("globe", "/airports/globe"), ("routes", None)), "max_year": year_range(datasette)[1]},
+        "routes_globe.html", {"crumbs": trail(datasette, ("airports", "/airports"), ("map", "/airports/globe"), ("routes", None)), "max_year": year_range(datasette)[1]},
         request=request,
     )
     return Response.html(html)

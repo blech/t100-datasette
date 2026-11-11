@@ -24,9 +24,9 @@ def test_airports_table_trail(ds):
 
 
 def test_globe_trails(ds):
-    assert crumbs(ds, "/airports/globe") == [("t100.husk.org", "/"), ("airports", "/airports"), ("globe", None)]
+    assert crumbs(ds, "/airports/globe") == [("t100.husk.org", "/"), ("airports", "/airports"), ("map", None)]
     assert crumbs(ds, "/airports/ATL/globe") == [
-        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("globe", None)]
+        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("map", None)]
 
 
 def test_routes_trail(ds):
