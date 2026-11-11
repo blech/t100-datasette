@@ -708,20 +708,21 @@ def rebuild_search_index(conn: sqlite3.Connection) -> int:
     for airline_id, code in conn.execute("SELECT airline_id, MIN(unique_carrier) FROM carriers WHERE unique_carrier <> '' GROUP BY airline_id"):
         codes[airline_id] = code
     members = {}
-    for group_id, airline_id in conn.execute("SELECT DISTINCT group_id, airline_id FROM carrier_group_year"):
-        members.setdefault(group_id, []).append(airline_id)
+    for group_id, airline_id, deps in conn.execute("SELECT group_id, airline_id, SUM(deps) FROM carrier_group_year GROUP BY group_id, airline_id"):
+        members.setdefault(group_id, []).append((deps or 0, airline_id))
     for group_id, name, first, last, size in conn.execute(
-        "SELECT group_id, group_name, MIN(year), MAX(year), SUM(deps) FROM carrier_group_year GROUP BY group_id, group_name"
+        "SELECT group_id, group_name, MIN(year), MAX(year), SUM(deps) FROM carrier_group_year GROUP BY group_id, group_name HAVING SUM(deps) > 0"
     ).fetchall():
-        member_codes = sorted(filter(None, (codes.get(a) for a in members.get(group_id, []))))
+        # every member's code finds the group, but its own code is its busiest member's (United is UA, not Continental's CO)
+        member_codes = [codes[a] for _, a in sorted(members.get(group_id, []), reverse=True) if codes.get(a)]
         rows.append(("airline", f"/airlines/{group_id}", name, _years(first, last), _words(name, *member_codes), member_codes[0] if member_codes else "", size))
-    merged = {g for g, a in members.items() if len(a) > 1}
     for airline_id, name, parent, first, last, size in conn.execute(
         """
         SELECT d.airline_id, COALESCE(g.airline_name, d.group_name), d.group_name, MIN(d.year), MAX(d.year), SUM(d.deps)
         FROM carrier_group_year d LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
         WHERE d.group_id IN (SELECT group_id FROM carrier_group_year GROUP BY group_id HAVING COUNT(DISTINCT airline_id) > 1)
         GROUP BY d.airline_id, COALESCE(g.airline_name, d.group_name), d.group_name
+        HAVING SUM(d.deps) > 0
         """
     ).fetchall():
         code = codes.get(airline_id, "")

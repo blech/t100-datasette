@@ -93,3 +93,21 @@ def test_rebuild_is_repeatable_and_part_of_the_full_rebuild(db_path):
     rebuilt = rebuild_derived_tables(conn)  # from the (empty) segments, so the fixtures' rows go
     assert rebuilt["search_index"] == conn.execute("SELECT COUNT(*) FROM search_index").fetchone()[0]
     conn.close()
+
+
+def put_group(db_path, group_id, group_name, members):
+    """members: [(airline_id, carrier code, departures)]"""
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id=a, group_id=group_id, group_name=group_name, domestic=1, service_class="F",
+                                             deps=d, seats=0, passengers=0, freight=0) for a, c, d in members])
+    put(db_path, "carriers", [dict(airline_id=a, carrier=c, unique_carrier=c, name=c) for a, c, d in members])
+
+
+def test_a_merged_groups_code_is_its_busiest_members_and_every_members_code_finds_it(db_path):
+    put_group(db_path, "united", "United (incl. Continental)", [("19704", "CO", 2), ("19977", "UA", 4)])
+    row = index(db_path)[("airline", "/airlines/united")]
+    assert row["code"] == "UA" and {"co", "ua"} <= set(row["terms"].split())
+
+
+def test_an_airline_that_never_flew_is_not_indexed(db_path):
+    put_group(db_path, "21205", "Inter Island Airways", [("21205", "II", 0)])
+    assert not [h for k, h in index(db_path) if k == "airline"]

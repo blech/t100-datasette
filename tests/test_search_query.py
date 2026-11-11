@@ -73,3 +73,10 @@ def test_the_search_works_in_public_mode(db_path):
     seed(db_path, [KEF])
     ds = make_datasette(db_path, {"default_allow_sql": False, "allow_download": False})
     assert [r["href"] for r in search(ds, "kef")] == ["/airports/KEF"]
+
+
+def test_an_airline_named_as_typed_comes_before_airports_that_only_mention_the_word(ds, db_path):
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta Air Lines", domestic=1,
+                                             service_class="F", deps=4, seats=0, passengers=0, freight=0)])
+    seed(db_path, [("MTJ", "Montrose/Delta, CO", 900), ("ESC", "Escanaba, MI", 800)])
+    assert [(r["kind"], r["href"]) for r in search(ds, "delta")][:2] == [("airline", "/airlines/delta"), ("airport", "/airports/MTJ")]

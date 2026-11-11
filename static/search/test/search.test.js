@@ -23,15 +23,15 @@ test('searchUrl encodes characters that mean something in a URL', () => {
   assert.deepEqual([q.get('t1'), q.get('t2'), q.get('t3')], ['50%', "o'hare", '&']);
 });
 
-test('groupResults titles the kinds in order and drops empty ones', () => {
+test('groupResults keeps the order the rows came in, so the best match leads, and drops empty kinds', () => {
   const rows = [
     { kind: 'aircraft', href: '/aircraft/a', label: 'A', hint: '' },
     { kind: 'airport', href: '/airports/KEF', label: 'KEF', hint: '' },
     { kind: 'airport', href: '/airports/SFO', label: 'SFO', hint: '' },
   ];
   const groups = groupResults(rows);
-  assert.deepEqual(groups.map((g) => [g.kind, g.title, g.items.length]), [['airport', 'Airports', 2], ['aircraft', 'Aircraft', 1]]);
-  assert.deepEqual(groups[0].items.map((r) => r.label), ['KEF', 'SFO']);
+  assert.deepEqual(groups.map((g) => [g.kind, g.title, g.items.length]), [['aircraft', 'Aircraft', 1], ['airport', 'Airports', 2]]);
+  assert.deepEqual(groups[1].items.map((r) => r.label), ['KEF', 'SFO']);
   assert.deepEqual(groupResults([]), []);
 });
 

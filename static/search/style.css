@@ -28,6 +28,9 @@
 .sections .search-open[aria-expanded="true"] {
   color: var(--fg);
 }
+.search-dialog::backdrop {
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+}
 /* a wide window: the panel hangs from the icon like a menu, over a page left undimmed */
 @media (min-width: 601px) {
   .search-dialog {
@@ -38,9 +41,6 @@
   .search-dialog::backdrop {
     background: transparent;
   }
-}
-.search-dialog::backdrop {
-  background: color-mix(in srgb, var(--bg) 60%, transparent);
 }
 .search-dialog input {
   box-sizing: border-box;
@@ -54,11 +54,21 @@
   border-radius: 4px;
 }
 .search-status {
-  margin: 6px 0 0;
+  margin: 0;
   color: var(--muted);
+  /* spoken (it is a live region) but not shown: the list itself says how many */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
-.search-status:empty {
-  display: none;
+.search-status.shown {
+  margin: 6px 0 0;
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
 }
 .search-results {
   max-height: 55vh;

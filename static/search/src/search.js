@@ -1,6 +1,6 @@
 import { queryUrl } from '../../globe/src/api.js';
 
-const KINDS = [['airport', 'Airports'], ['airline', 'Airlines'], ['aircraft', 'Aircraft']];
+const TITLES = { airport: 'Airports', airline: 'Airlines', aircraft: 'Aircraft' };
 
 // What was typed -> the three words the search query takes: lowercase, the first three, padded with ''
 export const tokens = (text) => {
@@ -14,10 +14,16 @@ export function searchUrl(text) {
   return t1 ? queryUrl('search', { t1, t2, t3 }) : null;
 }
 
-// Rows from the search query -> [{ kind, title, items }] in the order airports, airlines, aircraft, leaving out a kind with no rows
-export const groupResults = (rows) => KINDS
-  .map(([kind, title]) => ({ kind, title, items: rows.filter((r) => r.kind === kind) }))
-  .filter((g) => g.items.length);
+// Rows from the search query -> [{ kind, title, items }], the kinds in the order their first row comes (the query puts the best match first),
+// leaving out a kind with no rows
+export function groupResults(rows) {
+  const groups = new Map();
+  for (const r of rows) {
+    if (!groups.has(r.kind)) groups.set(r.kind, { kind: r.kind, title: TITLES[r.kind], items: [] });
+    groups.get(r.kind).items.push(r);
+  }
+  return [...groups.values()];
+}
 
 // The selected result after an arrow key, wrapping at both ends; -1 is nothing selected yet
 export function moveSelection(index, count, key) {

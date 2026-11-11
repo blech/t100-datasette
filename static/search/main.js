@@ -20,7 +20,13 @@ function build() {
   input.setAttribute('aria-label', 'Search airports, airlines and aircraft');
   status = el('p', { className: 'search-status' });
   status.setAttribute('aria-live', 'polite');
-  results = el('div', { className: 'search-results' });
+  results = el('div', { className: 'search-results', id: 'search-results' });
+  results.setAttribute('role', 'listbox');
+  results.setAttribute('aria-label', 'Search results');
+  input.setAttribute('role', 'combobox');
+  input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-controls', 'search-results');
+  input.setAttribute('aria-expanded', 'false');
   dialog = el('dialog', { id: 'search-dialog', className: 'search-dialog' }, input, status, results);
   dialog.setAttribute('aria-label', 'Search');
   document.body.append(dialog);
@@ -55,14 +61,25 @@ function select(index) {
     a.classList.toggle('selected', i === index);
     a.setAttribute('aria-selected', String(i === index));
   });
+  if (links[index]) input.setAttribute('aria-activedescendant', links[index].id);
+  else input.removeAttribute('aria-activedescendant');
   links[index]?.scrollIntoView({ block: 'nearest' });
 }
 
 function show(rows, query) {
   const groups = groupResults(rows);
-  results.replaceChildren(...groups.map((g) => el('section', {}, el('h2', { textContent: g.title }), el('ul', {}, ...g.items.map((r) => el('li', {}, el('a', { href: r.href }, el('span', { className: 'search-label', textContent: r.label }), el('span', { className: 'search-hint', textContent: r.hint }))))))));
+  results.replaceChildren(...groups.map((g, gi) => {
+    const heading = el('h2', { textContent: g.title, id: `search-group-${gi}` });
+    const list = el('ul', {}, ...g.items.map((r) => el('li', {}, el('a', { href: r.href }, el('span', { className: 'search-label', textContent: r.label }), el('span', { className: 'search-hint', textContent: r.hint })))));
+    list.setAttribute('role', 'group');
+    list.setAttribute('aria-labelledby', heading.id);
+    return el('section', {}, heading, list);
+  }));
   links = [...results.querySelectorAll('a')];
-  status.textContent = !query ? '' : links.length ? '' : 'No matches';
+  links.forEach((a, i) => { a.id = `search-result-${i}`; a.setAttribute('role', 'option'); a.tabIndex = -1; });
+  input.setAttribute('aria-expanded', String(links.length > 0));
+  status.classList.toggle('shown', Boolean(query) && !links.length);
+  status.textContent = !query ? '' : links.length ? `${links.length} ${links.length === 1 ? 'result' : 'results'}` : 'No matches';
   select(0);
 }
 
@@ -75,7 +92,7 @@ async function run() {
     if (mine === latest) show(rows, input.value);
   } catch (err) {
     console.error(err);
-    if (mine === latest) { show([], ''); status.textContent = 'Search unavailable'; }
+    if (mine === latest) { show([], ''); status.textContent = 'Search unavailable'; status.classList.add('shown'); }
   }
 }
 
