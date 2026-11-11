@@ -47,6 +47,7 @@ def register_routes():
         (r"^/countries/(?P<slug>[a-z0-9-]+)$", country_page),
         (r"^/airports/globe$", globe_page),
         (r"^/airports/dedicated$", dedicated_airports_page),
+        (r"^/airports/movers$", airport_movers_page),
         (r"^/airports/over-time$", rollup_page("airports")),
         (r"^/airports/routes$", rollup_page("toproutes")),
         (rf"^/airports/(?P<origin>{CODE})$", airport_page),
@@ -119,10 +120,11 @@ def views_for(path):
         return [{"label": label, "href": href, "current": i == current, "id": id_} for i, (label, href, id_) in enumerate(items)]
 
     match parts:
-        case ["airports"] | ["airports", "dedicated"] | ["airports", "over-time"] | ["airports", "routes"] | ["airports", "globe"]:
+        case ["airports"] | ["airports", "dedicated"] | ["airports", "movers"] | ["airports", "over-time"] | ["airports", "routes"] | ["airports", "globe"]:
             return make(("Busiest airports", "/airports", None), ("Over time", "/airports/over-time", None),
-                        ("Most dedicated", "/airports/dedicated", None), ("Routes", "/airports/routes", None), ("Map", "/airports/globe", None),
-                        current=[[], ["over-time"], ["dedicated"], ["routes"], ["globe"]].index(parts[1:]))
+                        ("Most dedicated", "/airports/dedicated", None), ("Risers and fallers", "/airports/movers", None),
+                        ("Routes", "/airports/routes", None), ("Map", "/airports/globe", None),
+                        current=[[], ["over-time"], ["dedicated"], ["movers"], ["routes"], ["globe"]].index(parts[1:]))
         case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
@@ -411,6 +413,68 @@ async def dedicated_airports_page(datasette, request):
         "airports_dedicated.html",
         {"min_year": min_year, "max_year": max_year, "year": year, "tables": tables,
          "crumbs": trail(datasette, ("airports", "/airports"), ("most dedicated", None))},
+        request=request,
+    )
+    return Response.html(html)
+
+
+# the risers-and-fallers page: how fast each US airport's passengers grew between two years against the median airport (airport_movers)
+MOVERS_SIZES = ((100_000, "100,000"), (500_000, "500,000"), (1_000_000, "1 million"), (5_000_000, "5 million"))
+MOVERS_DEFAULT_SIZE = 500_000
+MOVERS_LISTED = 10
+
+
+def multiple(v):
+    """A ratio as the tables print it: ×4.84, ×0.333, ×1,200 (three significant figures)."""
+    if v is None or v != v:
+        return "–"
+    return f"×{v:,.0f}" if v >= 1000 else f"×{v:.3g}"
+
+
+def movers_settings(request, min_year, max_year):
+    """(first year, last year, minimum passengers in the first year) from the query string, each falling back to its default."""
+    def whole(key):
+        try:
+            return int(request.args.get(key, ""))
+        except ValueError:
+            return None
+
+    first, last = whole("from"), whole("to")
+    if first is None or last is None or not (min_year <= first < last <= max_year):
+        first, last = min_year, max_year
+    size = whole("min")
+    return first, last, size if size in dict(MOVERS_SIZES) else MOVERS_DEFAULT_SIZE
+
+
+def movers_tables(rows):
+    """airport_movers rows (fastest first) -> the sentence's numbers and the risers and fallers tables' rows."""
+    shown = lambda r: {"code": r["airport"], "city": r["city"], "then": prose_count(r["pax_from"]), "now": prose_count(r["pax_to"]),
+                       "growth": multiple(r["ratio"]), "against": multiple(r["vs_median"]), "peak_year": r["peak_year"],
+                       "vs_peak": percent(r["vs_peak"])}
+    before, after = sum(r["pax_from"] for r in rows), sum(r["pax_to"] for r in rows)
+    return {
+        "median": f"{rows[0]['median_ratio']:.3g}", "together": f"{after / before:.3g}",
+        "risers": [shown(r) for r in rows if (r["vs_median"] or 0) > 1][:MOVERS_LISTED],
+        "fallers": [shown(r) for r in reversed(rows) if r["vs_median"] is not None and r["vs_median"] < 1][:MOVERS_LISTED],
+    }
+
+
+async def airport_movers_page(datasette, request):
+    """Risers and fallers: the airports growing fastest and slowest against the median airport between two years, as tables, and (with scripts) charts."""
+    min_year, max_year = year_range(datasette)
+    first, last, size = movers_settings(request, min_year, max_year)
+    params = {"from_year": first, "to_year": last, "min_pax": size}
+    movers = await story(datasette, "airport_movers", lambda rows: movers_tables(rows) if rows else {}, params)
+    if movers:
+        info = await airport_info(datasette, {r["code"] for t in ("risers", "fallers") for r in movers[t]})
+        for t in ("risers", "fallers"):
+            for r in movers[t]:
+                r["tip"] = airport_tip(info, r["code"])
+    html = await datasette.render_template(
+        "airports_movers.html",
+        {"min_year": min_year, "max_year": max_year, "first": first, "last": last, "size": size, "sizes": MOVERS_SIZES,
+         "size_label": dict(MOVERS_SIZES)[size], "movers": movers,
+         "crumbs": trail(datasette, ("airports", "/airports"), ("risers and fallers", None))},
         request=request,
     )
     return Response.html(html)

@@ -22,7 +22,7 @@ def views(path):
 
 
 def test_airports_views():
-    A = [("Busiest airports", "/airports"), ("Over time", "/airports/over-time"), ("Most dedicated", "/airports/dedicated"), ("Routes", "/airports/routes"),
+    A = [("Busiest airports", "/airports"), ("Over time", "/airports/over-time"), ("Most dedicated", "/airports/dedicated"), ("Risers and fallers", "/airports/movers"), ("Routes", "/airports/routes"),
          ("Map", "/airports/globe")]
     for i, (_, path) in enumerate(A):
         assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(A)], path
@@ -66,11 +66,12 @@ def test_datasettes_own_pages_still_render_with_their_own_views_list(ds):
 
 PAGES = {
     "/": (None, []),
-    "/airports": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Routes", "Map"]),
-    "/airports/dedicated": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Routes", "Map"]),
-    "/airports/over-time": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Routes", "Map"]),
-    "/airports/routes": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Routes", "Map"]),
-    "/airports/globe": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Routes", "Map"]),
+    "/airports": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
+    "/airports/dedicated": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
+    "/airports/movers": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
+    "/airports/over-time": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
+    "/airports/routes": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
+    "/airports/globe": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
     "/airports/ATL": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
     "/airports/ATL/destinations": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
     "/airports/ATL/changes": ("airports", ["Over time", "Destinations", "Changes", "Map"]),

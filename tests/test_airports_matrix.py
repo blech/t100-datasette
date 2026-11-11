@@ -3,7 +3,7 @@ import re
 from tests.helpers import get, get_json, put_airport_carriers, put_airport_years
 from tests.test_rollup_queries import put
 
-VIEWS = [("Busiest airports", "/airports"), ("Over time", "/airports/over-time"), ("Most dedicated", "/airports/dedicated"), ("Routes", "/airports/routes"),
+VIEWS = [("Busiest airports", "/airports"), ("Over time", "/airports/over-time"), ("Most dedicated", "/airports/dedicated"), ("Risers and fallers", "/airports/movers"), ("Routes", "/airports/routes"),
          ("Map", "/airports/globe")]
 
 

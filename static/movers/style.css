@@ -1,0 +1,11 @@
+/* the risers-and-fallers page: the tables keep an airport and its city on one line; the charts fill the width */
+td.city {
+  white-space: nowrap;
+}
+#movers-scatter,
+#movers-lines {
+  min-height: 12rem;
+}
+#movers figure {
+  margin: 0;
+}

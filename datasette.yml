@@ -270,6 +270,22 @@ databases:
           JOIN peaks AS p ON p.airport = e.airport AND p.place = 1
           ORDER BY e.ratio DESC, e.airport
 
+      # the lines under airport_movers: every airport it lists (same from_year, to_year and min_pax), one row per year with passengers
+      airport_movers_series:
+        title: "Passengers by year of the airports airport_movers lists"
+        description: "One row per US airport with at least min_pax passengers (both directions) in from_year and per year from from_year to to_year in which it had any: pax. The airports are the ones airport_movers lists, for the lines of the risers and fallers page."
+        sql: |
+          SELECT airport, year, passengers_out + passengers_in AS pax
+          FROM airport_dir_year
+          WHERE wac BETWEEN 1 AND 93 AND year BETWEEN CAST(:from_year AS integer) AND CAST(:to_year AS integer)
+            AND passengers_out + passengers_in > 0
+            AND airport IN (
+              SELECT airport FROM airport_dir_year
+              WHERE wac BETWEEN 1 AND 93 AND year = CAST(:from_year AS integer)
+                AND passengers_out + passengers_in > 0 AND passengers_out + passengers_in >= CAST(:min_pax AS integer)
+            )
+          ORDER BY airport, year
+
       # where one airport stands in one year, for the line under its heading: how big it is among the US airports, for passengers and
       # for freight (both directions, as dedicated_airports counts them), and how dedicated it is among the same pool of biggest
       # airports that page ranks (the top 100 for passengers, the top 25 for freight), by the largest airline group's share

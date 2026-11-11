@@ -1,0 +1,107 @@
+{% extends "t100_base.html" %}
+
+{% block title %}Risers and fallers, {{ first }} to {{ last }}{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/static/landing/style.css">
+  <link rel="stylesheet" href="/static/movers/style.css">
+{% endblock %}
+{% block head %}
+  <script type="module" src="{{ script_url('movers/main.js') }}"></script>
+{% endblock %}
+
+{% macro airports_table(id, rows) %}
+      <div class="scroll">
+        <table id="{{ id }}">
+          <thead>
+            <tr>
+              <th scope="col" class="left">Airport</th>
+              <th scope="col" class="left">City</th>
+              <th scope="col" class="num">Passengers {{ first }}</th>
+              <th scope="col" class="num">Passengers {{ last }}</th>
+              <th scope="col" class="num">Growth</th>
+              <th scope="col" class="num">Against median</th>
+              <th scope="col" class="num">Peak year</th>
+              <th scope="col" class="num">Now, of peak</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- for r in rows %}
+            <tr>
+              <td class="code"><a href="/airports/{{ r.code }}" title="{{ r.tip }}">{{ r.code }}</a></td>
+              <td class="city">{{ r.city or "" }}</td>
+              <td class="num">{{ r.then }}</td>
+              <td class="num">{{ r.now }}</td>
+              <td class="num">{{ r.growth }}</td>
+              <td class="num">{{ r.against }}</td>
+              <td class="num">{{ r.peak_year }}</td>
+              <td class="num">{{ r.vs_peak }}</td>
+            </tr>
+            {%- endfor %}
+          </tbody>
+        </table>
+      </div>
+{% endmacro %}
+
+{% block content %}
+    <h1>Risers and fallers</h1>
+    {% if movers %}
+    <p class="intro">
+      Which US airports grew faster or slower than the rest? The median airport with at least {{ size_label }} passengers in {{ first }} carried {{ movers.median }} times that number in {{ last }}; all of them together, {{ movers.together }} times.
+      Here are the ones furthest from the median in each direction, including some that peaked years ago and never got back.
+    </p>
+    {% else %}
+    <p class="intro">Which US airports grew faster or slower than the rest, between two years, and which lost what they once had.</p>
+    {% endif %}
+
+    <form class="bar" method="get" action="/airports/movers">
+      <h2 id="heading">{{ first }} to {{ last }}</h2>
+      <label>From <select name="from" id="from" aria-label="First year">
+          {%- for y in range(min_year, max_year) %}
+          <option value="{{ y }}"{% if y == first %} selected{% endif %}>{{ y }}</option>
+          {%- endfor %}
+        </select></label>
+      <label>to <select name="to" id="to" aria-label="Last year">
+          {%- for y in range(max_year, min_year, -1) %}
+          <option value="{{ y }}"{% if y == last %} selected{% endif %}>{{ y }}</option>
+          {%- endfor %}
+        </select></label>
+      <label>Airports with at least <select name="min" id="min" aria-label="Smallest airport">
+          {%- for value, label in sizes %}
+          <option value="{{ value }}"{% if value == size %} selected{% endif %}>{{ label }}</option>
+          {%- endfor %}
+        </select> passengers in {{ first }}</label>
+      <noscript><button type="submit">Show</button></noscript>
+    </form>
+
+    <div id="movers" data-from="{{ first }}" data-to="{{ last }}" data-min="{{ size }}">
+      <section aria-labelledby="scatter-heading">
+        <h2 id="scatter-heading">Growth against size</h2>
+        <div id="movers-scatter"></div>
+      </section>
+      <section aria-labelledby="lines-heading">
+        <h2 id="lines-heading">Passengers over time, {{ first }} = 100</h2>
+        <div id="movers-lines"></div>
+      </section>
+    </div>
+
+    {% if movers %}
+    <section aria-labelledby="risers-heading">
+      <h2 id="risers-heading">Risers</h2>
+      {% if movers.risers %}{{ airports_table("risers", movers.risers) }}{% else %}<p class="note">No airport grew faster than the median.</p>{% endif %}
+    </section>
+    <section aria-labelledby="fallers-heading">
+      <h2 id="fallers-heading">Fallers</h2>
+      {% if movers.fallers %}{{ airports_table("fallers", movers.fallers) }}{% else %}<p class="note">No airport grew more slowly than the median.</p>{% endif %}
+    </section>
+    {% elif movers is none %}
+    <p class="note">These tables could not be built right now.</p>
+    {% else %}
+    <p class="note">No airports had {{ size_label }} passengers in {{ first }}.</p>
+    {% endif %}
+
+    <p class="note">
+      Growth is an airport's passengers in {{ last }} divided by its passengers in {{ first }}. Against median is that growth divided by the median airport's: ×2 grew twice as fast, ×0.5 half as fast.
+      Passengers are those boarding or leaving there, on flights to and from the airport, domestic and international. A passenger changing planes at a hub counts once on each flight, so hubs count higher than the people whose trip began or ended there.
+      An airport with no passengers in {{ last }} counts as ×0. Peak year is the airport's busiest in the range, and the last column is {{ last }}'s passengers as a share of that peak, which tells an airport that never grew from one that grew and lost it.
+    </p>
+{% endblock %}

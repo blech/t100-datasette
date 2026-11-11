@@ -88,3 +88,23 @@ def test_rows_come_back_fastest_growing_first(ds, db_path):
         series(db_path, code, y1990=100, y2025=after)
     rows = get_json(ds, "/t100/airport_movers.json?_shape=objects&from_year=1990&to_year=2025&min_pax=0")["rows"]
     assert [r["airport"] for r in rows] == ["FAST", "MID", "SLOW"]
+
+
+def movers_series(ds, from_year=1990, to_year=2025, min_pax=0):
+    url = f"/t100/airport_movers_series.json?_shape=objects&from_year={from_year}&to_year={to_year}&min_pax={min_pax}"
+    return [(r["airport"], r["year"], r["pax"]) for r in get_json(ds, url)["rows"]]
+
+
+def test_the_series_gives_every_year_in_the_range_of_the_airports_the_movers_query_lists(ds, db_path):
+    series(db_path, "AAA", y1990=100, y2000=150, y2010=180, y2025=200)
+    series(db_path, "TINY", y1990=10, y2000=500, y2025=500)  # below the minimum in the first year: not listed, so no lines
+    series(db_path, "NEW", y2000=900, y2025=900)  # nothing in the first year
+    put(db_path, 1980, "AAA", 7)  # before the range
+    put_airport_years(db_path, [dict(year=2000, origin="LHR", origin_wac=493, deps=1, seats=1, passengers=9, freight=0)])
+    assert movers_series(ds, min_pax=50) == [("AAA", 1990, 100), ("AAA", 2000, 150), ("AAA", 2010, 180), ("AAA", 2025, 200)]
+
+
+def test_the_series_counts_both_ways_and_has_no_row_for_a_year_the_airport_had_nothing(ds, db_path):
+    put(db_path, 1990, "AAA", 60, 40)
+    put(db_path, 2025, "AAA", 10, 5)
+    assert movers_series(ds) == [("AAA", 1990, 100), ("AAA", 2025, 15)]
