@@ -28,6 +28,14 @@ export function formatCount(n, form = 'dense') {
 
 export const countLabel = (n) => formatCount(n, 'prose');
 
+// how many times as much: "×4.84", "×0.333", "×1,235" (three significant figures; thousands separators from a thousand up).
+// plugins/t100_globe.py multiple() writes the same
+export function formatMultiple(n) {
+  const v = toNumber(n);
+  if (Number.isNaN(v)) return '–';
+  return v >= 1000 ? `×${digits(Math.round(v))}` : `×${Number(v.toPrecision(3))}`;
+}
+
 export function exactCount(n) {
   const v = toNumber(n);
   return Number.isNaN(v) ? '–' : Math.round(v).toLocaleString('en-US');

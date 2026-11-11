@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { formatCount, formatTons, exactCount, countLabel, millionsAxis, MILLIONS } from '../numbers.js';
+import { formatCount, formatTons, formatMultiple, exactCount, countLabel, millionsAxis, MILLIONS } from '../numbers.js';
 
 const CASES = JSON.parse(readFileSync(new URL('../../../tests/fixtures/number_formats.json', import.meta.url), 'utf8'));
 
@@ -59,6 +59,17 @@ test('millionsAxis switches to millions at a maximum of a million', () => {
   assert.equal(small.label, 'Departures');
   assert.equal(small.tickFormat(250000), '250,000');
   assert.equal(millionsAxis(0, 'Seats').label, 'Seats');
+});
+
+test('a multiple has three significant figures and a thousands separator from a thousand', () => {
+  assert.equal(formatMultiple(4.8366), '×4.84');
+  assert.equal(formatMultiple(0.75), '×0.75');
+  assert.equal(formatMultiple(1 / 3), '×0.333');
+  assert.equal(formatMultiple(4), '×4');
+  assert.equal(formatMultiple(1234.5), '×1,235');
+  assert.equal(formatMultiple(0), '×0');
+  assert.equal(formatMultiple(null), '–');
+  assert.equal(formatMultiple(undefined), '–');
 });
 
 test('no page formats numbers on its own', () => {
