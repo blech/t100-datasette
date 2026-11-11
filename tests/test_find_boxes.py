@@ -7,14 +7,13 @@ from tests.test_rollup_pages import aircraft_fixtures
 from tests.test_rollup_queries import put
 from tests.test_views_pages import delta
 
-# Each section's pages other than its tables carry one find box, which opens a subject's page; the tables filter their own rows instead
-FIND = {
-    "airline": ["/airlines/over-time", "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/aircraft", "/airlines/delta/changes", "/airlines/delta/globe"],
-    "airport": ["/airports/over-time", "/airports/SFO", "/airports/SFO/destinations", "/airports/SFO/changes", "/airports/SFO/JFK",
-                "/airports/SFO/JFK/table", "/airports/SFO/JFK/2019"],
-    "aircraft": ["/aircraft/over-time", "/aircraft/makers", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800"],
-}
-NO_FIND = ["/", "/about", "/airlines", "/aircraft", "/aircraft/groups", "/airports", "/airports/dedicated", "/airports/globe", "/airports/SFO/globe"]
+# Only /airports carries a find box (it opens an airport's page); everything else relies on the header search, and the tables filter their own rows
+FIND = {"airport": ["/airports"]}
+NO_FIND = ["/", "/about", "/airlines", "/aircraft", "/aircraft/groups", "/airports/dedicated", "/airports/globe", "/airports/SFO/globe",
+           "/airlines/over-time", "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/aircraft", "/airlines/delta/changes", "/airlines/delta/globe",
+           "/airports/over-time", "/airports/SFO", "/airports/SFO/destinations", "/airports/SFO/changes", "/airports/SFO/JFK",
+           "/airports/SFO/JFK/table", "/airports/SFO/JFK/2019",
+           "/aircraft/over-time", "/aircraft/makers", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800"]
 
 
 def seed(db_path):
@@ -23,7 +22,7 @@ def seed(db_path):
 
 
 @pytest.mark.parametrize("kind, path", [(k, p) for k, paths in FIND.items() for p in paths])
-def test_each_sections_pages_have_its_find_box_under_the_title(ds, db_path, kind, path):
+def test_the_airports_index_has_its_find_box_under_the_title(ds, db_path, kind, path):
     seed(db_path)
     r = get(ds, path)
     assert r.status_code == 200, path
@@ -37,7 +36,7 @@ def test_each_sections_pages_have_its_find_box_under_the_title(ds, db_path, kind
 
 
 @pytest.mark.parametrize("path", NO_FIND)
-def test_tables_maps_and_the_front_page_have_no_find_box(ds, db_path, path):
+def test_other_pages_have_no_find_box(ds, db_path, path):
     seed(db_path)
     html = get(ds, path).text
     assert 'id="find"' not in html and "airline-search" not in html, path

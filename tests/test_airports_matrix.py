@@ -43,7 +43,7 @@ def test_the_airports_matrix_page(ds):
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', r.text, re.S).group(1)
     assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-n", "matrix-group", "matrix-region", "matrix-service", "matrix-rank", "dir"]
     assert '<option value="city">cities</option>' in sentence
-    assert "airlines" not in sentence and 'data-find="airport"' in r.text and 'data-find="airline"' not in r.text
+    assert "airlines" not in sentence and "data-find=" not in r.text
 
 
 def test_the_airports_section_has_five_views(ds):

@@ -8,6 +8,7 @@
 
 {% block content %}
     <h1>Busiest {% if abroad %}airports abroad{% else %}US airports{% endif %}</h1>
+    {% set find = "airport" %}{% include "_find.html" %}
     <p class="intro">
       {% if abroad %}The airports outside the US with the most flights to and from the US in any year since {{ min_year }}, by passengers, flights, destinations or freight.
       Pick one to see which US airports it flies to and how its routes changed, or <a href="/airports/globe">browse airports on the map</a>.
