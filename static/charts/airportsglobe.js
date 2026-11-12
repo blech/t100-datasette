@@ -1,6 +1,6 @@
 // The airports map (/airports/globe): a year's busiest airport pairs on a globe, Equal Earth or azimuthal map, each airport
 // leading to its own map.
-// Everything is in the URL: year, n, service, proj (globe, flat for Equal Earth, azimuthal centred on Kansas), arcs=bowed, labels=all (a label on every airport that has room, for a screenshot or printout), sea=plain (no menu: a setting kept for the address alone), theme.
+// Everything is in the URL: year, n, service, proj (globe, flat for Equal Earth, azimuthal centred on Kansas), arcs=bowed, labels=all (a label on every airport that has room, for a screenshot or printout), view=lon,lat,zoom (where the map is looking, once moved), sea=plain (no menu: a setting kept for the address alone), theme.
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
@@ -16,6 +16,7 @@ import { renderLegend, bindTrackPress } from '/static/globe/src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from '/static/globe/src/panel.js';
 import { tapAction } from '/static/globe/src/tap.js';
+import { formatView, parseView } from '/static/globe/src/viewurl.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -36,6 +37,14 @@ const state = {
   sea: parseSea(params.get('sea')),
   hide: [],
 };
+
+// where the map is looking, as the address carries it: `openingView` is the map type's own opening, which the address leaves out;
+// `seenView` is the view the address last recorded
+const startView = parseView(params.get('view'));
+let openingView = '';
+let seenView = '';
+let viewTimer = 0;
+let viewQueued = '';
 
 let airports = new Map();
 let routes = [];
@@ -86,6 +95,7 @@ function pushState() {
   if (state.proj !== 'globe') q.set('proj', state.proj);
   if (state.arcs === 'bowed') q.set('arcs', 'bowed');
   if (state.labels === 'all') q.set('labels', 'all');
+  if (seenView && seenView !== openingView) q.set('view', seenView);
   if (state.sea === 'plain') q.set('sea', 'plain');
   if (themeChosen !== 'auto') q.set('theme', themeChosen);
   const s = q.toString();
@@ -97,6 +107,7 @@ function setProj(p) {
   $('proj').value = p;
   renderer.setMode(p);
   Object.assign(view, { rot: openingRot(p, KANSAS), zoom: 1, vel: [0, 0], target: null });
+  openingView = seenView = formatView(view);
   dirty = true;
 }
 
@@ -356,6 +367,13 @@ function frame(last, now) {
     dirty = false;
     draw();
   }
+  // record a new view in the address once it has been still for a moment, not on every frame of a drag or a scroll
+  const v = formatView(view);
+  if (v !== seenView && v !== viewQueued) {
+    viewQueued = v;
+    clearTimeout(viewTimer);
+    viewTimer = setTimeout(() => { seenView = formatView(view); viewQueued = ''; pushState(); }, 400);
+  }
   requestAnimationFrame((n) => frame(now, n));
 }
 
@@ -388,6 +406,10 @@ async function main() {
     dirty = !printing;
   });
   setProj(state.proj);
+  if (startView) {
+    Object.assign(view, { rot: [...startView.rot], zoom: startView.zoom });
+    seenView = formatView(view);
+  }
   resize();
   bindCanvas();
   bindControls();
