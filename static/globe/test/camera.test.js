@@ -13,7 +13,7 @@ test('clamp and zoom limits', () => {
   assert.equal(clamp(5, 0, 3), 3);
   assert.equal(clamp(-1, 0, 3), 0);
   assert.equal(ZMIN, 0.8);
-  assert.equal(ZMAX, 4);
+  assert.equal(ZMAX, 6);
 });
 
 test('defaultView returns a fresh object each time', () => {

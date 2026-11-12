@@ -371,6 +371,7 @@ async function main() {
   const [land, airportRes] = await Promise.all([loadLand(), fetchRows(queryUrl('airports'))]);
   airports = indexAirports(airportRes.rows);
   renderer = new NetworkRenderer(canvas, land);
+  renderer.onLand = () => { dirty = true; };
   renderer.panFlat = true;
   applyTheme(themeId);
   const resize = () => { renderer.resize(); dirty = true; };

@@ -16,6 +16,16 @@ export const MAP_MODES = Object.keys(MODES);
 export const isPlanar = (mode) => mode !== 'globe';
 const BOW = 0.22; // the control point's offset, as a share of the route's length on screen (as scripts/flightmaps' bowed)
 
+// Natural Earth 110m land is the coast until the map is zoomed in past FINE_ZOOM; then the 50m (546 KB, fetched the first time it's
+// wanted) takes over, so the extra detail costs nothing to anyone who stays zoomed out
+const FINE_ZOOM = 2;
+async function loadFineLand() {
+  const res = await fetch('/static/globe/vendor/land-50m.json');
+  if (!res.ok) throw new Error(`Could not load land data: ${res.status}`);
+  const topo = await res.json();
+  return window.topojson.feature(topo, topo.objects.land);
+}
+
 export class NetworkRenderer {
   constructor(canvas, land) {
     const d3 = window.d3;
@@ -158,6 +168,16 @@ export class NetworkRenderer {
     return route._arc;
   }
 
+  // the coast to draw at this zoom; `onLand` (set by the page) is called when the finer one arrives, to draw again
+  landFor(zoom) {
+    if (zoom <= FINE_ZOOM) return this.land;
+    if (!this.fine && !this.fineRequested) {
+      this.fineRequested = true;
+      loadFineLand().then((l) => { this.fine = l; this.onLand?.(); }).catch((err) => console.error(err));
+    }
+    return this.fine || this.land;
+  }
+
   draw(view, routes, opts = {}) {
     const { ctx, theme: t } = this;
     const [cx, cy] = this.centre();
@@ -194,7 +214,7 @@ export class NetworkRenderer {
 
     const ground = plain && t.plain ? t.plain : t;
     ctx.beginPath();
-    this.path(this.land);
+    this.path(this.landFor(view.zoom));
     ctx.fillStyle = ground.land;
     ctx.fill();
     ctx.lineWidth = 0.5;

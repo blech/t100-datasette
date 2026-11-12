@@ -303,6 +303,7 @@ async function main() {
   if (!years.includes(state.year)) state.year = years[years.length - 1];
   if (!years.includes(state.compare) || state.compare >= state.year) state.compare = null;
   renderer = new NetworkRenderer(canvas, land);
+  renderer.onLand = () => { dirty = true; };
   renderer.panFlat = true; // the flat map pans north-south too, so Fit routes can centre it
   renderer.setMode(state.proj);
   applyTheme(themeId);
