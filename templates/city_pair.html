@@ -6,7 +6,6 @@
 {% endblock %}
 {% block head %}
 {{ modulepreload("/static/charts/rollup.js") }}
-{{ modulepreload("/static/charts/find.js") }}
   {# the chart's data, fetched while the modules load: these URLs are the ones rollup.js asks for (queryUrl), or the preload is wasted #}
   <link rel="preload" as="fetch" crossorigin href="/t100/market_pairs_by_year.json?_shape=objects&ma={{ ma }}&mb={{ mb }}">
   <link rel="preload" as="fetch" crossorigin href="/t100/airports.json?_shape=objects">
@@ -15,7 +14,6 @@
 
 {% block content %}
     <h1>{{ heading }}</h1>
-    {% set find = "airport" %}{% include "_find.html" %}
     <p class="intro">
       Every airport pair between <a href="/airports/cities/{{ ma }}">{{ name_a }}</a> ({{ airports_a|join(", ") }}) and <a href="/airports/cities/{{ mb }}">{{ name_b }}</a> ({{ airports_b|join(", ") }}),
       flown by any airline, with both directions counted together, by year{% if distance %}: {{ "{:,}".format(distance) }} miles, on average for a passenger{% endif %}.

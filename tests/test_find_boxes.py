@@ -13,7 +13,8 @@ NO_FIND = ["/", "/about", "/airlines", "/aircraft", "/aircraft/groups", "/airpor
            "/airlines/over-time", "/airlines/delta", "/airlines/delta/routes", "/airlines/delta/aircraft", "/airlines/delta/changes", "/airlines/delta/globe",
            "/airports/over-time", "/airports/SFO", "/airports/SFO/destinations", "/airports/SFO/changes", "/airports/SFO/JFK",
            "/airports/SFO/JFK/table", "/airports/SFO/JFK/2019",
-           "/aircraft/over-time", "/aircraft/makers", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800"]
+           "/aircraft/over-time", "/aircraft/makers", "/aircraft/boeing-737", "/aircraft/boeing-737/boeing-737-800",
+           "/airports/cities/32575", "/airports/cities/32575/31703"]
 
 
 def seed(db_path):
