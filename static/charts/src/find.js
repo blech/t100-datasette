@@ -12,6 +12,10 @@ export const airportOptions = (rows, suffix = '') => rows.map((r) => ({
   href: `/airports/${r.code}${suffix}`,
 }));
 
+// Rows from city_list: a BTS city market with two or more airports (Seattle: SEA, BFI, LKE, KEH), opening the city's page; a /globe suffix has
+// no city view, so cities ignore it
+export const cityOptions = (rows) => rows.map((r) => ({ value: r.label, hint: `City · ${r.hint}`, href: r.href }));
+
 // Rows from aircraft_list: one per aircraft with its family, busiest first. Families come first, so typing "Boeing 737" offers the family
 // before its aircraft; an aircraft named as its family (the Boeing 717) is offered once, as the family.
 export function aircraftOptions(rows, suffix = '') {
@@ -30,6 +34,7 @@ export function aircraftOptions(rows, suffix = '') {
 
 export const FINDERS = {
   airline: { query: 'airline_list', options: (rows, suffix = '') => airlineOptions(rows).map((o) => ({ ...o, href: `/airlines/${o.id}${suffix}` })) },
-  airport: { query: 'airport_list', options: airportOptions },
+  // the airports, then the cities (`also`: a second query whose rows are the third argument; the box works without them if it fails)
+  airport: { query: 'airport_list', also: 'city_list', options: (rows, suffix = '', cities = []) => [...airportOptions(rows, suffix), ...cityOptions(cities)] },
   aircraft: { query: 'aircraft_list', options: aircraftOptions },
 };

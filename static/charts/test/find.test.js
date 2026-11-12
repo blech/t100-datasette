@@ -38,3 +38,13 @@ test('aircraftOptions offers each family, then each aircraft under its family, a
   assert.equal(opts[0].hint, 'Family · 1990–2025');
   assert.equal(opts[2].hint, 'Boeing 737 · 1998–2025');
 });
+
+test('the airport find box also offers cities, after the airports, which open the city page and ignore a /globe suffix', () => {
+  assert.equal(FINDERS.airport.also, 'city_list');
+  const airports = [{ code: 'SEA', place: 'Seattle, WA', name: 'Seattle-Tacoma International Airport', first_year: 1990, last_year: 2025 }];
+  const cities = [{ label: 'Seattle, WA', href: '/airports/cities/30559', hint: 'SEA, BFI · 1990–2025' }];
+  const opts = FINDERS.airport.options(airports, '/globe', cities);
+  assert.deepEqual(opts.map((o) => [o.value, o.href]), [['SEA', '/airports/SEA/globe'], ['Seattle, WA', '/airports/cities/30559']]);
+  assert.equal(opts[1].hint, 'City · SEA, BFI · 1990–2025');
+  assert.equal(FINDERS.airport.options(airports).length, 1); // without the second query, just the airports
+});

@@ -80,3 +80,18 @@ def test_an_airline_named_as_typed_comes_before_airports_that_only_mention_the_w
                                              service_class="F", deps=4, seats=0, passengers=0, freight=0)])
     seed(db_path, [("MTJ", "Montrose/Delta, CO", 900), ("ESC", "Escanaba, MI", 800)])
     assert [(r["kind"], r["href"]) for r in search(ds, "delta")][:2] == [("airline", "/airlines/delta"), ("airport", "/airports/MTJ")]
+
+
+def test_a_city_is_found_by_name_and_leads_the_airports_in_it(ds, db_path):
+    put_airport_years(db_path, [dict(year=2019, origin=c, origin_city_name="Seattle, WA", origin_wac=1, deps=d) for c, d in (("SEA", 90), ("BFI", 10))])
+    put(db_path, "airport_market", [dict(code="SEA", market_id="30559"), dict(code="BFI", market_id="30559")])
+    put(db_path, "market_name", [dict(market_id="30559", name="Seattle, WA")])
+    conn = sqlite3.connect(db_path)
+    rebuild_search_index(conn)
+    conn.close()
+    # the city's name starts with what was typed and no airport's code does, so the city is the best match and comes first
+    assert [(r["kind"], r["href"]) for r in search(ds, "seattle")] == [
+        ("city", "/airports/cities/30559"), ("airport", "/airports/SEA"), ("airport", "/airports/BFI")]
+    assert [(r["kind"], r["href"]) for r in search(ds, "sea")][0] == ("airport", "/airports/SEA")  # an exact code still leads
+    assert get_json(ds, "/t100/city_list.json?_shape=objects")["rows"] == [
+        {"label": "Seattle, WA", "href": "/airports/cities/30559", "hint": "SEA, BFI · 2019–2019"}]

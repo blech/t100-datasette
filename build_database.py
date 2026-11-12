@@ -813,7 +813,7 @@ def _years(first, last) -> str:
 
 
 def rebuild_search_index(conn: sqlite3.Connection) -> int:
-    """Recompute search_index: every airport, airline (each merged group and each of its members), aircraft family and aircraft that has a page.
+    """Recompute search_index: every airport, city market with two or more airports, airline (each merged group and each of its members), aircraft family and aircraft that has a page.
 
     The rows are those the *_list canned queries give; the rank is all-years departures (airports: with arrivals).
     """
@@ -832,6 +832,28 @@ def rebuild_search_index(conn: sqlite3.Connection) -> int:
         about = " \u2013 ".join(filter(None, [place, name]))
         hint = f"{about} \u00b7 {_years(first, last)}" if about else _years(first, last)
         rows.append(("airport", f"/airports/{code}", code, hint, _words(code, icao, place, name, city, country), code, size))
+
+    # a BTS city market with two or more airports that fly (SEA, BFI, LKE and KEH for Seattle) is also found as a city, which opens the
+    # city's page; a one-airport market is just its airport, which the row above already finds. Needs market_name, so this runs after
+    # rebuild_top_market_year; the rank is the market's flights both ways in all years, as an airport's is
+    markets = {}
+    for market, code, first, last, size in conn.execute(
+        """
+        SELECT m.market_id, m.code, MIN(y.year), MAX(y.year), SUM(y.deps + y.arrs)
+        FROM airport_market m JOIN airport_dir_year y ON y.airport = m.code
+        GROUP BY m.market_id, m.code
+        """
+    ):
+        markets.setdefault(market, []).append((size or 0, code, first, last))
+    market_names = dict(conn.execute("SELECT market_id, name FROM market_name"))
+    for market, parts in markets.items():
+        if len(parts) < 2 or not market_names.get(market):
+            continue
+        parts.sort(reverse=True)  # busiest airport first
+        shown = [code for _, code, _, _ in parts]
+        more = ", …" if len(shown) > 6 else ""
+        hint = f"{', '.join(shown[:6])}{more} · {_years(min(p[2] for p in parts), max(p[3] for p in parts))}"
+        rows.append(("city", f"/airports/cities/{market}", market_names[market], hint, _words(market_names[market], *shown), "", sum(p[0] for p in parts)))
 
     codes = {}
     for airline_id, code in conn.execute("SELECT airline_id, MIN(unique_carrier) FROM carriers WHERE unique_carrier <> '' GROUP BY airline_id"):
