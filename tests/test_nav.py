@@ -24,9 +24,9 @@ def test_airports_table_trail(ds):
 
 
 def test_globe_trails(ds):
-    assert crumbs(ds, "/airports/globe") == [("t100.husk.org", "/"), ("airports", "/airports"), ("globe", None)]
+    assert crumbs(ds, "/airports/globe") == [("t100.husk.org", "/"), ("airports", "/airports"), ("map", None)]
     assert crumbs(ds, "/airports/ATL/globe") == [
-        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("globe", None)]
+        ("t100.husk.org", "/"), ("airports", "/airports"), ("ATL", "/airports/ATL"), ("map", None)]
 
 
 def test_routes_trail(ds):
@@ -57,14 +57,16 @@ def test_every_page_has_one_theme_chooser_and_the_shared_scripts(ds):
         assert "/static/nav/main.js" in html and "/static/nav/style.css" in html, path
 
 
-def test_the_theme_chooser_is_in_the_footer_or_on_a_map_in_its_controls(ds):
+def test_the_theme_chooser_is_in_the_footer_which_on_a_map_closes_its_controls(ds):
     for path in SCROLLING:
         footer = re.search(r'<footer class="site-footer".*?</footer>', get(ds, path).text, re.S)
         assert footer and 'id="theme"' in footer.group(0), path
     for path in MAPS:
         html = get(ds, path).text
         controls = html[html.index('<div id="controls">'):]
-        assert 'id="theme"' in controls and '<footer class="site-footer"' not in html, path
+        # the map fills the window, so its footer closes the controls
+        footer = re.search(r'<footer class="site-footer".*?</footer>', controls, re.S)
+        assert footer and 'id="theme"' in footer.group(0), path
 
 
 def test_every_page_header_has_the_search_button_after_about(ds):

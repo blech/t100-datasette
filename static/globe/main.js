@@ -1,11 +1,12 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from './src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
-import { defaultView, clamp, glide, rotationFor } from './src/camera.js';
+import { defaultView, glide } from './src/camera.js';
+import { openingRot, centreRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from './src/maptypes.js';
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
-import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
+import { indexAirports, placeRoutes, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
 import { pickerOptions } from './src/picker.js';
 import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
@@ -13,7 +14,6 @@ import { maxOf } from './src/scale.js';
 import { colourMode, rangeHint, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
 import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
 import { renderLegend, syncRange } from './src/controls.js';
-import { routesByOrigin, chooserTap } from './src/chooser.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
 import { countWord, setDir } from '/static/common/direction.js';
@@ -21,7 +21,7 @@ import { countWord, setDir } from '/static/common/direction.js';
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
 const state = parseState(location.search);
-// The chooser and info panel sit just below the header, whatever height it ends up.
+// The info panel sits just below the header, whatever height it ends up.
 new ResizeObserver(() => {
   document.documentElement.style.setProperty('--below-header', `${Math.ceil($('header').getBoundingClientRect().bottom) + 8}px`);
 }).observe($('header'));
@@ -46,13 +46,11 @@ let themeId = resolveTheme(location.search, storedTheme(), matchMedia('(prefers-
 let themeChosen = themeChoice(location.search, storedTheme()); // 'auto' stays out of the URL
 let dirty = true;
 let hover = -1;
-let chooserPoints = []; // airport dots on the chooser page (no origin selected)
-let chooserRoutes = new Map(); // the latest year's domestic routes by origin, for the hovered dot
-const chooserPlaced = new Map(); // ...placed on the map, filled as dots are hovered
-const latestYear = document.body.dataset.maxYear;
 let selected = -1;
 let playTimer = null;
 const view = defaultView();
+// what the map is centred on: the airport, once its coordinates are known (until then the default view's middle)
+let home = [-view.rot[0], -view.rot[1]];
 
 const canvas = $('globe');
 let renderer;
@@ -140,7 +138,9 @@ function showPanel(r) {
   const status = r.status === 'between' ? `added then dropped, figures for ${figuresYear}` : r.status;
   sub.textContent = `${r.destCity || ''} (${r.service}${status ? `, ${status}` : ''})`;
   const dl = document.createElement('dl');
-  for (const f of routeFigures(r, state.dir)) {
+  // the month rows have no distance; the pair's yearly rows do
+  const distance = r.distance ?? yearRaw.find((y) => y.dest === r.dest)?.distance;
+  for (const f of routeFigures({ ...r, distance }, state.dir)) {
     const dd = Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown });
     dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), dd);
   }
@@ -218,75 +218,41 @@ function fillPicker() {
   });
 }
 
-async function showChooser() {
-  const res = await fetchRows(queryUrl('globe_chooser'));
-  const box = $('chooser');
-  box.append(Object.assign(document.createElement('summary'), { textContent: 'Pick an airport on the map, or choose from a list' }));
-  for (const r of res.rows.slice(0, 24)) {
-    const a = document.createElement('a');
-    a.href = `/airports/${r.airport}/globe`;
-    a.textContent = `${r.airport} ${r.city}`;
-    box.append(a);
-  }
-  // the chooser's airports, over all years; the controls (where a map's data link sits) are hidden here, so it closes the list
-  setDataLink('globe_chooser', {});
-  if ($('data-link')) box.append($('data-link'));
-  box.hidden = false;
-  $('title').textContent = 'US airport network';
-  chooserPoints = placePoints(res.rows, airports);
-  dirty = true;
-  // without these the dots still work; hovering just shows no routes
-  try {
-    chooserRoutes = routesByOrigin((await fetchRows(queryUrl('domestic_routes', { year: latestYear, _size: 'max' }))).rows);
-  } catch (e) {
-    console.error(e);
-  }
+// a new map type opens afresh on the airport: the azimuthal map is centred on it, so its distances and directions are true
+function setProj(p) {
+  state.proj = p;
+  $('proj').value = p;
+  renderer.setMode(p);
+  Object.assign(view, { rot: openingRot(p, home), zoom: 1, vel: [0, 0], target: null });
+  pushState();
   dirty = true;
 }
 
-// the hovered dot's domestic routes, as its own map draws them with international hidden
-function chooserRoutesFor(i) {
-  if (i < 0) return [];
-  const code = chooserPoints[i].code;
-  if (!chooserPlaced.has(code)) chooserPlaced.set(code, placeRoutes(chooserRoutes.get(code) || [], code, airports).routes);
-  return chooserPlaced.get(code);
-}
-
-function showChooserTip(i, x, y) {
-  const tip = $('tooltip');
-  if (i < 0) { tip.hidden = true; return; }
-  const p = chooserPoints[i];
-  const n = chooserRoutesFor(i).length; // the routes drawn: a destination without coordinates can't be
-  tip.textContent = chooserRoutes.size ? `${p.code} · ${p.city} · ${n} domestic route${n === 1 ? '' : 's'} in ${latestYear}` : `${p.code} · ${p.city}`;
-  placePopover(tip, x, y, { dx: 14, dy: 14 });
+// ← → step the year (in the month view, the month), as the sliders do; space plays; 1–3 pick the map type
+function stepPeriod(by) {
+  const el = state.month !== null ? $('month') : range.to;
+  const v = Number(el.value) + by;
+  if (v < Number(el.min) || v > Number(el.max)) return;
+  el.value = String(v);
+  el.dispatchEvent(new Event('input'));
 }
 
 function bindControls() {
   const proj = $('proj');
-  proj.value = state.proj;
-  proj.addEventListener('change', () => {
-    state.proj = proj.value === 'flat' ? 'flat' : 'globe';
-    renderer.setMode(state.proj);
-    $('fit').hidden = state.proj === 'flat';
-    pushState();
-    dirty = true;
-  });
+  fillMapTypeMenu(proj, state.proj, `Centred on ${origin}, so distances and directions from it are true`);
+  proj.addEventListener('change', () => setProj(proj.value));
   const width = $('width');
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
   $('dir')?.addEventListener('change', (e) => setDir(e.target.value)); // only an airport's map has one; a new direction reloads
   $('colour').addEventListener('change', () => { state.colour = $('colour').value; refresh(); });
-  const a = airports.get(origin);
-  $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: rotationFor(a.lon, a.lat), zoom: view.zoom }; });
-  // the flat map only turns east-west, so it can't frame routes north of its middle: fitting is for the globe
-  $('fit').hidden = state.proj === 'flat';
+  $('centre').addEventListener('click', () => { view.vel = [0, 0]; view.target = { rot: centreRot(state.proj, home), zoom: view.zoom }; });
+  // the azimuthal map keeps the airport in the middle and only zooms; the others move their middle too
   $('fit').addEventListener('click', () => {
-    const points = [[a.lon, a.lat], ...shown.map((r) => r.to)];
-    // the clear area between the header and the controls, with room for the labels
-    const box = { left: 24, right: innerWidth - 48, top: $('header').getBoundingClientRect().bottom + 24, bottom: $('controls').getBoundingClientRect().top - 8 };
-    const fit = renderer.fit(points, box);
+    const fit = fitRoutes(renderer, [home, ...shown.map((r) => r.to)], { keepCentre: state.proj === 'azimuthal' });
     if (fit) { view.vel = [0, 0]; view.target = fit; }
   });
+  bindMapKeys({ step: stepPeriod, play: () => $('play').click(), mapType: setProj });
 
   for (const el of [range.from, range.to]) { el.min = '0'; el.max = String(years.length - 1); }
   const move = (which, el) => async () => {
@@ -336,15 +302,8 @@ function bindCanvas() {
   const hooks = {
     degPerPx: () => renderer.degPerPx(),
     onUserMove: () => { dirty = true; $('tooltip').hidden = true; },
-    onReset: () => { Object.assign(view, defaultView()); dirty = true; },
+    onReset: () => { Object.assign(view, defaultView(), { rot: openingRot(state.proj, home) }); dirty = true; },
     onHover: (x, y) => {
-      if (!origin) {
-        const i = renderer.hitTestPoints(x, y, chooserPoints);
-        if (i !== hover) { hover = i; dirty = true; }
-        canvas.style.cursor = i >= 0 ? 'pointer' : '';
-        showChooserTip(i, x, y);
-        return;
-      }
       const routes = shown;
       const i = renderer.hitTest(x, y, routes);
       if (i !== hover) { hover = i; dirty = true; }
@@ -354,15 +313,6 @@ function bindCanvas() {
       placePopover(tip, x, y, { dx: 14, dy: 14 });
     },
     onTap: (x, y) => {
-      if (!origin) {
-        const i = renderer.hitTestPoints(x, y, chooserPoints);
-        const action = chooserTap(hover, i);
-        if (action === 'open') { location.href = `/airports/${encodeURIComponent(chooserPoints[i].code)}/globe${toSearch(state)}`; return; }
-        hover = action === 'show' ? i : -1;
-        showChooserTip(hover, x, y);
-        dirty = true;
-        return;
-      }
       const routes = shown;
       const i = renderer.hitTest(x, y, routes, 10);
       selected = i;
@@ -380,18 +330,14 @@ function frame(last, now) {
   if (glide(view, dt) || moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
-    const routes = origin ? shown : chooserRoutesFor(hover);
+    const routes = shown;
     const key = $('width').value;
-    // on the chooser the hovered airport is drawn as its own map draws it, routes and all
-    const code = origin || (hover >= 0 ? chooserPoints[hover].code : '');
-    const a = airports.get(code);
+    const a = airports.get(origin);
     renderer.draw(view, routes, {
-      points: origin ? null : chooserPoints,
-      highlightPoint: origin || a ? -1 : hover,
-      origin: a ? { lon: a.lon, lat: a.lat, code } : null,
+      origin: a ? { lon: a.lon, lat: a.lat, code: origin } : null,
       widthKey: key,
       max: maxOf(routes, key),
-      highlight: origin ? (selected >= 0 ? selected : hover) : -1,
+      highlight: selected >= 0 ? selected : hover,
       labels: 8,
       styles: styleRoutes(routes, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: key }),
     });
@@ -411,7 +357,9 @@ async function main() {
   const [land, airportRes] = await Promise.all([loadLand(), fetchRows(queryUrl('airports'))]);
   airports = indexAirports(airportRes.rows);
   renderer = new NetworkRenderer(canvas, land);
+  renderer.panFlat = true;
   renderer.setMode(state.proj);
+  view.rot = openingRot(state.proj, home);
   applyTheme(themeId);
   const resize = () => { renderer.resize(); dirty = true; };
   window.addEventListener('resize', resize);
@@ -420,14 +368,12 @@ async function main() {
   bindCanvas();
   requestAnimationFrame((n) => frame(n, n));
 
-  if (!origin) { setStatus(''); $('controls').hidden = true; await showChooser(); return; }
-
   const a = airports.get(origin);
   const res = await fetchRows(queryUrl('routes_by_year', { origin, dir: state.dir }));
   truncated = res.truncated;
   const problem = originProblem(res.rows, airports, origin);
   if (problem) {
-    $('controls').hidden = true;
+    $('controls').classList.add('bare');
     setStatus(problem === 'no-data' ? `No flights from ${origin} in the data.` : `No coordinates for ${origin}, so it can't be drawn.`);
     return;
   }
@@ -437,7 +383,7 @@ async function main() {
   if (state.year === null || !years.includes(state.year)) state.year = years[years.length - 1];
   if (!years.includes(state.compare) || state.compare >= state.year || state.month !== null) state.compare = null;
   if (state.month !== null) await loadMonths();
-  if (a) view.rot = [-a.lon, clamp(-a.lat, -70, 70)];
+  if (a) { home = [a.lon, a.lat]; view.rot = openingRot(state.proj, home); }
   bindControls();
   refresh();
 }

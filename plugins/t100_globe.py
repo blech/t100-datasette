@@ -52,7 +52,8 @@ def register_routes():
         (r"^/airports/countries/(?P<slug>[a-z0-9-]+)$", country_page),
         (r"^/countries$", moved("/airports/countries")),  # the country pages' first addresses
         (r"^/countries/(?P<slug>[a-z0-9-]+)$", moved("/airports/countries/{slug}")),
-        (r"^/airports/globe$", globe_page),
+        (r"^/airports/globe$", airports_globe_page),
+        (r"^/airports/globe/routes$", moved("/airports/globe")),  # where the airports map was first tried out
         (r"^/airports/dedicated$", dedicated_airports_page),
         (r"^/airports/movers$", airport_movers_page),
         (r"^/airports/over-time$", rollup_page("airports")),
@@ -384,12 +385,24 @@ async def country_page(datasette, request):
 
 
 async def globe_page(datasette, request):
-    origin = (request.url_vars.get("origin") or "").upper()
-    steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("globe", None)] if origin else [("airports", "/airports"), ("globe", None)]
+    """An airport's map: its routes by year (routes_by_year)."""
+    origin = request.url_vars["origin"].upper()
+    foreign = await is_foreign(datasette, origin)
+    steps = [("airports", "/airports"), (origin, f"/airports/{origin}"), ("map", None)]
     html = await datasette.render_template(
         "globe.html",
-        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": await is_foreign(datasette, origin), "max_year": year_range(datasette)[1],
-         "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, await is_foreign(datasette, origin)) if origin else "", **airport_direction(request)},
+        {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": foreign, "max_year": year_range(datasette)[1],
+         "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, foreign), **airport_direction(request)},
+        request=request,
+    )
+    return Response.html(html)
+
+
+async def airports_globe_page(datasette, request):
+    """The airports map: a year's busiest airport pairs (busiest_routes_year) on a globe, Equal Earth or azimuthal map, each
+    airport leading to its own map; its settings are in the URL."""
+    html = await datasette.render_template(
+        "airports_globe.html", {"crumbs": trail(datasette, ("airports", "/airports"), ("map", None)), "max_year": year_range(datasette)[1]},
         request=request,
     )
     return Response.html(html)

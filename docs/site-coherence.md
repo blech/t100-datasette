@@ -59,7 +59,7 @@ Questions:
 - **Matrices:** how do they fit in? They're part table, part chart. Should they be the standard "over time" view for any list of things (airports, aircraft, airlines, routes), with a shared look and the same row-ranking and colour-scale controls? And should an airline or a family get a matrix of its routes or versions too?
 - **Narrowing down, or back to the top? Settled: pages cross, with highlights; data links narrow** (spec `docs/superpowers/specs/2026-10-22-data-links-design.md`).
   - A link between subjects opens the other subject's own page, with what you came from highlighted when that page can show it, and with the settings the two pages share.
-  - Every page links, as "This page's data" in its footer (or "This map's data" in a map's controls), to the canned query behind it, with its settings filled in. That's where to narrow: five queries take an optional airline `group` (a route, a route in a year, an aircraft family, and an airport's size and changes), and a highlighted airline fills it in.
+  - Every page links, as "This page's data" in its footer (on a map, the footer closes its controls), to the canned query behind it, with its settings filled in. That's where to narrow: five queries take an optional airline `group` (a route, a route in a year, an aircraft family, and an airport's size and changes), and a highlighted airline fills it in.
   - Still to come: **carrying the year** from the airlines and aircraft tables, and from an airport's Changes rows, to the pages they link to.
   - **Fixed from the data links' final review:** clearing a highlight on a route or family page left its data link narrowed to that airline.
   - **Deferred minors from the data links' final review:**
@@ -187,3 +187,13 @@ A shared set of base styles for both kinds of page could hold the column, the ty
 - **Extended saved queries (branch `extended_saved_queries`; started).** The saved queries are the site's open data, so the next idea is to make them answer the questions the charts raise.
   - Built so far: `family_detail` takes `year`, `service`, `kind` and `sort` (name, passengers or freight, within each year); a new `family_airlines` gives one row per airline for a family (or one of its aircraft) in a year or all years, summed over service and kind, with the same filters and sort. A bar on the family and aircraft charts opens it for that year (on the aircraft split a bar still opens the aircraft's page; a tooltip can't hold a link, so it is the bar).
   - Still to decide: derived columns (freight per departure, seats per departure, passengers per seat as a load factor; integer division in SQLite needs a `1.0 *`), and which of the other saved queries want the same year, filter and sort parameters.
+
+### 7. Map controls: not started (noted November 2026)
+
+The full-window maps (`/airports/globe`, `/airports/SFO/globe` and `/airlines/delta/globe`) put every control in rows along the bottom: the year slider, the legend chips, direction, map type, line width, colour, fit, theme and the explanatory notes. On HOU's map they wrap to two rows and take about a fifth of the window; on a phone it's much more. The set of options is still growing with the globe experiments (bowed arcs, no sea), so this waits until those settle. The map types, keys and Fit routes are already shared (`static/globe/src/maptypes.js`): every map offers Globe, Equal Earth and Azimuthal, and the same keys.
+
+- **A first pass, split by how often a control changes:**
+  - **Always in view:** the year slider and play, the legend chips (they're filters too), and whatever chooses *which data* is shown: direction on an airport's map, the minimum on an airline's, top N and service on the routes map.
+  - **Behind a labelled "Map options" button,** not a bare cog, which is easy to miss on a data site: what changes *how it's drawn*: map type, line style, sea, line width, colour, and the theme. Fit could instead be a small icon on the map, as zoom buttons are on map apps.
+  - **Behind an "About this map" link:** the range hint, the "routes with fewer than 24 flights are hidden" note and the footnotes, which are useful once and then clutter.
+- **The footer is the site's own:** the maps override `t100_base.html`'s whole `body` block to fill the window, so they include `_footer.html` (theme, data link, about) as the last line of their controls, which line up with the header's 960px column. An options panel would leave the footer where it is.

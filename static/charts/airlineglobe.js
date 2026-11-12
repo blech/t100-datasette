@@ -1,7 +1,8 @@
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
-import { defaultView, clamp } from '/static/globe/src/camera.js';
+import { defaultView, glide } from '/static/globe/src/camera.js';
+import { parseMapType, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { indexAirports } from '/static/globe/src/adapter.js';
@@ -24,7 +25,7 @@ const MINS = ['1', '24', '104']; // both directions together: the one-way 12 and
 const state = {
   year: Number(params.get('year')) || null,
   compare: Number(params.get('compare')) || null,
-  proj: params.get('proj') === 'flat' ? 'flat' : 'globe',
+  proj: parseMapType(params.get('proj')),
   width: ['passengers', 'deps', 'freight'].includes(params.get('width')) ? params.get('width') : 'passengers',
   min: MINS.includes(params.get('min')) ? params.get('min') : '24',
   ...parseStyle(location.search),
@@ -72,7 +73,7 @@ function pushState() {
   const q = new URLSearchParams();
   if (state.year) q.set('year', state.year);
   if (state.compare) q.set('compare', state.compare);
-  if (state.proj === 'flat') q.set('proj', 'flat');
+  if (state.proj !== 'globe') q.set('proj', state.proj);
   if (state.width !== 'passengers') q.set('width', state.width);
   if (state.min !== '24') q.set('min', state.min);
   for (const [k, v] of Object.entries(styleParams(state))) q.set(k, v);
@@ -202,8 +203,20 @@ function bindControls() {
   min.addEventListener('change', () => { state.min = min.value; load(); });
 
   const proj = $('proj');
-  proj.value = state.proj;
-  proj.addEventListener('change', () => { state.proj = proj.value === 'flat' ? 'flat' : 'globe'; renderer.setMode(state.proj); pushState(); dirty = true; });
+  fillMapTypeMenu(proj, state.proj, "Centred on the middle of this airline's routes");
+  proj.addEventListener('change', () => setProj(proj.value));
+  $('fit').addEventListener('click', () => {
+    const fit = fitRoutes(renderer, shown.flatMap((r) => [r.from, r.to]));
+    if (fit) { view.vel = [0, 0]; view.target = fit; }
+  });
+  // ← → step the year as the solid handle does, space plays, 1–3 pick the map type
+  const step = (by) => {
+    const v = Number(slider.value) + by;
+    if (v < 0 || v > years.length - 1) return;
+    slider.value = String(v);
+    slider.dispatchEvent(new Event('input'));
+  };
+  bindMapKeys({ step, play: () => $('play').click(), mapType: setProj });
   const width = $('width');
   width.value = state.width;
   width.addEventListener('change', () => { state.width = width.value; pushState(); dirty = true; });
@@ -228,7 +241,7 @@ function bindCanvas() {
   attachInteraction(canvas, view, {
     degPerPx: () => renderer.degPerPx(),
     onUserMove: () => { dirty = true; $('tooltip').hidden = true; },
-    onReset: () => { Object.assign(view, defaultView(), { rot: initialRot() }); dirty = true; },
+    onReset: () => { Object.assign(view, defaultView(), { rot: openingRot(state.proj, home) }); dirty = true; },
     onHover: (x, y) => {
       const i = renderer.hitTest(x, y, shown);
       if (i !== hover) { hover = i; dirty = true; }
@@ -245,14 +258,24 @@ function bindCanvas() {
   });
 }
 
+// the middle of the airline's routes (centreOf), where every map type opens: the azimuthal map is centred there too
 let home = [-96, 38];
-const initialRot = () => [-home[0], clamp(-home[1], -70, 70)];
+
+// a new map type opens afresh on the routes' middle
+function setProj(p) {
+  state.proj = p;
+  $('proj').value = p;
+  renderer.setMode(p);
+  Object.assign(view, { rot: openingRot(p, home), zoom: 1, vel: [0, 0], target: null });
+  pushState();
+  dirty = true;
+}
 
 function frame(last, now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   const moving = !view.dragging && (Math.abs(view.vel[0]) > 0.05 || Math.abs(view.vel[1]) > 0.05);
   applyInertia(view, dt);
-  if (moving) dirty = true;
+  if (glide(view, dt) || moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
     const styles = styleRoutes(shown, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: state.width });
@@ -273,10 +296,11 @@ async function main() {
   const [land, airportRes, yearRes] = await Promise.all([loadLand(), fetchRows(queryUrl('airports')), fetchRows(queryUrl('carrier_route_counts', { group, airline, min: 1 }))]);
   airports = indexAirports(airportRes.rows);
   years = yearRes.rows.map((r) => r.year);
-  if (!years.length) { $('controls').hidden = true; setStatus('No routes in the data for this airline.'); return; }
+  if (!years.length) { $('controls').classList.add('bare'); setStatus('No routes in the data for this airline.'); return; }
   if (!years.includes(state.year)) state.year = years[years.length - 1];
   if (!years.includes(state.compare) || state.compare >= state.year) state.compare = null;
   renderer = new NetworkRenderer(canvas, land);
+  renderer.panFlat = true; // the flat map pans north-south too, so Fit routes can centre it
   renderer.setMode(state.proj);
   applyTheme(themeId);
   const resize = () => { renderer.resize(); dirty = true; };
@@ -287,7 +311,7 @@ async function main() {
   requestAnimationFrame((n) => frame(n, n));
   await load();
   home = centreOf(routes);
-  Object.assign(view, { rot: initialRot() });
+  Object.assign(view, { rot: openingRot(state.proj, home) });
   dirty = true;
 }
 

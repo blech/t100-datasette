@@ -1,0 +1,59 @@
+{% extends "t100_base.html" %}
+{# The airports map (/airports/globe): a year's busiest routes on a globe, Equal Earth or azimuthal map, each airport leading to its
+   own map. Settings live in the URL and the menus: static/charts/airportsglobe.js. #}
+
+{% block title %}Busiest routes map{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/static/globe/style.css">
+  <link rel="stylesheet" href="/static/charts/airlineglobe.css">
+{% endblock %}
+{% block body_attrs %} data-max-year="{{ max_year }}"{% endblock %}
+
+{# the maps fill the window, so no <main>; the footer closes the controls #}
+{% block body %}
+  <canvas id="globe" aria-label="Map of the busiest routes"></canvas>
+
+  <header id="header">
+    {% include "_nav.html" %}
+    <div id="title">Busiest routes</div>
+    <div id="stats"></div>
+    <noscript><p>This map needs JavaScript. Its figures are in <a href="/t100/busiest_routes_year?year={{ max_year }}&amp;n=50&amp;service=&amp;_hide_sql=1">the busiest routes for {{ max_year }}</a>, and each airport's in <a href="/t100">the data tables</a>.</p></noscript>
+  </header>
+
+  <aside id="panel" hidden></aside>
+  <div id="tooltip" class="popover text" hidden></div>
+  <div id="status" role="status"></div>
+
+  <div id="controls">
+    <div id="legend">
+      <span id="legend-chips"></span>
+      <span class="note">The top <select id="n" aria-label="Number of routes"><option>50</option><option>100</option><option>150</option><option>250</option><option>500</option></select>
+        airport pairs by passengers, both directions together, on
+        <select id="service" aria-label="Flights"><option value="">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>.
+        Airports are sized by their passengers on these routes; pick one for its own map.</span>
+    </div>
+    <div class="row">
+      <button id="play" type="button" aria-label="Play through the years">▶</button>
+      <div id="range">
+        <div id="range-fill"></div>
+        <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      </div>
+      <span id="year-label"></span>
+    </div>
+    <div class="row">
+      <select id="proj" aria-label="Map type"></select>
+      <button id="fit" type="button" title="Zoom to fit the routes shown">Fit routes</button>
+      <select id="arcs" aria-label="Route lines"><option value="great">Lines: great circles</option><option value="bowed">Lines: bowed arcs</option></select>
+    </div>
+    <div id="footnote"></div>
+    {# the site's footer (theme, data link, about), at the foot of the controls since the map fills the window #}
+    {% include "_footer.html" %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/globe/vendor/d3-array.min.js"></script>
+  <script src="/static/globe/vendor/d3-geo.min.js"></script>
+  <script src="/static/globe/vendor/topojson-client.min.js"></script>
+  <script type="module" src="{{ script_url('charts/airportsglobe.js') }}"></script>
+{% endblock %}
