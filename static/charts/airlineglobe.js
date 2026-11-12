@@ -12,7 +12,7 @@ import { mapRoutes, centreOf } from '/static/charts/src/airline.js';
 import { shortName } from '/static/charts/src/names.js';
 import { parseStyle, styleParams, colourMode, rangeHint, toggleHide, visibleRoutes, styleRoutes, legendItems } from '/static/globe/src/routestyle.js';
 import { countStatuses, changeText, moveHandle, playStep } from '/static/globe/src/compare.js';
-import { renderLegend, syncRange } from '/static/globe/src/controls.js';
+import { renderLegend, syncRange, bindTrackPress } from '/static/globe/src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from '/static/globe/src/panel.js';
 
@@ -197,6 +197,7 @@ function bindControls() {
   const move = (which, el) => () => { Object.assign(state, moveHandle(years, state, which, Number(el.value))); load(); };
   slider.addEventListener('input', move('year', slider));
   from.addEventListener('input', move('compare', from));
+  bindTrackPress($('range'), [slider, from]);
 
   const min = $('min');
   min.value = state.min;

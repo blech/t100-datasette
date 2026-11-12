@@ -243,6 +243,8 @@ select {
   flex: 1;
   min-width: 160px;
   height: 24px;
+  cursor: pointer;
+  touch-action: none; /* a press on the bar moves a handle (controls.js) rather than scrolling */
 }
 #range::before {
   content: "";

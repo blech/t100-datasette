@@ -12,7 +12,7 @@ import { NetworkRenderer } from '/static/globe/src/renderer.js';
 import { parseMapType, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
 import { maxOf } from '/static/globe/src/scale.js';
 import { styleRoutes, legendItems, toggleHide } from '/static/globe/src/routestyle.js';
-import { renderLegend } from '/static/globe/src/controls.js';
+import { renderLegend, bindTrackPress } from '/static/globe/src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from '/static/globe/src/panel.js';
 import { tapAction } from '/static/globe/src/tap.js';
@@ -234,6 +234,7 @@ function bindControls() {
   const slider = $('year');
   slider.max = String(years.length - 1);
   slider.addEventListener('input', () => { state.year = years[Number(slider.value)]; load(); });
+  bindTrackPress($('range'), [slider]);
   for (const [id, key] of [['n', 'n'], ['service', 'service']]) {
     const el = $(id);
     el.value = state[key];

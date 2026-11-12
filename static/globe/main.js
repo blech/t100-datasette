@@ -13,7 +13,7 @@ import { NetworkRenderer } from './src/renderer.js';
 import { maxOf } from './src/scale.js';
 import { colourMode, rangeHint, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
 import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
-import { renderLegend, syncRange } from './src/controls.js';
+import { renderLegend, syncRange, bindTrackPress } from './src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
 import { countWord, setDir } from '/static/common/direction.js';
@@ -263,6 +263,7 @@ function bindControls() {
   };
   range.to.addEventListener('input', move('year', range.to));
   range.from.addEventListener('input', move('compare', range.from));
+  bindTrackPress($('range'), [range.to, range.from]);
 
   $('play').addEventListener('click', () => {
     if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶'; return; }
