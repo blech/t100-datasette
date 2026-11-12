@@ -296,7 +296,7 @@ async function main() {
   const [land, airportRes, yearRes] = await Promise.all([loadLand(), fetchRows(queryUrl('airports')), fetchRows(queryUrl('carrier_route_counts', { group, airline, min: 1 }))]);
   airports = indexAirports(airportRes.rows);
   years = yearRes.rows.map((r) => r.year);
-  if (!years.length) { $('controls').hidden = true; setStatus('No routes in the data for this airline.'); return; }
+  if (!years.length) { $('controls').classList.add('bare'); setStatus('No routes in the data for this airline.'); return; }
   if (!years.includes(state.year)) state.year = years[years.length - 1];
   if (!years.includes(state.compare) || state.compare >= state.year) state.compare = null;
   renderer = new NetworkRenderer(canvas, land);

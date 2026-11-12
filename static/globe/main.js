@@ -233,9 +233,8 @@ async function showChooser() {
     a.textContent = `${r.airport} ${r.city}`;
     box.append(a);
   }
-  // the chooser's airports, over all years; the controls (where a map's data link sits) are hidden here, so it closes the list
+  // the chooser's airports, over all years, from the footer's data link
   setDataLink('globe_chooser', {});
-  if ($('data-link')) box.append($('data-link'));
   box.hidden = false;
   $('title').textContent = 'US airport network';
   chooserPoints = placePoints(res.rows, airports);
@@ -436,14 +435,14 @@ async function main() {
   bindCanvas();
   requestAnimationFrame((n) => frame(n, n));
 
-  if (!origin) { setStatus(''); $('controls').hidden = true; await showChooser(); return; }
+  if (!origin) { setStatus(''); $('controls').classList.add('bare'); await showChooser(); return; }
 
   const a = airports.get(origin);
   const res = await fetchRows(queryUrl('routes_by_year', { origin, dir: state.dir }));
   truncated = res.truncated;
   const problem = originProblem(res.rows, airports, origin);
   if (problem) {
-    $('controls').hidden = true;
+    $('controls').classList.add('bare');
     setStatus(problem === 'no-data' ? `No flights from ${origin} in the data.` : `No coordinates for ${origin}, so it can't be drawn.`);
     return;
   }

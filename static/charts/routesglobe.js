@@ -1,5 +1,5 @@
 // SPIKE: a year's busiest airport pairs on the globe, or on a flat or azimuthal map (/airports/globe/routes).
-// Everything is in the URL: year, n, service, proj (globe, flat for Equal Earth, azimuthal centred on Kansas), arcs=bowed, sea=plain, theme.
+// Everything is in the URL: year, n, service, proj (globe, flat for Equal Earth, azimuthal centred on Kansas), arcs=bowed, sea=plain (no menu: a setting kept for the address alone), theme.
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
@@ -238,11 +238,10 @@ function bindControls() {
   const proj = $('proj');
   fillMapTypeMenu(proj, state.proj, 'Centred on Kansas, so distances and directions from the middle of the US are true');
   proj.addEventListener('change', () => { setProj(proj.value); pushState(); });
-  for (const key of ['arcs', 'sea']) {
-    const el = $(key);
-    el.value = state[key];
-    el.addEventListener('change', () => { state[key] = el.value; pushState(); dirty = true; });
-  }
+  // ?sea=plain still drops the sea (kept in the address), but has no menu
+  const arcs = $('arcs');
+  arcs.value = state.arcs;
+  arcs.addEventListener('change', () => { state.arcs = arcs.value; pushState(); dirty = true; });
   $('fit').addEventListener('click', () => {
     const fit = fitRoutes(renderer, shown.flatMap((r) => renderer.arcPoints(r)));
     if (fit) { view.vel = [0, 0]; view.target = fit; }

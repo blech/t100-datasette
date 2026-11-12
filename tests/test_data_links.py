@@ -84,11 +84,13 @@ def test_every_scrolling_page_has_the_data_link_in_its_footer(ds, db_path):
         assert FOOTER_LINK in f and f.index(FOOTER_LINK) < f.index("About the data"), path
 
 
-def test_the_maps_have_the_data_link_in_their_controls(ds, db_path):
+def test_the_maps_have_the_site_footer_with_its_data_link_at_the_foot_of_their_controls(ds, db_path):
     delta(db_path)
-    for path in ("/airports/globe", "/airports/SFO/globe", "/airlines/delta/globe"):
+    for path in ("/airports/globe", "/airports/SFO/globe", "/airlines/delta/globe", "/airports/globe/routes"):
         html = get(ds, path).text
-        assert re.search(r'id="theme"[^>]*></select>\s*<a id="data-link" class="data-link" href="" hidden>This map\'s data</a>', html), path
+        controls = html[html.index('<div id="controls">'):]
+        assert FOOTER_LINK in footer(controls), path
+        assert html.count('id="data-link"') == 1, path
 
 
 def test_the_route_notes_no_longer_carry_a_raw_data_link(ds):
