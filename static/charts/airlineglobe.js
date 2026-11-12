@@ -2,7 +2,7 @@ import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
 import { defaultView, glide } from '/static/globe/src/camera.js';
-import { parseMapType, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
+import { parseMapType, parseSea, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { indexAirports } from '/static/globe/src/adapter.js';
@@ -26,6 +26,7 @@ const state = {
   year: Number(params.get('year')) || null,
   compare: Number(params.get('compare')) || null,
   proj: parseMapType(params.get('proj')),
+  sea: parseSea(params.get('sea')), // ?sea=plain: no menu, kept in the address
   width: ['passengers', 'deps', 'freight'].includes(params.get('width')) ? params.get('width') : 'passengers',
   min: MINS.includes(params.get('min')) ? params.get('min') : '24',
   ...parseStyle(location.search),
@@ -74,6 +75,7 @@ function pushState() {
   if (state.year) q.set('year', state.year);
   if (state.compare) q.set('compare', state.compare);
   if (state.proj !== 'globe') q.set('proj', state.proj);
+  if (state.sea === 'plain') q.set('sea', 'plain');
   if (state.width !== 'passengers') q.set('width', state.width);
   if (state.min !== '24') q.set('min', state.min);
   for (const [k, v] of Object.entries(styleParams(state))) q.set(k, v);
@@ -280,7 +282,7 @@ function frame(last, now) {
   if (dirty && renderer) {
     dirty = false;
     const styles = styleRoutes(shown, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: state.width });
-    renderer.draw(view, shown, { widthKey: state.width, max: maxOf(shown, state.width), highlight: selected >= 0 ? selected : hover, labels: 0, bothEnds: true, styles });
+    renderer.draw(view, shown, { widthKey: state.width, max: maxOf(shown, state.width), highlight: selected >= 0 ? selected : hover, labels: 0, bothEnds: true, plain: state.sea === 'plain', styles });
   }
   requestAnimationFrame((n) => frame(now, n));
 }

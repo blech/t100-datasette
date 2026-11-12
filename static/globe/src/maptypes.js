@@ -14,6 +14,9 @@ export const DEFAULT_MAP_TYPE = 'globe';
 // a ?proj= value, or the globe for anything else (old links' equirect, kansas and pole included)
 export const parseMapType = (v) => (MAP_TYPES.some((t) => t.value === v) ? v : DEFAULT_MAP_TYPE);
 
+// ?sea=plain draws the land on the page colour with no sea: a setting kept in the address alone, with no menu
+export const parseSea = (v) => (v === 'plain' ? 'plain' : 'sea');
+
 // The view's rotation that puts [lon, lat] in the middle: the globe tilts no further than 70° so a pole never faces you
 // square on; the flat map (which pans north-south) and the azimuthal map go right over it.
 export function centreRot(type, [lon, lat]) {

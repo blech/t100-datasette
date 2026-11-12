@@ -9,7 +9,7 @@ import { attachInteraction, applyInertia } from '/static/globe/src/interaction.j
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { indexAirports, placeRoutes, forYear } from '/static/globe/src/adapter.js';
 import { NetworkRenderer } from '/static/globe/src/renderer.js';
-import { parseMapType, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
+import { parseMapType, parseSea, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
 import { maxOf } from '/static/globe/src/scale.js';
 import { styleRoutes, legendItems, toggleHide } from '/static/globe/src/routestyle.js';
 import { renderLegend, bindTrackPress } from '/static/globe/src/controls.js';
@@ -32,7 +32,7 @@ const state = {
   service: pick(params.get('service'), ['', 'domestic', 'international'], ''),
   proj: parseMapType(params.get('proj')),
   arcs: params.get('arcs') === 'bowed' ? 'bowed' : 'great',
-  sea: params.get('sea') === 'plain' ? 'plain' : 'sea',
+  sea: parseSea(params.get('sea')),
   hide: [],
 };
 
@@ -177,6 +177,7 @@ const servicesShown = () => ['domestic', 'international'].filter((s) => (!state.
 function airportMapHref(code) {
   const q = new URLSearchParams({ year: state.year });
   if (state.proj !== 'globe') q.set('proj', state.proj);
+  if (state.sea === 'plain') q.set('sea', 'plain');
   const hidden = ['domestic', 'international'].filter((s) => !servicesShown().includes(s));
   if (hidden.length) q.set('hide', hidden.join(','));
   if (themeChosen !== 'auto') q.set('theme', themeChosen);

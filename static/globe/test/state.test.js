@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseState, toSearch } from '../src/state.js';
 
-const DEFAULTS = { year: null, compare: null, month: null, proj: 'globe', width: 'passengers', dir: '', colour: null, hide: [] };
+const DEFAULTS = { year: null, compare: null, month: null, proj: 'globe', sea: 'sea', width: 'passengers', dir: '', colour: null, hide: [] };
 
 test('defaults', () => {
   assert.deepEqual(parseState(''), DEFAULTS);
@@ -39,4 +39,11 @@ test('the direction survives a round trip through the address, and both ways is 
   assert.equal(parseState('?dir=sideways').dir, '');
   assert.equal(toSearch(parseState('?dir=out&year=2019')), '?year=2019&dir=out');
   assert.equal(toSearch(parseState('?year=2019')), '?year=2019');
+});
+
+test('sea=plain is kept, anything else is the sea', () => {
+  assert.equal(parseState('?sea=plain').sea, 'plain');
+  assert.equal(parseState('?sea=blue').sea, 'sea');
+  assert.match(toSearch(parseState('?sea=plain&year=2019')), /sea=plain/);
+  assert.doesNotMatch(toSearch(parseState('?year=2019')), /sea/);
 });

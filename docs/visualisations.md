@@ -115,7 +115,7 @@ The bowed-arc and projection images above became the site's airports map at `/ai
   - With great circles the routes end at the airports' true positions, not at the moved dots.
   - Overlapping translucent dots show darker overlaps; a solid lighter grey would avoid that.
   - Airports in crowded clusters stay unlabelled when pointed at; their names could go in the tooltip.
-  - The airport maps could take the sized destination dots and the no-sea style.
+  - The airport maps could take the sized destination dots. (The no-sea style, `?sea=plain`, now works on the airport and airline maps too.)
   - Whole-network hover (the old chooser's) could come back as an option.
 
 ## The routes matrix, and what it raised (November 2026)

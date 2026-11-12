@@ -340,6 +340,7 @@ function frame(last, now) {
       max: maxOf(routes, key),
       highlight: selected >= 0 ? selected : hover,
       labels: 8,
+      plain: state.sea === 'plain',
       styles: styleRoutes(routes, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: key }),
     });
   }
