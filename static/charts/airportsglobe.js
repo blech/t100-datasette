@@ -1,6 +1,6 @@
 // The airports map (/airports/globe): a year's busiest airport pairs on a globe, Equal Earth or azimuthal map, each airport
 // leading to its own map.
-// Everything is in the URL: year, n, service, proj (globe, flat for Equal Earth, azimuthal centred on Kansas), arcs=bowed, sea=plain (no menu: a setting kept for the address alone), theme.
+// Everything is in the URL: year, n, service, proj (globe, flat for Equal Earth, azimuthal centred on Kansas), arcs=bowed, labels=all (a label on every airport that has room, for a screenshot or printout), sea=plain (no menu: a setting kept for the address alone), theme.
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
@@ -32,6 +32,7 @@ const state = {
   service: pick(params.get('service'), ['', 'domestic', 'international'], ''),
   proj: parseMapType(params.get('proj')),
   arcs: params.get('arcs') === 'bowed' ? 'bowed' : 'great',
+  labels: params.get('labels') === 'all' ? 'all' : 'top',
   sea: parseSea(params.get('sea')),
   hide: [],
 };
@@ -84,6 +85,7 @@ function pushState() {
   if (state.service) q.set('service', state.service);
   if (state.proj !== 'globe') q.set('proj', state.proj);
   if (state.arcs === 'bowed') q.set('arcs', 'bowed');
+  if (state.labels === 'all') q.set('labels', 'all');
   if (state.sea === 'plain') q.set('sea', 'plain');
   if (themeChosen !== 'auto') q.set('theme', themeChosen);
   const s = q.toString();
@@ -248,6 +250,9 @@ function bindControls() {
   const arcs = $('arcs');
   arcs.value = state.arcs;
   arcs.addEventListener('change', () => { state.arcs = arcs.value; pushState(); dirty = true; });
+  const labels = $('labels');
+  labels.value = state.labels;
+  labels.addEventListener('change', () => { state.labels = labels.value; pushState(); dirty = true; });
   $('fit').addEventListener('click', () => {
     const fit = fitRoutes(renderer, shown.flatMap((r) => renderer.arcPoints(r)));
     if (fit) { view.vel = [0, 0]; view.target = fit; }
@@ -331,6 +336,17 @@ function dotFocus() {
   return { code, related: new Set(shown.flatMap((r) => (r.origin === code ? [r.dest] : r.dest === code ? [r.origin] : []))) };
 }
 
+// the map as it stands now. On paper there's no hovering to reveal a label, so every airport with room is labelled
+let printing = false;
+function draw() {
+  const styles = styleRoutes(shown, { mode: 'service', theme: THEMES[printing ? 'light' : themeId], widthKey: 'passengers' });
+  renderer.draw(view, shown, {
+    widthKey: 'passengers', max: maxOf(shown, 'passengers'), highlightSet: litRoutes(), fadeAll: true, styles,
+    bowed: state.arcs === 'bowed', plain: state.sea === 'plain', airportDots: dots,
+    dotLabels: printing || state.labels === 'all' ? Infinity : 20, dotFocus: dotFocus(),
+  });
+}
+
 function frame(last, now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   const moving = !view.dragging && (Math.abs(view.vel[0]) > 0.05 || Math.abs(view.vel[1]) > 0.05);
@@ -338,11 +354,7 @@ function frame(last, now) {
   if (glide(view, dt) || moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
-    const styles = styleRoutes(shown, { mode: 'service', theme: THEMES[themeId], widthKey: 'passengers' });
-    renderer.draw(view, shown, {
-      widthKey: 'passengers', max: maxOf(shown, 'passengers'), highlightSet: litRoutes(), fadeAll: true, styles,
-      bowed: state.arcs === 'bowed', plain: state.sea === 'plain', airportDots: dots, dotLabels: 20, dotFocus: dotFocus(),
-    });
+    draw();
   }
   requestAnimationFrame((n) => frame(now, n));
 }
@@ -363,6 +375,17 @@ async function main() {
   applyTheme(themeId);
   const resize = () => { renderer.resize(); dirty = true; };
   window.addEventListener('resize', resize);
+  // printing: the print stylesheet gives the canvas the page's size, so redraw to that at once (animation frames may not run
+  // while the print preview is up), at a higher resolution, and again for the screen afterwards
+  matchMedia('print').addEventListener('change', (e) => {
+    printing = e.matches;
+    renderer.dprCap = printing ? 3 : 2;
+    renderer.setTheme(THEMES[printing ? 'light' : themeId]); // ink on white, whatever the screen's theme
+    hover = -1; hoverDot = -1; selected = -1;
+    renderer.resize();
+    draw();
+    dirty = !printing;
+  });
   setProj(state.proj);
   resize();
   bindCanvas();

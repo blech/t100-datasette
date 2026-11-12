@@ -6,6 +6,7 @@
 {% block styles %}
   <link rel="stylesheet" href="/static/globe/style.css">
   <link rel="stylesheet" href="/static/charts/airlineglobe.css">
+  <link rel="stylesheet" href="/static/charts/airportsglobe-print.css" media="print">
 {% endblock %}
 {% block body_attrs %} data-max-year="{{ max_year }}"{% endblock %}
 
@@ -44,6 +45,7 @@
       <select id="proj" aria-label="Map type"></select>
       <button id="fit" type="button" title="Zoom to fit the routes shown">Fit routes</button>
       <select id="arcs" aria-label="Route lines"><option value="great">Lines: great circles</option><option value="bowed">Lines: bowed arcs</option></select>
+      <select id="labels" aria-label="Airport labels"><option value="top">Labels: the biggest</option><option value="all">Labels: all that fit</option></select>
     </div>
     <div id="footnote"></div>
     {# the site's footer (theme, data link, about), at the foot of the controls since the map fills the window #}
