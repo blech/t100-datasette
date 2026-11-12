@@ -169,17 +169,22 @@ databases:
       # domestic or international (by which file most departures are in), or empty for both
       busiest_routes_year:
         title: "A year's busiest airport pairs"
-        description: "The top n airport pairs (both directions together) by passengers in one year, optionally only domestic or international ones."
+        description: "The top n airport pairs (both directions together) by passengers in one year, optionally only domestic or international ones, each with its distance in miles (from pair_distance; empty where BTS gave none)."
         sql: |
-          SELECT MIN(origin, dest) AS origin, MAX(origin, dest) AS dest,
-            CASE WHEN SUM(domestic_deps) * 2 >= SUM(deps) THEN 'domestic' ELSE 'international' END AS service,
-            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
-          FROM route_year_totals
-          WHERE year = CAST(:year AS integer)
-          GROUP BY 1, 2
-          HAVING :service = '' OR service = :service
-          ORDER BY passengers DESC
-          LIMIT CAST(:n AS integer)
+          SELECT t.origin, t.dest, t.service, t.deps, t.seats, t.passengers, t.freight, d.distance
+          FROM (
+            SELECT MIN(origin, dest) AS origin, MAX(origin, dest) AS dest,
+              CASE WHEN SUM(domestic_deps) * 2 >= SUM(deps) THEN 'domestic' ELSE 'international' END AS service,
+              SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+            FROM route_year_totals
+            WHERE year = CAST(:year AS integer)
+            GROUP BY 1, 2
+            HAVING :service = '' OR service = :service
+            ORDER BY passengers DESC
+            LIMIT CAST(:n AS integer)
+          ) t
+          LEFT JOIN pair_distance d ON d.a = t.origin AND d.b = t.dest
+          ORDER BY t.passengers DESC
 
       # the routes matrix: the airport pairs that could be among its top 50, by year, and every pair's totals for the shares of a year
       top_routes_by_year:
