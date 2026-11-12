@@ -17,7 +17,7 @@ check() {  # check <expected status> <path> [text the body must contain]
 
 check 200 /                                                         "usa-map"
 check 200 /airports                                                 "Busiest"
-check 200 /airports/globe                                           "airportsglobe.js"
+check 200 /airports/globe                                           "id=\"arcs\""  # the Lines menu: the bundle renames the script
 check 200 /airports/over-time                                       "data-kind=\"airports\""
 check 200 /airports/movers                                          "Risers and fallers"
 check 200 /airports/SFO                                             "size-chart"
