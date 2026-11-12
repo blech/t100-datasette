@@ -190,7 +190,7 @@ A shared set of base styles for both kinds of page could hold the column, the ty
 
 ### 7. Map controls: not started (noted November 2026)
 
-The full-window maps (`/airports/SFO/globe`, `/airlines/delta/globe`, and the busiest-routes spike at `/airports/globe/routes`) put every control in rows along the bottom: the year slider, the legend chips, direction, map type, line width, colour, fit, theme and the explanatory notes. On HOU's map they wrap to two rows and take about a fifth of the window; on a phone it's much more. The set of options is still growing with the globe experiments (bowed arcs, no sea), so this waits until those settle. The map types, keys and Fit routes are already shared (`static/globe/src/maptypes.js`): every map offers Globe, Equal Earth and Azimuthal, and the same keys.
+The full-window maps (`/airports/globe`, `/airports/SFO/globe` and `/airlines/delta/globe`) put every control in rows along the bottom: the year slider, the legend chips, direction, map type, line width, colour, fit, theme and the explanatory notes. On HOU's map they wrap to two rows and take about a fifth of the window; on a phone it's much more. The set of options is still growing with the globe experiments (bowed arcs, no sea), so this waits until those settle. The map types, keys and Fit routes are already shared (`static/globe/src/maptypes.js`): every map offers Globe, Equal Earth and Azimuthal, and the same keys.
 
 - **A first pass, split by how often a control changes:**
   - **Always in view:** the year slider and play, the legend chips (they're filters too), and whatever chooses *which data* is shown: direction on an airport's map, the minimum on an airline's, top N and service on the routes map.

@@ -165,9 +165,8 @@ databases:
           WHERE deps > 0 OR passengers > 0 OR freight > 0
           ORDER BY year, airport
 
-      # the routes matrix: the airport pairs that could be among its top 50, by year, and every pair's totals for the shares of a year
-      # SPIKE (the busiest-routes globe, /airports/globe/routes): a year's busiest airport pairs, both directions together, by
-      # passengers; service is domestic or international (by which file most departures are in), or empty for both
+      # the airports map (/airports/globe): a year's busiest airport pairs, both directions together, by passengers; service is
+      # domestic or international (by which file most departures are in), or empty for both
       busiest_routes_year:
         title: "A year's busiest airport pairs"
         description: "The top n airport pairs (both directions together) by passengers in one year, optionally only domestic or international ones."
@@ -182,6 +181,7 @@ databases:
           ORDER BY passengers DESC
           LIMIT CAST(:n AS integer)
 
+      # the routes matrix: the airport pairs that could be among its top 50, by year, and every pair's totals for the shares of a year
       top_routes_by_year:
         title: "The busiest airport pairs by year"
         description: "One row per airport pair (both directions together, origin before dest) and year, with its service and distance in miles, for the pairs in the top 50 of their service and distance band by flights, seats, passengers or freight, over all years or, with year set, in that year, and the busiest pair of each band in each year. Rows with rest = 1 are every pair's totals for a year, service and distance band (distance is the band's lower bound), counting those not listed."
@@ -272,7 +272,7 @@ databases:
             AND (SUM(r.deps) > 0 OR SUM(r.passengers) > 0 OR SUM(r.freight) > 0)
           ORDER BY r.year, r.dest
 
-      # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
+      # the front page map: the 100 busiest US airports by passengers in one year
       busiest_airports:
         sql: |
           -- passengers boarding or leaving there: both directions
@@ -282,18 +282,6 @@ databases:
             AND wac BETWEEN 1 AND 93
             AND passengers_out + passengers_in > 0
           ORDER BY passengers DESC, airport
-          LIMIT 100
-
-      # the network globe's list and dots: US airports by passengers boarding or leaving there, over all years
-      globe_chooser:
-        sql: |
-          SELECT d.airport, COALESCE(n.name, MAX(d.city_name)) AS city, SUM(d.passengers_out + d.passengers_in) AS passengers
-          FROM airport_dir_year d
-          LEFT JOIN airport_names n ON n.code = d.airport
-          WHERE d.wac BETWEEN 1 AND 93
-          GROUP BY d.airport
-          HAVING passengers > 0
-          ORDER BY passengers DESC, d.airport
           LIMIT 100
 
       # the most dedicated airports: of the biggest US airports by passengers (100) or freight (25) in one year, the ten whose
@@ -662,19 +650,6 @@ databases:
           FROM gone
           WHERE year = peak_year
           ORDER BY peak_deps DESC, code, member_deps DESC
-
-      # every domestic airport pair in one year, both directions together (a before b), for hovering an airport on the
-      # all-airports map: the same routes, with the same rule for domestic and the same 24-flight cut-off, as routes_by_year
-      # gives one airport by default with international hidden
-      domestic_routes:
-        sql: |
-          SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, year,
-            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight, 'domestic' AS service
-          FROM route_year_totals
-          WHERE year = CAST(:year AS integer) AND origin <> dest
-          GROUP BY 1, 2
-          HAVING SUM(deps) >= 24 AND SUM(domestic_deps) * 2 > SUM(deps)
-          ORDER BY a, b
 
       family_by_year:
         sql: |

@@ -1,19 +1,19 @@
 {% extends "t100_base.html" %}
 
-{% block title %}{% if origin %}{{ origin }} routes{% else %}Airport network{% endif %}{% endblock %}
+{% block title %}{{ origin }} routes{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="/static/globe/style.css">
 {% endblock %}
 {% block body_attrs %} data-origin="{{ origin }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
 
-{# the maps fill the window, so no <main> and no footer #}
+{# the maps fill the window, so no <main>; the footer closes the controls #}
 {% block body %}
   <canvas id="globe" aria-label="Map of routes from the selected airport"></canvas>
 
   <header id="header">
     {% include "_nav.html" %}
-    <div id="title">{% if origin %}{{ origin }}: route map{% endif %}</div>
-    {% if origin %}<div id="subtitle">{{ label }}</div>{% endif %}
+    <div id="title">{{ origin }}: route map</div>
+    <div id="subtitle">{{ label }}</div>
     <div id="stats"></div>
     <div class="picker-row">
       <input id="picker" list="airport-list" placeholder="Airport code or name" autocomplete="off" aria-label="Choose an airport">
@@ -22,7 +22,6 @@
     </div>
   </header>
 
-  <details id="chooser" hidden></details>
   <div id="tooltip" class="popover text" hidden></div>
   <aside id="panel" hidden></aside>
   <div id="status" role="status"></div>
@@ -37,7 +36,7 @@
           <label class="chip months-toggle"><input id="month-toggle" type="checkbox"> Months</label>
         </span>
       </div>
-      <span class="note">{% if origin %}Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}{% else %}Routes with fewer than 24 flights a year, both ways, are hidden. <a href="/about#direction">What a route means</a>.{% endif %}</span>
+      <span class="note">Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}</span>
     </div>
     <div class="row">
       <button id="play" type="button" aria-label="Play through the years">▶</button>
@@ -50,12 +49,12 @@
     </div>
     <div id="range-hint">Drag the hollow handle back to compare with an earlier year: new routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</div>
     <div class="row">
-      {% if origin %}{% include "_dir_choice.html" %}{% endif %}
+      {% include "_dir_choice.html" %}
       <select id="proj" aria-label="Map type"></select>
       <button id="centre" type="button">Centre {{ origin }}</button>
       <button id="fit" type="button" title="Zoom to fit the routes shown">Fit routes</button>
       <select id="colour" aria-label="Colour routes by"><option value="single">Colour: single colour</option><option value="service">Colour: domestic or international</option><option value="change">Colour: kept, added or dropped</option></select>
-      <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: {{ count_word|lower if origin else "flights" }}</option><option value="freight">Width: freight</option></select>
+      <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: {{ count_word|lower }}</option><option value="freight">Width: freight</option></select>
     </div>
     <div id="footnote"></div>
     <div id="foreign-note-box">{% include "_foreign_note.html" %}</div>

@@ -120,10 +120,9 @@ def test_an_airport_with_only_arrivals_has_years(ds, db_path):
     assert 'data-first-year="2001"' in page and 'data-last-year="2003"' in page
 
 
-def test_the_network_globe_states_its_own_fixed_cutoff_whatever_dir_is_carried(ds):
+def test_the_airports_map_counts_both_directions_whatever_dir_is_carried(ds):
     page = get(ds, "/airports/globe?dir=out").text
-    assert "fewer than 24 flights a year, both ways" in page and "Width: flights" in page
-    assert "12 departures" not in page
+    assert "both directions together" in page and "12 departures" not in page
 
 
 @pytest.mark.parametrize("path", ["/airports/ATL", "/airports/ATL/changes"])

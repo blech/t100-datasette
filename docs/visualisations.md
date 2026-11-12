@@ -101,6 +101,23 @@ Routes in `t100_international` (every one has a US end) with 400,000 or more pas
   - Great circles on the orthographic globe are sampled at 96 points and broken where they pass out of view, instead of left to cartopy, which zigzagged.
 - **Labels:** the same layout rule as the domestic map. Labels now keep a 5 px gap from each other, so neighbours don't read as one word ("MNLTPE"). A label pushed more than 12 px from its dot gets a thin leader line. Very dense spots, like Havana under Miami, can still collide.
 
+## The airports map: the busiest routes, live (November 2026)
+
+The bowed-arc and projection images above became the site's airports map at `/airports/globe`, replacing the old airport chooser (the 100 busiest US airports as dots, hovering one to draw its domestic routes). It started as a spike at `/airports/globe/routes`.
+
+- **What it shows:** a year's top 50 (to 500) airport pairs by passengers, both directions together, all or domestic or international, with play through the years.
+- **Map types:** the globe, Equal Earth and an azimuthal map centred on Kansas, shared with the airport and airline maps (`static/globe/src/maptypes.js`). An airport's own azimuthal map is centred on the airport, and an airline's on the middle of its routes. Equirectangular (Equal Earth looks better) and polar (the Kansas map does its job better) were tried and dropped.
+- **Lines:** great circles, or the images' bowed arcs as an option.
+- **Airports:** dots sized by passengers on the routes shown, pushed apart in pixel space as `flightlib.separate` does, and faded. The top 20 are labelled, each keeping its label's last position so labels don't jump about while the map moves.
+- **Pointing:** routes are faded until pointed at. Pointing at an airport lights its routes and labels the airports they reach. Its tooltip adds what the airport's own map shows that year (all its routes, not just the busiest), so the step from this map to the airport's is a short one, and clicking keeps the year, map type and kinds of route.
+- **Tried and dropped:** a presentation mode (full screen, a caption written from the settings, empty key chips hidden). The keys stayed: arrows step the year, space plays, 1–3 pick the map type. The "Sea: none" style stays as `?sea=plain`, with no menu.
+- **Open:**
+  - With great circles the routes end at the airports' true positions, not at the moved dots.
+  - Overlapping translucent dots show darker overlaps; a solid lighter grey would avoid that.
+  - Airports in crowded clusters stay unlabelled when pointed at; their names could go in the tooltip.
+  - The airport maps could take the sized destination dots and the no-sea style.
+  - Whole-network hover (the old chooser's) could come back as an option.
+
 ## The routes matrix, and what it raised (November 2026)
 
 `/airports/routes` lists the busiest airport pairs by any airline, by year, for a range of distances, and can be ranked by any full year. Its tables (`pair_distance`, `top_route_year`, `route_band_year`) are described in the README. Two questions came out of looking at it. The figures below are from ad hoc SQL against `route_year_totals` and `pair_distance`; they count pairs flown at least weekly (104 flights a year, both ways) unless they say otherwise.

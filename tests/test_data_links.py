@@ -86,7 +86,7 @@ def test_every_scrolling_page_has_the_data_link_in_its_footer(ds, db_path):
 
 def test_the_maps_have_the_site_footer_with_its_data_link_at_the_foot_of_their_controls(ds, db_path):
     delta(db_path)
-    for path in ("/airports/globe", "/airports/SFO/globe", "/airlines/delta/globe", "/airports/globe/routes"):
+    for path in ("/airports/globe", "/airports/SFO/globe", "/airlines/delta/globe"):
         html = get(ds, path).text
         controls = html[html.index('<div id="controls">'):]
         assert FOOTER_LINK in footer(controls), path

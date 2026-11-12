@@ -6,7 +6,7 @@ import { openingRot, centreRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '
 import { attachInteraction, applyInertia } from './src/interaction.js';
 import { parseState, toSearch } from './src/state.js';
 import { queryUrl, fetchRows } from './src/api.js';
-import { indexAirports, placeRoutes, placePoints, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
+import { indexAirports, placeRoutes, yearsIn, forYear, forMonth, skippedFor, originProblem } from './src/adapter.js';
 import { pickerOptions } from './src/picker.js';
 import { createLatest } from './src/latest.js';
 import { NetworkRenderer } from './src/renderer.js';
@@ -14,7 +14,6 @@ import { maxOf } from './src/scale.js';
 import { colourMode, rangeHint, toggleHide, visibleRoutes, styleRoutes, legendItems } from './src/routestyle.js';
 import { compareYears, countStatuses, changeText, moveRange, playStep } from './src/compare.js';
 import { renderLegend, syncRange } from './src/controls.js';
-import { routesByOrigin, chooserTap } from './src/chooser.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
 import { countWord, setDir } from '/static/common/direction.js';
@@ -22,7 +21,7 @@ import { countWord, setDir } from '/static/common/direction.js';
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
 const state = parseState(location.search);
-// The chooser and info panel sit just below the header, whatever height it ends up.
+// The info panel sits just below the header, whatever height it ends up.
 new ResizeObserver(() => {
   document.documentElement.style.setProperty('--below-header', `${Math.ceil($('header').getBoundingClientRect().bottom) + 8}px`);
 }).observe($('header'));
@@ -47,14 +46,10 @@ let themeId = resolveTheme(location.search, storedTheme(), matchMedia('(prefers-
 let themeChosen = themeChoice(location.search, storedTheme()); // 'auto' stays out of the URL
 let dirty = true;
 let hover = -1;
-let chooserPoints = []; // airport dots on the chooser page (no origin selected)
-let chooserRoutes = new Map(); // the latest year's domestic routes by origin, for the hovered dot
-const chooserPlaced = new Map(); // ...placed on the map, filled as dots are hovered
-const latestYear = document.body.dataset.maxYear;
 let selected = -1;
 let playTimer = null;
 const view = defaultView();
-// what the map is centred on: the airport, or on the chooser the middle of the US, as the default view has it
+// what the map is centred on: the airport, once its coordinates are known (until then the default view's middle)
 let home = [-view.rot[0], -view.rot[1]];
 
 const canvas = $('globe');
@@ -223,48 +218,6 @@ function fillPicker() {
   });
 }
 
-async function showChooser() {
-  const res = await fetchRows(queryUrl('globe_chooser'));
-  const box = $('chooser');
-  box.append(Object.assign(document.createElement('summary'), { textContent: 'Pick an airport on the map, or choose from a list' }));
-  for (const r of res.rows.slice(0, 24)) {
-    const a = document.createElement('a');
-    a.href = `/airports/${r.airport}/globe`;
-    a.textContent = `${r.airport} ${r.city}`;
-    box.append(a);
-  }
-  // the chooser's airports, over all years, from the footer's data link
-  setDataLink('globe_chooser', {});
-  box.hidden = false;
-  $('title').textContent = 'US airport network';
-  chooserPoints = placePoints(res.rows, airports);
-  dirty = true;
-  // without these the dots still work; hovering just shows no routes
-  try {
-    chooserRoutes = routesByOrigin((await fetchRows(queryUrl('domestic_routes', { year: latestYear, _size: 'max' }))).rows);
-  } catch (e) {
-    console.error(e);
-  }
-  dirty = true;
-}
-
-// the hovered dot's domestic routes, as its own map draws them with international hidden
-function chooserRoutesFor(i) {
-  if (i < 0) return [];
-  const code = chooserPoints[i].code;
-  if (!chooserPlaced.has(code)) chooserPlaced.set(code, placeRoutes(chooserRoutes.get(code) || [], code, airports).routes);
-  return chooserPlaced.get(code);
-}
-
-function showChooserTip(i, x, y) {
-  const tip = $('tooltip');
-  if (i < 0) { tip.hidden = true; return; }
-  const p = chooserPoints[i];
-  const n = chooserRoutesFor(i).length; // the routes drawn: a destination without coordinates can't be
-  tip.textContent = chooserRoutes.size ? `${p.code} · ${p.city} · ${n} domestic route${n === 1 ? '' : 's'} in ${latestYear}` : `${p.code} · ${p.city}`;
-  placePopover(tip, x, y, { dx: 14, dy: 14 });
-}
-
 // a new map type opens afresh on the airport: the azimuthal map is centred on it, so its distances and directions are true
 function setProj(p) {
   state.proj = p;
@@ -351,13 +304,6 @@ function bindCanvas() {
     onUserMove: () => { dirty = true; $('tooltip').hidden = true; },
     onReset: () => { Object.assign(view, defaultView(), { rot: openingRot(state.proj, home) }); dirty = true; },
     onHover: (x, y) => {
-      if (!origin) {
-        const i = renderer.hitTestPoints(x, y, chooserPoints);
-        if (i !== hover) { hover = i; dirty = true; }
-        canvas.style.cursor = i >= 0 ? 'pointer' : '';
-        showChooserTip(i, x, y);
-        return;
-      }
       const routes = shown;
       const i = renderer.hitTest(x, y, routes);
       if (i !== hover) { hover = i; dirty = true; }
@@ -367,15 +313,6 @@ function bindCanvas() {
       placePopover(tip, x, y, { dx: 14, dy: 14 });
     },
     onTap: (x, y) => {
-      if (!origin) {
-        const i = renderer.hitTestPoints(x, y, chooserPoints);
-        const action = chooserTap(hover, i);
-        if (action === 'open') { location.href = `/airports/${encodeURIComponent(chooserPoints[i].code)}/globe${toSearch(state)}`; return; }
-        hover = action === 'show' ? i : -1;
-        showChooserTip(hover, x, y);
-        dirty = true;
-        return;
-      }
       const routes = shown;
       const i = renderer.hitTest(x, y, routes, 10);
       selected = i;
@@ -393,18 +330,14 @@ function frame(last, now) {
   if (glide(view, dt) || moving) dirty = true;
   if (dirty && renderer) {
     dirty = false;
-    const routes = origin ? shown : chooserRoutesFor(hover);
+    const routes = shown;
     const key = $('width').value;
-    // on the chooser the hovered airport is drawn as its own map draws it, routes and all
-    const code = origin || (hover >= 0 ? chooserPoints[hover].code : '');
-    const a = airports.get(code);
+    const a = airports.get(origin);
     renderer.draw(view, routes, {
-      points: origin ? null : chooserPoints,
-      highlightPoint: origin || a ? -1 : hover,
-      origin: a ? { lon: a.lon, lat: a.lat, code } : null,
+      origin: a ? { lon: a.lon, lat: a.lat, code: origin } : null,
       widthKey: key,
       max: maxOf(routes, key),
-      highlight: origin ? (selected >= 0 ? selected : hover) : -1,
+      highlight: selected >= 0 ? selected : hover,
       labels: 8,
       styles: styleRoutes(routes, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: key }),
     });
@@ -434,8 +367,6 @@ async function main() {
   fillPicker();
   bindCanvas();
   requestAnimationFrame((n) => frame(n, n));
-
-  if (!origin) { setStatus(''); $('controls').classList.add('bare'); await showChooser(); return; }
 
   const a = airports.get(origin);
   const res = await fetchRows(queryUrl('routes_by_year', { origin, dir: state.dir }));

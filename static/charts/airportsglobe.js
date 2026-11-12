@@ -1,4 +1,5 @@
-// SPIKE: a year's busiest airport pairs on the globe, or on a flat or azimuthal map (/airports/globe/routes).
+// The airports map (/airports/globe): a year's busiest airport pairs on a globe, Equal Earth or azimuthal map, each airport
+// leading to its own map.
 // Everything is in the URL: year, n, service, proj (globe, flat for Equal Earth, azimuthal centred on Kansas), arcs=bowed, sea=plain (no menu: a setting kept for the address alone), theme.
 import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/src/themes.js';
 import { setDataLink } from '/static/common/datalink.js';
@@ -14,6 +15,7 @@ import { styleRoutes, legendItems, toggleHide } from '/static/globe/src/routesty
 import { renderLegend } from '/static/globe/src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from '/static/globe/src/panel.js';
+import { tapAction } from '/static/globe/src/tap.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -55,6 +57,7 @@ const view = defaultView();
 const cache = new Map();
 const networks = new Map(); // each hovered airport's own map's rows (routes_by_year, every year), fetched once
 let tipAt = null; // where the tooltip was last placed, to fill it in again once an airport's network arrives
+let shownByTap = false; // the hovered airport was shown by a touch, which a second tap opens
 const canvas = $('globe');
 
 new ResizeObserver(() => {
@@ -196,7 +199,7 @@ function networkLine(code) {
   const pax = rows.reduce((s, r) => s + Number(r.passengers || 0), 0);
   const kind = kinds.length === 1 ? `${kinds[0]} ` : '';
   const places = airports.get(code)?.isUs === false ? 'US destinations' : 'destinations';
-  return `All its ${kind}routes: ${fmt(rows.length)} ${places}\n${countLabel(pax)} passengers · click for its map`;
+  return `All its ${kind}routes: ${fmt(rows.length)} ${places}\n${countLabel(pax)} passengers`;
 }
 
 // the hovered airport: its passengers on the routes shown, then all of its own map's, which a click opens
@@ -205,7 +208,8 @@ function showDotTip() {
   if (hoverDot < 0 || !tipAt) return;
   const a = dots[hoverDot];
   const all = networkLine(a.code);
-  tip.textContent = `${a.code} · ${place(a.code)}\n${fmt(a.value)} passengers on these routes\n${all ?? 'Counting all its routes…\nClick for its map'}`;
+  const open = shownByTap ? 'tap again for its map' : 'click for its map';
+  tip.textContent = `${a.code} · ${place(a.code)}\n${fmt(a.value)} passengers on these routes\n${all ? `${all} · ${open}` : `Counting all its routes…\n${open[0].toUpperCase()}${open.slice(1)}`}`;
   placePopover(tip, tipAt[0], tipAt[1], { dx: 14, dy: 14 });
 }
 
@@ -279,6 +283,7 @@ function bindCanvas() {
       if (i !== hover || d !== hoverDot) { hover = i; hoverDot = d; dirty = true; }
       const tip = $('tooltip');
       tipAt = [x, y];
+      shownByTap = false;
       if (d >= 0) { showDotTip(); return; }
       if (i >= 0) {
         const r = shown[i];
@@ -288,7 +293,17 @@ function bindCanvas() {
     },
     onTap: (x, y) => {
       const d = renderer.hitTestDots(x, y, dots);
-      if (d >= 0) { location.href = airportMapHref(dots[d].code); return; }
+      if (d >= 0) {
+        // a mouse has hovered it, so a click opens it; a first touch shows it, as hovering would, and a second opens it
+        if (tapAction(hoverDot, d) === 'open') { location.href = airportMapHref(dots[d].code); return; }
+        hover = -1; selected = -1; hoverDot = d; tipAt = [x, y]; shownByTap = true;
+        $('panel').hidden = true;
+        showDotTip();
+        dirty = true;
+        return;
+      }
+      hoverDot = -1;
+      $('tooltip').hidden = true;
       selected = renderer.hitTest(x, y, shown, 10);
       if (selected >= 0) showPanel(shown[selected]); else $('panel').hidden = true;
       dirty = true;
