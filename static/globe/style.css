@@ -192,7 +192,11 @@ a.plain {
 #footnote {
   color: var(--muted);
   font-size: 12px;
-  min-height: 1em;
+}
+/* the small print only takes room (and the controls' gap) when there is some, so Fit routes gets the space back */
+#footnote:empty,
+#foreign-note-box:empty {
+  display: none;
 }
 /* links in the map's small print take the note's muted colour, as the site footer's do */
 #legend a,
