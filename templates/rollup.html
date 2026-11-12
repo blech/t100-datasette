@@ -6,7 +6,6 @@
 {% endblock %}
 {% block head %}
 {{ modulepreload("/static/charts/rollup.js") }}
-{{ modulepreload("/static/charts/find.js") }}
 {% endblock %}
 {% block body_attrs %} data-kind="{{ kind }}" data-latest-year="{{ latest_year }}"{% if kind == "airports" %} data-dir="{{ dir }}" data-region="{{ region }}"{% endif %}{% endblock %}
 
