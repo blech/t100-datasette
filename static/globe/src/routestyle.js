@@ -33,9 +33,9 @@ export function styleParams({ colour, hide }) {
 // palette's one orange) works either way.
 export const colourMode = (colour, comparing) => (colour === 'single' ? 'single' : comparing ? colour ?? 'change' : 'service');
 
-// The line under the time range: how to compare (with one handle on the other, only the solid one can be grabbed, so
-// the way in is to go back and drag forward) and what comparing shows in this colouring
-const COMPARE_HOW = 'go to the earlier one, then drag forward: the hollow handle stays behind to mark it.';
+// The end of the small print under the year bar: how to compare (with one handle on the other, only the solid one can be
+// grabbed, so the way in is to go back and drag forward, which leaves the hollow one behind) and what comparing shows
+const COMPARE_HOW = 'go to the earlier one, then drag forward.';
 export const rangeHint = (mode) => (mode === 'single'
   ? `To show every route flown since an earlier year, ${COMPARE_HOW.replace('the earlier one', 'that year')} Click the legend to hide domestic or international routes.`
   : `To compare two years, ${COMPARE_HOW} New routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.`);

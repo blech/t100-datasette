@@ -200,6 +200,7 @@ a.plain {
 }
 /* links in the map's small print take the note's muted colour, as the site footer's do */
 #legend a,
+#map-note a,
 #footnote a,
 #foreign-note-box a {
   color: inherit;
@@ -315,9 +316,14 @@ select {
 #range #year-from::-moz-range-thumb {
   background: var(--bg);
 }
-#range-hint {
+/* what is counted and how to compare, in one paragraph under the year bar */
+#map-note {
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
+}
+#map-note .note {
+  font-size: inherit;
 }
 /* legend chips: a toggle per category; the swatch shows the colour only for the dimension being coloured */
 /* the key, with the month view's switch (an airport's map) at the right of the same line */

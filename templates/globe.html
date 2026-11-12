@@ -36,7 +36,6 @@
           <label class="chip months-toggle"><input id="month-toggle" type="checkbox"> Months</label>
         </span>
       </div>
-      <span class="note">Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}</span>
     </div>
     <div class="row">
       <button id="play" type="button" aria-label="Play through the years">▶</button>
@@ -47,7 +46,9 @@
       </div>
       <span id="year-label"></span>
     </div>
-    <div id="range-hint">To compare two years, go to the earlier one, then drag forward: the hollow handle stays behind to mark it. New routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</div>
+    {# one paragraph of small print under the year bar: what is counted, then how to compare (its words set by the script) #}
+    <p id="map-note"><span class="note">Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}</span>
+      <span id="range-hint">To compare two years, go to the earlier one, then drag forward. New routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</span></p>
     <div class="row">
       {% include "_dir_choice.html" %}
       <select id="proj" aria-label="Map type"></select>
