@@ -47,6 +47,13 @@ def test_axis_labels_use_dense_count():
     assert dense_count(1000) in freight   # 2,000,000 lb = 1,000 tons
 
 
+def test_last_year_label_inside_the_chart():
+    svg = _svg([(1990, 10)])
+    last = next(t for t in svg.iter(f"{NS}text") if t.text == "2025")
+    width = float(svg.get("viewBox").split()[2])
+    assert float(last.get("x")) + 15 <= width   # half of a four-digit label at 12 units
+
+
 def test_all_zero_series_draws_no_bars_and_does_not_divide_by_zero():
     assert _bars(_svg([(1990, 0), (1991, 0)])) == []
 

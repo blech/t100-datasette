@@ -31,6 +31,7 @@ def build_world(db_path):
         _year(2025, "FFF", 5, 5000), _year(2025, "NEW", 300, 0), _year(2025, "FOR", 99999, 99999, wac=500),
         _year(1990, "AAA", 500, 40), _year(1990, "BBB", 600, 30), _year(1990, "CCC", 100, 1), _year(1990, "FFF", 0, 2000),
         _year(2020, "AAA", 200, 80), _year(2020, "NEW", 100, 0),
+        _year(2025, "TNY", 5, 0),   # in AAA's market, but under 1% of AAA's passengers
     ])
     _insert(db_path, "route_year_totals", [
         _route("AAA", "BBB", 100, deps=12), _route("BBB", "AAA", 50, deps=12),
@@ -38,11 +39,12 @@ def build_world(db_path):
         _route("AAA", "FFF", 10, freight=900),
         _route("AAA", "NEW", 90), _route("AAA", "XXX", 80), _route("AAA", "YYY", 70),
         _route("AAA", "FOR", 60, deps=30, domestic_deps=0),
+        _route("AAA", "TNY", 65, deps=2, domestic_deps=1),   # a domestic route with an international flight on it
         _route("FFF", "CCC", 50, freight=100),
     ])
     _insert(db_path, "pair_distance", [dict(a="AAA", b="BBB", distance=500), dict(a="FOR", b="AAA", distance=4000)])
     _insert(db_path, "airport_names", [dict(code=c, name=f"{c.title()}ville, {c[:2]}") for c in ("AAA", "BBB", "CCC", "FFF", "NEW", "YYY")])
-    _insert(db_path, "airport_market", [dict(code="AAA", market_id="M1"), dict(code="NEW", market_id="M1"), dict(code="BBB", market_id="M2")])
+    _insert(db_path, "airport_market", [dict(code="AAA", market_id="M1"), dict(code="NEW", market_id="M1"), dict(code="TNY", market_id="M1"), dict(code="BBB", market_id="M2")])
     _insert(db_path, "market_name", [dict(market_id="M1", name="Aaaville area"), dict(market_id="M2", name="Bbbville area")])
     add_overrides(db_path, [dict(code="AAA", name="Alpha International", city="Aaaville", country="United States", latitude=0, longitude=0)])
     add_airports(db_path, [dict(iata_code=c, name=n, city="", country="United States", latitude=0, longitude=0)
@@ -102,7 +104,7 @@ def test_facts_for_an_airport_with_no_first_year(conn):
 def test_destinations_add_both_directions(conn):
     f = _facts(conn, "AAA")
     assert f.destinations_by == "passengers"
-    assert [d.code for d in f.destinations] == ["BBB", "CCC", "NEW", "XXX", "YYY"]
+    assert [d.code for d in f.destinations] == ["BBB", "CCC", "NEW", "XXX", "YYY"]   # TNY (65) and FOR (60) are 6th and 7th
     assert f.destinations[0].passengers == 150
 
 
@@ -126,7 +128,7 @@ def test_places_need_24_flights_both_ways(conn):
 
 def test_market_only_when_shared(conn):
     f = _facts(conn, "AAA")
-    assert f.market == "Aaaville area" and f.market_airports == ["NEW"]
+    assert f.market == "Aaaville area" and f.market_airports == ["NEW"]   # not TNY: under 1% of AAA's passengers
     b = _facts(conn, "BBB")
     assert b.market is None and b.market_airports == []
 
@@ -137,7 +139,7 @@ def test_top_airlines_shares_and_international_share(conn):
     assert [name for name, _ in f.top_airlines] == ["Delta Air Lines", "Southwest Airlines", "Foo Airways"]
     assert [share for _, share in f.top_airlines] == pytest.approx([0.6, 0.3, 0.1])
     assert f.international_share == pytest.approx(0.1)
-    assert f.busiest_international.code == "FOR"
+    assert f.busiest_international.code == "FOR"   # abroad; not TNY, a US route with one international flight
 
 
 def test_longest_route_either_order(conn):

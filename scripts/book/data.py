@@ -12,6 +12,7 @@ US_WAC = "wac BETWEEN 1 AND 93"
 PLACE_MIN_FLIGHTS = 24   # the airport page's "How many places" default, flights both ways
 TOP_DESTINATIONS = 5
 TOP_AIRLINES = 3
+MARKET_MIN_SHARE = 0.01   # a city market's other airports, named only with at least 1% of this airport's passengers
 
 _COLUMN = {"passengers": "passengers_out + passengers_in", "freight": "freight_out + freight_in"}
 
@@ -116,6 +117,16 @@ def _routes(conn, code, year):
     return totals
 
 
+def _abroad(conn, others, year):
+    """Those of `others` outside the US, by their wac in airport_dir_year."""
+    others = list(others)
+    if not others:
+        return []
+    marks = ",".join("?" for _ in others)
+    return [r[0] for r in conn.execute(
+        f"SELECT airport FROM airport_dir_year WHERE year = ? AND airport IN ({marks}) AND NOT ({US_WAC})", [year, *others])]
+
+
 def _distance(conn, a, b):
     row = conn.execute("SELECT distance FROM pair_distance WHERE (a = ? AND b = ?) OR (a = ? AND b = ?)", (a, b, b, a)).fetchone()
     return row[0] if row else None
@@ -137,8 +148,9 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     key = 0 if by == "passengers" else 1
     top = sorted(routes, key=lambda o: (-routes[o][key], o))[:TOP_DESTINATIONS]
     places = [o for o, t in routes.items() if t[2] >= PLACE_MIN_FLIGHTS]
-    intl = [o for o, t in routes.items() if t[3] > 0]
-    busiest_intl = max(intl, key=lambda o: (routes[o][0], o), default=None)
+    # abroad by the other airport's own wac: a US route with an odd international flight on it isn't international
+    abroad = _abroad(conn, routes, last_year)
+    busiest_intl = max(abroad, key=lambda o: (routes[o][0], o), default=None)
 
     names, bts = _names(conn, [code] + list(routes))
 
@@ -151,7 +163,12 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     market, market_airports = None, []
     row = conn.execute("SELECT market_id FROM airport_market WHERE code = ?", (code,)).fetchone()
     if row:
-        market_airports = [r[0] for r in conn.execute("SELECT code FROM airport_market WHERE market_id = ? AND code != ? ORDER BY code", (row[0], code))]
+        floor = MARKET_MIN_SHARE * (last.passengers if last else 0)
+        market_airports = [r[0] for r in conn.execute(
+            f"""SELECT m.code FROM airport_market AS m JOIN airport_dir_year AS y ON y.airport = m.code AND y.year = ?
+                WHERE m.market_id = ? AND m.code != ? GROUP BY m.code HAVING SUM({_COLUMN['passengers']}) >= ? AND SUM({_COLUMN['passengers']}) > 0
+                ORDER BY m.code""",
+            (last_year, row[0], code, floor))]
         if market_airports:
             name = conn.execute("SELECT name FROM market_name WHERE market_id = ?", (row[0],)).fetchone()
             market = name[0] if name else None

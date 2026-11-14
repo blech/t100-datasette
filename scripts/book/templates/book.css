@@ -28,10 +28,10 @@ section.title .years { font-size: 1.2em; color: #71717a; }
 section.contents h2 { font-size: 1.6em; font-weight: 400; margin: 0 0 1em; }
 section.contents ol { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 2em; font-size: 0.85em; }
 section.contents li { break-inside: avoid; padding: 0.12em 0; }
-section.contents a { color: inherit; text-decoration: none; display: flex; }
-section.contents .code { width: 3.2em; font-weight: 700; }
-section.contents .place { flex: 1; }
-section.contents a::after { content: target-counter(attr(href), page); }
+/* not flex: WeasyPrint resolves no target-counter inside a flex link, so the page number floats right instead */
+section.contents a { color: inherit; text-decoration: none; display: block; }
+section.contents .code { display: inline-block; width: 3.2em; font-weight: 700; }
+section.contents a::after { float: right; content: target-counter(attr(href url), page); }
 
 /* data page */
 section.data header h1 { font-size: 2.6em; margin: 0; line-height: 1; }

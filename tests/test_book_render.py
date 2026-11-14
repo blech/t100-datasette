@@ -75,6 +75,13 @@ def test_freight_ranked_destinations_put_freight_first():
     assert table.index("Passengers") < table.index("Freight")
 
 
+def test_contents_page_numbers_follow_the_links():
+    html = render()
+    assert "target-counter(attr(href url), page)" in html
+    rule = re.search(r"section\.contents a \{([^}]*)\}", html).group(1)
+    assert "flex" not in rule   # WeasyPrint resolves no target-counter inside a flex link: every page number reads 0
+
+
 def test_poster_is_inlined_once():
     html = render()
     assert html.count('id="ATL-r1"') == 1

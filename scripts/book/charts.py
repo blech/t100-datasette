@@ -10,7 +10,7 @@ PASSENGER_COLOR = "#e36d2a"
 FREIGHT_COLOR = "#64748b"
 
 WIDTH, HEIGHT = 400, 230
-LEFT, RIGHT, TOP, BOTTOM = 78, 4, 26, 20
+LEFT, RIGHT, TOP, BOTTOM = 78, 18, 26, 20   # room on the right for half the last year's label
 # WeasyPrint doesn't apply the page's CSS inside inline SVG, so the look is set on the elements themselves
 FONT = 'font-family="Helvetica Neue, Helvetica, Arial, sans-serif"'
 INK, MUTED, RULE = "#18181b", "#52525b", "#e4e4e7"
