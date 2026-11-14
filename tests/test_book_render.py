@@ -82,6 +82,11 @@ def test_contents_page_numbers_follow_the_links():
     assert "flex" not in rule   # WeasyPrint resolves no target-counter inside a flex link: every page number reads 0
 
 
+def test_busiest_international_in_the_ranking_measure():
+    f = facts(destinations_by="freight", busiest_international=Destination("HKG", "Hong Kong International", 0, 20_000_000))
+    assert "HKG Hong Kong International (10,000 tons)" in _section(render([(entry(), f)]), "data-ATL")
+
+
 def test_poster_is_inlined_once():
     html = render()
     assert html.count('id="ATL-r1"') == 1

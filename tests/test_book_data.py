@@ -31,7 +31,7 @@ def build_world(db_path):
         _year(2025, "FFF", 5, 5000), _year(2025, "NEW", 300, 0), _year(2025, "FOR", 99999, 99999, wac=500),
         _year(1990, "AAA", 500, 40), _year(1990, "BBB", 600, 30), _year(1990, "CCC", 100, 1), _year(1990, "FFF", 0, 2000),
         _year(2020, "AAA", 200, 80), _year(2020, "NEW", 100, 0),
-        _year(2025, "TNY", 5, 0),   # in AAA's market, but under 1% of AAA's passengers
+        _year(2025, "TNY", 5, 0), _year(2025, "FR2", 999, 0, wac=500),   # in AAA's market, but under 1% of AAA's passengers
     ])
     _insert(db_path, "route_year_totals", [
         _route("AAA", "BBB", 100, deps=12), _route("BBB", "AAA", 50, deps=12),
@@ -41,6 +41,8 @@ def build_world(db_path):
         _route("AAA", "FOR", 60, deps=30, domestic_deps=0),
         _route("AAA", "TNY", 65, deps=2, domestic_deps=1),   # a domestic route with an international flight on it
         _route("FFF", "CCC", 50, freight=100),
+        _route("FFF", "FOR", 0, freight=300, domestic_deps=0), _route("FFF", "FR2", 40, freight=0, domestic_deps=0),
+        _route("BBB", "FR2", 0, freight=0, domestic_deps=0),
     ])
     _insert(db_path, "pair_distance", [dict(a="AAA", b="BBB", distance=500), dict(a="FOR", b="AAA", distance=4000)])
     _insert(db_path, "airport_names", [dict(code=c, name=f"{c.title()}ville, {c[:2]}") for c in ("AAA", "BBB", "CCC", "FFF", "NEW", "YYY")])
@@ -111,8 +113,16 @@ def test_destinations_add_both_directions(conn):
 def test_freight_only_airport_ranks_destinations_by_freight(conn):
     f = _facts(conn, "FFF", top=2)   # FFF is 5th by passengers, so out of a top 2
     assert f.destinations_by == "freight"
-    assert [d.code for d in f.destinations] == ["AAA", "CCC"]
+    assert [d.code for d in f.destinations] == ["AAA", "FOR", "CCC"]   # not FR2: no freight
     assert f.destinations[0].freight_lb == 900
+
+
+def test_busiest_international_follows_the_ranking_measure(conn):
+    assert _facts(conn, "FFF", top=2).busiest_international.code == "FOR"   # by freight, though FR2 has the passengers
+
+
+def test_busiest_international_needs_some_traffic(conn):
+    assert _facts(conn, "BBB").busiest_international is None   # its one route abroad carried nothing
 
 
 def test_destination_without_a_name_falls_back(conn):

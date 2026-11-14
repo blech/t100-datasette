@@ -146,11 +146,13 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     routes = _routes(conn, code, last_year)
     by = "passengers" if entry.in_passengers else "freight"
     key = 0 if by == "passengers" else 1
-    top = sorted(routes, key=lambda o: (-routes[o][key], o))[:TOP_DESTINATIONS]
+    # ranked by the page's measure, then code; a destination with none of that measure isn't one of its busiest
+    ranked = sorted((o for o in routes if routes[o][key] > 0), key=lambda o: (-routes[o][key], o))
+    top = ranked[:TOP_DESTINATIONS]
     places = [o for o, t in routes.items() if t[2] >= PLACE_MIN_FLIGHTS]
     # abroad by the other airport's own wac: a US route with an odd international flight on it isn't international
-    abroad = _abroad(conn, routes, last_year)
-    busiest_intl = max(abroad, key=lambda o: (routes[o][0], o), default=None)
+    abroad = set(_abroad(conn, routes, last_year))
+    busiest_intl = next((o for o in ranked if o in abroad), None)
 
     names, bts = _names(conn, [code] + list(routes))
 

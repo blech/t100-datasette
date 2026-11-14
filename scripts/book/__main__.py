@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from scripts.book.data import airport_facts, book_airports
-from scripts.book.pdf import library_env, needs_library_path, write_pdf
+from scripts.book.pdf import broken_spreads, library_env, needs_library_path, write_pdf
 from scripts.book.posters import PosterError, load_posters
 from scripts.book.render import PAGE_SIZES, book_html
 
@@ -70,11 +70,12 @@ def main(argv: list[str] | None = None) -> int:
         out.write_text(html)
         print(f"{len(airports)} airports: {out}")
         return 0
-    data_pages, pages = write_pdf(html, args.out, REPO)
+    data_pages, poster_pages, pages = write_pdf(html, args.out, REPO)
     print(f"{pages} pages, {len(airports)} airports: {args.out}")
-    odd = [p for p in data_pages if p % 2]
-    if odd:
-        print(f"data pages on right-hand pages: {odd}", file=sys.stderr)
+    broken = broken_spreads(data_pages, poster_pages)
+    if broken:
+        codes = [e.code for (e, _), d in zip(airports, data_pages) if d in broken]
+        print(f"spreads broken (data page not facing its poster, or too long for one page): {', '.join(codes)}", file=sys.stderr)
         return 1
     return 0
 

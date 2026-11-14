@@ -3,6 +3,7 @@ import re
 import pytest
 
 from scripts.book.__main__ import main
+from scripts.book.pdf import broken_spreads
 from tests.test_book_data import build_world
 from tests.test_book_render import poster
 
@@ -32,6 +33,12 @@ def test_only_keeps_the_book_order(world):
     assert main(_args(world, "--only", "FFF,AAA")) == 0
     html = world[2].with_suffix(".html").read_text()
     assert re.findall(r'<section id="data-(\w+)"', html) == ["AAA", "FFF"]
+
+
+def test_broken_spreads():
+    assert broken_spreads([4, 6], [5, 7]) == []
+    assert broken_spreads([4, 8], [7, 9]) == [4]   # a data page ran onto a second page
+    assert broken_spreads([4, 6], [5]) == [6]      # a poster missing altogether
 
 
 def test_only_rejects_an_unknown_code(world, capsys):

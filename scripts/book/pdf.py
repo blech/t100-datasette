@@ -21,12 +21,27 @@ def library_env() -> dict:
     return env
 
 
-def write_pdf(html: str, out: Path, base_url: Path) -> tuple[list[int], int]:
-    """Writes the PDF; returns the (1-based) page numbers of the data pages and the page count."""
+def write_pdf(html: str, out: Path, base_url: Path) -> tuple[list[int], list[int], int]:
+    """Writes the PDF; returns the (1-based) page numbers of the data pages, of the poster pages, and the page count."""
     import weasyprint
 
     document = weasyprint.HTML(string=html, base_url=str(base_url)).render()
     out.parent.mkdir(parents=True, exist_ok=True)
     document.write_pdf(out)
-    data_pages = [i for i, page in enumerate(document.pages, 1) if any(a.startswith("data-") for a in page.anchors)]
-    return data_pages, len(document.pages)
+
+    first = {}   # anchor -> the page it starts on (a section running over several pages has its anchor on each)
+    for i, page in enumerate(document.pages, 1):
+        for a in page.anchors:
+            first.setdefault(a, i)
+
+    def pages_with(prefix):
+        return sorted(p for a, p in first.items() if a.startswith(prefix))
+
+    return pages_with("data-"), pages_with("poster-"), len(document.pages)
+
+
+def broken_spreads(data_pages: list[int], poster_pages: list[int]) -> list[int]:
+    """The data pages that don't face their poster: on a right-hand page, or with the poster not on the next page (a data
+    page that ran onto a second page pushes its poster on, while still starting on a left-hand page)."""
+    posters = poster_pages + [None] * (len(data_pages) - len(poster_pages))
+    return [d for d, p in zip(data_pages, posters) if d % 2 or p != d + 1]

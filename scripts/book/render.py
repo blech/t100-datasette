@@ -27,8 +27,12 @@ def _peak(f):
 
 
 def _international(f):
+    """In the page's measure: passengers, or tons where the destinations are ranked by freight."""
     d = f.busiest_international
-    return f"{d.code} {d.label} ({dense_count(d.passengers)})" if d else DASH
+    if not d:
+        return DASH
+    amount = tons(d.freight_lb) if f.destinations_by == "freight" else dense_count(d.passengers)
+    return f"{d.code} {d.label} ({amount})"
 
 
 def _longest(f):
