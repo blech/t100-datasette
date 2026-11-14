@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<style>{{ css }}</style>
+</head>
+<body>
+
+<section id="title" class="title">
+  <h1>{{ title }}</h1>
+  {% if subtitle %}<p class="subtitle">{{ subtitle }}</p>{% endif %}
+  <p class="years">{{ first_year }}–{{ last_year }}</p>
+</section>
+
+<section id="blank" class="blank"></section>
+
+<section id="contents" class="contents">
+  <h2>Contents</h2>
+  <ol>
+  {% for p in pages %}
+    <li><a href="#data-{{ p.code }}"><span class="code">{{ p.code }}</span> <span class="place">{{ p.place }}</span></a></li>
+  {% endfor %}
+  </ol>
+</section>
+
+{% for p in pages %}
+<section id="data-{{ p.code }}" class="data">
+  <header>
+    <h1>{{ p.code }}</h1>
+    <p class="place">{{ p.place }}</p>
+    <p class="name">{{ p.name }}</p>
+  </header>
+  <table class="facts">
+  {% for label, value in p.rows %}
+    <tr class="fact"><th>{{ label }}</th><td>{{ value }}</td></tr>
+  {% endfor %}
+  </table>
+  {% if p.destinations %}
+  <h2>Top destinations, by {{ p.destinations_by }}</h2>
+  <table class="destinations">
+    <tr><th></th><th></th>{% for c in p.columns %}<th class="num">{{ c }}</th>{% endfor %}</tr>
+  {% for code, label, cells in p.destinations %}
+    <tr><td class="code">{{ code }}</td><td>{{ label }}</td>{% for cell in cells %}<td class="num">{{ cell }}</td>{% endfor %}</tr>
+  {% endfor %}
+  </table>
+  {% endif %}
+  <div class="charts">
+    {{ p.passenger_chart }}
+    {{ p.freight_chart }}
+  </div>
+</section>
+<section id="poster-{{ p.code }}" class="poster">
+  {{ p.poster }}
+  <p class="code">{{ p.code }}</p>
+  <p class="place">{{ p.place }}</p>
+</section>
+{% endfor %}
+
+<section id="credits" class="credits">
+  <p>Passenger and freight figures: US Bureau of Transportation Statistics, T-100 segment data, {{ first_year }}–{{ last_year }}.</p>
+  <p>Airport diagrams: Airport Cities, from OpenStreetMap data (© OpenStreetMap contributors).</p>
+</section>
+
+</body>
+</html>
