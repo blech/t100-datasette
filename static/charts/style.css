@@ -154,3 +154,37 @@ details.note summary {
 .rank-line {
   margin: 4px 0 12px;
 }
+
+/* an airport's diagram (its over-time page): floated top right, drawn in the theme's ink, cleared before the charts */
+.airport-diagram {
+  float: right;
+  width: min(320px, 40%);
+  margin: 0 0 16px 24px;
+  --ac-runway: var(--fg);
+  --ac-taxi: var(--muted);
+  --ac-apron: var(--muted);
+  --ac-ink: var(--muted);
+}
+.airport-diagram svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.airport-diagram figcaption {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+.airport-diagram figcaption a {
+  color: inherit;
+}
+.after-diagram {
+  clear: both;
+}
+@media (max-width: 600px) {
+  .airport-diagram {
+    width: min(200px, 45%);
+    margin-left: 16px;
+  }
+}

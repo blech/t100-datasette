@@ -699,6 +699,18 @@ async def airport_rank_line(datasette, origin, foreign):
     return rank_sentences(origin, year, rows)
 
 
+DIAGRAMS = Path(__file__).resolve().parent.parent / "static" / "svg" / "diagram"
+
+
+def airport_diagram(code):
+    """The airport's diagram (runways, taxiways, aprons, a scale bar) from static/svg/diagram/<CODE>.svg, inline so it takes
+    the page's colours from its --ac-* properties, or empty if there is none."""
+    if not re.fullmatch(r"[A-Z0-9]{3}", code):
+        return ""
+    path = DIAGRAMS / f"{code}.svg"
+    return Markup(path.read_text(encoding="utf-8")) if path.is_file() else ""
+
+
 def airport_view(template, crumb):
     """One of an airport's views: its charts over time (no crumb of its own), its destinations matrix, or what changed."""
 
@@ -720,6 +732,7 @@ def airport_view(template, crumb):
                 "foreign": await is_foreign(datasette, origin),
                 "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, await is_foreign(datasette, origin)),
                 "rank_line": await airport_rank_line(datasette, origin, await is_foreign(datasette, origin)) if template == "airport.html" else "",
+                "diagram": airport_diagram(origin) if template == "airport.html" else "",
                 **airport_direction(request),
             },
             request=request,

@@ -130,3 +130,17 @@ def test_the_at_least_choices_are_written_with_the_counted_number(ds, path):
     choice = lambda q: re.search(r'<select id="ap-min"[^>]*>(.*?)</select>', get(ds, path + q).text, re.S).group(1)
     assert re.findall(r'<option value="(\d+)"[^>]*>([^<]+)</option>', choice("")) == [("1", "once"), ("12", "24 times"), ("52", "104 times"), ("365", "730 times")]
     assert re.findall(r'<option value="(\d+)"[^>]*>([^<]+)</option>', choice("?dir=in"))[1] == ("12", "12 times")
+
+
+def test_an_airports_diagram_sits_on_its_over_time_page_only(ds):
+    r = get(ds, "/airports/atl")
+    assert '<figure class="airport-diagram"><svg' in r.text and 'aria-label="ATL airport diagram' in r.text
+    assert '<figcaption>Airport diagram data from <a href="https://www.openstreetmap.org/">OpenStreetMap</a></figcaption>' in r.text
+    # floated beside the heading, cleared before the charts
+    assert r.text.index('class="airport-diagram"') < r.text.index('id="title"') < r.text.index('<h2 class="after-diagram">How big</h2>')
+    assert "airport-diagram" not in get(ds, "/airports/ATL/destinations").text
+    assert "airport-diagram" not in get(ds, "/airports/ATL/changes").text
+
+
+def test_an_airport_without_a_diagram_has_no_figure(ds):
+    assert "airport-diagram" not in get(ds, "/airports/BUR").text

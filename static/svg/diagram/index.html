@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<meta charset="utf-8"><title>Airport diagrams</title>
+<style>
+  :root{--bg:#fff;--fg:#000;--muted:#777;--line:#ccc}
+  [data-theme=dark]{--bg:#09090b;--fg:#fafafa;--muted:#a1a1aa;--line:#343436}
+  body{margin:2rem auto;max-width:48rem;padding:0 1rem;font:18px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+  .fig{float:right;width:min(400px,45%);margin:0 0 1rem 1.5rem;
+       --ac-runway:var(--fg);--ac-taxi:var(--muted);--ac-apron:var(--muted);--ac-ink:var(--muted)}
+  .fig svg{display:block;width:100%;height:auto}
+  section{overflow:auto;border-top:1px solid var(--line);padding-top:1rem;margin-top:1rem}
+  h2{margin:.2rem 0}
+  @media(max-width:36rem){.fig{float:none;width:100%;margin:0 0 1rem}}
+</style>
+<button onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme=='dark'?'':'dark'">Toggle theme</button>
+<div id="out"></div>
+<script>
+const codes=["DEN", "DFW", "ANC", "HNL", "JFK", "ATL", "LAX", "MDW", "ORD", "MCO", "LAS", "MIA", "SFO", "CLT", "SEA", "PHX", "EWR", "IAH", "BOS", "MSP", "DTW", "LGA", "FLL", "PHL", "IAD", "SLC", "SAN", "BNA", "BWI", "TPA", "DCA", "AUS", "PDX", "DAL", "RDU", "STL", "HOU", "SMF", "SJU", "MSY", "MCI", "SNA", "RSW", "SAT", "SJC", "IND", "CLE", "PIT", "OAK", "CMH", "CVG", "MEM", "SDF", "ONT", "RFD", "AFW", "ILN", "SBD", "ABE", "BDL", "LAL", "RIC", "MHT"];
+Promise.all(codes.map(async c=>{
+  const r=await fetch(c+'.svg'); if(!r.ok) return '';
+  const svg=await r.text();
+  return `<section><div class="fig">${svg}</div><h2>${c}</h2>
+  <p style="color:var(--muted)">${c} diagram, with scale ruler. Text wraps around the figure on wide screens; it drops above the text on narrow ones.</p></section>`;
+})).then(h=>out.innerHTML=h.join(''));
+</script>

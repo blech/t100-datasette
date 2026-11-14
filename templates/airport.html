@@ -7,12 +7,14 @@
 {% block body_attrs %} data-origin="{{ origin }}" data-first-year="{{ first_year or '' }}" data-last-year="{{ last_year or '' }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
 
 {% block content %}
+    {# the airport's diagram at the top right, the heading and intro beside it; the charts start below it #}
+    {% if diagram %}<figure class="airport-diagram">{{ diagram }}<figcaption>Airport diagram data from <a href="https://www.openstreetmap.org/">OpenStreetMap</a></figcaption></figure>{% endif %}
     <h1 id="title">{{ origin }}: over time</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
     {% if rank_line %}<p class="rank-line" id="rank-line">{{ rank_line }}</p>{% endif %}
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
-    <h2>How big</h2>
+    <h2 class="after-diagram">How big</h2>
     <p class="chart-sentence">
       Show <select id="ap-measure" aria-label="Measure"></select>
       for <select id="ap-flights" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>,
