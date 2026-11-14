@@ -11,6 +11,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+book = [
+    "weasyprint>=70.0",
+]
 dev = [
     "pytest>=8",
     "pyyaml>=6",

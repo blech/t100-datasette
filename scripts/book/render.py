@@ -81,13 +81,12 @@ def _page(entry: BookAirport, f: AirportFacts, poster: str):
 
 
 def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[str, str], *, page_size: str = "letter",
-              fonts_dir: Path, title: str = "US airports", subtitle: str = "") -> str:
+              title: str = "US airports", subtitle: str = "") -> str:
     if page_size not in PAGE_SIZES:
         raise ValueError(f"unknown page size {page_size!r}: one of {', '.join(PAGE_SIZES)}")
     env = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=True)
     css = env.get_template("book.css").render(
         page_width=PAGE_SIZES[page_size][0], page_height=PAGE_SIZES[page_size][1], root_size=ROOT_SIZES[page_size],
-        figures_font=(Path(fonts_dir) / "b612-mono-v16-latin-regular.woff2").resolve().as_uri(),
     )
     first = airports[0][1] if airports else None
     return env.get_template("book.html").render(

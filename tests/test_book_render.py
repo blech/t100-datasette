@@ -1,13 +1,11 @@
 import re
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 
 from scripts.book.data import AirportFacts, BookAirport, Destination, YearFigures
 from scripts.book.render import TABLE_ROWS, book_html
 
-FONTS = Path(__file__).resolve().parent.parent / "static" / "common" / "fonts"
 
 
 def facts(code="ATL", **kw):
@@ -35,7 +33,7 @@ def poster(code):
 
 def render(airports=None, **kw):
     airports = airports or [(entry("ATL"), facts("ATL")), (entry("MEM"), facts("MEM"))]
-    return book_html(airports, {e.code: poster(e.code) for e, _ in airports}, fonts_dir=FONTS, **kw)
+    return book_html(airports, {e.code: poster(e.code) for e, _ in airports}, **kw)
 
 
 def _section(html, id_):

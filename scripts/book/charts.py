@@ -9,8 +9,11 @@ from scripts.book.format import dense_count
 PASSENGER_COLOR = "#e36d2a"
 FREIGHT_COLOR = "#64748b"
 
-WIDTH, HEIGHT = 600, 200
-LEFT, RIGHT, TOP, BOTTOM = 70, 6, 22, 18
+WIDTH, HEIGHT = 400, 230
+LEFT, RIGHT, TOP, BOTTOM = 78, 4, 26, 20
+# WeasyPrint doesn't apply the page's CSS inside inline SVG, so the look is set on the elements themselves
+FONT = 'font-family="Helvetica Neue, Helvetica, Arial, sans-serif"'
+INK, MUTED, RULE = "#18181b", "#52525b", "#e4e4e7"
 
 
 def _step(top):
@@ -37,21 +40,21 @@ def bar_chart(points, *, first_year, last_year, color, label, scale=1.0):
         return base - v / ceiling * plot_h
 
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}" width="100%" class="chart">',
-           f'<text class="title" x="0" y="12">{escape(label)}</text>']
+           f'<text class="title" x="0" y="13" {FONT} font-size="14" font-weight="700" fill="{INK}">{escape(label)}</text>']
     tick = 0
     while tick <= ceiling + 1e-9:
         y = y_of(tick)
-        out.append(f'<line class="grid" x1="{LEFT}" x2="{WIDTH - RIGHT}" y1="{y:.2f}" y2="{y:.2f}"/>')
-        out.append(f'<text class="y-label" x="{LEFT - 6}" y="{y + 3:.2f}" text-anchor="end">{escape(dense_count(tick))}</text>')
+        out.append(f'<line class="grid" x1="{LEFT}" x2="{WIDTH - RIGHT}" y1="{y:.2f}" y2="{y:.2f}" stroke="{RULE}" stroke-width="0.8"/>')
+        out.append(f'<text class="y-label" x="{LEFT - 6}" y="{y + 3:.2f}" text-anchor="end" {FONT} font-size="12" fill="{MUTED}">{escape(dense_count(tick))}</text>')
         tick += step
     for year, v in sorted(values.items()):
         if v <= 0:
             continue
         x = LEFT + (year - first_year) * slot + slot * 0.1
         out.append(f'<rect class="bar" x="{x:.2f}" y="{y_of(v):.2f}" width="{slot * 0.8:.2f}" height="{base - y_of(v):.2f}" fill="{color}"/>')
-    out.append(f'<line class="baseline" x1="{LEFT}" x2="{WIDTH - RIGHT}" y1="{base}" y2="{base}"/>')
+    out.append(f'<line class="baseline" x1="{LEFT}" x2="{WIDTH - RIGHT}" y1="{base}" y2="{base}" stroke="{MUTED}" stroke-width="1"/>')
     for year in sorted({y for y in range(first_year, last_year + 1) if y % 10 == 0} | {first_year, last_year}):
         x = LEFT + (year - first_year + 0.5) * slot
-        out.append(f'<text class="x-label" x="{x:.2f}" y="{HEIGHT - 4}" text-anchor="middle">{year}</text>')
+        out.append(f'<text class="x-label" x="{x:.2f}" y="{HEIGHT - 4}" text-anchor="middle" {FONT} font-size="12" fill="{MUTED}">{year}</text>')
     out.append("</svg>")
     return "".join(out)

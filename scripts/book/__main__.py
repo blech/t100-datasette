@@ -1,0 +1,83 @@
+"""Build the airport book: uv run --group book python -m scripts.book [options]. See README.md, "Airport book"."""
+
+import argparse
+import os
+import sqlite3
+import subprocess
+import sys
+from pathlib import Path
+
+from scripts.book.data import airport_facts, book_airports
+from scripts.book.pdf import library_env, needs_library_path, write_pdf
+from scripts.book.posters import PosterError, load_posters
+from scripts.book.render import PAGE_SIZES, book_html
+
+REPO = Path(__file__).resolve().parents[2]
+POSTERS = Path.home() / "Documents (Local)" / "code" / "airportcity" / "posters"
+
+
+def default_db() -> Path:
+    """t100.db in the main checkout, which is the same file from any worktree."""
+    common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=REPO,
+                            capture_output=True, text=True, check=True).stdout.strip()
+    return Path(common).parent / "t100.db"
+
+
+def parse(argv):
+    p = argparse.ArgumentParser(prog="python -m scripts.book", description="Build the airport book as a PDF.")
+    p.add_argument("--db", type=Path, help="t100.db (default: the main checkout's)")
+    p.add_argument("--posters", type=Path, default=POSTERS, help=f"poster SVGs (default: {POSTERS})")
+    p.add_argument("--out", type=Path, default=REPO / "book" / "out" / "airport-book.pdf")
+    p.add_argument("--year", type=int, default=2025, help="the book's year: ranks, destinations, airlines")
+    p.add_argument("--first-year", type=int, default=1990)
+    p.add_argument("--top-passengers", type=int, default=50)
+    p.add_argument("--top-freight", type=int, default=50)
+    p.add_argument("--only", help="comma-separated codes, for a quick draft of a few spreads")
+    p.add_argument("--page-size", choices=sorted(PAGE_SIZES), default="letter")
+    p.add_argument("--html", action="store_true", help="write the HTML instead of the PDF (no WeasyPrint needed)")
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse(sys.argv[1:] if argv is None else argv)
+    if not args.html and argv is None and needs_library_path():
+        # macOS reads the library path only when a process starts, so restart with Homebrew's Pango on it
+        os.execve(sys.executable, [sys.executable, "-m", "scripts.book", *sys.argv[1:]], library_env())
+    db = args.db or default_db()
+    conn = sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        entries = book_airports(conn, args.year, args.top_passengers, args.top_freight)
+        if args.only:
+            wanted = [c.strip().upper() for c in args.only.split(",") if c.strip()]
+            unknown = sorted(set(wanted) - {e.code for e in entries})
+            if unknown:
+                print(f"not in the book: {', '.join(unknown)}", file=sys.stderr)
+                return 2
+            entries = [e for e in entries if e.code in wanted]
+        try:
+            posters = load_posters(args.posters, [e.code for e in entries])
+        except PosterError as e:
+            print(e, file=sys.stderr)
+            return 2
+        airports = [(e, airport_facts(conn, e, args.first_year, args.year)) for e in entries]
+    finally:
+        conn.close()
+    subtitle = f"The {args.top_passengers} busiest by passengers and the {args.top_freight} busiest by freight in {args.year}"
+    html = book_html(airports, posters, page_size=args.page_size, subtitle=subtitle)
+    if args.html:
+        out = args.out.with_suffix(".html")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(html)
+        print(f"{len(airports)} airports: {out}")
+        return 0
+    data_pages, pages = write_pdf(html, args.out, REPO)
+    print(f"{pages} pages, {len(airports)} airports: {args.out}")
+    odd = [p for p in data_pages if p % 2]
+    if odd:
+        print(f"data pages on right-hand pages: {odd}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -23,8 +23,8 @@ def _carrier(group_id, group_name, pax, freight=0, domestic=1, airport="AAA", ye
                 deps=1, arrs=1, seats_out=0, seats_in=0, passengers_out=pax, passengers_in=0, freight_out=freight, freight_in=0)
 
 
-@pytest.fixture
-def conn(db_path):
+def build_world(db_path):
+    """A small world of airports and routes for the book's tests; also used by test_book_cli."""
     _insert(db_path, "airport_dir_year", [
         # 2025: BBB and CCC tie on passengers; FFF is freight-only; NEW has no 1990; FOR is abroad
         _year(2025, "AAA", 600, 60, pax_in=400, freight_in=40), _year(2025, "BBB", 800, 50), _year(2025, "CCC", 800, 10),
@@ -52,6 +52,11 @@ def conn(db_path):
         _carrier("G1", "Delta Air Lines Inc.", 600), _carrier("G2", "Southwest Airlines Co. (incl. AirTran)", 300),
         _carrier("G3", "Foo Airways", 100, domestic=0), _carrier("G4", "Cargo Co.", 0, freight=100),
     ])
+
+
+@pytest.fixture
+def conn(db_path):
+    build_world(db_path)
     c = sqlite3.connect(db_path)
     c.row_factory = sqlite3.Row
     yield c

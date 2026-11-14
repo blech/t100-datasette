@@ -46,8 +46,8 @@
   </table>
   {% endif %}
   <div class="charts">
-    {{ p.passenger_chart }}
-    {{ p.freight_chart }}
+    <div class="chart-box">{{ p.passenger_chart }}</div>
+    <div class="chart-box">{{ p.freight_chart }}</div>
   </div>
 </section>
 <section id="poster-{{ p.code }}" class="poster">

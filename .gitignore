@@ -31,3 +31,6 @@ explore/cubes.duckdb
 # JavaScript build output and dependencies (npm run bundle)
 static/dist/
 node_modules/
+
+# airport book output (scripts/book)
+book/out/

@@ -112,3 +112,15 @@ Read it with `scripts/usage_report.py` (standard library only; it is in the imag
     flyctl ssh console -a blech-datasette-t100 -C "python3 scripts/usage_report.py /mnt/db/usage --month 2026-10"
 
 `--prune 12` also deletes files older than 12 months. The log is per machine, so it assumes the single machine this app runs on.
+
+## Airport book
+
+`scripts/book/` makes a printable book of the busiest US airports: for each airport a left-hand page of its figures (a table, its top destinations, and passenger and freight bar charts from 1990) facing its Airport Cities poster. Title, blank and contents pages come first and a credits page last; with the default 2025 top 50 by passengers and top 50 by freight that is 63 airports and 130 US Letter pages. It reads `t100.db`'s rollup tables directly (no server) and is not part of the site or its deploy. The design is in `docs/superpowers/specs/2026-11-14-airport-book-design.md`.
+
+    uv run --group book python -m scripts.book                       # book/out/airport-book.pdf
+    uv run --group book python -m scripts.book --only ATL,MEM --out book/out/draft.pdf
+    uv run python -m scripts.book --html                             # HTML only, no WeasyPrint
+
+Options: `--db` (default: the main checkout's `t100.db`, from any worktree), `--posters` (default `~/Documents (Local)/code/airportcity/posters`), `--out`, `--year`, `--first-year`, `--top-passengers`, `--top-freight`, `--only` (a few spreads; ranks and order still come from the whole book) and `--page-size letter|half-letter`. The table's rows are one list, `TABLE_ROWS` in `scripts/book/render.py`.
+
+WeasyPrint is in its own `book` dependency group, so CI and the Docker image don't install it, and it needs Pango (`brew install pango`). On a Mac the script restarts itself with Homebrew's libraries on `DYLD_FALLBACK_LIBRARY_PATH`. The PDF tests skip without it; run them with `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib uv run --group book python -m pytest tests/test_book_pdf.py` (through `python -m`, because macOS strips `DYLD_*` from the `pytest` launcher script).
