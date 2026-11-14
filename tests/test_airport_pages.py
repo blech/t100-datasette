@@ -135,7 +135,9 @@ def test_the_at_least_choices_are_written_with_the_counted_number(ds, path):
 def test_an_airports_diagram_sits_on_its_over_time_page_only(ds):
     r = get(ds, "/airports/atl")
     assert '<figure class="airport-diagram"><svg' in r.text and 'aria-label="ATL airport diagram' in r.text
-    assert '<figcaption>Airport diagram data from <a href="https://www.openstreetmap.org/">OpenStreetMap</a></figcaption>' in r.text
+    # the credit sits with the intro, before the direction choice
+    credit = r.text.index('<p class="note diagram-credit">Airport diagram data from <a href="https://www.openstreetmap.org/">OpenStreetMap</a>.</p>')
+    assert r.text.index('id="subtitle"') < credit < r.text.index('id="dir"')
     # floated beside the heading, cleared before the charts
     assert r.text.index('class="airport-diagram"') < r.text.index('id="title"') < r.text.index('<h2 class="after-diagram">How big</h2>')
     assert "airport-diagram" not in get(ds, "/airports/ATL/destinations").text
@@ -143,4 +145,5 @@ def test_an_airports_diagram_sits_on_its_over_time_page_only(ds):
 
 
 def test_an_airport_without_a_diagram_has_no_figure(ds):
-    assert "airport-diagram" not in get(ds, "/airports/BUR").text
+    page = get(ds, "/airports/BUR").text
+    assert "airport-diagram" not in page and "diagram-credit" not in page

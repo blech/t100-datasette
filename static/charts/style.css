@@ -170,14 +170,11 @@ details.note summary {
   width: 100%;
   height: auto;
 }
-.airport-diagram figcaption {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: right;
-}
-.airport-diagram figcaption a {
-  color: inherit;
+/* up level with the views line's text, just under the header's rule: back over the line (14px at 1.5) and its 16px margin */
+@media (min-width: 601px) {
+  .airport-diagram {
+    margin-top: -37px;
+  }
 }
 .after-diagram {
   clear: both;
