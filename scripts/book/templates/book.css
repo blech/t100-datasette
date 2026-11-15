@@ -10,8 +10,10 @@
 /* no number on the title, endpapers or back cover */
 @page bare { @bottom-left { content: none; } @bottom-right { content: none; } }
 section.title { page: bare; }
-section.endpaper { page: bare; }
 section.back-cover { page: bare; }
+/* endpapers bleed: no margin, no number */
+@page endpaper { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+section.endpaper { page: endpaper; }
 
 html { font-size: {{ root_size }}; }
 body {
@@ -75,11 +77,14 @@ section.poster svg { display: block; width: 100%; height: auto; }
 {% endfor %}
 
 /* endpapers: a grid of the posters, the runway diagrams, or the codes, in book order */
-section.endpaper .grid { display: grid; gap: 0.6em; }
-section.endpaper .tile svg { display: block; width: 100%; height: auto; }
-section.endpaper a.tile { color: inherit; text-decoration: none; text-align: center; padding: 0.9em 0; border: 0.5pt solid #e4e4e7; }
-section.endpaper a.tile .code { display: block; font-size: 1.7em; font-weight: 700; }
-section.endpaper a.tile::after { content: target-counter(attr(href url), page); display: block; font-size: 0.75em; color: #71717a; }
+/* the grid fills the whole page; each tile is scaled to cover its cell and cropped (preserveAspectRatio slice, render.py) */
+section.endpaper .grid { display: grid; width: {{ page_width }}; height: {{ page_height }}; }
+section.endpaper .tile { overflow: hidden; min-height: 0; }
+section.endpaper .tile svg { display: block; width: 100%; height: 100%; }
+section.endpaper a.tile { color: inherit; text-decoration: none; text-align: center; border: 0.5pt solid #e4e4e7;
+                          display: block; padding-top: {{ code_tile_padding }}; line-height: 1.3; }
+section.endpaper a.tile .code { display: block; font-size: 1.9em; font-weight: 700; }
+section.endpaper a.tile::after { content: target-counter(attr(href url), page); display: block; font-size: 0.8em; color: #71717a; }
 
 /* credits */
 section.credits { font-size: 0.85em; color: #52525b; padding-top: 70%; }

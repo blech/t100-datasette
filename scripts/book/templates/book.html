@@ -9,11 +9,11 @@
 
 {% macro endpaper(e) %}
 <section id="endpaper-{{ e.side }}" class="endpaper endpaper-{{ e.side }} endpaper-{{ e.kind }}">
-  <div class="grid" style="grid-template-columns: repeat({{ columns }}, 1fr)">
+  <div class="grid" style="grid-template-columns: repeat({{ grid[0] }}, minmax(0, 1fr)); grid-template-rows: repeat({{ grid[1] }}, minmax(0, 1fr))">
   {% if e.tiles %}
     {% for tile in e.tiles %}<div class="tile">{{ tile }}</div>{% endfor %}
   {% else %}
-    {% for p in pages %}<a class="tile" href="#data-{{ p.code }}"><span class="code">{{ p.code }}</span></a>{% endfor %}
+    {% for code in alphabetical %}<a class="tile" href="#data-{{ code }}"><span class="code">{{ code }}</span></a>{% endfor %}
   {% endif %}
   </div>
 </section>

@@ -4,7 +4,7 @@ from dataclasses import replace
 import pytest
 
 from scripts.book.data import AirportFacts, BookAirport, Destination, YearFigures
-from scripts.book.render import TABLE_ROWS, book_html, grid_columns, label_for
+from scripts.book.render import TABLE_ROWS, book_html, code_tile_padding, grid_shape, label_for
 
 
 
@@ -158,9 +158,15 @@ def test_credits_name_the_sources_and_the_scale():
     assert "openstreetmap.org" in credits and "transtats.bts.gov" in credits
 
 
-@pytest.mark.parametrize("n, columns", [(63, 8), (30, 6), (2, 2)])
-def test_grid_columns_fit_the_page(n, columns):
-    assert grid_columns(n) == columns
+@pytest.mark.parametrize("n, size, shape", [
+    (63, "letter", (7, 9)),        # full, and 9:7 is near Letter's 11:8.5
+    (64, "letter", (8, 8)),        # full, though squarer than the page: 7 x 10 would leave six cells empty
+    (61, "letter", (7, 9)),        # a prime: a short last row rather than one long column
+    (30, "half-letter", (5, 6)),
+    (2, "letter", (1, 2)),
+])
+def test_grid_shape_fills_the_page(n, size, shape):
+    assert grid_shape(n, size) == shape
 
 
 def test_poster_endpapers_reprefix_ids():
@@ -191,5 +197,32 @@ def test_page_numbers_in_the_outer_bottom_corners_but_not_on_the_cover_pages():
     html = render()
     assert re.search(r"@page :left \{[^}]*@bottom-left \{ content: counter\(page\)", html)
     assert re.search(r"@page :right \{[^}]*@bottom-right \{ content: counter\(page\)", html)
-    for section in ("title", "endpaper", "back-cover"):
+    for section in ("title", "back-cover"):
         assert re.search(rf"section\.{section} \{{ page: bare; \}}", html)
+    assert re.search(r"section\.endpaper \{ page: endpaper; \}", html)
+
+
+def test_endpapers_bleed_to_the_page_edge():
+    html = render()
+    assert re.search(r"@page endpaper \{ margin: 0;", html)
+    front = _section(html, "endpaper-front")
+    assert "grid-template-columns: repeat(1, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr))" in front
+
+
+def test_endpaper_tiles_cover_their_cells():
+    front = _section(render(endpapers=("posters", "codes")), "endpaper-front")
+    roots = re.findall(r"<svg\b[^>]*>", front)
+    assert len(roots) == 2 and all('preserveAspectRatio="xMidYMid slice"' in r for r in roots)
+
+
+def test_code_tiles_centred_by_padding():
+    assert code_tile_padding(9, "letter") == "24.7pt"   # 88pt cells, 38.6pt of text
+    assert f"padding-top: {code_tile_padding(2, 'letter')}" in render()   # the test book's two airports: 1 x 2
+    assert code_tile_padding(200, "letter") == "0.0pt"   # never negative
+
+
+def test_endpapers_are_alphabetical_unlike_the_contents():
+    html = render([(entry("MEM"), facts("MEM")), (entry("ATL"), facts("ATL"))], endpapers=("posters", "codes"))
+    assert re.findall(r'href="#data-(\w+)"', _section(html, "contents")) == ["MEM", "ATL"]
+    assert re.findall(r'href="#data-(\w+)"', _section(html, "endpaper-back")) == ["ATL", "MEM"]
+    assert re.findall(r'id="front-(\w+)-r1"', _section(html, "endpaper-front")) == ["ATL", "MEM"]

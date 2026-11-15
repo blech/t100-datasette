@@ -2,6 +2,7 @@
 (right) for each airport, then credits, back endpaper and back cover."""
 
 import math
+import re
 from pathlib import Path
 from typing import Callable
 
@@ -90,9 +91,41 @@ def label_for(label: str, f: AirportFacts) -> str:
     return label.format(first=f.first_year, last=f.last_year, **_WORDS[f.measure])
 
 
-def grid_columns(n: int) -> int:
-    """Columns for an endpaper grid of n roughly square tiles: the fewest whose rows still fit the page's height."""
-    return next(c for c in range(1, n + 1) if math.ceil(n / c) * 1.15 <= c * 1.3)
+def _inches(length: str) -> float:
+    return float(length.removesuffix("in"))
+
+
+def grid_shape(n: int, page_size: str) -> tuple[int, int]:
+    """(columns, rows) for an endpaper grid of n tiles filling the whole page: cells as near square as the page allows, each
+    empty cell in the last row costing as much as a 10% stretch."""
+    width, height = (_inches(x) for x in PAGE_SIZES[page_size])
+
+    def cost(columns):
+        rows = math.ceil(n / columns)
+        return abs(math.log((rows / columns) / (height / width))) + 0.1 * (rows * columns - n)
+
+    columns = min(range(1, n + 1), key=cost)
+    return columns, math.ceil(n / columns)
+
+
+# a code tile's text, in em of the root size: the code (1.9em) and its page number (0.8em), at line-height 1.3
+CODE_TILE_EM = (1.9 + 0.8) * 1.3
+
+
+def code_tile_padding(rows: int, page_size: str) -> str:
+    """The top padding that centres a code tile's text in its cell. WeasyPrint centres nothing vertically inside a grid
+    cell, by flex or grid, so it's worked out here."""
+    cell = _inches(PAGE_SIZES[page_size][1]) * 72 / rows
+    text = CODE_TILE_EM * float(ROOT_SIZES[page_size].removesuffix("pt"))
+    return f"{max(0.0, (cell - text) / 2):.1f}pt"
+
+
+_SVG_ROOT = re.compile(r"<svg\b")
+
+
+def _cover(svg: str) -> str:
+    """Scaled to fill its cell and cropped at the cell's edges, like CSS's object-fit: cover."""
+    return _SVG_ROOT.sub('<svg preserveAspectRatio="xMidYMid slice"', svg, count=1)
 
 
 def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict):
@@ -118,9 +151,9 @@ def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict):
 
 def _tiles(kind, side, codes, posters, diagrams):
     if kind == "posters":
-        return [Markup(reprefix(posters[c], c, f"{side}-")) for c in codes]
+        return [Markup(_cover(reprefix(posters[c], c, f"{side}-"))) for c in codes]
     if kind == "diagrams":
-        return [Markup(diagrams[c]) for c in codes]
+        return [Markup(_cover(diagrams[c])) for c in codes]
     return None   # codes: the template writes them
 
 
@@ -137,9 +170,10 @@ def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[st
     if "diagrams" in endpapers and not (diagrams and all(c in diagrams for c in codes)):
         raise ValueError("diagram endpapers need a diagram for every airport")
     env = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=True)
+    grid = grid_shape(len(codes), page_size) if codes else (1, 1)
     css = env.get_template("book.css").render(
         page_width=PAGE_SIZES[page_size][0], page_height=PAGE_SIZES[page_size][1], root_size=ROOT_SIZES[page_size],
-        poster_offsets=poster_offsets or {},
+        poster_offsets=poster_offsets or {}, code_tile_padding=code_tile_padding(grid[1], page_size),
     )
     book = dict.fromkeys(codes)
     first = airports[0][1] if airports else None
@@ -147,7 +181,8 @@ def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[st
         css=Markup(css), title=title, subtitle=subtitle,
         first_year=first.first_year if first else "", last_year=first.last_year if first else "",
         pages=[_page(e, f, posters[e.code], book) for e, f in airports],
-        columns=grid_columns(len(codes)) if codes else 1,
-        endpapers=[dict(side=side, kind=kind, tiles=_tiles(kind, side, codes, posters, diagrams))
+        grid=grid,
+        alphabetical=sorted(codes),   # the endpapers: an index in their own order, not the contents again
+        endpapers=[dict(side=side, kind=kind, tiles=_tiles(kind, side, sorted(codes), posters, diagrams))
                    for side, kind in zip(("front", "back"), endpapers)],
     )
