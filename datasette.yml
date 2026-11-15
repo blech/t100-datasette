@@ -7,6 +7,11 @@ plugins:
   t100_globe:
     min_year: 1990
     max_year: 2025
+    # an airport pair's BTS distance is left off the distances page when it is off the great-circle one by more than this
+    # ratio of it and more than these miles (plugins/t100_distances.py)
+    distance_check:
+      ratio: 0.1
+      miles: 50
 
 databases:
   t100:
