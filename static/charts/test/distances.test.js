@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isSuspect, profile, measuresOffered, summaryText } from '../src/distances.js';
+import { isSuspect, profile, measuresOffered, summaryText, noteText } from '../src/distances.js';
 
 const CHECK = { ratio: 0.1, miles: 50 };
 const r = (distance, passengers, extra = {}) =>
@@ -71,4 +71,26 @@ test('profile ignores rows with nothing in the measure, so the small print only 
   assert.deepEqual(p.noDistance, { pairs: 0, value: 0 });
   assert.deepEqual(p.dropped, { pairs: 0, value: 0 });
   assert.deepEqual(p.unchecked, { pairs: 0 });
+});
+
+test('profile with no axis (the distances not loaded) is unavailable, not one bar', () => {
+  assert.deepEqual(profile([r(100, 10)], opts({ max: 0 })), { empty: true, unavailable: true });
+});
+
+test('profile: a distance exactly at the end of the axis is on it, not beyond it', () => {
+  const p = profile([r(1000, 10)], opts());
+  assert.equal(p.bins.at(-1).value, 10);
+  assert.deepEqual(p.beyondAxis, { pairs: 0 });
+});
+
+test('profile leaves out loops (the same airport at both ends), which have no distance to chart or mention', () => {
+  const p = profile([r(100, 10), r(null, 5, { dest: 'ATL', gc_distance: null })], { ...opts(), origin: 'ATL' });
+  assert.deepEqual(p.noDistance, { pairs: 0, value: 0 });
+});
+
+test('noteText says what was left out, and nothing for an empty profile', () => {
+  assert.equal(noteText({ empty: true }, 'passengers'), '');
+  const p = profile([r(100, 10), r(320, 7, { gc_distance: 4138 }), r(300, 2, { gc_distance: null })], opts());
+  assert.equal(noteText(p, 'passengers'),
+    " 1 airport pair whose BTS distance disagreed with it (7 passengers) is left out; 1 airport pair couldn't be checked, as an airport has no coordinates, and is shown as BTS gives it.");
 });

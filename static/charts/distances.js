@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { profile, measuresOffered, summaryText } from '/static/charts/src/distances.js';
+import { profile, measuresOffered, summaryText, noteText } from '/static/charts/src/distances.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
 import { palette, isDark } from '/static/common/palette.js';
@@ -32,30 +32,18 @@ function remember(measure) {
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure'], s)}`);
 }
 
-// the small print after the server's: what was left out or couldn't be checked, for the measure shown
-function note(p, measure) {
-  const parts = [];
-  const pairs = (n) => `${exactCount(n)} airport pair${n === 1 ? '' : 's'}`;
-  if (p.dropped.pairs) parts.push(`${pairs(p.dropped.pairs)} whose BTS distance disagreed with it (${valueText(measure, p.dropped.value)} ${LABELS[measure]}) ${p.dropped.pairs === 1 ? 'is' : 'are'} left out`);
-  if (p.noDistance.pairs) parts.push(`${pairs(p.noDistance.pairs)} with no distance from BTS (${valueText(measure, p.noDistance.value)} ${LABELS[measure]}) ${p.noDistance.pairs === 1 ? 'is' : 'are'} left out`);
-  if (p.unchecked.pairs) parts.push(`${pairs(p.unchecked.pairs)} couldn't be checked, as an airport has no coordinates, and ${p.unchecked.pairs === 1 ? 'is' : 'are'} shown as BTS gives ${p.unchecked.pairs === 1 ? 'it' : 'them'}`);
-  if (p.beyondAxis.pairs) parts.push(`${pairs(p.beyondAxis.pairs)} beyond the scale ${p.beyondAxis.pairs === 1 ? 'is' : 'are'} counted in the last bar`);
-  const extra = $('distance-note-extra') || Object.assign(document.createElement('span'), { id: 'distance-note-extra' });
-  extra.textContent = parts.length ? ` ${parts.join('; ')}.`.replace(/^ (.)/, (_, c) => ` ${c.toUpperCase()}`) : '';
-  $('distance-note').append(extra);
-}
-
 function draw() {
   const measure = $('ds-measure').value;
   const box = $('distance-chart');
-  const p = profile(rows, { measure, bin, max: axisMax, ...check });
+  const p = profile(rows, { measure, bin, max: axisMax, origin, ...check });
+  const extra = $('distance-note-extra') || $('distance-note').appendChild(Object.assign(document.createElement('span'), { id: 'distance-note-extra' }));
+  extra.textContent = noteText(p, measure);
   if (p.empty) {
-    box.textContent = `No flight segments at ${origin} in ${year}.`;
+    box.textContent = p.unavailable ? 'Distances aren\'t available yet.' : `No ${LABELS[measure]} at ${origin} in ${year}.`;
     $('distance-summary').textContent = '';
     return;
   }
   $('distance-summary').textContent = summaryText(origin, year, measure, p.median);
-  note(p, measure);
   const bars = p.bins.map((b) => ({ ...b, mid: (b.from + b.to) / 2, y: shown(measure, b.value) }));
   const top = Math.max(0, ...bars.map((b) => b.y));
   const label = measure === 'freight' ? 'Freight, short tons' : `${LABELS[measure][0].toUpperCase()}${LABELS[measure].slice(1)}`;

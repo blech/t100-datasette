@@ -62,3 +62,20 @@ def test_axis_max_only_counts_that_year(ds, db_path):
 
 def test_axis_max_is_zero_with_nothing_flown(ds):
     assert asyncio.run(axis_max(ds, 2025)) == 0
+
+
+def test_axis_max_is_zero_not_an_error_without_the_column(ds, db_path):
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    conn.execute("DROP TABLE pair_distance")
+    conn.execute("CREATE TABLE pair_distance (a TEXT, b TEXT, distance INTEGER)")
+    conn.commit()
+    conn.close()
+    assert asyncio.run(axis_max(ds, 2025)) == 0
+
+
+def test_axis_max_does_not_keep_a_zero(ds, db_path):
+    assert asyncio.run(axis_max(ds, 2025)) == 0
+    flown(db_path, ("AAA", "BBB", 2025))
+    put(db_path, "pair_distance", [dict(a="AAA", b="BBB", distance=900, gc_distance=900)])
+    assert asyncio.run(axis_max(ds, 2025)) == 1000

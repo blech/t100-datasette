@@ -1,7 +1,11 @@
 # An airport's distances page: the check of BTS's distance against the great-circle distance between the airports'
 # coordinates, and the x-axis every airport's chart shares. static/charts/src/distances.js applies the same check in the
 # browser, with the margins this gives the page.
+import logging
 import math
+import sqlite3
+
+log = logging.getLogger(__name__)
 
 BIN_MILES = 250
 _DEFAULT_MARGINS = {"ratio": 0.1, "miles": 50}
@@ -30,7 +34,9 @@ async def axis_max(datasette, year):
     margins = check_margins(datasette)
     cache = datasette.__dict__.setdefault("_t100_axis_max", {})
     key = (int(year), margins["ratio"], margins["miles"])
-    if key not in cache:
+    if key in cache:
+        return cache[key]
+    try:
         result = await datasette.get_database("t100").execute(
             f"""
             SELECT MAX(d.distance)
@@ -41,6 +47,11 @@ async def axis_max(datasette, year):
             """,
             {"year": int(year), **margins},
         )
-        longest = result.first()[0] or 0
-        cache[key] = math.ceil(longest / BIN_MILES) * BIN_MILES
+    except sqlite3.OperationalError as err:  # pair_distance without gc_distance: the database is older than the code
+        log.warning("distances: no axis, as pair_distance can't be read (%s); rebuild it", err)
+        return 0
+    longest = result.first()[0] or 0
+    if not longest:
+        return 0  # not kept, so the page recovers once the distances are loaded
+    cache[key] = math.ceil(longest / BIN_MILES) * BIN_MILES
     return cache[key]
