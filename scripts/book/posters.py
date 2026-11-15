@@ -45,11 +45,15 @@ def _mask_each_road(svg: str) -> str:
     return _MASKED_ROADS.sub(push_down, svg)
 
 
-def load_poster(directory: Path, code: str) -> str:
-    svg = _mask_each_road(_inline((Path(directory) / f"{code}.svg").read_text(), f"{code}.svg"))
+def load_poster(directory: Path, code: str, variant: str | None = None) -> str:
+    """CODE-<variant>.svg where there is one (rail: the poster with its railways), else CODE.svg."""
+    path = Path(directory) / f"{code}-{variant}.svg" if variant else None
+    if not (path and path.is_file()):
+        path = Path(directory) / f"{code}.svg"
+    svg = _mask_each_road(_inline(path.read_text(), path.name))
     stray = sorted({i for i in _ID.findall(svg) if not i.startswith(f"{code}-")})
     if stray:   # 63 posters share one HTML document, so their ids must not clash
-        raise PosterError(f"{code}.svg has ids without the {code}- prefix: {', '.join(stray[:5])}")
+        raise PosterError(f"{path.name} has ids without the {code}- prefix: {', '.join(stray[:5])}")
     return svg
 
 
@@ -59,10 +63,10 @@ def _check(directory: Path, codes: list[str], what: str):
         raise PosterError(f"no {what} in {directory} for {', '.join(missing)}")
 
 
-def load_posters(directory: Path, codes: list[str]) -> dict[str, str]:
-    """code -> poster, checking first that every one exists."""
+def load_posters(directory: Path, codes: list[str], variant: str | None = None) -> dict[str, str]:
+    """code -> poster (its variant where there is one), checking first that every plain poster exists."""
     _check(directory, codes, "poster")
-    return {c: load_poster(directory, c) for c in codes}
+    return {c: load_poster(directory, c, variant) for c in codes}
 
 
 def load_diagrams(directory: Path, codes: list[str]) -> dict[str, str]:

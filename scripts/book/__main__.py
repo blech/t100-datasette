@@ -47,6 +47,8 @@ def parse(argv):
     p.add_argument("--diagrams", type=Path, default=DIAGRAMS, help="runway diagram SVGs, for diagram endpapers")
     p.add_argument("--poster-align", choices=["centre", "top"], default="centre",
                    help="centre each poster on its data page (two layouts, so slower), or put it at the top of the page")
+    p.add_argument("--no-rail", action="store_true",
+                   help="plain posters on the spreads too, not CODE-rail.svg (the endpaper always has the plain ones)")
     p.add_argument("--html", action="store_true", help="write the HTML instead of the PDF (no WeasyPrint needed)")
     return p.parse_args(argv)
 
@@ -69,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
             entries = [e for e in entries if e.code in wanted]
         try:
             posters = load_posters(args.posters, [e.code for e in entries])
+            page_posters = None if args.no_rail else load_posters(args.posters, [e.code for e in entries], variant="rail")
             diagrams = load_diagrams(args.diagrams, [e.code for e in entries]) if "diagrams" in args.endpapers else None
         except PosterError as e:
             print(e, file=sys.stderr)
@@ -77,7 +80,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         conn.close()
     subtitle = f"The {args.top_passengers} busiest by passengers and the {args.top_freight} busiest by freight in {args.year}"
-    options = dict(page_size=args.page_size, subtitle=subtitle, endpapers=args.endpapers, diagrams=diagrams)
+    options = dict(page_size=args.page_size, subtitle=subtitle, endpapers=args.endpapers, diagrams=diagrams,
+                   page_posters=page_posters)
     html = book_html(airports, posters, **options)
     if args.html:
         out = args.out.with_suffix(".html")

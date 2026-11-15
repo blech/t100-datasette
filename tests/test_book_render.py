@@ -244,3 +244,13 @@ def test_endpapers_are_alphabetical_unlike_the_contents():
     assert re.findall(r'href="#data-(\w+)"', _section(html, "contents")) == ["MEM", "ATL"]
     assert re.findall(r'href="#data-(\w+)"', _section(html, "endpaper-back")) == ["ATL", "MEM"]
     assert re.findall(r'id="front-(\w+)-r1"', _section(html, "endpaper-front")) == ["ATL", "MEM"]
+
+
+def test_page_posters_face_their_data_pages_and_the_endpaper_keeps_the_plain_ones():
+    airports = [(entry("ATL"), facts("ATL")), (entry("MEM"), facts("MEM"))]
+    rail = {"ATL": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1260"><path id="ATL-rail" d="M0 0"/></svg>'}
+    html = book_html(airports, {e.code: poster(e.code) for e, _ in airports}, page_posters=rail, endpapers=("posters", "codes"))
+    assert 'id="ATL-rail"' in _section(html, "poster-ATL")
+    assert 'id="MEM-r1"' in _section(html, "poster-MEM")   # no rail version: the plain poster
+    front = _section(html, "endpaper-front")
+    assert "ATL-rail" not in front and 'id="front-ATL-r1"' in front

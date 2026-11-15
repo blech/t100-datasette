@@ -69,3 +69,11 @@ def test_endpapers_option(world):
 def test_endpapers_option_rejects_a_bad_kind(world):
     with pytest.raises(SystemExit):
         main(_args(world, "--endpapers", "codes,maps"))
+
+
+def test_rail_posters_on_the_spreads_unless_turned_off(world):
+    (world[1] / "AAA-rail.svg").write_text(poster("AAA").replace("AAA-r1", "AAA-rail"))
+    assert main(_args(world)) == 0
+    assert 'id="AAA-rail"' in world[2].with_suffix(".html").read_text()
+    assert main(_args(world, "--no-rail")) == 0
+    assert 'id="AAA-rail"' not in world[2].with_suffix(".html").read_text()

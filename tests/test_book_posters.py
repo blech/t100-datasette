@@ -95,6 +95,16 @@ def test_road_casing_mask_moves_from_the_group_to_each_road(tmp_path):
     assert '<g class="ac-ink"><path d="M5 5"/></g>' in svg
 
 
+def test_a_variant_is_used_where_there_is_one(tmp_path):
+    _write(tmp_path, "ABE")
+    _write(tmp_path, "BOS")
+    (tmp_path / "ABE-rail.svg").write_text(_poster("ABE", ids=("rail",)))
+    posters = load_posters(tmp_path, ["ABE", "BOS"], variant="rail")
+    assert 'id="ABE-rail"' in posters["ABE"]
+    assert 'id="BOS-r2"' in posters["BOS"]   # no BOS-rail.svg: the plain poster
+    assert 'id="ABE-r2"' in load_posters(tmp_path, ["ABE"])["ABE"]
+
+
 def test_missing_diagrams_are_all_named(tmp_path):
     with pytest.raises(PosterError) as e:
         load_diagrams(tmp_path, ["YYY", "XXX"])

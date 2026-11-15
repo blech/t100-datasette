@@ -140,8 +140,11 @@ def _tiles(kind, side, codes, posters, diagrams):
 
 def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[str, str], *, page_size: str = "letter",
               title: str = "US airports", subtitle: str = "", endpapers: tuple[str, str] = ("posters", "codes"),
-              diagrams: dict[str, str] | None = None, poster_offsets: dict[str, float] | None = None) -> str:
-    """poster_offsets: code -> px to move the poster down its page (pdf.poster_offsets measures them from a first layout)."""
+              diagrams: dict[str, str] | None = None, poster_offsets: dict[str, float] | None = None,
+              page_posters: dict[str, str] | None = None) -> str:
+    """posters: the plain ones, for the endpaper. page_posters: code -> the one facing its data page where it differs
+    (the rail version). poster_offsets: code -> px to move the poster down its page (pdf.poster_offsets measures them from
+    a first layout)."""
     if page_size not in PAGE_SIZES:
         raise ValueError(f"unknown page size {page_size!r}: one of {', '.join(PAGE_SIZES)}")
     for kind in endpapers:
@@ -161,7 +164,7 @@ def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[st
     return env.get_template("book.html").render(
         css=Markup(css), title=title, subtitle=subtitle,
         first_year=first.first_year if first else "", last_year=first.last_year if first else "",
-        pages=[_page(e, f, posters[e.code], book) for e, f in airports],
+        pages=[_page(e, f, (page_posters or {}).get(e.code, posters[e.code]), book) for e, f in airports],
         grid=grid,
         alphabetical=sorted(codes),   # the endpapers: an index in their own order, not the contents again
         endpapers=[dict(side=side, kind=kind, tiles=_tiles(kind, side, sorted(codes), posters, diagrams))
