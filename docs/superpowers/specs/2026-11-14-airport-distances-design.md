@@ -49,9 +49,9 @@ filled by `rebuild_pair_distance`. Change it in `build_database.py`; `schema.sql
 - `rebuild_pair_distance` reads `airport_overrides` and `openflights_airports`, which it doesn't load (`load_airport_overrides`
   is separate). They're filled on both the local and the Fly databases. If either is empty, the rebuild should fail loudly
   rather than leave every `gc_distance` `NULL`.
-- `create_schema` is `CREATE TABLE IF NOT EXISTS`, so an existing `pair_distance` won't gain the column that way.
-  `rebuild_pair_distance` adds it with `ALTER TABLE pair_distance ADD COLUMN gc_distance INTEGER` when it's missing, before its
-  delete and insert. That covers the local database and the Fly volume alike. *(My call.)*
+- `create_schema` is `CREATE TABLE IF NOT EXISTS`, so an existing `pair_distance` won't gain the column that way. The project
+  already has a mechanism for this: add `("pair_distance", "gc_distance")` to `_ADDED_COLUMNS`, and `create_schema` (called
+  by `rebuild_pair_distance`) drops the outdated table and recreates it before the rebuild fills it.
 
 ### The check
 
@@ -149,7 +149,7 @@ so the single default series colour. Check `docs/site-coherence.md` before addin
 ## Tests
 
 - Python: `rebuild_pair_distance` fills `gc_distance` (known pair, e.g. LAX–SFO ≈ 337); `NULL` without coordinates; override
-  coordinates win over openflights; the column is added to an existing `pair_distance` that lacks it; the page route renders
+  coordinates win over openflights; an existing `pair_distance` without the column is rebuilt with it; the page route renders
   and the nav shows Distances; the shared maximum ignores suspect and unchecked pairs; the Python rule at its edges (the same
   cases as the JS).
 - JS (`node --test`): the suspect rule at its edges (10%, 50 miles, missing `gc_distance`); binning into 250-mile bins with a
