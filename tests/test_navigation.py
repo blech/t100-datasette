@@ -29,8 +29,8 @@ def test_airports_views():
 
 
 def test_an_airports_views_use_upper_case_codes():
-    A = [("Over time", "/airports/SFO"), ("Destinations", "/airports/SFO/destinations"), ("Changes", "/airports/SFO/changes"), ("Map", "/airports/SFO/globe")]
-    for i, path in enumerate(["/airports/sfo", "/airports/sfo/destinations", "/airports/SFO/changes", "/airports/SFO/globe"]):
+    A = [("Over time", "/airports/SFO"), ("Destinations", "/airports/SFO/destinations"), ("Distances", "/airports/SFO/distances"), ("Changes", "/airports/SFO/changes"), ("Map", "/airports/SFO/globe")]
+    for i, path in enumerate(["/airports/sfo", "/airports/sfo/destinations", "/airports/sfo/distances", "/airports/SFO/changes", "/airports/SFO/globe"]):
         assert views(path) == [(label, href, j == i) for j, (label, href) in enumerate(A)], path
 
 
@@ -72,10 +72,11 @@ PAGES = {
     "/airports/over-time": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
     "/airports/routes": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
     "/airports/globe": ("airports", ["Busiest airports", "Over time", "Most dedicated", "Risers and fallers", "Routes", "Map"]),
-    "/airports/ATL": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
-    "/airports/ATL/destinations": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
-    "/airports/ATL/changes": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
-    "/airports/ATL/globe": ("airports", ["Over time", "Destinations", "Changes", "Map"]),
+    "/airports/ATL": ("airports", ["Over time", "Destinations", "Distances", "Changes", "Map"]),
+    "/airports/ATL/destinations": ("airports", ["Over time", "Destinations", "Distances", "Changes", "Map"]),
+    "/airports/ATL/distances": ("airports", ["Over time", "Destinations", "Distances", "Changes", "Map"]),
+    "/airports/ATL/changes": ("airports", ["Over time", "Destinations", "Distances", "Changes", "Map"]),
+    "/airports/ATL/globe": ("airports", ["Over time", "Destinations", "Distances", "Changes", "Map"]),
     "/airports/ATL/LAX": ("airports", ["Over time", "Table"]),
     "/airports/ATL/LAX/table": ("airports", ["Over time", "Table"]),
     "/aircraft": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),

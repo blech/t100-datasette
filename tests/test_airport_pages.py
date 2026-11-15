@@ -7,7 +7,7 @@ from tests.test_foreign_note import NOTE, load
 from tests.test_nav import crumbs
 from tests.test_rollup_queries import put
 
-VIEWS = [("Over time", "/airports/SFO"), ("Destinations", "/airports/SFO/destinations"), ("Changes", "/airports/SFO/changes"), ("Map", "/airports/SFO/globe")]
+VIEWS = [("Over time", "/airports/SFO"), ("Destinations", "/airports/SFO/destinations"), ("Distances", "/airports/SFO/distances"), ("Changes", "/airports/SFO/changes"), ("Map", "/airports/SFO/globe")]
 
 
 def years(db_path):
@@ -39,7 +39,25 @@ def test_the_changes_page(ds, db_path):
     assert 'id="size-chart"' not in r.text and "/static/charts/airport.js" in r.text
 
 
-def test_each_page_has_the_four_views_with_its_own_current(ds):
+def test_the_distances_page(ds, db_path):
+    years(db_path)
+    r = get(ds, "/airports/SFO/distances")
+    assert r.status_code == 200
+    assert 'id="distance-chart"' in r.text and 'id="ds-measure"' in r.text and "SFO: distances" in r.text
+    for attr in ('data-axis-max="0"', 'data-bin="250"', 'data-ratio="0.1"', 'data-miles="50"', 'data-year="2025"'):
+        assert attr in r.text, attr
+    assert "/static/charts/distances.js" in r.text
+    assert "Distances of flight segments from and to SFO in 2025" in r.text
+
+
+def test_the_distances_page_lowercase_and_one_way(ds, db_path):
+    years(db_path)
+    r = get(ds, "/airports/sfo/distances?dir=in")
+    assert 'data-origin="SFO"' in r.text and 'data-dir="in"' in r.text
+    assert "Distances of flight segments to SFO in 2025" in r.text
+
+
+def test_each_page_has_the_five_views_with_its_own_current(ds):
     for i, (_, path) in enumerate(VIEWS):
         html = get(ds, path).text
         line = re.search(r'<nav class="views".*?</nav>', html, re.S).group(0)
@@ -54,6 +72,7 @@ def test_crumbs(ds):
     assert crumbs(ds, "/airports/SFO") == [site, airports, ("SFO", None)]
     assert crumbs(ds, "/airports/SFO/destinations") == [site, airports, ("SFO", "/airports/SFO"), ("destinations", None)]
     assert crumbs(ds, "/airports/sfo/changes") == [site, airports, ("SFO", "/airports/SFO"), ("changes", None)]
+    assert crumbs(ds, "/airports/SFO/distances") == [site, airports, ("SFO", "/airports/SFO"), ("distances", None)]
 
 
 def test_first_and_last_years_come_from_the_airports_totals(ds, db_path):

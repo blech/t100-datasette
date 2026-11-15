@@ -24,6 +24,7 @@ export function profile(rows, { measure, bin, max, ratio, miles }) {
   const kept = [];
   for (const row of rows) {
     const value = num(row[measure]);
+    if (!value) continue; // nothing to chart, nor to mention
     if (!present(row.distance)) {
       noDistance.pairs += 1;
       noDistance.value += value;

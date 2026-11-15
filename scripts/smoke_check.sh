@@ -22,6 +22,7 @@ check 200 /airports/over-time                                       "data-kind=\
 check 200 /airports/movers                                          "Risers and fallers"
 check 200 /airports/SFO                                             "size-chart"
 check 200 /airports/SFO/destinations                                "matrix"
+check 200 /airports/SFO/distances                                   "distance-chart"
 check 200 /airports/SFO/changes                                     "change-table"
 check 301 "/airports/SFO?n=50"
 check 200 /airports/SFO/globe                                       "data-origin"

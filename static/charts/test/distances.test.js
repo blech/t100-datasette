@@ -65,3 +65,10 @@ test('summaryText says where half the measure falls', () => {
   assert.equal(summaryText('JFK', 2025, 'deps', 2475), "Half of JFK's flight segments in 2025 were 2,475 miles or less.");
   assert.equal(summaryText('MEM', 2025, 'freight', 812), "Half of MEM's freight in 2025 went on segments of 812 miles or less.");
 });
+
+test('profile ignores rows with nothing in the measure, so the small print only counts pairs that matter to it', () => {
+  const p = profile([r(100, 10), r(null, 0, { gc_distance: null }), r(320, 0, { gc_distance: 4138 }), r(300, 0, { gc_distance: null })], opts());
+  assert.deepEqual(p.noDistance, { pairs: 0, value: 0 });
+  assert.deepEqual(p.dropped, { pairs: 0, value: 0 });
+  assert.deepEqual(p.unchecked, { pairs: 0 });
+});

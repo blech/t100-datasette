@@ -12,6 +12,7 @@ from datasette.utils.asgi import NotFound, Response
 
 # Datasette loads each plugin from its file, not as a package, so a shared module is imported from beside this one
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from t100_distances import BIN_MILES, axis_max, check_margins  # noqa: E402
 from t100_direction import DIRECTION_CHOICES_ABROAD, DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, count_word, cutoff, parse_dir, route_count_word, route_heading  # noqa: E402
 
 
@@ -67,6 +68,7 @@ def register_routes():
         (r"^/cities/(?P<market>[0-9]{5})$", moved("/airports/cities/{market}")),
         (rf"^/airports/(?P<origin>{CODE})$", airport_page),
         (rf"^/airports/(?P<origin>{CODE})/destinations$", routes_page),
+        (rf"^/airports/(?P<origin>{CODE})/distances$", airport_distances_page),
         (rf"^/airports/(?P<origin>{CODE})/changes$", airport_changes_page),
         (rf"^/airports/(?P<origin>{CODE})/globe$", globe_page),
         (rf"^/airports/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
@@ -141,11 +143,12 @@ def views_for(path):
                         ("Most dedicated", "/airports/dedicated", None), ("Risers and fallers", "/airports/movers", None),
                         ("Routes", "/airports/routes", None), ("Map", "/airports/globe", None),
                         current=[[], ["over-time"], ["dedicated"], ["movers"], ["routes"], ["globe"]].index(view))
-        case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["changes"], ["globe"]):
+        case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["distances"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
+                        ("Distances", f"/airports/{c}/distances", None),
                         ("Changes", f"/airports/{c}/changes", "changes-link"), ("Map", f"/airports/{c}/globe", None),
-                        current=[[], ["destinations"], ["changes"], ["globe"]].index(rest))
+                        current=[[], ["destinations"], ["distances"], ["changes"], ["globe"]].index(rest))
         case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and b.lower() != "globe" and (
                 rest in ([], ["table"]) or (rest and rest[0].isdigit() and rest[1:] in ([], ["table"]))):
             a, b = a.upper(), b.upper()
@@ -699,8 +702,9 @@ async def airport_rank_line(datasette, origin, foreign):
     return rank_sentences(origin, year, rows)
 
 
-def airport_view(template, crumb):
-    """One of an airport's views: its charts over time (no crumb of its own), its destinations matrix, or what changed."""
+def airport_view(template, crumb, extra=None):
+    """One of an airport's views: its charts over time (no crumb of its own), its destinations matrix, its distances, or what
+    changed. extra, if given, is an async (datasette, origin) -> dict of more for the template."""
 
     async def view(datasette, request):
         origin = request.url_vars["origin"].upper()
@@ -721,6 +725,7 @@ def airport_view(template, crumb):
                 "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, await is_foreign(datasette, origin)),
                 "rank_line": await airport_rank_line(datasette, origin, await is_foreign(datasette, origin)) if template == "airport.html" else "",
                 **airport_direction(request),
+                **(await extra(datasette, origin) if extra else {}),
             },
             request=request,
         )
@@ -732,6 +737,15 @@ def airport_view(template, crumb):
 airport_page = airport_view("airport.html", None)
 routes_page = airport_view("routes.html", "destinations")
 airport_changes_page = airport_view("airport_changes.html", "changes")
+
+
+async def distances_context(datasette, origin):
+    """The distances page's year (the latest full one), the x-axis every airport shares, its bins, and the check's margins."""
+    year = (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025)
+    return {"year": year, "axis_max": await axis_max(datasette, year), "bin_miles": BIN_MILES, **check_margins(datasette)}
+
+
+airport_distances_page = airport_view("airport_distances.html", "distances", distances_context)
 
 
 def route_view(template, table):
