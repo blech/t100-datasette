@@ -14,10 +14,13 @@ export function isSuspect(distance, gc, { ratio, miles }) {
 
 // rows -> { empty: true } ({ empty: true, unavailable: true } with no axis: the distances aren't loaded), or the bins from 0 to max (every one, empty or not), the total and weighted median of what's kept,
 // and what was left out (dropped: suspect; noDistance: none given), kept unchecked, or kept in the last bin beyond the axis
+// each bar's biggest destinations, for its popover: the top TOP, and how many more
+const TOP = 5;
+
 export function profile(rows, { measure, bin, max, ratio, miles, origin = null }) {
   if (!(max > 0)) return { empty: true, unavailable: true };
   const count = Math.max(1, Math.ceil(max / bin));
-  const bins = Array.from({ length: count }, (_, i) => ({ from: i * bin, to: (i + 1) * bin, value: 0, share: 0 }));
+  const bins = Array.from({ length: count }, (_, i) => ({ from: i * bin, to: (i + 1) * bin, value: 0, share: 0, dests: [] }));
   const dropped = { pairs: 0, value: 0 };
   const noDistance = { pairs: 0, value: 0 };
   const unchecked = { pairs: 0 };
@@ -36,13 +39,21 @@ export function profile(rows, { measure, bin, max, ratio, miles, origin = null }
       const distance = Number(row.distance);
       if (!present(row.gc_distance)) unchecked.pairs += 1;
       if (distance > max) beyondAxis.pairs += 1;
-      bins[Math.min(count - 1, Math.floor(distance / bin))].value += value;
+      const b = bins[Math.min(count - 1, Math.floor(distance / bin))];
+      b.value += value;
+      b.dests.push({ dest: row.dest, value });
       kept.push({ distance, value });
     }
   }
   const total = kept.reduce((sum, k) => sum + k.value, 0);
   if (!total) return { empty: true };
-  for (const b of bins) b.share = b.value / total;
+  for (const b of bins) {
+    b.share = b.value / total;
+    b.dests.sort((x, y) => y.value - x.value || String(x.dest).localeCompare(String(y.dest)));
+    b.top = b.dests.slice(0, TOP);
+    b.more = Math.max(0, b.dests.length - TOP);
+    delete b.dests;
+  }
   kept.sort((a, b) => a.distance - b.distance);
   let running = 0;
   const median = kept.find((k) => (running += k.value) >= total / 2).distance;

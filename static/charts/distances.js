@@ -61,8 +61,9 @@ function draw() {
   box.replaceChildren(...attachPopover(chart, {
     content: (b) => ({
       title: `${exactCount(b.from)}–${miles(b.to)}`,
-      rows: [{ label: LABELS[measure], value: valueText(measure, b.value) },
-        { label: `share of ${origin}'s`, value: `${formatCount(b.share * 100)}%` }],
+      rows: [{ label: LABELS[measure], value: valueText(measure, b.value), extra: `${formatCount(b.share * 100)}%` },
+        ...b.top.map((d) => ({ label: d.dest, value: valueText(measure, d.value), extra: '' })),
+        ...(b.more ? [{ label: `… and ${exactCount(b.more)} more`, value: '', extra: '' }] : [])],
     }),
     at: (b) => [b.mid, b.y],
     keyOf: () => ({ kind: 'none' }),

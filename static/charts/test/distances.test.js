@@ -94,3 +94,13 @@ test('noteText says what was left out, and nothing for an empty profile', () => 
   assert.equal(noteText(p, 'passengers'),
     " 1 airport pair whose BTS distance disagreed with it (7 passengers) is left out; 1 airport pair couldn't be checked, as an airport has no coordinates, and is shown as BTS gives it.");
 });
+
+test('profile lists each bar\'s biggest destinations in the measure, the top five and how many more', () => {
+  const rows = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG'].map((dest, i) => r(300, 10 * (i + 1), { dest }));
+  const p = profile([...rows, r(100, 4, { dest: 'HHH' })], opts());
+  assert.deepEqual(p.bins[1].top, [{ dest: 'GGG', value: 70 }, { dest: 'FFF', value: 60 }, { dest: 'EEE', value: 50 }, { dest: 'DDD', value: 40 }, { dest: 'CCC', value: 30 }]);
+  assert.equal(p.bins[1].more, 2);
+  assert.deepEqual(p.bins[0].top, [{ dest: 'HHH', value: 4 }]);
+  assert.equal(p.bins[0].more, 0);
+  assert.deepEqual(p.bins[2].top, []);
+});
