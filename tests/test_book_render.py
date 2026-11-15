@@ -185,3 +185,11 @@ def test_diagram_endpaper_uses_the_diagrams():
 def test_diagram_endpaper_needs_diagrams():
     with pytest.raises(ValueError):
         render(endpapers=("diagrams", "codes"))
+
+
+def test_page_numbers_in_the_outer_bottom_corners_but_not_on_the_cover_pages():
+    html = render()
+    assert re.search(r"@page :left \{[^}]*@bottom-left \{ content: counter\(page\)", html)
+    assert re.search(r"@page :right \{[^}]*@bottom-right \{ content: counter\(page\)", html)
+    for section in ("title", "endpaper", "back-cover"):
+        assert re.search(rf"section\.{section} \{{ page: bare; \}}", html)

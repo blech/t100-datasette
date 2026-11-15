@@ -1,7 +1,17 @@
 /* The book's print stylesheet (WeasyPrint). Lengths inside the page are in em or %, so the root size scales the whole layout. */
 @page { size: {{ page_width }} {{ page_height }}; margin: 0.5in; }
-@page :left { margin-right: 0.75in; }   /* the inner margin, for the binding */
-@page :right { margin-left: 0.75in; }
+/* the inner margin is wider, for the binding; page numbers sit in the bottom margin's outer corner */
+@page :left { margin-right: 0.75in; @bottom-left { content: counter(page); } }
+@page :right { margin-left: 0.75in; @bottom-right { content: counter(page); } }
+@page :left, :right {
+  @bottom-left { font: 8pt "Helvetica Neue", Helvetica, Arial, sans-serif; color: #71717a; }
+  @bottom-right { font: 8pt "Helvetica Neue", Helvetica, Arial, sans-serif; color: #71717a; }
+}
+/* no number on the title, endpapers or back cover */
+@page bare { @bottom-left { content: none; } @bottom-right { content: none; } }
+section.title { page: bare; }
+section.endpaper { page: bare; }
+section.back-cover { page: bare; }
 
 html { font-size: {{ root_size }}; }
 body {
