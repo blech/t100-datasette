@@ -11,6 +11,9 @@ _XML_DECL = re.compile(r"<\?xml[^>]*\?>\s*")
 _ROOT = re.compile(r"<svg\b[^>]*>")
 _SIZE = re.compile(r'\s(?:width|height)="[^"]*"')
 _ID = re.compile(r'\bid="([^"]*)"')
+_MASKED_ROADS = re.compile(r'<g class="ac-road" mask="url\(#([^)]+)\)">(.*?)</g>', re.S)
+_USE = re.compile(r'<use href="#([^"]+)"([^>]*?)/>')
+_PATH = re.compile(r'<path id="([^"]+)" d="([^"]*)"')
 
 
 class PosterError(Exception):
@@ -28,8 +31,22 @@ def _inline(svg: str, name: str) -> str:
     return svg[:root.start()] + _SIZE.sub("", root.group(0)) + svg[root.end():]
 
 
+def _mask_each_road(svg: str) -> str:
+    """The roads are casings: wide strokes with a mask cutting out the middle. WeasyPrint applies a mask only after drawing
+    an element's children, so on the roads' <g> it does nothing and they print solid. On a <path> it's in place before the
+    stroke, so each road becomes a masked path (its <use> replaced by the path data it pointed at)."""
+    paths = dict(_PATH.findall(svg))
+
+    def push_down(m):
+        mask = m.group(1)
+        body = _USE.sub(lambda u: f'<path d="{paths[u.group(1)]}"{u.group(2)} mask="url(#{mask})"/>', m.group(2))
+        return f'<g class="ac-road">{body}</g>'
+
+    return _MASKED_ROADS.sub(push_down, svg)
+
+
 def load_poster(directory: Path, code: str) -> str:
-    svg = _inline((Path(directory) / f"{code}.svg").read_text(), f"{code}.svg")
+    svg = _mask_each_road(_inline((Path(directory) / f"{code}.svg").read_text(), f"{code}.svg"))
     stray = sorted({i for i in _ID.findall(svg) if not i.startswith(f"{code}-")})
     if stray:   # 63 posters share one HTML document, so their ids must not clash
         raise PosterError(f"{code}.svg has ids without the {code}- prefix: {', '.join(stray[:5])}")

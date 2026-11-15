@@ -77,6 +77,24 @@ def test_diagrams_resolve_nested_variables(tmp_path):
     assert "width=" not in svg[:svg.index(">")]
 
 
+def test_road_casing_mask_moves_from_the_group_to_each_road(tmp_path):
+    # WeasyPrint applies a mask after drawing an element's children, so on a <g> it does nothing and the roads print solid;
+    # on a <path> it's set before the stroke, so each road gets the mask and its own path data in place of a <use>
+    (tmp_path / "ABE.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="10" height="10"><defs>'
+        '<path id="ABE-r2" d="M0 0l1 1"/><path id="ABE-r3" d="M2 2l3 3"/>'
+        '<mask id="ABE-m"><rect width="10" height="10" fill="#fff"/>'
+        '<g stroke="#000"><use href="#ABE-r2" stroke-width="2"/><use href="#ABE-r3" stroke-width="3"/></g></mask></defs>'
+        '<g fill="none"><g class="ac-road" mask="url(#ABE-m)">'
+        '<use href="#ABE-r2" stroke-width="3.6"/><use href="#ABE-r3" stroke-width="4.6"/></g>'
+        '<g class="ac-ink"><path d="M5 5"/></g></g></svg>')
+    svg = load_poster(tmp_path, "ABE")
+    assert ('<g class="ac-road"><path d="M0 0l1 1" stroke-width="3.6" mask="url(#ABE-m)"/>'
+            '<path d="M2 2l3 3" stroke-width="4.6" mask="url(#ABE-m)"/></g>') in svg
+    assert '<use href="#ABE-r2" stroke-width="2"/>' in svg   # the mask itself still draws the narrow strokes
+    assert '<g class="ac-ink"><path d="M5 5"/></g>' in svg
+
+
 def test_missing_diagrams_are_all_named(tmp_path):
     with pytest.raises(PosterError) as e:
         load_diagrams(tmp_path, ["YYY", "XXX"])
