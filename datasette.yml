@@ -536,7 +536,7 @@ databases:
             DESC
       routes_by_year:
         title: "Other airports from and to an airport, by year"
-        description: "One row per other airport (dest) and year, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it), with routes under the minimum flights (24 both ways, 12 one way, when empty) left out, and the pair's distance in miles."
+        description: "One row per other airport (dest) and year, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it), with routes under the minimum flights (24 both ways, 12 one way, when empty) left out, the pair's distance in miles, and its great-circle distance from the airports' coordinates (gc_distance, empty where either has none). Set year for one year only."
         sql: |
           -- dir other than out or in counts both directions; dest is the other airport either way
           SELECT
@@ -544,6 +544,7 @@ databases:
             m.market_id,
             n.name AS city,
             d.distance,
+            d.gc_distance,
             r.year,
             SUM(r.deps) AS deps,
             SUM(r.seats) AS seats,
@@ -552,8 +553,10 @@ databases:
             CASE WHEN SUM(r.domestic_deps) * 2 > SUM(r.deps) THEN 'domestic' ELSE 'international' END AS service
           FROM (
             SELECT dest, year, deps, domestic_deps, seats, passengers, freight FROM route_year_totals WHERE origin = :origin AND :dir <> 'in'
+              AND (NULLIF(:year, '') IS NULL OR year = CAST(:year AS integer))
             UNION ALL
             SELECT origin, year, deps, domestic_deps, seats, passengers, freight FROM route_year_totals WHERE dest = :origin AND :dir <> 'out'
+              AND (NULLIF(:year, '') IS NULL OR year = CAST(:year AS integer))
           ) r
           LEFT JOIN airport_names n ON n.code = r.dest
           LEFT JOIN airport_market m ON m.code = r.dest
