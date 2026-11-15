@@ -58,6 +58,11 @@ table.facts th { text-align: left; font-weight: 400; color: #52525b; width: 45%;
 table.facts td { padding: 0.12em 0; }
 table.facts tr { border-bottom: 0.5pt solid #e4e4e7; }
 table.facts a.ref { color: inherit; text-decoration: none; }
+/* top airlines: a table inside the last row, so the shares line up */
+table.facts table.airlines { width: auto; font-size: 1em; }
+table.facts table.airlines tr { border-bottom: none; }
+table.facts table.airlines td { padding: 0 0 0.05em; }
+table.facts table.airlines td.num { text-align: right; padding-left: 1.5em; }
 table.facts a.ref::after { content: " p. " target-counter(attr(href url), page); color: #71717a; }
 table.destinations th { font-weight: 400; color: #52525b; text-align: left; }
 /* headers padded like their cells, so a right-aligned header ends where its numbers do */
@@ -67,7 +72,7 @@ table.destinations .code { font-weight: 700; width: 3em; }
 table.destinations .num { text-align: right; white-space: nowrap; }
 /* the two charts side by side; their look is set inside the SVG (charts.py) */
 .charts { margin-top: 1.4em; display: flex; justify-content: space-between; }
-.charts .chart-box { width: 48%; }
+/* each box's width is set in the HTML, in proportion to its chart's span (render.py) */
 svg.chart { display: block; width: 100%; height: auto; }
 
 /* poster page */

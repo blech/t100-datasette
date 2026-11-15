@@ -57,9 +57,16 @@
   {% endfor %}
   </table>
   {% endif %}
+  <h2>Rank over time</h2>
+  <table class="destinations ranks">
+    <tr><th></th>{% for y in p.rank_years %}<th class="num">{{ y }}</th>{% endfor %}</tr>
+  {% for label, first, last in p.ranks %}
+    <tr><td>{{ label }}</td><td class="num">{{ first }}</td><td class="num">{{ last }}</td></tr>
+  {% endfor %}
+  </table>
   <div class="charts">
   {% for chart in p.charts %}
-    <div class="chart-box">{{ chart }}</div>
+    <div class="chart-box" style="width: {{ chart.width }}%">{{ chart.svg }}</div>
   {% endfor %}
   </div>
 </section>

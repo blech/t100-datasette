@@ -11,7 +11,7 @@ from plugins.t100_globe import short_airline_name
 US_WAC = "wac BETWEEN 1 AND 93"
 PLACE_MIN_FLIGHTS = 24   # the airport page's "How many places" default, flights both ways
 TOP_DESTINATIONS = 5
-TOP_AIRLINES = 3
+TOP_AIRLINES = 4   # then the others, together
 MARKET_MIN_SHARE = 0.01   # a city market's other airports, named only with at least 1% of this airport's traffic in the page's measure
 
 _COLUMN = {"passengers": "passengers_out + passengers_in", "freight": "freight_out + freight_in"}
@@ -30,6 +30,7 @@ class Destination:
     label: str
     passengers: int
     freight_lb: int
+    country: str | None = None   # only for an airport outside the US
 
 
 @dataclass
@@ -50,25 +51,17 @@ class AirportFacts:
     market_airports: list[str]
     first_year: int
     last_year: int
-    passengers_first: int | None
-    passengers_last: int | None
-    freight_first_lb: int | None
-    freight_last_lb: int | None
     passenger_rank_first: int | None
     passenger_rank_last: int | None
     freight_rank_first: int | None
     freight_rank_last: int | None
-    peak_year: int | None
-    peak_value: int | None   # passengers, or lb of freight: the page's measure
-    value_2020: int | None
     places: int
     airline_groups: int
     top_airlines: list[tuple[str, float]]
-    international_share: float | None
+    other_airlines_share: float | None   # the rest after top_airlines; None when there are no others
     busiest_international: Destination | None
-    longest_route: tuple[str, int] | None
     destinations: list[Destination]
-    measure: str   # "passengers" or "freight": what the page ranks destinations and airlines by, and its peak, 2020 and international share
+    measure: str   # "passengers" or "freight": what the page ranks destinations and airlines by, and its city market floor
     series: list[YearFigures] = field(default_factory=list)
 
 
@@ -92,13 +85,16 @@ def book_airports(conn, year: int, top_passengers: int, top_freight: int) -> lis
 
 
 def _names(conn, codes):
-    """code -> airport name (overrides first, then OpenFlights) and code -> BTS city name."""
+    """code -> airport name, code -> country (both overrides first, then OpenFlights) and code -> BTS city name."""
     codes = list(codes)
     marks = ",".join("?" for _ in codes)
-    names = dict(conn.execute(f"SELECT iata_code, MIN(name) FROM openflights_airports WHERE iata_code IN ({marks}) GROUP BY iata_code", codes).fetchall())
-    names.update(conn.execute(f"SELECT code, name FROM airport_overrides WHERE code IN ({marks})", codes).fetchall())
+    names, countries = {}, {}
+    for sql in (f"SELECT iata_code, MIN(name), MIN(country) FROM openflights_airports WHERE iata_code IN ({marks}) GROUP BY iata_code",
+                f"SELECT code, name, country FROM airport_overrides WHERE code IN ({marks})"):
+        for c, name, country in conn.execute(sql, codes):
+            names[c], countries[c] = name, country
     places = dict(conn.execute(f"SELECT code, name FROM airport_names WHERE code IN ({marks})", codes).fetchall())
-    return names, places
+    return names, countries, places
 
 
 def _routes(conn, code, year):
@@ -127,11 +123,6 @@ def _abroad(conn, others, year):
         f"SELECT airport FROM airport_dir_year WHERE year = ? AND airport IN ({marks}) AND NOT ({US_WAC})", [year, *others])]
 
 
-def _distance(conn, a, b):
-    row = conn.execute("SELECT distance FROM pair_distance WHERE (a = ? AND b = ?) OR (a = ? AND b = ?)", (a, b, b, a)).fetchone()
-    return row[0] if row else None
-
-
 def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> AirportFacts:
     code = entry.code
     series = [YearFigures(y, p or 0, f or 0) for y, p, f in conn.execute(
@@ -140,14 +131,12 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
         (code, first_year, last_year),
     )]
     by_year = {s.year: s for s in series}
-    first, last = by_year.get(first_year), by_year.get(last_year)
+    last = by_year.get(last_year)
     by = "passengers" if entry.in_passengers else "freight"
     key = 0 if by == "passengers" else 1
 
     def amount(s):
         return s.passengers if by == "passengers" else s.freight_lb
-
-    peak = max(series, key=lambda s: (amount(s), -s.year), default=None)
 
     routes = _routes(conn, code, last_year)
     # ranked by the page's measure, then code; a destination with none of that measure isn't one of its busiest
@@ -158,13 +147,10 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     abroad = set(_abroad(conn, routes, last_year))
     busiest_intl = next((o for o in ranked if o in abroad), None)
 
-    names, bts = _names(conn, [code] + list(routes))
+    names, countries, bts = _names(conn, [code] + list(routes))
 
     def destination(o):
-        return Destination(o, names.get(o) or bts.get(o) or o, routes[o][0], routes[o][1])
-
-    distances = [(o, d) for o in places if (d := _distance(conn, code, o)) is not None]
-    longest = max(distances, key=lambda od: (od[1], od[0]), default=None)
+        return Destination(o, names.get(o) or bts.get(o) or o, routes[o][0], routes[o][1], countries.get(o) if o in abroad else None)
 
     market, market_airports = None, []
     row = conn.execute("SELECT market_id FROM airport_market WHERE code = ?", (code,)).fetchone()
@@ -180,18 +166,16 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
             market = name[0] if name else None
 
     airlines = conn.execute(
-        """SELECT group_id, MIN(group_name), SUM(passengers_out + passengers_in), SUM(freight_out + freight_in),
-                  SUM(CASE WHEN domestic = 0 THEN passengers_out + passengers_in ELSE 0 END),
-                  SUM(CASE WHEN domestic = 0 THEN freight_out + freight_in ELSE 0 END)
+        """SELECT group_id, MIN(group_name), SUM(passengers_out + passengers_in), SUM(freight_out + freight_in)
            FROM airport_carrier_dir_year WHERE year = ? AND airport = ? GROUP BY group_id""",
         (last_year, code),
     ).fetchall()
     carried = [a for a in airlines if (a[2] or 0) > 0 or (a[3] or 0) > 0]
-    col, intl_col = (2, 4) if by == "passengers" else (3, 5)   # the page's measure, in all and abroad
+    col = 2 if by == "passengers" else 3   # the page's measure
     total = sum(a[col] or 0 for a in airlines)
-    intl = sum(a[intl_col] or 0 for a in airlines)
-    carrying = sorted((a for a in airlines if (a[col] or 0) > 0), key=lambda a: (-a[col], a[0]))[:TOP_AIRLINES]
-    top_airlines = [(_airline(a[1]), a[col] / total) for a in carrying]
+    carrying = sorted((a for a in airlines if (a[col] or 0) > 0), key=lambda a: (-a[col], a[0]))
+    top_airlines = [(_airline(a[1]), a[col] / total) for a in carrying[:TOP_AIRLINES]]
+    others = sum(a[col] for a in carrying[TOP_AIRLINES:])
 
     pax_ranks = {y: ranks(conn, y, "passengers").get(code) for y in (first_year, last_year)}
     freight_ranks = {y: ranks(conn, y, "freight").get(code) for y in (first_year, last_year)}
@@ -199,16 +183,12 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
         code=code, name=names.get(code) or code, place=bts.get(code) or "",
         market=market, market_airports=market_airports if market else [],
         first_year=first_year, last_year=last_year,
-        passengers_first=first.passengers if first else None, passengers_last=last.passengers if last else None,
-        freight_first_lb=first.freight_lb if first else None, freight_last_lb=last.freight_lb if last else None,
         passenger_rank_first=pax_ranks[first_year], passenger_rank_last=pax_ranks[last_year],
         freight_rank_first=freight_ranks[first_year], freight_rank_last=freight_ranks[last_year],
-        peak_year=peak.year if peak else None, peak_value=amount(peak) if peak else None,
-        value_2020=amount(by_year[2020]) if 2020 in by_year else None,
         places=len(places), airline_groups=len(carried), top_airlines=top_airlines,
-        international_share=intl / total if total else None,
+        other_airlines_share=others / total if others else None,
         busiest_international=destination(busiest_intl) if busiest_intl else None,
-        longest_route=longest, destinations=[destination(o) for o in top], measure=by, series=series,
+        destinations=[destination(o) for o in top], measure=by, series=series,
     )
 
 

@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Callable
 
 from jinja2 import Environment, FileSystemLoader
-from markupsafe import Markup, escape
+from markupsafe import Markup
 
-from scripts.book.charts import FREIGHT_COLOR, PASSENGER_COLOR, bar_chart
+from scripts.book.charts import FREIGHT_COLOR, PASSENGER_COLOR, bar_chart, chart_width
 from scripts.book.data import AirportFacts, BookAirport
-from scripts.book.format import DASH, dense_count, miles, rank, share, tons
+from scripts.book.format import DASH, dense_count, rank, share, tons
 from scripts.book.posters import reprefix
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
@@ -21,25 +21,23 @@ PAGE_SIZES = {"letter": ("8.5in", "11in"), "half-letter": ("5.5in", "8.5in")}
 ROOT_SIZES = {"letter": "11pt", "half-letter": "7.5pt"}
 ENDPAPERS = ("posters", "diagrams", "codes")
 
-# words for the page's measure, for the labels: {noun}, {nouns}, {Nouns}
-_WORDS = {"passengers": dict(noun="passenger", nouns="passengers", Nouns="Passengers"),
-          "freight": dict(noun="freight", nouns="freight", Nouns="Freight")}
+FREIGHT_FIRST_YEAR = 2003   # freight's chart starts here: BTS added domestic all-cargo airlines in October 2002 (about.html)
+CHART_GAP = 4   # % of the page's width between the two charts
 
 
-def _amount(f, value):
-    """A value in the page's measure: passengers, or lb shown as tons."""
-    if value is None:
-        return DASH
-    return dense_count(value) if f.measure == "passengers" else tons(value)
+def _label(d):
+    """A destination's name, with its country if it's outside the US."""
+    return f"{d.label}, {d.country}" if d.country else d.label
 
 
 def _airlines(f, book):
-    """One airline a line: the table's last row, as it's the one that runs over several."""
-    return Markup("<br>").join(f"{name} {share(s)}" for name, s in f.top_airlines) or DASH
-
-
-def _peak(f, book):
-    return f"{f.peak_year} ({_amount(f, f.peak_value)})" if f.peak_year else DASH
+    """The top airlines and the rest together, as a table so the shares line up: the facts table's last row, the only one
+    that runs over several lines."""
+    rows = list(f.top_airlines) + ([("Others", f.other_airlines_share)] if f.other_airlines_share else [])
+    if not rows:
+        return DASH
+    cells = Markup("").join(Markup('<tr><td>{}</td><td class="num">{}</td></tr>').format(name, share(s)) for name, s in rows)
+    return Markup('<table class="airlines">{}</table>').format(cells)
 
 
 def _international(f, book):
@@ -48,11 +46,7 @@ def _international(f, book):
     if not d:
         return DASH
     amount = tons(d.freight_lb) if f.measure == "freight" else dense_count(d.passengers)
-    return f"{d.code} {d.label} ({amount})"
-
-
-def _longest(f, book):
-    return f"{f.longest_route[0]}, {miles(f.longest_route[1])}" if f.longest_route else DASH
+    return f"{d.code} {_label(d)} ({amount})"
 
 
 def _market(f, book):
@@ -64,31 +58,19 @@ def _market(f, book):
     return Markup("{} (with {})").format(f.market, others)
 
 
-# The table, in order: (label, value(facts, codes in the book)). Labels may use {first} and {last} for the years, and {noun},
-# {nouns} or {Nouns} for the page's measure. A value of "" leaves the row out. Cut or reorder rows here.
+# The facts table, in order: (label, value(facts, codes in the book)). Labels may use {first} and {last} for the years. A
+# value of "" leaves the row out. Cut or reorder rows here; the ranks and the yearly figures have tables and charts of their own.
 TABLE_ROWS: list[tuple[str, Callable[[AirportFacts, dict], str]]] = [
-    ("Passengers {first}", lambda f, book: dense_count(f.passengers_first)),
-    ("Passengers {last}", lambda f, book: dense_count(f.passengers_last)),
-    ("Freight {first}", lambda f, book: tons(f.freight_first_lb)),
-    ("Freight {last}", lambda f, book: tons(f.freight_last_lb)),
-    ("Passenger rank {first}", lambda f, book: rank(f.passenger_rank_first)),
-    ("Passenger rank {last}", lambda f, book: rank(f.passenger_rank_last)),
-    ("Freight rank {first}", lambda f, book: rank(f.freight_rank_first)),
-    ("Freight rank {last}", lambda f, book: rank(f.freight_rank_last)),
-    ("Peak {noun} year", _peak),
-    ("{Nouns} in 2020", lambda f, book: _amount(f, f.value_2020)),
     ("Places served (24+ flights)", lambda f, book: f"{f.places:,}"),
-    ("Airline groups", lambda f, book: f"{f.airline_groups:,}"),
-    ("International share of {nouns}", lambda f, book: share(f.international_share)),
     ("Busiest international destination", _international),
-    ("Longest route", _longest),
     ("City market", _market),
+    ("Airlines at this airport, {last}", lambda f, book: f"{f.airline_groups:,}"),
     ("Top airlines", _airlines),
 ]
 
 
 def label_for(label: str, f: AirportFacts) -> str:
-    return label.format(first=f.first_year, last=f.last_year, **_WORDS[f.measure])
+    return label.format(first=f.first_year, last=f.last_year)
 
 
 def _inches(length: str) -> float:
@@ -131,20 +113,29 @@ def _cover(svg: str) -> str:
 def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict):
     rows = [(label_for(label, f), value(f, book)) for label, value in TABLE_ROWS]
     columns = [("Passengers", lambda d: dense_count(d.passengers)), ("Freight", lambda d: tons(d.freight_lb))]
-    span = dict(first_year=f.first_year, last_year=f.last_year)
+    freight_first = max(f.first_year, FREIGHT_FIRST_YEAR)
     charts = [
-        Markup(bar_chart([(s.year, s.passengers) for s in f.series], color=PASSENGER_COLOR, label="Passengers", **span)),
-        Markup(bar_chart([(s.year, s.freight_lb) for s in f.series], color=FREIGHT_COLOR, label="Freight (tons)", scale=2000, **span)),
+        (chart_width(f.first_year, f.last_year),
+         bar_chart([(s.year, s.passengers) for s in f.series], color=PASSENGER_COLOR, label="Passengers",
+                   first_year=f.first_year, last_year=f.last_year)),
+        (chart_width(freight_first, f.last_year),
+         bar_chart([(s.year, s.freight_lb) for s in f.series], color=FREIGHT_COLOR, label="Freight (tons)", scale=2000,
+                   first_year=freight_first, last_year=f.last_year)),
     ]
     if f.measure == "freight":   # the page's measure first
         columns.reverse()
         charts.reverse()
+    total = sum(w for w, _ in charts)
     return dict(
         code=f.code, name=f.name, place=f.place, rows=[(label, value) for label, value in rows if value != ""],
         destinations_by=f.measure,
         columns=[name for name, _ in columns],
-        destinations=[(d.code, d.label, [cell(d) for _, cell in columns]) for d in f.destinations],
-        charts=charts,
+        destinations=[(d.code, _label(d), [cell(d) for _, cell in columns]) for d in f.destinations],
+        rank_years=(f.first_year, f.last_year),
+        ranks=[("Passenger", rank(f.passenger_rank_first), rank(f.passenger_rank_last)),
+               ("Freight", rank(f.freight_rank_first), rank(f.freight_rank_last))],
+        # widths in proportion to the charts' own, so their bars come out the same width (charts.SLOT)
+        charts=[dict(width=f"{w / total * (100 - CHART_GAP):.3f}", svg=Markup(svg)) for w, svg in charts],
         poster=Markup(poster),
     )
 

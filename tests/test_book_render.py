@@ -4,6 +4,7 @@ from dataclasses import replace
 import pytest
 
 from scripts.book.data import AirportFacts, BookAirport, Destination, YearFigures
+from scripts.book.charts import chart_width
 from scripts.book.render import TABLE_ROWS, book_html, code_tile_padding, grid_shape, label_for
 
 
@@ -11,12 +12,10 @@ from scripts.book.render import TABLE_ROWS, book_html, code_tile_padding, grid_s
 def facts(code="ATL", **kw):
     base = AirportFacts(
         code=code, name=f"{code} International", place=f"{code.title()}ville, GA", market=None, market_airports=[],
-        first_year=1990, last_year=2025, passengers_first=48_000_000, passengers_last=103_000_000,
-        freight_first_lb=800_000_000, freight_last_lb=1_500_000_000, passenger_rank_first=2, passenger_rank_last=1,
-        freight_rank_first=10, freight_rank_last=12, peak_year=2019, peak_value=110_000_000, value_2020=43_000_000,
-        places=220, airline_groups=30, top_airlines=[("Delta Air Lines", 0.72), ("Southwest Airlines", 0.08)],
-        international_share=0.11, busiest_international=Destination("CUN", "Cancun International", 900_000, 0),
-        longest_route=("JNB", 8439),
+        first_year=1990, last_year=2025, passenger_rank_first=2, passenger_rank_last=1,
+        freight_rank_first=10, freight_rank_last=12,
+        places=220, airline_groups=30, top_airlines=[("Delta Air Lines", 0.72), ("Southwest Airlines", 0.08)], other_airlines_share=None,
+        busiest_international=Destination("CUN", "Cancun International", 900_000, 0, "Mexico"),
         destinations=[Destination("MCO", "Orlando International", 2_700_000, 5_000_000), Destination("LGA", "LaGuardia", 2_200_000, 600_000)],
         measure="passengers", series=[YearFigures(y, 1_000_000 * (y - 1980), 10_000_000) for y in range(1990, 2026)],
     )
@@ -62,9 +61,18 @@ def test_table_rows_follow_table_rows():
     assert "City market" in _section(render([(entry(), facts(market="New York area", market_airports=["JFK", "LGA"]))]), "data-ATL")
 
 
-def test_missing_first_year_shows_dash():
-    data = _section(render([(entry(), facts(passengers_first=None))]), "data-ATL")
-    assert re.search(r"<th>Passengers 1990</th><td>—</td>", data)
+def test_facts_table_rows():
+    data = _section(render(), "data-ATL")
+    assert re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', data) == [
+        "Places served (24+ flights)", "Busiest international destination", "Airlines at this airport, 2025", "Top airlines"]
+
+
+def test_rank_over_time_table_above_the_charts():
+    data = _section(render([(entry(), facts(passenger_rank_first=None))]), "data-ATL")
+    table = data[data.index("<h2>Rank over time</h2>"):data.index('class="charts"')]
+    assert data.index('class="destinations"') < data.index("<h2>Rank over time</h2>")
+    cells = [re.sub(r"<[^>]+>", "", c) for c in re.findall(r"<t[hd][^>]*>.*?</t[hd]>", table)]
+    assert cells == ["", "1990", "2025", "Passenger", "—", "1st", "Freight", "10th", "12th"]
 
 
 def test_freight_ranked_destinations_put_freight_first():
@@ -86,6 +94,13 @@ def test_contents_page_numbers_follow_the_links():
 def test_busiest_international_in_the_ranking_measure():
     f = facts(measure="freight", busiest_international=Destination("HKG", "Hong Kong International", 0, 20_000_000))
     assert "HKG Hong Kong International (10,000 tons)" in _section(render([(entry(), f)]), "data-ATL")
+    assert "CUN Cancun International, Mexico (900,000)" in _section(render(), "data-ATL")
+
+
+def test_destinations_abroad_name_their_country():
+    f = facts(destinations=[Destination("YYZ", "Toronto Pearson", 1_000_000, 0, "Canada"), Destination("LGA", "LaGuardia", 900_000, 0)])
+    data = _section(render([(entry(), f)]), "data-ATL")
+    assert "<td>Toronto Pearson, Canada</td>" in data and "<td>LaGuardia</td>" in data
 
 
 def test_poster_is_inlined_once():
@@ -122,24 +137,33 @@ def test_poster_offset_moves_the_poster_down():
     assert "#poster-MEM svg" not in html
 
 
-def test_top_airlines_last_one_per_line():
-    f = facts(top_airlines=[("Delta Air Lines", 0.72), ("Fish & Chips Air", 0.08)])
-    rows = re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th><td>(.*?)</td>', _section(render([(entry(), f)]), "data-ATL"))
-    assert rows[-1] == ("Top airlines", "Delta Air Lines 72.0%<br>Fish &amp; Chips Air 8.0%")
+def test_top_airlines_a_table_of_four_then_the_others():
+    f = facts(top_airlines=[("Delta Air Lines", 0.72), ("Fish & Chips Air", 0.08)], other_airlines_share=0.2)
+    data = _section(render([(entry(), f)]), "data-ATL")
+    table = data[data.index("<th>Top airlines</th>"):]
+    table = table[:table.index("</table>")]
+    assert re.findall(r'<tr><td>([^<]*)</td><td class="num">(.*?)</td>', table) == [
+        ("Delta Air Lines", "72.0%"), ("Fish &amp; Chips Air", "8.0%"), ("Others", "20.0%")]
+    plain = _section(render(), "data-ATL")
+    assert "Others" not in plain
 
 
-def test_freight_page_labels_and_chart_order():
+def test_freight_page_chart_order():
     data = _section(render([(entry(), facts(measure="freight"))]), "data-ATL")
-    labels = re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', data)
-    assert {"Peak freight year", "Freight in 2020", "International share of freight"} <= set(labels)
-    assert "Peak passenger year" not in labels
     charts = data[data.index('class="charts"'):]
     assert charts.index("Freight (tons)") < charts.index(">Passengers<")
     passenger = _section(render(), "data-ATL")
-    assert {"Peak passenger year", "Passengers in 2020", "International share of passengers"} <= set(
-        re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', passenger))
     charts = passenger[passenger.index('class="charts"'):]
     assert charts.index(">Passengers<") < charts.index("Freight (tons)")
+
+
+def test_freight_chart_from_2003_with_bars_as_wide_as_the_passenger_chart():
+    data = _section(render(), "data-ATL")
+    boxes = re.findall(r'<div class="chart-box" style="width: ([\d.]+)%">(.*?)</svg>', data, re.S)
+    (pax_width, pax), (freight_width, freight) = boxes
+    assert re.findall(r'class="x-label"[^>]*>(\d+)<', freight)[0] == "2003"
+    assert re.findall(r'class="x-label"[^>]*>(\d+)<', pax)[0] == "1990"
+    assert float(pax_width) / float(freight_width) == pytest.approx(chart_width(1990, 2025) / chart_width(2003, 2025), rel=1e-3)
 
 
 def test_market_airports_in_the_book_get_page_numbers():

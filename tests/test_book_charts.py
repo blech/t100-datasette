@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from scripts.book.charts import FREIGHT_COLOR, PASSENGER_COLOR, bar_chart
+from scripts.book.charts import FREIGHT_COLOR, PASSENGER_COLOR, bar_chart, chart_width
 from scripts.book.format import dense_count
 
 NS = "{http://www.w3.org/2000/svg}"
@@ -62,3 +62,13 @@ def test_output_is_well_formed_svg():
     svg = _svg([(y, y) for y in range(1990, 2026)], label="Fish & chips")
     assert svg.get("viewBox") and svg.get("width") == "100%"
     assert "Fish & chips" in _texts(svg, "title")
+
+
+def test_width_follows_the_year_span_so_bars_match():
+    assert chart_width(1990, 2025) == pytest.approx(400)
+    assert chart_width(2003, 2025) < chart_width(1990, 2025)
+    long = _svg([(2010, 5)])
+    short = _svg([(2010, 5)], first_year=2003)
+    assert float(short.get("viewBox").split()[2]) == pytest.approx(chart_width(2003, 2025))
+    assert _bars(long)[0].get("width") == _bars(short)[0].get("width")
+    assert _bars(long)[0].get("height") == _bars(short)[0].get("height")   # the same height, for the same value

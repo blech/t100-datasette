@@ -49,7 +49,7 @@ def build_world(db_path):
     _insert(db_path, "airport_market", [dict(code="AAA", market_id="M1"), dict(code="NEW", market_id="M1"), dict(code="TNY", market_id="M1"), dict(code="BBB", market_id="M2")])
     _insert(db_path, "market_name", [dict(market_id="M1", name="Aaaville area"), dict(market_id="M2", name="Bbbville area")])
     add_overrides(db_path, [dict(code="AAA", name="Alpha International", city="Aaaville", country="United States", latitude=0, longitude=0)])
-    add_airports(db_path, [dict(iata_code=c, name=n, city="", country="United States", latitude=0, longitude=0)
+    add_airports(db_path, [dict(iata_code=c, name=n, city="", country="Freedonia" if c == "FOR" else "United States", latitude=0, longitude=0)
                            for c, n in (("AAA", "Old Alpha"), ("BBB", "Bravo Field"), ("CCC", "Charlie Airport"),
                                         ("FFF", "Freight Field"), ("NEW", "New Airport"), ("FOR", "Foreign Airport"))])
     _insert(db_path, "airport_carrier_dir_year", [
@@ -92,17 +92,16 @@ def test_book_airports_union_and_order(conn):
 
 def test_facts_totals_and_ranks(conn):
     f = _facts(conn, "AAA")
-    assert (f.passengers_first, f.passengers_last) == (500, 1000)
-    assert (f.freight_first_lb, f.freight_last_lb) == (40, 100)
+    totals = {s.year: (s.passengers, s.freight_lb) for s in f.series}
+    assert totals[1990] == (500, 40) and totals[2025] == (1000, 100) and totals[2020] == (200, 80)
     assert (f.passenger_rank_first, f.passenger_rank_last) == (2, 1)
     assert (f.freight_rank_first, f.freight_rank_last) == (2, 2)
     assert f.name == "Alpha International" and f.place == "Aaaville, AA"
-    assert f.value_2020 == 200
 
 
 def test_facts_for_an_airport_with_no_first_year(conn):
     f = _facts(conn, "NEW")
-    assert f.passengers_first is None and f.freight_first_lb is None and f.passenger_rank_first is None
+    assert f.passenger_rank_first is None and f.freight_rank_first is None
     assert f.series[0].year == 2020
 
 
@@ -146,32 +145,37 @@ def test_market_only_when_shared(conn):
     assert b.market is None and b.market_airports == []
 
 
-def test_top_airlines_shares_and_international_share(conn):
+def test_top_airlines_shares(conn):
     f = _facts(conn, "AAA")
     assert f.airline_groups == 4
     assert [name for name, _ in f.top_airlines] == ["Delta Air Lines", "Southwest Airlines", "Foo Airways"]
     assert [share for _, share in f.top_airlines] == pytest.approx([0.6, 0.3, 0.1])
-    assert f.international_share == pytest.approx(0.1)
+    assert f.other_airlines_share is None   # no fifth airline with passengers
     assert f.busiest_international.code == "FOR"   # abroad; not TNY, a US route with one international flight
 
 
-def test_longest_route_either_order(conn):
-    assert _facts(conn, "AAA").longest_route == ("FOR", 4000)
+def test_top_four_airlines_then_the_others(db_path):
+    build_world(db_path)
+    _insert(db_path, "airport_carrier_dir_year", [_carrier("G7", "Extra One", 50), _carrier("G8", "Extra Two", 50)])
+    f = _facts(sqlite3.connect(db_path), "AAA")
+    assert [name for name, _ in f.top_airlines] == ["Delta Air Lines", "Southwest Airlines", "Foo Airways", "Extra One"]
+    assert f.other_airlines_share == pytest.approx(50 / 1100)
 
 
-def test_peak_year(conn):
-    f = _facts(conn, "AAA")
-    assert (f.peak_year, f.peak_value) == (2025, 1000)
+def test_destinations_abroad_carry_their_country(conn):
+    aaa = _facts(conn, "AAA")
+    assert aaa.busiest_international.country == "Freedonia"
+    assert all(d.country is None for d in aaa.destinations)   # all in the US
+    fff = {d.code: d.country for d in _facts(conn, "FFF", top=2).destinations}
+    assert fff["FOR"] == "Freedonia" and fff["AAA"] is None
+
 
 
 def test_freight_airport_figures_are_in_freight(conn):
     f = _facts(conn, "FFF", top=2)
     assert f.measure == "freight"
-    assert (f.peak_year, f.peak_value) == (2025, 5000)
-    assert f.value_2020 is None
     assert [name for name, _ in f.top_airlines] == ["Parcel Air", "Box Lines", "Delta Air Lines"]
     assert [share for _, share in f.top_airlines] == pytest.approx([0.6, 0.3, 0.1])
-    assert f.international_share == pytest.approx(0.3)
 
 
 def test_freight_airport_market_floor_is_in_freight(db_path):
