@@ -3,7 +3,7 @@ import re
 import pytest
 
 from scripts.book.__main__ import main
-from scripts.book.pdf import broken_spreads
+from scripts.book.pdf import broken_spreads, centre_offset
 from tests.test_book_data import build_world
 from tests.test_book_render import poster
 
@@ -52,3 +52,20 @@ def test_missing_poster_stops_the_build(world, capsys):
     assert main(_args(world)) != 0
     assert "BBB" in capsys.readouterr().err
     assert not world[2].parent.exists()
+
+
+def test_centre_offset():
+    assert centre_offset(0, 800, 0, 700, 900) == 50            # 100px shorter than the data: down by half
+    assert centre_offset(0, 600, 0, 700, 900) == 0             # taller than the data: stays at the top
+    assert centre_offset(0, 1000, 0, 700, 720) == 20           # never off the bottom of the page
+
+
+def test_endpapers_option(world):
+    assert main(_args(world, "--endpapers", "codes,codes")) == 0
+    html = world[2].with_suffix(".html").read_text()
+    assert 'class="endpaper endpaper-front endpaper-codes"' in html and 'class="endpaper endpaper-back endpaper-codes"' in html
+
+
+def test_endpapers_option_rejects_a_bad_kind(world):
+    with pytest.raises(SystemExit):
+        main(_args(world, "--endpapers", "codes,maps"))

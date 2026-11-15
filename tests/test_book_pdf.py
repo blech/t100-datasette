@@ -9,7 +9,7 @@ except (ImportError, OSError) as e:   # OSError: installed, but Pango isn't on t
     pytest.skip(f"WeasyPrint unavailable ({type(e).__name__}); see this file's docstring", allow_module_level=True)
 
 from scripts.book.data import Destination
-from scripts.book.pdf import broken_spreads, write_pdf
+from scripts.book.pdf import broken_spreads, layout, poster_offsets, write_pdf
 from tests.test_book_render import render, entry, facts
 
 
@@ -17,14 +17,14 @@ def _book(codes):
     return render([(entry(c), facts(c)) for c in codes])
 
 
-def test_two_airports_make_eight_pages_with_data_on_even_pages(tmp_path):
+def test_two_airports_make_ten_pages_with_data_on_even_pages(tmp_path):
     out = tmp_path / "b.pdf"
-    assert write_pdf(_book(["ATL", "MEM"]), out, tmp_path) == ([4, 6], [5, 7], 8)
+    assert write_pdf(_book(["ATL", "MEM"]), out, tmp_path) == ([4, 6], [5, 7], 10)
     assert out.read_bytes().startswith(b"%PDF")
 
 
 def test_three_airports_still_put_data_on_even_pages(tmp_path):
-    assert write_pdf(_book(["ATL", "MEM", "ORD"]), tmp_path / "b.pdf", tmp_path) == ([4, 6, 8], [5, 7, 9], 10)
+    assert write_pdf(_book(["ATL", "MEM", "ORD"]), tmp_path / "b.pdf", tmp_path) == ([4, 6, 8], [5, 7, 9], 12)
 
 
 def test_an_overflowing_data_page_breaks_its_spread(tmp_path):
@@ -32,3 +32,13 @@ def test_an_overflowing_data_page_breaks_its_spread(tmp_path):
     data, posters, _ = write_pdf(render([(entry("ATL"), long), (entry("MEM"), facts("MEM"))]), tmp_path / "b.pdf", tmp_path)
     assert data[0] == 4 and posters[0] != 5   # the overflow pushed ATL's poster on
     assert broken_spreads(data, posters) == [4]
+
+
+def test_poster_offsets_centre_each_poster_on_its_data(tmp_path):
+    html = _book(["ATL", "MEM"])
+    offsets = poster_offsets(layout(html, tmp_path))
+    assert set(offsets) == {"ATL", "MEM"}
+    assert all(px >= 0 for px in offsets.values())
+    centred = layout(render([(entry(c), facts(c)) for c in ("ATL", "MEM")], poster_offsets=offsets), tmp_path)
+    assert all(abs(px) < 1 for px in poster_offsets(centred).values())   # already centred: nothing more to move
+    assert len(centred.pages) == 10

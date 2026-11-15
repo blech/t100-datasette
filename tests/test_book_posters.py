@@ -1,6 +1,6 @@
 import pytest
 
-from scripts.book.posters import PosterError, load_poster, load_posters
+from scripts.book.posters import PosterError, load_diagrams, load_poster, load_posters, reprefix
 
 
 def _poster(code, ids=("r2",), prefix=True):
@@ -59,3 +59,25 @@ def test_load_posters_returns_each_by_code(tmp_path):
     _write(tmp_path, "ABE")
     _write(tmp_path, "BOS")
     assert set(load_posters(tmp_path, ["ABE", "BOS"])) == {"ABE", "BOS"}
+
+
+
+def test_reprefix_renames_ids_and_their_references():
+    svg = '<svg><defs><path id="ATL-r2" d="M0 0"/></defs><use href="#ATL-r2"/><use xlink:href="#ATL-r2"/></svg>'
+    assert reprefix(svg, "ATL", "front-") == (
+        '<svg><defs><path id="front-ATL-r2" d="M0 0"/></defs><use href="#front-ATL-r2"/><use xlink:href="#front-ATL-r2"/></svg>')
+
+
+def test_diagrams_resolve_nested_variables(tmp_path):
+    (tmp_path / "ATL.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">'
+        '<style>.ac-runway{stroke:var(--ac-runway,var(--ac-ink,#000))}</style></svg>')
+    svg = load_diagrams(tmp_path, ["ATL"])["ATL"]
+    assert ".ac-runway{stroke:#000}" in svg
+    assert "width=" not in svg[:svg.index(">")]
+
+
+def test_missing_diagrams_are_all_named(tmp_path):
+    with pytest.raises(PosterError) as e:
+        load_diagrams(tmp_path, ["YYY", "XXX"])
+    assert "XXX" in str(e.value) and "YYY" in str(e.value)

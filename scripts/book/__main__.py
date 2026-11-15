@@ -8,12 +8,20 @@ import sys
 from pathlib import Path
 
 from scripts.book.data import airport_facts, book_airports
-from scripts.book.pdf import broken_spreads, library_env, needs_library_path, write_pdf
-from scripts.book.posters import PosterError, load_posters
-from scripts.book.render import PAGE_SIZES, book_html
+from scripts.book.pdf import broken_spreads, layout, library_env, needs_library_path, poster_offsets, write_pdf
+from scripts.book.posters import PosterError, load_diagrams, load_posters
+from scripts.book.render import ENDPAPERS, PAGE_SIZES, book_html
 
 REPO = Path(__file__).resolve().parents[2]
 POSTERS = Path.home() / "Documents (Local)" / "code" / "airportcity" / "posters"
+DIAGRAMS = REPO / "static" / "svg" / "diagram"
+
+
+def endpapers(value: str) -> tuple[str, str]:
+    kinds = tuple(k.strip() for k in value.split(","))
+    if len(kinds) != 2 or any(k not in ENDPAPERS for k in kinds):
+        raise argparse.ArgumentTypeError(f"two of {', '.join(ENDPAPERS)}, front then back, e.g. posters,codes")
+    return kinds
 
 
 def default_db() -> Path:
@@ -34,6 +42,11 @@ def parse(argv):
     p.add_argument("--top-freight", type=int, default=50)
     p.add_argument("--only", help="comma-separated codes, for a quick draft of a few spreads")
     p.add_argument("--page-size", choices=sorted(PAGE_SIZES), default="letter")
+    p.add_argument("--endpapers", type=endpapers, default=("posters", "codes"),
+                   help="pages 2 and the one before the back cover: posters, diagrams or codes, front then back (default: posters,codes)")
+    p.add_argument("--diagrams", type=Path, default=DIAGRAMS, help="runway diagram SVGs, for diagram endpapers")
+    p.add_argument("--poster-align", choices=["centre", "top"], default="centre",
+                   help="centre each poster on its data page (two layouts, so slower), or put it at the top of the page")
     p.add_argument("--html", action="store_true", help="write the HTML instead of the PDF (no WeasyPrint needed)")
     return p.parse_args(argv)
 
@@ -56,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
             entries = [e for e in entries if e.code in wanted]
         try:
             posters = load_posters(args.posters, [e.code for e in entries])
+            diagrams = load_diagrams(args.diagrams, [e.code for e in entries]) if "diagrams" in args.endpapers else None
         except PosterError as e:
             print(e, file=sys.stderr)
             return 2
@@ -63,13 +77,16 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         conn.close()
     subtitle = f"The {args.top_passengers} busiest by passengers and the {args.top_freight} busiest by freight in {args.year}"
-    html = book_html(airports, posters, page_size=args.page_size, subtitle=subtitle)
+    options = dict(page_size=args.page_size, subtitle=subtitle, endpapers=args.endpapers, diagrams=diagrams)
+    html = book_html(airports, posters, **options)
     if args.html:
         out = args.out.with_suffix(".html")
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(html)
         print(f"{len(airports)} airports: {out}")
         return 0
+    if args.poster_align == "centre":   # lay the book out once to measure each data page, then again with the posters moved
+        html = book_html(airports, posters, poster_offsets=poster_offsets(layout(html, REPO)), **options)
     data_pages, poster_pages, pages = write_pdf(html, args.out, REPO)
     print(f"{pages} pages, {len(airports)} airports: {args.out}")
     broken = broken_spreads(data_pages, poster_pages)

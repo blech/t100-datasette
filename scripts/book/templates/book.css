@@ -12,11 +12,12 @@ body {
   line-height: 1.3;
 }
 
-section.blank, section.contents, section.data, section.poster, section.credits { break-before: page; }
-section.contents { break-before: right; }
-section.data { break-before: left; }
-section.poster { break-before: right; }
-section.credits { break-before: left; }
+/* 1 title, 2 front endpaper, 3 contents, then data (left) and poster (right) spreads, credits (left), back endpaper (right),
+   back cover (left) */
+section { break-before: page; }
+section.title { break-before: auto; }
+section.contents, section.poster, section.endpaper-back { break-before: right; }
+section.data, section.credits, section.back-cover { break-before: left; }
 
 /* title */
 section.title { padding-top: 35%; text-align: center; }
@@ -44,8 +45,12 @@ table.facts { margin-top: 1em; }
 table.facts th { text-align: left; font-weight: 400; color: #52525b; width: 45%; padding: 0.12em 0.6em 0.12em 0; vertical-align: top; }
 table.facts td { padding: 0.12em 0; }
 table.facts tr { border-bottom: 0.5pt solid #e4e4e7; }
+table.facts a.ref { color: inherit; text-decoration: none; }
+table.facts a.ref::after { content: " p. " target-counter(attr(href url), page); color: #71717a; }
 table.destinations th { font-weight: 400; color: #52525b; text-align: left; }
-table.destinations td { padding: 0.1em 0.6em 0.1em 0; }
+/* headers padded like their cells, so a right-aligned header ends where its numbers do */
+table.destinations th, table.destinations td { padding: 0.1em 0.6em 0.1em 0; }
+table.destinations tr > :last-child { padding-right: 0; }
 table.destinations .code { font-weight: 700; width: 3em; }
 table.destinations .num { text-align: right; white-space: nowrap; }
 /* the two charts side by side; their look is set inside the SVG (charts.py) */
@@ -55,8 +60,20 @@ svg.chart { display: block; width: 100%; height: auto; }
 
 /* poster page */
 section.poster svg { display: block; width: 100%; height: auto; }
-section.poster .code { font-size: 3em; font-weight: 700; margin: 0.4em 0 0; line-height: 1; }
-section.poster .place { font-size: 1.2em; margin: 0.2em 0 0; color: #52525b; }
+/* each poster centred on its data page's height, measured from a first layout (pdf.poster_offsets) */
+{% for code, px in poster_offsets.items() %}#poster-{{ code }} svg { margin-top: {{ px }}px; }
+{% endfor %}
+
+/* endpapers: a grid of the posters, the runway diagrams, or the codes, in book order */
+section.endpaper .grid { display: grid; gap: 0.6em; }
+section.endpaper .tile svg { display: block; width: 100%; height: auto; }
+section.endpaper a.tile { color: inherit; text-decoration: none; text-align: center; padding: 0.9em 0; border: 0.5pt solid #e4e4e7; }
+section.endpaper a.tile .code { display: block; font-size: 1.7em; font-weight: 700; }
+section.endpaper a.tile::after { content: target-counter(attr(href url), page); display: block; font-size: 0.75em; color: #71717a; }
 
 /* credits */
 section.credits { font-size: 0.85em; color: #52525b; padding-top: 70%; }
+section.credits .url { white-space: nowrap; color: #18181b; }
+
+/* back cover: placeholder */
+section.back-cover { padding-top: 80%; text-align: center; color: #71717a; }

@@ -12,7 +12,7 @@ US_WAC = "wac BETWEEN 1 AND 93"
 PLACE_MIN_FLIGHTS = 24   # the airport page's "How many places" default, flights both ways
 TOP_DESTINATIONS = 5
 TOP_AIRLINES = 3
-MARKET_MIN_SHARE = 0.01   # a city market's other airports, named only with at least 1% of this airport's passengers
+MARKET_MIN_SHARE = 0.01   # a city market's other airports, named only with at least 1% of this airport's traffic in the page's measure
 
 _COLUMN = {"passengers": "passengers_out + passengers_in", "freight": "freight_out + freight_in"}
 
@@ -59,8 +59,8 @@ class AirportFacts:
     freight_rank_first: int | None
     freight_rank_last: int | None
     peak_year: int | None
-    peak_passengers: int | None
-    passengers_2020: int | None
+    peak_value: int | None   # passengers, or lb of freight: the page's measure
+    value_2020: int | None
     places: int
     airline_groups: int
     top_airlines: list[tuple[str, float]]
@@ -68,7 +68,7 @@ class AirportFacts:
     busiest_international: Destination | None
     longest_route: tuple[str, int] | None
     destinations: list[Destination]
-    destinations_by: str
+    measure: str   # "passengers" or "freight": what the page ranks destinations and airlines by, and its peak, 2020 and international share
     series: list[YearFigures] = field(default_factory=list)
 
 
@@ -141,11 +141,15 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     )]
     by_year = {s.year: s for s in series}
     first, last = by_year.get(first_year), by_year.get(last_year)
-    peak = max(series, key=lambda s: (s.passengers, -s.year), default=None)
-
-    routes = _routes(conn, code, last_year)
     by = "passengers" if entry.in_passengers else "freight"
     key = 0 if by == "passengers" else 1
+
+    def amount(s):
+        return s.passengers if by == "passengers" else s.freight_lb
+
+    peak = max(series, key=lambda s: (amount(s), -s.year), default=None)
+
+    routes = _routes(conn, code, last_year)
     # ranked by the page's measure, then code; a destination with none of that measure isn't one of its busiest
     ranked = sorted((o for o in routes if routes[o][key] > 0), key=lambda o: (-routes[o][key], o))
     top = ranked[:TOP_DESTINATIONS]
@@ -165,10 +169,10 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     market, market_airports = None, []
     row = conn.execute("SELECT market_id FROM airport_market WHERE code = ?", (code,)).fetchone()
     if row:
-        floor = MARKET_MIN_SHARE * (last.passengers if last else 0)
+        floor = MARKET_MIN_SHARE * (amount(last) if last else 0)
         market_airports = [r[0] for r in conn.execute(
             f"""SELECT m.code FROM airport_market AS m JOIN airport_dir_year AS y ON y.airport = m.code AND y.year = ?
-                WHERE m.market_id = ? AND m.code != ? GROUP BY m.code HAVING SUM({_COLUMN['passengers']}) >= ? AND SUM({_COLUMN['passengers']}) > 0
+                WHERE m.market_id = ? AND m.code != ? GROUP BY m.code HAVING SUM({_COLUMN[by]}) >= ? AND SUM({_COLUMN[by]}) > 0
                 ORDER BY m.code""",
             (last_year, row[0], code, floor))]
         if market_airports:
@@ -177,15 +181,17 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
 
     airlines = conn.execute(
         """SELECT group_id, MIN(group_name), SUM(passengers_out + passengers_in), SUM(freight_out + freight_in),
-                  SUM(CASE WHEN domestic = 0 THEN passengers_out + passengers_in ELSE 0 END)
+                  SUM(CASE WHEN domestic = 0 THEN passengers_out + passengers_in ELSE 0 END),
+                  SUM(CASE WHEN domestic = 0 THEN freight_out + freight_in ELSE 0 END)
            FROM airport_carrier_dir_year WHERE year = ? AND airport = ? GROUP BY group_id""",
         (last_year, code),
     ).fetchall()
     carried = [a for a in airlines if (a[2] or 0) > 0 or (a[3] or 0) > 0]
-    pax_total = sum(a[2] or 0 for a in airlines)
-    intl_pax = sum(a[4] or 0 for a in airlines)
-    with_pax = sorted((a for a in airlines if (a[2] or 0) > 0), key=lambda a: (-a[2], a[0]))[:TOP_AIRLINES]
-    top_airlines = [(_airline(a[1]), a[2] / pax_total) for a in with_pax]
+    col, intl_col = (2, 4) if by == "passengers" else (3, 5)   # the page's measure, in all and abroad
+    total = sum(a[col] or 0 for a in airlines)
+    intl = sum(a[intl_col] or 0 for a in airlines)
+    carrying = sorted((a for a in airlines if (a[col] or 0) > 0), key=lambda a: (-a[col], a[0]))[:TOP_AIRLINES]
+    top_airlines = [(_airline(a[1]), a[col] / total) for a in carrying]
 
     pax_ranks = {y: ranks(conn, y, "passengers").get(code) for y in (first_year, last_year)}
     freight_ranks = {y: ranks(conn, y, "freight").get(code) for y in (first_year, last_year)}
@@ -197,12 +203,12 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
         freight_first_lb=first.freight_lb if first else None, freight_last_lb=last.freight_lb if last else None,
         passenger_rank_first=pax_ranks[first_year], passenger_rank_last=pax_ranks[last_year],
         freight_rank_first=freight_ranks[first_year], freight_rank_last=freight_ranks[last_year],
-        peak_year=peak.year if peak else None, peak_passengers=peak.passengers if peak else None,
-        passengers_2020=by_year[2020].passengers if 2020 in by_year else None,
+        peak_year=peak.year if peak else None, peak_value=amount(peak) if peak else None,
+        value_2020=amount(by_year[2020]) if 2020 in by_year else None,
         places=len(places), airline_groups=len(carried), top_airlines=top_airlines,
-        international_share=intl_pax / pax_total if pax_total else None,
+        international_share=intl / total if total else None,
         busiest_international=destination(busiest_intl) if busiest_intl else None,
-        longest_route=longest, destinations=[destination(o) for o in top], destinations_by=by, series=series,
+        longest_route=longest, destinations=[destination(o) for o in top], measure=by, series=series,
     )
 
 

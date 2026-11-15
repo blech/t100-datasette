@@ -55,6 +55,9 @@ def build_world(db_path):
     _insert(db_path, "airport_carrier_dir_year", [
         _carrier("G1", "Delta Air Lines Inc.", 600), _carrier("G2", "Southwest Airlines Co. (incl. AirTran)", 300),
         _carrier("G3", "Foo Airways", 100, domestic=0), _carrier("G4", "Cargo Co.", 0, freight=100),
+        # FFF, a freight airport: its airlines rank by freight
+        _carrier("G5", "Parcel Air Inc.", 0, freight=3000, airport="FFF"), _carrier("G6", "Box Lines", 0, freight=1500, domestic=0, airport="FFF"),
+        _carrier("G1", "Delta Air Lines Inc.", 5, freight=500, airport="FFF"),
     ])
 
 
@@ -94,7 +97,7 @@ def test_facts_totals_and_ranks(conn):
     assert (f.passenger_rank_first, f.passenger_rank_last) == (2, 1)
     assert (f.freight_rank_first, f.freight_rank_last) == (2, 2)
     assert f.name == "Alpha International" and f.place == "Aaaville, AA"
-    assert f.passengers_2020 == 200
+    assert f.value_2020 == 200
 
 
 def test_facts_for_an_airport_with_no_first_year(conn):
@@ -105,14 +108,14 @@ def test_facts_for_an_airport_with_no_first_year(conn):
 
 def test_destinations_add_both_directions(conn):
     f = _facts(conn, "AAA")
-    assert f.destinations_by == "passengers"
+    assert f.measure == "passengers"
     assert [d.code for d in f.destinations] == ["BBB", "CCC", "NEW", "XXX", "YYY"]   # TNY (65) and FOR (60) are 6th and 7th
     assert f.destinations[0].passengers == 150
 
 
 def test_freight_only_airport_ranks_destinations_by_freight(conn):
     f = _facts(conn, "FFF", top=2)   # FFF is 5th by passengers, so out of a top 2
-    assert f.destinations_by == "freight"
+    assert f.measure == "freight"
     assert [d.code for d in f.destinations] == ["AAA", "FOR", "CCC"]   # not FR2: no freight
     assert f.destinations[0].freight_lb == 900
 
@@ -158,4 +161,24 @@ def test_longest_route_either_order(conn):
 
 def test_peak_year(conn):
     f = _facts(conn, "AAA")
-    assert (f.peak_year, f.peak_passengers) == (2025, 1000)
+    assert (f.peak_year, f.peak_value) == (2025, 1000)
+
+
+def test_freight_airport_figures_are_in_freight(conn):
+    f = _facts(conn, "FFF", top=2)
+    assert f.measure == "freight"
+    assert (f.peak_year, f.peak_value) == (2025, 5000)
+    assert f.value_2020 is None
+    assert [name for name, _ in f.top_airlines] == ["Parcel Air", "Box Lines", "Delta Air Lines"]
+    assert [share for _, share in f.top_airlines] == pytest.approx([0.6, 0.3, 0.1])
+    assert f.international_share == pytest.approx(0.3)
+
+
+def test_freight_airport_market_floor_is_in_freight(db_path):
+    build_world(db_path)
+    _insert(db_path, "airport_dir_year", [_year(2025, "FCO", 9000, 40), _year(2025, "FC2", 1, 60)])
+    _insert(db_path, "airport_market", [dict(code="FFF", market_id="M3"), dict(code="FCO", market_id="M3"), dict(code="FC2", market_id="M3")])
+    _insert(db_path, "market_name", [dict(market_id="M3", name="Fffville area")])
+    c = sqlite3.connect(db_path)
+    f = _facts(c, "FFF", top=2)
+    assert f.market_airports == ["FC2"]   # 60 lb is over 1% of FFF's 5,000; FCO's 40 isn't, whatever its passengers

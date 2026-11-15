@@ -7,13 +7,25 @@
 </head>
 <body>
 
+{% macro endpaper(e) %}
+<section id="endpaper-{{ e.side }}" class="endpaper endpaper-{{ e.side }} endpaper-{{ e.kind }}">
+  <div class="grid" style="grid-template-columns: repeat({{ columns }}, 1fr)">
+  {% if e.tiles %}
+    {% for tile in e.tiles %}<div class="tile">{{ tile }}</div>{% endfor %}
+  {% else %}
+    {% for p in pages %}<a class="tile" href="#data-{{ p.code }}"><span class="code">{{ p.code }}</span></a>{% endfor %}
+  {% endif %}
+  </div>
+</section>
+{% endmacro %}
+
 <section id="title" class="title">
   <h1>{{ title }}</h1>
   {% if subtitle %}<p class="subtitle">{{ subtitle }}</p>{% endif %}
   <p class="years">{{ first_year }}–{{ last_year }}</p>
 </section>
 
-<section id="blank" class="blank"></section>
+{{ endpaper(endpapers[0]) }}
 
 <section id="contents" class="contents">
   <h2>Contents</h2>
@@ -33,7 +45,7 @@
   </header>
   <table class="facts">
   {% for label, value in p.rows %}
-    <tr class="fact"><th>{{ label }}</th><td>{{ value }}</td></tr>
+    <tr class="fact{% if loop.last %} last{% endif %}"><th>{{ label }}</th><td>{{ value }}</td></tr>
   {% endfor %}
   </table>
   {% if p.destinations %}
@@ -46,20 +58,27 @@
   </table>
   {% endif %}
   <div class="charts">
-    <div class="chart-box">{{ p.passenger_chart }}</div>
-    <div class="chart-box">{{ p.freight_chart }}</div>
+  {% for chart in p.charts %}
+    <div class="chart-box">{{ chart }}</div>
+  {% endfor %}
   </div>
 </section>
 <section id="poster-{{ p.code }}" class="poster">
   {{ p.poster }}
-  <p class="code">{{ p.code }}</p>
-  <p class="place">{{ p.place }}</p>
 </section>
 {% endfor %}
 
 <section id="credits" class="credits">
-  <p>Passenger and freight figures: US Bureau of Transportation Statistics, T-100 segment data, {{ first_year }}–{{ last_year }}.</p>
-  <p>Airport diagrams: Airport Cities, from OpenStreetMap data (© OpenStreetMap contributors).</p>
+  <p>Passenger and freight figures: US Bureau of Transportation Statistics, T-100 segment data, {{ first_year }}–{{ last_year }}.
+     <span class="url">transtats.bts.gov</span></p>
+  <p>Airport posters: Airport Cities, from OpenStreetMap data, © OpenStreetMap contributors. <span class="url">openstreetmap.org/copyright</span></p>
+  <p>All the airport posters are drawn to the same scale.</p>
+</section>
+
+{{ endpaper(endpapers[1]) }}
+
+<section id="back-cover" class="back-cover">
+  <p>{{ title }}</p>
 </section>
 
 </body>

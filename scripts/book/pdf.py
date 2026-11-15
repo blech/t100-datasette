@@ -21,11 +21,53 @@ def library_env() -> dict:
     return env
 
 
-def write_pdf(html: str, out: Path, base_url: Path) -> tuple[list[int], list[int], int]:
-    """Writes the PDF; returns the (1-based) page numbers of the data pages, of the poster pages, and the page count."""
+def layout(html: str, base_url: Path):
     import weasyprint
 
-    document = weasyprint.HTML(string=html, base_url=str(base_url)).render()
+    return weasyprint.HTML(string=html, base_url=str(base_url)).render()
+
+
+def centre_offset(data_top: float, data_bottom: float, poster_top: float, poster_bottom: float, page_bottom: float) -> float:
+    """How far down to move a poster so it's centred on its facing data, from its top, and never off its page."""
+    move = (data_top + data_bottom) / 2 - (poster_top + poster_bottom) / 2
+    return round(max(0.0, min(move, page_bottom - poster_bottom)), 1)
+
+
+def _boxes(box):
+    yield box
+    for child in getattr(box, "children", []):
+        yield from _boxes(child)
+
+
+def _section(box, prefix):
+    """The code of a data-CODE or poster-CODE section box, else None."""
+    element = getattr(box, "element", None)
+    if getattr(box, "element_tag", None) != "section" or element is None:
+        return None
+    id_ = element.get("id") or ""
+    return id_[len(prefix):] if id_.startswith(prefix) else None
+
+
+def poster_offsets(document) -> dict[str, float]:
+    """code -> px to move each poster down so it's centred between the top of its data page and the bottom of its charts.
+    Measured from a laid-out document (WeasyPrint's page boxes): a book laid out with these offsets measures all zero."""
+    data, posters = {}, {}
+    for page in document.pages:
+        root = page._page_box
+        page_bottom = root.content_box_y() + root.height
+        for box in _boxes(root):
+            if (code := _section(box, "data-")) and code not in data:
+                data[code] = (box.border_box_y(), box.border_box_y() + box.border_height())
+            elif (code := _section(box, "poster-")) and code not in posters:
+                svg = next((b for b in _boxes(box) if str(getattr(b, "element_tag", "")).endswith("svg")), None)   # tag is "{svg namespace}svg"
+                if svg is not None:
+                    posters[code] = (svg.border_box_y(), svg.border_box_y() + svg.border_height(), page_bottom)
+    return {code: centre_offset(*data[code], *poster) for code, poster in posters.items() if code in data}
+
+
+def write_pdf(html: str, out: Path, base_url: Path) -> tuple[list[int], list[int], int]:
+    """Writes the PDF; returns the (1-based) page numbers of the data pages, of the poster pages, and the page count."""
+    document = layout(html, base_url)
     out.parent.mkdir(parents=True, exist_ok=True)
     document.write_pdf(out)
 
