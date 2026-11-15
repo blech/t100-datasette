@@ -59,7 +59,6 @@ class AirportFacts:
     airline_groups: int
     top_airlines: list[tuple[str, float]]
     other_airlines_share: float | None   # the rest after top_airlines; None when there are no others
-    busiest_international: Destination | None
     destinations: list[Destination]
     measure: str   # "passengers" or "freight": what the page ranks destinations and airlines by, and its city market floor
     series: list[YearFigures] = field(default_factory=list)
@@ -143,9 +142,8 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     ranked = sorted((o for o in routes if routes[o][key] > 0), key=lambda o: (-routes[o][key], o))
     top = ranked[:TOP_DESTINATIONS]
     places = [o for o, t in routes.items() if t[2] >= PLACE_MIN_FLIGHTS]
-    # abroad by the other airport's own wac: a US route with an odd international flight on it isn't international
-    abroad = set(_abroad(conn, routes, last_year))
-    busiest_intl = next((o for o in ranked if o in abroad), None)
+    # abroad by the other airport's own wac (so Puerto Rico isn't), for the country after its name
+    abroad = set(_abroad(conn, top, last_year))
 
     names, countries, bts = _names(conn, [code] + list(routes))
 
@@ -187,7 +185,6 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
         freight_rank_first=freight_ranks[first_year], freight_rank_last=freight_ranks[last_year],
         places=len(places), airline_groups=len(carried), top_airlines=top_airlines,
         other_airlines_share=others / total if others else None,
-        busiest_international=destination(busiest_intl) if busiest_intl else None,
         destinations=[destination(o) for o in top], measure=by, series=series,
     )
 

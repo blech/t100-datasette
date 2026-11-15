@@ -15,7 +15,6 @@ def facts(code="ATL", **kw):
         first_year=1990, last_year=2025, passenger_rank_first=2, passenger_rank_last=1,
         freight_rank_first=10, freight_rank_last=12,
         places=220, airline_groups=30, top_airlines=[("Delta Air Lines", 0.72), ("Southwest Airlines", 0.08)], other_airlines_share=None,
-        busiest_international=Destination("CUN", "Cancun International", 900_000, 0, "Mexico"),
         destinations=[Destination("MCO", "Orlando International", 2_700_000, 5_000_000), Destination("LGA", "LaGuardia", 2_200_000, 600_000)],
         measure="passengers", series=[YearFigures(y, 1_000_000 * (y - 1980), 10_000_000) for y in range(1990, 2026)],
     )
@@ -57,14 +56,15 @@ def test_table_rows_follow_table_rows():
     shown = re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', data)
     expected = [label_for(label, facts("ATL")) for label, value in TABLE_ROWS if value(facts("ATL"), {}) != ""]
     assert shown == expected
-    assert "City market" not in data
-    assert "City market" in _section(render([(entry(), facts(market="New York area", market_airports=["JFK", "LGA"]))]), "data-ATL")
+    assert "Metropolitan area" not in data
+    assert "Metropolitan area" in _section(render([(entry(), facts(market="New York area", market_airports=["JFK", "LGA"]))]), "data-ATL")
 
 
 def test_facts_table_rows():
     data = _section(render(), "data-ATL")
     assert re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', data) == [
-        "Places served (24+ flights)", "Busiest international destination", "Airlines at this airport, 2025", "Top airlines"]
+        "Places served (24+ flights)", "Airlines at this airport, 2025", "Top airlines"]
+    assert "Busiest international" not in data
 
 
 def test_rank_over_time_table_above_the_charts():
@@ -89,12 +89,6 @@ def test_contents_page_numbers_follow_the_links():
     assert "target-counter(attr(href url), page)" in html
     rule = re.search(r"section\.contents a \{([^}]*)\}", html).group(1)
     assert "flex" not in rule   # WeasyPrint resolves no target-counter inside a flex link: every page number reads 0
-
-
-def test_busiest_international_in_the_ranking_measure():
-    f = facts(measure="freight", busiest_international=Destination("HKG", "Hong Kong International", 0, 20_000_000))
-    assert "HKG Hong Kong International (10,000 tons)" in _section(render([(entry(), f)]), "data-ATL")
-    assert "CUN Cancun International, Mexico (900,000)" in _section(render(), "data-ATL")
 
 
 def test_destinations_abroad_name_their_country():

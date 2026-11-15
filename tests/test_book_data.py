@@ -119,14 +119,6 @@ def test_freight_only_airport_ranks_destinations_by_freight(conn):
     assert f.destinations[0].freight_lb == 900
 
 
-def test_busiest_international_follows_the_ranking_measure(conn):
-    assert _facts(conn, "FFF", top=2).busiest_international.code == "FOR"   # by freight, though FR2 has the passengers
-
-
-def test_busiest_international_needs_some_traffic(conn):
-    assert _facts(conn, "BBB").busiest_international is None   # its one route abroad carried nothing
-
-
 def test_destination_without_a_name_falls_back(conn):
     labels = {d.code: d.label for d in _facts(conn, "AAA").destinations}
     assert labels["BBB"] == "Bravo Field"
@@ -151,7 +143,6 @@ def test_top_airlines_shares(conn):
     assert [name for name, _ in f.top_airlines] == ["Delta Air Lines", "Southwest Airlines", "Foo Airways"]
     assert [share for _, share in f.top_airlines] == pytest.approx([0.6, 0.3, 0.1])
     assert f.other_airlines_share is None   # no fifth airline with passengers
-    assert f.busiest_international.code == "FOR"   # abroad; not TNY, a US route with one international flight
 
 
 def test_top_four_airlines_then_the_others(db_path):
@@ -163,9 +154,7 @@ def test_top_four_airlines_then_the_others(db_path):
 
 
 def test_destinations_abroad_carry_their_country(conn):
-    aaa = _facts(conn, "AAA")
-    assert aaa.busiest_international.country == "Freedonia"
-    assert all(d.country is None for d in aaa.destinations)   # all in the US
+    assert all(d.country is None for d in _facts(conn, "AAA").destinations)   # all in the US
     fff = {d.code: d.country for d in _facts(conn, "FFF", top=2).destinations}
     assert fff["FOR"] == "Freedonia" and fff["AAA"] is None
 

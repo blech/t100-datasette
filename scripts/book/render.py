@@ -40,15 +40,6 @@ def _airlines(f, book):
     return Markup('<table class="airlines">{}</table>').format(cells)
 
 
-def _international(f, book):
-    """In the page's measure: passengers, or tons where the destinations are ranked by freight."""
-    d = f.busiest_international
-    if not d:
-        return DASH
-    amount = tons(d.freight_lb) if f.measure == "freight" else dense_count(d.passengers)
-    return f"{d.code} {_label(d)} ({amount})"
-
-
 def _market(f, book):
     """The market's other airports, those in the book linked to their page (the page number is added by the CSS)."""
     if not f.market:
@@ -62,8 +53,7 @@ def _market(f, book):
 # value of "" leaves the row out. Cut or reorder rows here; the ranks and the yearly figures have tables and charts of their own.
 TABLE_ROWS: list[tuple[str, Callable[[AirportFacts, dict], str]]] = [
     ("Places served (24+ flights)", lambda f, book: f"{f.places:,}"),
-    ("Busiest international destination", _international),
-    ("City market", _market),
+    ("Metropolitan area", _market),   # BTS's city market, named only when it has other airports
     ("Airlines at this airport, {last}", lambda f, book: f"{f.airline_groups:,}"),
     ("Top airlines", _airlines),
 ]
