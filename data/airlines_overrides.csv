@@ -1,0 +1,22 @@
+unique_carrier_key,airline_id,pax_rank,pax_millions,bts_name,override_name,override_icao,icon_file,status,notes
+US,20355,5,1380,USAir,US Airways,AWE,,suggested - verify,"matcher: check, best guess 'US Airways'; Wikipedia: US -> AWE (existing logo)"
+9E,20363,20,257,Endeavor Air Inc.,Endeavor Air,EDV,,suggested - verify,"matcher: poor, best guess 'Pinnacle Airlines'"
+XE_1,20374,25,190,Britt Airways Inc.,,,,todo,"matcher: poor, best guess 'ExpressJet'"
+OH,20397,26,188,PSA Airlines Inc.,PSA Airlines,JIA,,suggested - verify,"matcher: poor, best guess 'Comair'"
+TZ,20312,33,88,American Trans Air Inc.,ATA Airlines,AMT,,suggested - verify,"matcher: poor, best guess 'Scoot'"
+PT,20427,36,81,Piedmont Airlines,Piedmont Airlines,PDT,,suggested - verify,"matcher: poor, best guess 'West Air Sweden'"
+QK,20206,51,45,Air Canada Regional,Air Canada Jazz,JZA,,suggested - verify,"matcher: check, best guess 'Air Canada Jazz'"
+OW,20414,52,44,Executive Air Charter,,,,todo,matched Executive Airlines; probably a different company
+TK,19821,64,35,Turk Hava Yollari A.O.,Turkish Airlines,THY,,suggested - verify,"matcher: poor, best guess 'Turkish Airlines'"
+AZ,19539,69,33,Alitalia-Linee Aeree Italia,Alitalia,AZA,,suggested - verify,matched ITA Airways (successor); want historical Alitalia
+RV,21610,74,29,Air Canada rouge LP,Air Canada Rouge,ROU,,suggested - verify,"matcher: poor, best guess 'Caspian Airlines'"
+EA,19707,81,23,Eastern Air Lines Inc.,Eastern Air Lines,EAL,EA.png,suggested - verify,EAL.png is an unrelated Chinese airline; use custom EA.png
+DH,20404,82,23,Atlantic Coast Airlines,,,,todo,"matcher: poor, best guess 'Dennis Sky'"
+AI,19533,85,20,Air-India,Air India,AIC,,suggested - verify,"matched Indian Airlines, wrong airline"
+BW,19542,88,19,British West Indian Airways,,,,todo,"matcher: poor, best guess 'Caribbean Airlines'"
+CP_1,19523,91,16,Canadian Airlines International Ltd.,,,,todo,matched Canadian National Airways; wrong
+TB_1,19982,92,16,Trump Shuttle,,,,todo,"matcher: poor, best guess 'TrasBrasil'"
+XP,20207,93,15,Casino Express,,,,todo,"matcher: poor, best guess 'Caribbean Wings'"
+MX,22080,95,15,Breeze Aviation Group DBA  Breeze,Breeze Airways,MXY,,suggested - verify,"matcher: poor, best guess 'Mexicana de Aviaci'"
+3M,20401,96,15,Gulfstream Int,,,,todo,"matcher: poor, best guess 'Silver Airways (3M)'"
+LO,19555,97,14,Polskie Linie Lotnicze,LOT Polish Airlines,LOT,,suggested - verify,"matcher: poor, best guess 'LOT Polish Airlines'"
