@@ -111,3 +111,28 @@ def test_a_foreign_airlines_pages_say_the_data_is_only_its_us_flights(ds, db_pat
         assert 'id="foreign-airline-note"' in get(ds, f"/airlines/british-airways{tail}").text, tail
         assert 'id="foreign-airline-note"' in get(ds, f"/airlines/19540{tail}").text, tail
         assert 'id="foreign-airline-note"' not in get(ds, f"/airlines/delta{tail}").text, tail
+
+
+VOLARIS = "Concesionaria Vuela Compania De Aviacion SA de CV (Volaris)"
+
+
+def put_volaris(db_path):
+    put(db_path, "carriers", [dict(airline_id="21351", carrier_group="0")])
+    put(db_path, "carrier_group", [dict(airline_id="21351", airline_name=VOLARIS)])
+    put(db_path, "carrier_group_year", [dict(year=2019, airline_id="21351", group_id="21351", group_name=VOLARIS, domestic=0,
+                                             service_class="F", deps=4, seats=400, passengers=300, freight=0)])
+
+
+def test_an_airlines_breadcrumb_and_footnote_use_its_short_name(ds, db_path):
+    put_volaris(db_path)
+    for tail in ["", "/routes", "/aircraft", "/changes", "/globe"]:
+        page = get(ds, f"/airlines/21351{tail}").text
+        assert "Concesionaria" not in re.search(r'<nav class="crumbs".*?</nav>', page, re.S).group(0), tail
+        assert "Volaris" in re.search(r'<nav class="crumbs".*?</nav>', page, re.S).group(0), tail
+        note = re.search(r'id="foreign-airline-note">(.*?)</p>', page, re.S).group(1)
+        assert note.startswith("The data only includes Volaris's flights"), tail
+
+
+def test_the_airline_page_still_shows_the_full_name_for_the_heading_to_shorten(ds, db_path):
+    put_volaris(db_path)
+    assert f'<h1 id="airline-name">{VOLARIS}</h1>' in get(ds, "/airlines/21351").text

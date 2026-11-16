@@ -334,6 +334,41 @@ def short_airline_name(name):
     return name
 
 
+# The name people know an airline by: BTS names the legal entity ("Hyannis Air Service, Inc. dba Cape Air").
+# This is static/charts/src/names.js shortName, rule for rule; tests/test_short_names.py checks the two agree.
+DBA = re.compile(r"\s*,?\s*(?:d/b/a/?|d/ba|dba|t/a)\s+", re.I)
+FORMER = re.compile(r"\s+f/k/a\s+.*$", re.I)
+MAINLINE_BRANDS = re.compile(r"^(united|delta|american|us airways|alaska)\b", re.I)  # a trade name that is another airline's brand says less than the legal name
+_SA = r"s\.?\s?a\.?(?:\s*de\s*c\.?\s?v\.?)?"
+LEGAL_ENDINGS = re.compile(
+    r"(?:[\s,]+(?:inc\.?|incorporated|llc|l\.l\.c\.|ltda?\.?|limited|corp\.?|corporation|co\.|plc|gmbh|mbh|pty\.?|pte\.?|n\.v\.|nv|" + _SA + r"|s\.p\.a\.?|a/s|ag))+[\s.,]*$",
+    re.I)
+ROOMY = 28
+
+
+def short_name(full):
+    original = name = str(full or "").strip()
+    if not name:
+        return name
+    name = re.sub(r"\s*\(incl\..*\)\s*$", "", name)
+    name = re.sub(r"\s*\(subsidiary[^)]*\)\s*$", "", name, flags=re.I)
+    name = re.sub(r"\s*\([^)]{1,6}\)\s*$", lambda m: "" if len(original) > len(m.group(0)) else m.group(0), name)
+    name = FORMER.sub("", name)
+    parts = DBA.split(name)
+    if len(parts) > 1:
+        brand = LEGAL_ENDINGS.sub("", parts[1]).strip()
+        name = brand if len(brand) >= 6 and not MAINLINE_BRANDS.match(brand) else parts[0]
+    out = LEGAL_ENDINGS.sub("", name)
+    out = re.sub(r"[\s,.]+$", "", out)
+    out = re.sub(r"\s{2,}", " ", out).strip() or name
+    volaris = re.match(r"^(.{20,}?)\s*\(([A-Za-z]{5,})\)$", out)
+    if volaris and len(out) > ROOMY:
+        out = volaris.group(2)
+    if len(out) > ROOMY:
+        out = re.sub(r"\bInternational\b", "Intl", out)
+    return out
+
+
 def carrier_shares(rows):
     """top_carriers rows -> short names and one-decimal shares."""
     if not rows:
@@ -1053,7 +1088,7 @@ async def resolve_airline(datasette, slug):
     if members:
         group_name = (await db.execute("SELECT group_name FROM carrier_group_year WHERE group_id = ? GROUP BY group_name ORDER BY MAX(year) DESC LIMIT 1", [slug])).first()[0]
         return {
-            "group": slug, "airline": "", "name": group_name, "parent": None,
+            "group": slug, "airline": "", "name": group_name, "short_name": short_name(group_name), "parent": None,
             "foreign": await is_foreign_airline(datasette, [m[0] for m in members]),
             "first_year": min(m[2] for m in members), "last_year": max(m[3] for m in members),
             "members": [{"id": m[0], "name": m[1], "first_year": m[2], "last_year": m[3]} for m in members] if len(members) > 1 else [],
@@ -1070,7 +1105,7 @@ async def resolve_airline(datasette, slug):
     if row is None:
         raise NotFound(f"No airline {slug}")
     return {
-        "group": row[0], "airline": slug, "name": row[2], "parent": {"id": row[0], "name": row[1]},
+        "group": row[0], "airline": slug, "name": row[2], "short_name": short_name(row[2]), "parent": {"id": row[0], "name": row[1], "short_name": short_name(row[1])},
         "foreign": await is_foreign_airline(datasette, [slug]),
         "first_year": row[3], "last_year": row[4], "members": [],
     }
@@ -1079,9 +1114,9 @@ async def resolve_airline(datasette, slug):
 def airline_crumbs(datasette, info, *tail):
     steps = [("airlines", "/airlines")]
     if info["parent"]:
-        steps.append((info["parent"]["name"], f"/airlines/{info['parent']['id']}"))
+        steps.append((info["parent"]["short_name"], f"/airlines/{info['parent']['id']}"))
     own = info["airline"] or info["group"]
-    steps.append((info["name"], f"/airlines/{own}" if tail else None))
+    steps.append((info["short_name"], f"/airlines/{own}" if tail else None))
     return trail(datasette, *steps, *tail)
 
 
