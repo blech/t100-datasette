@@ -7,7 +7,8 @@ TABLES = ["t100_domestic", "t100_international", "family_year", "openflights_air
 
 
 @pytest.fixture
-def ds(db_path):
+def ds(db_path, monkeypatch):
+    monkeypatch.setenv("T100_GUARD", "1")  # serve_public.sh sets it; a local server leaves the guard off
     add_segments(db_path, "t100_international", [seg("ATL", "LHR", 2019, 12, 2000)])
     return make_datasette(db_path)
 
@@ -44,3 +45,19 @@ def test_robots_txt_keeps_crawlers_out_of_the_data_pages_only(ds):
 
 def test_a_row_page_and_a_canned_query_with_a_year_are_not_mistaken_for_paging(ds):
     assert get(ds, "/t100/family_year/2019,Boeing%20737?_hide_sql=1").status_code != 403
+
+
+@pytest.mark.parametrize("query", ["_next=5", "_facet=month"])
+def test_a_local_server_without_the_guard_setting_allows_paging_and_facets(ds, monkeypatch, query):
+    monkeypatch.delenv("T100_GUARD")
+    assert get(ds, f"/t100/t100_domestic?{query}").status_code != 403
+
+
+def test_robots_txt_is_served_either_way(ds, monkeypatch):
+    monkeypatch.delenv("T100_GUARD")
+    assert get(ds, "/robots.txt").status_code == 200
+
+
+def test_the_public_server_script_turns_the_guard_on():
+    from pathlib import Path
+    assert "T100_GUARD=1" in (Path(__file__).resolve().parent.parent / "serve_public.sh").read_text()

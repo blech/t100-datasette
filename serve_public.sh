@@ -1,6 +1,7 @@
 #!/bin/sh
 # Locked-down public server: read-only database, no arbitrary SQL, no downloads, cached responses.
 # Run from the repo root. DB defaults to t100.db, PORT to 8808; set HOST=0.0.0.0 inside a container.
+export T100_GUARD=1   # plugins/t100_guard.py refuses deep paging and facets only when this is set
 exec uv run datasette serve \
   --immutable "${DB:-t100.db}" \
   --config datasette.yml \

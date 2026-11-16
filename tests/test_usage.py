@@ -176,6 +176,7 @@ def test_the_same_visitor_gets_the_same_token_and_another_does_not(site, tmp_pat
 
 
 def test_assets_and_chart_data_are_not_logged_but_crawler_noise_is_tagged(site, tmp_path, monkeypatch):
+    monkeypatch.setenv("T100_GUARD", "1")  # the 403 below is the public-server guard
     log = tmp_path / "usage"
     monkeypatch.setenv("T100_USAGE_LOG", str(log))
     ds = make_datasette(site)
