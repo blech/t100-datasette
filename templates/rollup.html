@@ -16,7 +16,7 @@
       {% elif kind == "airports" %}Every US airport in the data, counting flights {{ {"out": "departing it", "in": "arriving at it"}.get(dir, "to and from it") }}, by year. Click an airport's code to see where it flies.
       {% elif kind == "toproutes" %}The busiest airport pairs in the data, flown by any airline, with both directions counted together, by year. Pick a range of distances to compare routes of a similar length, or group the airports by city, so Los Angeles to the Bay Area counts LAX–SFO, BUR–OAK and the rest together. Click a route to see it.
       {% elif kind == "aircraft" %}Every aircraft family in the data, by year. Click a <span aria-hidden="true">▸</span> to list a family's aircraft, a family's name to see its page, or an aircraft's name to see that one.
-      {% else %}Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own.{% endif %}
+      {% else %}Every US and foreign airline in the data, with airlines that merged counted together throughout (Delta includes Northwest, American includes US Airways and TWA, and so on). Regional airlines flying under a major's name are listed on their own. Click a <span aria-hidden="true">▸</span> to list the airlines that merged into a group.{% endif %}
     </p>
     {% if kind == "airports" %}{% from "_airport_ranking.html" import airport_ranking %}
     <p class="chart-sentence">

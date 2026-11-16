@@ -15,6 +15,11 @@ def test_page_renders_with_its_kind_and_assets(ds, path, kind):
     assert 'id="matrix"' in r.text and 'id="label-tip"' in r.text
 
 
+def test_the_airlines_matrix_reads_the_query_that_has_each_member_airline():
+    from pathlib import Path
+    assert "query: 'carrier_member_by_year'" in Path("static/charts/rollup.js").read_text()
+
+
 @pytest.mark.parametrize("path", ["/airlines/over-time", "/aircraft/over-time"])
 def test_settings_read_as_one_sentence(ds, path):
     html = get(ds, path).text

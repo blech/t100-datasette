@@ -101,7 +101,7 @@ export const labelMargin = (texts, width = (t) => t.length * 7) => Math.min(280,
 // a grouped matrix's ▸/▾ column, between the row names and the cells: the names end ARROW_SLOT px short of the cells to leave
 // room for it, and a group's arrow (a #toggle: link) opens and closes the group. `title` gives each arrow's hover text
 export const ARROW_SLOT = 16;
-export const disclosureArrows = (Plot, labels, title) => Plot.text(labels.filter((l) => l.kind === 'group'), {
+export const disclosureArrows = (Plot, labels, title) => Plot.text(labels.filter((l) => l.kind === 'group' && l.expandable !== false), {
   y: 'key', text: (d) => (d.open ? '▾' : '▸'), title, href: (d) => `#toggle:${d.key}`,
   frameAnchor: 'left', textAnchor: 'end', dx: -5, fill: 'currentColor', fontSize: 14,
 });

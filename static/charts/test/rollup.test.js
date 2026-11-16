@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rollupRows, routeRows, topRouteRows, buildEngineShares, BAND_FROM, BAND_TO, bandRange, legacyBand } from '../src/rollup.js';
+import { rollupRows, airlineGroupRows, routeRows, topRouteRows, buildEngineShares, BAND_FROM, BAND_TO, bandRange, legacyBand } from '../src/rollup.js';
 import { buildMatrix } from '../src/matrix.js';
 
 const f = (year, family, deps, extra = {}) => ({ year, family, deps, seats: deps * 100, passengers: deps * 80, freight: 0, service: 'domestic', kind: 'passenger', ...extra });
@@ -275,4 +275,13 @@ test('a city pair narrowed to one airport keeps only its pairs as rows, and ever
   assert.equal(narrowed.filter((x) => x.rest).reduce((s, x) => s + x.passengers, 0), 103);
   assert.deepEqual(marketPairRows(rows, { a: 'EWR' }).filter((x) => !x.rest).map((x) => x.route), ['EWR ↔ VNY']);
   assert.ok(marketPairRows(rows).every((x) => !x.rest)); // not narrowed: no totals of its own
+});
+
+test('airlineGroupRows names a member row after its airline and its group after the group, and filters by kind of flight', () => {
+  const m = (airline_id, kind) => ({ year: 2005, group_id: 'delta', group_name: 'Delta (incl. Northwest)', airline_id, airline_name: `Airline ${airline_id}`, service: 'domestic', kind, passengers: 5 });
+  const rows = [m('19790', 'passenger'), m('19386', 'passenger'), m('19790', 'freight')];
+  const out = airlineGroupRows(rows, { flights: 'passenger' });
+  assert.deepEqual(out.map((r) => [r.dest, r.market_id, r.group_label, r.city]), [
+    ['19790', 'delta', 'Delta (incl. Northwest)', 'Airline 19790'], ['19386', 'delta', 'Delta (incl. Northwest)', 'Airline 19386']]);
+  assert.equal(airlineGroupRows(rows, { flights: 'all' }).length, 3);
 });

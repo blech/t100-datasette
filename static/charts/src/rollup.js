@@ -11,6 +11,14 @@ export function rollupRows(rows, { key, kind = 'all' }) {
       ...(r.rest ? { rest: true } : {}) }));
 }
 
+// Rows from carrier_member_by_year (one per member airline, year, service and kind) -> the grouped matrix's rows: each row is an
+// airline (dest) in its group (market_id, named group_label), as a city's airport is in its market. Only `flights` kind of flying.
+export function airlineGroupRows(rows, { flights = 'all' } = {}) {
+  return rows
+    .filter((r) => flights === 'all' || r.kind === flights)
+    .map((r) => ({ ...r, dest: r.airline_id, market_id: r.group_id, group_label: r.group_name, city: r.airline_name }));
+}
+
 // Rows from carrier_route_by_year -> rows named by their airport pair: "ATL ↔ LGA" with both directions together, or with
 // each direction its own row, "ATL → LGA" as flown
 export function routeRows(rows, { each = false } = {}) {
