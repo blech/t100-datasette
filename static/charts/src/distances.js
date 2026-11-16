@@ -17,10 +17,13 @@ export function isSuspect(distance, gc, { ratio, miles }) {
 // each bar's biggest destinations, for its popover: the top TOP, and how many more
 const TOP = 5;
 
-export function profile(rows, { measure, bin, max, ratio, miles, origin = null }) {
+// bins are bin miles wide, or (given count) count even slices of the axis, the last ending at max
+export function profile(rows, { measure, bin, count: slices, max, ratio, miles, origin = null }) {
   if (!(max > 0)) return { empty: true, unavailable: true };
-  const count = Math.max(1, Math.ceil(max / bin));
-  const bins = Array.from({ length: count }, (_, i) => ({ from: i * bin, to: (i + 1) * bin, value: 0, share: 0, dests: [] }));
+  const count = slices ? Math.max(1, Math.floor(slices)) : Math.max(1, Math.ceil(max / bin));
+  const edge = (i) => (slices ? (i === count ? max : (i * max) / count) : i * bin);
+  const indexOf = (d) => Math.min(count - 1, Math.floor(slices ? (d * count) / max : d / bin));
+  const bins = Array.from({ length: count }, (_, i) => ({ from: edge(i), to: edge(i + 1), value: 0, share: 0, dests: [] }));
   const dropped = { pairs: 0, value: 0 };
   const noDistance = { pairs: 0, value: 0 };
   const unchecked = { pairs: 0 };
@@ -39,7 +42,7 @@ export function profile(rows, { measure, bin, max, ratio, miles, origin = null }
       const distance = Number(row.distance);
       if (!present(row.gc_distance)) unchecked.pairs += 1;
       if (distance > max) beyondAxis.pairs += 1;
-      const b = bins[Math.min(count - 1, Math.floor(distance / bin))];
+      const b = bins[indexOf(distance)];
       b.value += value;
       b.dests.push({ dest: row.dest, value });
       kept.push({ distance, value });
@@ -58,6 +61,14 @@ export function profile(rows, { measure, bin, max, ratio, miles, origin = null }
   let running = 0;
   const median = kept.find((k) => (running += k.value) >= total / 2).distance;
   return { empty: false, bins, total, median, dropped, unchecked, noDistance, beyondAxis };
+}
+
+// how many bars of the given pixels fit a chart of this width: the plot is a whole number of them, and what's left over
+// widens the right margin, so every bar is exactly that many pixels wide at any width
+export function barLayout(width, { marginLeft, marginRight, pixels }) {
+  const room = Math.floor(width) - marginLeft - marginRight;
+  const count = Math.max(1, Math.floor(room / pixels));
+  return { count, marginRight: Math.floor(width) - marginLeft - count * pixels };
 }
 
 export const measuresOffered = (rows) => ['passengers', 'deps', ...(hasFreight(rows) ? ['freight'] : [])];

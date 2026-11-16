@@ -14,7 +14,7 @@
     <h2>Distances of flight segments {{ {"out": "from", "in": "to"}.get(dir, "from and to") }} {{ origin }} in {{ year }}</h2>
     <p class="chart-sentence" id="distance-summary"></p>
     <p class="chart-sentence">
-      Show <select id="ds-measure" aria-label="Measure"></select> by the distance of each flight segment.
+      Show <select id="ds-measure" aria-label="Measure"></select> by the distance of each flight segment, in <select id="ds-bars" aria-label="Bars"></select>.
     </p>
     <div id="distance-chart" aria-live="polite">Loading chart…</div>
     <p class="note" id="distance-note">A flight segment is one takeoff and landing: a passenger who changes planes counts on each segment, and a one-stop flight is two. Distances are BTS's, checked against the airports' coordinates. Every airport's chart has the same scale, up to the longest segment flown in {{ year }}.</p>

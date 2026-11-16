@@ -43,7 +43,7 @@ def test_the_distances_page(ds, db_path):
     years(db_path)
     r = get(ds, "/airports/SFO/distances")
     assert r.status_code == 200
-    assert 'id="distance-chart"' in r.text and 'id="ds-measure"' in r.text and "SFO: distances" in r.text
+    assert 'id="distance-chart"' in r.text and 'id="ds-measure"' in r.text and 'id="ds-bars"' in r.text and "SFO: distances" in r.text
     for attr in ('data-axis-max="0"', 'data-bin="250"', 'data-ratio="0.1"', 'data-miles="50"', 'data-year="2025"'):
         assert attr in r.text, attr
     assert "/static/charts/distances.js" in r.text

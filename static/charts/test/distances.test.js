@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isSuspect, profile, measuresOffered, summaryText, noteText } from '../src/distances.js';
+import { isSuspect, profile, measuresOffered, summaryText, noteText, barLayout } from '../src/distances.js';
 
 const CHECK = { ratio: 0.1, miles: 50 };
 const r = (distance, passengers, extra = {}) =>
@@ -103,4 +103,35 @@ test('profile lists each bar\'s biggest destinations in the measure, the top fiv
   assert.deepEqual(p.bins[0].top, [{ dest: 'HHH', value: 4 }]);
   assert.equal(p.bins[0].more, 0);
   assert.deepEqual(p.bins[2].top, []);
+});
+
+test('barLayout fits whole bars of the given pixels into the plot, the rest going to the right margin', () => {
+  assert.deepEqual(barLayout(838, { marginLeft: 64, marginRight: 20, pixels: 1 }), { count: 754, marginRight: 20 });
+  assert.deepEqual(barLayout(838, { marginLeft: 64, marginRight: 20, pixels: 20 }), { count: 37, marginRight: 34 });
+  assert.deepEqual(barLayout(1100, { marginLeft: 64, marginRight: 20, pixels: 20 }), { count: 50, marginRight: 36 });
+  assert.deepEqual(barLayout(60, { marginLeft: 64, marginRight: 20, pixels: 20 }), { count: 1, marginRight: -24 });
+});
+
+test('barLayout rounds a fractional width down, so the plot is a whole number of pixels', () => {
+  const { count, marginRight } = barLayout(838.6, { marginLeft: 64, marginRight: 20, pixels: 1 });
+  assert.equal(count, 754);
+  assert.equal(838 - 64 - marginRight, count);
+});
+
+test('profile with a count of bins splits the axis evenly, the last ending at the axis exactly', () => {
+  const p = profile([r(0, 1), r(4073, 2), r(10250, 3)], { ...opts(), bin: undefined, count: 754, max: 10250 });
+  assert.equal(p.bins.length, 754);
+  assert.equal(p.bins.at(-1).to, 10250);
+  assert.ok(Math.abs(p.bins[1].from - 10250 / 754) < 1e-9);
+  assert.equal(p.bins[0].value, 1);
+  assert.equal(p.bins.at(-1).value, 3);
+  assert.equal(p.bins[Math.floor(4073 * 754 / 10250)].value, 2);
+  assert.deepEqual(p.beyondAxis, { pairs: 0 });
+});
+
+test('profile with a count: a distance on a bin edge goes in the bin it starts, with no float slip', () => {
+  const p = profile([r(250, 1), r(500, 1)], { ...opts(), bin: undefined, count: 4, max: 1000 });
+  assert.deepEqual(p.bins.map((b) => b.value), [0, 1, 1, 0]);
+  const q = profile([r(300, 1)], { ...opts(), bin: undefined, count: 10, max: 1000 });
+  assert.equal(q.bins[3].value, 1);
 });

@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { profile, measuresOffered, summaryText, noteText } from '/static/charts/src/distances.js';
+import { profile, measuresOffered, summaryText, noteText, barLayout } from '/static/charts/src/distances.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
 import { palette, isDark } from '/static/common/palette.js';
@@ -14,8 +14,6 @@ const origin = data.origin;
 const year = Number(data.year);
 const axisMax = Number(data.axisMax);
 const check = { ratio: Number(data.ratio), miles: Number(data.miles) };
-const exact = new URLSearchParams(location.search).get('bars') === 'exact'; // experiment: a column per mile
-const bin = exact ? 1 : Number(data.bin);
 const dir = parseDir(location.search);
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -28,15 +26,24 @@ const miles = (n) => `${exactCount(n)} miles`;
 
 let rows = [];
 
-function remember(measure) {
-  const s = measure === 'passengers' ? '' : `?measure=${measure}`;
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure'], s)}`);
+// bars a set number of pixels wide whatever the chart's width: wide ones to read the shape, or one-pixel columns
+const BARS = { wide: { label: 'wide bars', pixels: 20 }, fine: { label: 'one-pixel columns', pixels: 1 } };
+const MARGIN = { left: 64, right: 20 };
+
+function remember() {
+  const m = $('ds-measure').value;
+  const b = $('ds-bars').value;
+  const s = new URLSearchParams({ ...(m === 'passengers' ? {} : { measure: m }), ...(b === 'wide' ? {} : { bars: b }) }).toString();
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'bars'], s ? `?${s}` : '')}`);
 }
 
 function draw() {
   const measure = $('ds-measure').value;
+  const fine = $('ds-bars').value === 'fine';
   const box = $('distance-chart');
-  const p = profile(rows, { measure, bin, max: axisMax, origin, ...check });
+  const width = Math.floor(Math.min(box.clientWidth || 900, 1100));
+  const { count, marginRight } = barLayout(width, { marginLeft: MARGIN.left, marginRight: MARGIN.right, pixels: BARS[$('ds-bars').value].pixels });
+  const p = profile(rows, { measure, count, max: axisMax, origin, ...check });
   const extra = $('distance-note-extra') || $('distance-note').appendChild(Object.assign(document.createElement('span'), { id: 'distance-note-extra' }));
   extra.textContent = noteText(p, measure);
   if (p.empty) {
@@ -45,25 +52,23 @@ function draw() {
     return;
   }
   $('distance-summary').textContent = summaryText(origin, year, measure, p.median);
-  const bars = p.bins.filter((b) => !exact || b.value).map((b) => ({ ...b, mid: exact ? b.from : (b.from + b.to) / 2, y: shown(measure, b.value) }));
+  const bars = p.bins.filter((b) => !fine || b.value).map((b) => ({ ...b, mid: (b.from + b.to) / 2, y: shown(measure, b.value) }));
   const top = Math.max(0, ...bars.map((b) => b.y));
   const label = measure === 'freight' ? 'Freight, short tons' : `${LABELS[measure][0].toUpperCase()}${LABELS[measure].slice(1)}`;
   const chart = Plot.plot({
-    width: Math.min(box.clientWidth || 900, 1100), height: 340, marginLeft: 64, marginBottom: 44,
+    width, height: 340, marginLeft: MARGIN.left, marginRight, marginBottom: 44,
     style: { background: 'transparent', fontSize: '12px' },
     x: { domain: [0, axisMax], label: 'Distance (miles)', labelAnchor: 'center', labelArrow: 'none', tickFormat: (v) => exactCount(v) },
     y: { ...millionsAxis(top, label), grid: true, tickSize: 0 },
     marks: [
-      exact
-        ? Plot.ruleX(bars, { x: 'from', y1: 0, y2: 'y', stroke: palette(isDark()).accent, strokeWidth: 1 })
-        : Plot.rectY(bars, { x1: 'from', x2: 'to', y: 'y', fill: palette(isDark()).accent, insetLeft: 0.5, insetRight: 0.5 }),
+      Plot.rectY(bars, { x1: 'from', x2: 'to', y: 'y', fill: palette(isDark()).accent, ...(fine ? {} : { insetLeft: 0.5, insetRight: 0.5 }) }),
       Plot.ruleY([0]),
       Plot.ruleX(bars, Plot.pointerX({ x: 'mid', y: 'y', strokeOpacity: 0 })),
     ],
   });
   box.replaceChildren(...attachPopover(chart, {
     content: (b) => ({
-      title: exact ? miles(b.from) : `${exactCount(b.from)}–${miles(b.to)}`,
+      title: `${exactCount(b.from)}–${miles(b.to)}`,
       rows: [{ label: LABELS[measure], value: valueText(measure, b.value), extra: `${formatCount(b.share * 100)}%` },
         ...b.top.map((d) => ({ label: d.dest, value: valueText(measure, d.value), extra: '' })),
         ...(b.more ? [{ label: `… and ${exactCount(b.more)} more`, value: '', extra: '' }] : [])],
@@ -85,9 +90,16 @@ async function main() {
   const offered = measuresOffered(rows);
   for (const m of offered) $('ds-measure').append(new Option(LABELS[m], m));
   $('ds-measure').value = offered.includes(params.get('measure')) ? params.get('measure') : 'passengers';
-  $('ds-measure').addEventListener('change', () => { remember($('ds-measure').value); draw(); });
+  for (const [value, { label }] of Object.entries(BARS)) $('ds-bars').append(new Option(label, value));
+  $('ds-bars').value = Object.hasOwn(BARS, params.get('bars') ?? '') ? params.get('bars') : 'wide';
+  for (const id of ['ds-measure', 'ds-bars']) $(id).addEventListener('change', () => { remember(); draw(); });
   draw();
   document.addEventListener('t100:theme', draw);
+  let drawnAt = $('distance-chart').clientWidth;
+  new ResizeObserver(() => { // the bars are sized in pixels, so a new width means new bins
+    const w = $('distance-chart').clientWidth;
+    if (w !== drawnAt) { drawnAt = w; draw(); }
+  }).observe($('distance-chart'));
 }
 
 main();
