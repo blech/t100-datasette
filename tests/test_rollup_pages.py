@@ -20,11 +20,14 @@ def test_the_airlines_matrix_reads_the_query_that_has_each_member_airline():
     assert "query: 'carrier_member_by_year'" in Path("static/charts/rollup.js").read_text()
 
 
-@pytest.mark.parametrize("path", ["/airlines/over-time", "/aircraft/over-time"])
-def test_settings_read_as_one_sentence(ds, path):
+@pytest.mark.parametrize("path, ids", [
+    ("/airlines/over-time", ["matrix-measure", "matrix-kind", "matrix-service", "matrix-n", "matrix-rank", "matrix-order"]),
+    ("/aircraft/over-time", ["matrix-measure", "matrix-kind", "matrix-service", "matrix-n", "matrix-rank"]),
+])
+def test_settings_read_as_one_sentence(ds, path, ids):
     html = get(ds, path).text
     sentence = re.search(r'<p class="chart-sentence">(.*?)</p>', html, re.S).group(1)
-    assert re.findall(r'<select id="([^"]+)"', sentence) == ["matrix-measure", "matrix-kind", "matrix-service", "matrix-n", "matrix-rank"]
+    assert re.findall(r'<select id="([^"]+)"', sentence) == ids
     assert 'id="matrix-scale"' in html
 
 

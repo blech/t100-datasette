@@ -29,7 +29,8 @@
       {% if kind != "toproutes" %}for <select id="matrix-kind" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>
       {% endif %}on <select id="matrix-service" aria-label="Flights"><option value="all">all routes</option><option value="domestic">domestic routes</option><option value="international">international routes</option></select>
       for the top <select id="matrix-n" aria-label="Number of rows"><option>10</option><option>25</option><option selected>50</option></select>
-      {{ page.noun }}, ranked by <select id="matrix-rank" aria-label="Year used to rank rows">{% if kind == "toproutes" %}<option value="">all years</option>{% else %}<option value="all">all years</option><option value="latest">{{ latest_year }} only</option>{% endif %}</select>.
+      {{ page.noun }}, ranked by <select id="matrix-rank" aria-label="Year used to rank rows">{% if kind == "toproutes" %}<option value="">all years</option>{% else %}<option value="all">all years</option><option value="latest">{{ latest_year }} only</option>{% endif %}</select>{% if kind == "airlines" %},
+      ordered by <select id="matrix-order" aria-label="Order of the rows"><option value="size">size</option><option value="first">first year flown</option><option value="last">last year flown</option></select>{% endif %}.
     </p>
     {% if kind == "toproutes" %}<p class="chart-sentence">
       Routes between <select id="matrix-group" aria-label="Airports or cities"><option value="airport">airports</option><option value="city">cities</option></select>,

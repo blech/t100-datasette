@@ -5,7 +5,7 @@ import { setDataLink } from '/static/common/datalink.js';
 import { buildMatrix, buildCityMatrix, percentTicks, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, fullYears, MATRIX_MEASURES as MEASURES, matrixMeasures, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
 import { setMenus } from '/static/common/menus.js';
-import { rollupRows, airlineGroupRows, routeRows, topRouteRows, topMarketRows, marketKey, marketLabel, marketPath, marketPairRows, rowsChoice, bandRange, BAND_FROM, BAND_TO, slugify } from '/static/charts/src/rollup.js';
+import { rollupRows, airlineGroupRows, pickOrder, routeRows, topRouteRows, topMarketRows, marketKey, marketLabel, marketPath, marketPairRows, rowsChoice, bandRange, BAND_FROM, BAND_TO, slugify } from '/static/charts/src/rollup.js';
 import { aircraftHref, carriedSearch, airlineSearch, rowLabel } from '/static/charts/src/aircraft.js';
 import { sharedQuery } from '/static/charts/src/airlines.js';
 import { tableHref, countrySlug, TABLE_PATHS } from '/static/landing/src/table.js';
@@ -53,6 +53,7 @@ const state = {
   // the routes matrix ranks by any full year (year=, or the old rank=latest), as the destinations matrix does; checked once loaded
   year: !byYear ? null : params.get('rank') === 'latest' ? latestFullYear : Number(params.get('year')) || null,
   scale: pick('scale', ['absolute', 'year', 'busiest', 'row'], 'year'),
+  order: kind === 'airlines' ? pickOrder(location.search) : 'size', // the airlines matrix can list its rows by when they flew
   // the airports matrix can show cities, and abroad countries; the routes matrix pairs of cities, each a link to its own page
   group: kind === 'airports' ? pick('group', abroad ? ['airport', 'city', 'country'] : ['airport', 'city'], 'airport') : kind === 'toproutes' ? pick('group', ['airport', 'city'], 'airport') : 'airport',
   open: (params.get('open') || '').split(',').filter(Boolean), // the cities opened to list their airports
@@ -80,13 +81,14 @@ function pushState() {
   if (state.n !== 50) q.set('n', state.n);
   if (byYear) { if (state.year !== null) q.set('year', state.year); } else if (state.rank !== 'all') q.set('rank', state.rank);
   if (state.scale !== 'year') q.set('scale', state.scale);
+  if (state.order !== 'size') q.set('order', state.order);
   if (state.group !== 'airport') q.set('group', state.group);
   if (abroad) q.set('region', 'abroad');
   if (grouped() && state.open.length) q.set('open', state.open.join(','));
   if (kind === 'toproutes' && state.from !== '0') q.set('from', state.from);
   if (kind === 'toproutes' && state.to !== 'any') q.set('to', state.to);
   const s = q.toString();
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'n', 'rank', 'year', 'scale', 'group', 'region', 'open', 'from', 'to'], s ? `?${s}` : '')}`);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'flights', 'service', 'n', 'rank', 'year', 'scale', 'order', 'group', 'region', 'open', 'from', 'to'], s ? `?${s}` : '')}`);
   carry();
 }
 
@@ -170,7 +172,7 @@ function groupHref(r) {
 }
 function drawCities(box) {
   const aircraft = aircraftLike;
-  const res = buildCityMatrix(groupedRows(), { ...state, rankYear: rankYear(), hideSmall: !aircraft && kind !== 'airlines', expandSingle: kind !== 'airlines' });
+  const res = buildCityMatrix(groupedRows(), { ...state, rankYear: rankYear(), hideSmall: !aircraft && kind !== 'airlines', expandSingle: kind !== 'airlines', order: state.order });
   if (!res.cells.length) { box.textContent = 'Nothing to chart for this selection.'; return; }
   const city = cityOf();
   const byKey = new Map(res.rows.map((r) => [r.key, r]));
@@ -265,7 +267,7 @@ function draw() {
     row: `Colour compares each cell with its own row's best year: that year is 100%, one with half as many ${unit()} is 50%. Each ${page.noun} is judged on its own, so a small one is as dark at its peak as a big one, and the colours show when it grew or faded, not how big it is. Hover over a cell for both.`,
   }[state.scale];
   if (!byYear) $('matrix-rank').options[1].textContent = `${latestFullYear} only`;
-  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes, or ▸ to list the airlines that merged into a group here. Airlines that merged are counted together for every year, including years before the merger.' : ''}${kind === 'airports' ? (state.group === 'country' ? ' A country adds up its airports; click one to see its page, or ▸ to list them here (any under 2% of the country\'s flights, passengers and freight are added up as "other airports"), and an airport\'s code to see which US airports it flies to.' : state.group === 'city' ? ' A city is a BTS city market (New York is JFK, LaGuardia and Newark); click one to see its page, or ▸ to list its airports here (any under 2% of the city\'s flights, passengers and freight are added up as "other airports"), and an airport\'s code to see where it flies.' : ' Click an airport\'s code to see where it flies.') : ''}${aircraftLike ? ' Each row is an aircraft family; ▸ opens it into the aircraft in it, BTS\'s own entries such as the Boeing 737-800. Each family is counted with all its versions.' : ''}${kind === 'fleet' ? ' Click a name to see that family or aircraft split by airline, with this one picked out.' : ''}${kind === 'routes' ? (each ? ' Each row is one direction of an airport pair, as flown; a year shows when the airline flew it at least 12 times.' : ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 24 times, roughly monthly each way.') + ' A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}${kind === 'toproutes' ? (state.group === 'city'
+  $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes, or ▸ to list the airlines that merged into a group here. Airlines that merged are counted together for every year, including years before the merger.' + (state.order === 'size' ? '' : ` Those are still the biggest ${state.n}, listed by the year each ${state.order === 'first' ? 'first' : 'last'} flew${state.order === 'first' ? ', earliest first' : ', latest first'} (a group by its ${state.order === 'first' ? 'earliest' : 'latest'} airline, the bigger one first when they tie).`) : ''}${kind === 'airports' ? (state.group === 'country' ? ' A country adds up its airports; click one to see its page, or ▸ to list them here (any under 2% of the country\'s flights, passengers and freight are added up as "other airports"), and an airport\'s code to see which US airports it flies to.' : state.group === 'city' ? ' A city is a BTS city market (New York is JFK, LaGuardia and Newark); click one to see its page, or ▸ to list its airports here (any under 2% of the city\'s flights, passengers and freight are added up as "other airports"), and an airport\'s code to see where it flies.' : ' Click an airport\'s code to see where it flies.') : ''}${aircraftLike ? ' Each row is an aircraft family; ▸ opens it into the aircraft in it, BTS\'s own entries such as the Boeing 737-800. Each family is counted with all its versions.' : ''}${kind === 'fleet' ? ' Click a name to see that family or aircraft split by airline, with this one picked out.' : ''}${kind === 'routes' ? (each ? ' Each row is one direction of an airport pair, as flown; a year shows when the airline flew it at least 12 times.' : ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 24 times, roughly monthly each way.') + ' A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}${kind === 'toproutes' ? (state.group === 'city'
     ? ' Each row is a pair of BTS city markets (New York is JFK, LaGuardia and Newark), both directions together, flown by any airline; flights within one market are left out. A pair\'s distance is its airport pairs\' distances weighted by passengers, which puts it in one distance range. Click one to see its airport pairs.'
     : ' Each row is an airport pair, both directions together, flown by any airline; its distance is in its hover text. Click a route to see it.') : ''}${kind === 'citypair' ? ' Each row is an airport pair, both directions together, flown by any airline, and each cell its share of all flying between the two cities that year' + (body.a || body.b ? ', counting the airports not shown' : '') + '; its distance is in its hover text. Click a route to see it.' : ''}`;
 
@@ -317,6 +319,7 @@ function fillControls() {
   if ($('matrix-service')) $('matrix-service').value = state.service;
   if ($('matrix-n') && kind !== 'citypair') $('matrix-n').value = String(state.n); // a city pair's is redrawn with the chart (drawRowsChoice)
   if (!byYear) $('matrix-rank').value = state.rank;
+  if ($('matrix-order')) $('matrix-order').value = state.order;
   for (const radio of document.querySelectorAll('input[name="scale"]')) {
     radio.checked = radio.value === state.scale;
     radio.addEventListener('change', () => { state.scale = radio.value; pushState(); draw(); });
@@ -353,6 +356,7 @@ function fillControls() {
   } else if ($('matrix-group')) { $('matrix-group').value = state.group; bind('matrix-group', 'group'); }
   if ($('matrix-n') && kind !== 'citypair') bind('matrix-n', 'n', Number);
   if (!byYear) bind('matrix-rank', 'rank');
+  if ($('matrix-order')) bind('matrix-order', 'order');
   else if (kind === 'citypair') {
     // a city pair's page has all its rows already: a new year only ranks them again
     $('matrix-rank').addEventListener('change', (e) => { state.year = e.target.value ? Number(e.target.value) : null; pushState(); draw(); });

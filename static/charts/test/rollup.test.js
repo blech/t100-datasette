@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rollupRows, airlineGroupRows, routeRows, topRouteRows, buildEngineShares, BAND_FROM, BAND_TO, bandRange, legacyBand } from '../src/rollup.js';
+import { rollupRows, airlineGroupRows, pickOrder, routeRows, topRouteRows, buildEngineShares, BAND_FROM, BAND_TO, bandRange, legacyBand } from '../src/rollup.js';
 import { buildMatrix } from '../src/matrix.js';
 
 const f = (year, family, deps, extra = {}) => ({ year, family, deps, seats: deps * 100, passengers: deps * 80, freight: 0, service: 'domestic', kind: 'passenger', ...extra });
@@ -284,4 +284,11 @@ test('airlineGroupRows names a member row after its airline and its group after 
   assert.deepEqual(out.map((r) => [r.dest, r.market_id, r.group_label, r.city]), [
     ['19790', 'delta', 'Delta (incl. Northwest)', 'Airline 19790'], ['19386', 'delta', 'Delta (incl. Northwest)', 'Airline 19386']]);
   assert.equal(airlineGroupRows(rows, { flights: 'all' }).length, 3);
+});
+
+test('pickOrder reads the order of the rows from the address, and falls back to size', () => {
+  assert.equal(pickOrder('?order=first'), 'first');
+  assert.equal(pickOrder('?scale=row&order=last'), 'last');
+  assert.equal(pickOrder('?order=nonsense'), 'size');
+  assert.equal(pickOrder(''), 'size');
 });

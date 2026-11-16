@@ -19,6 +19,13 @@ export function airlineGroupRows(rows, { flights = 'all' } = {}) {
     .map((r) => ({ ...r, dest: r.airline_id, market_id: r.group_id, group_label: r.group_name, city: r.airline_name }));
 }
 
+// How the airlines matrix lists the rows it keeps (the top n by size): by size, or by the year they first or last flew
+export const ORDERS = ['size', 'first', 'last'];
+export function pickOrder(search) {
+  const order = new URLSearchParams(search || '').get('order');
+  return ORDERS.includes(order) ? order : 'size';
+}
+
 // Rows from carrier_route_by_year -> rows named by their airport pair: "ATL ↔ LGA" with both directions together, or with
 // each direction its own row, "ATL → LGA" as flown
 export function routeRows(rows, { each = false } = {}) {
