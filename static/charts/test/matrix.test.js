@@ -436,3 +436,47 @@ test('rowPeak is each cell against its own row\'s best year, however big the oth
   assert.equal(peak('SML', 2018), 0.25);
   assert.ok(cells.find((c) => c.dest === 'SML' && c.year === 2018).peak < 0.001); // while "the year's biggest" leaves it pale
 });
+
+// ---- the order of the rows: by size, or by the first or last year they flew ----
+// A is big and began in 1995, B is small and began in 1990, C is mid-sized and began in 1990; B and A stopped in 2010, C flies on
+const life = [
+  c('a', 1995, 900, 'A', 'A'), c('a', 2010, 900, 'A', 'A'),
+  c('b', 1990, 100, 'B', 'B'), c('b', 2010, 100, 'B', 'B'),
+  c('c', 1990, 400, 'C', 'C'), c('c', 2025, 400, 'C', 'C'),
+];
+const keys = (opts) => buildCityMatrix(life, { ...group, ...opts }).rows.map((x) => x.key);
+
+test('rows can be listed by the first year they flew, ties by size', () => {
+  assert.deepEqual(keys({ order: 'first' }), ['C', 'B', 'A']);
+});
+
+test('rows can be listed by the last year they flew, latest first, ties by size', () => {
+  assert.deepEqual(keys({ order: 'last' }), ['C', 'A', 'B']);
+});
+
+test('the top n are chosen by size whatever the order, then listed in it', () => {
+  assert.deepEqual(keys({ order: 'first', n: 2 }), ['C', 'A']);
+});
+
+test('an unknown order is the size order', () => {
+  assert.deepEqual(keys({ order: 'nonsense' }), keys({}));
+  assert.deepEqual(keys({}), ['A', 'C', 'B']);
+});
+
+test('an opened group lists its members in the same order, and leaves out one with nothing in the selection', () => {
+  const rows = [
+    c('x', 1990, 100, 'G', 'G'), c('x', 2000, 100, 'G', 'G'),
+    c('y', 1995, 500, 'G', 'G'), c('y', 2025, 500, 'G', 'G'),
+    c('z', 1992, 50, 'G', 'G', { service: 'domestic' }),
+  ];
+  const keysOf = (opts) => buildCityMatrix(rows, { ...group, service: 'international', open: ['G'], ...opts }).rows.map((x) => x.key);
+  assert.deepEqual(keysOf({}), ['G', 'G/y', 'G/x']);
+  assert.deepEqual(keysOf({ order: 'first' }), ['G', 'G/x', 'G/y']);
+});
+
+test('a group with one member need not open when expandSingle is off', () => {
+  const rows = [c('a', 2019, 100, 'ONE', 'One'), c('b', 2019, 90, 'TWO', 'Two'), c('c', 2019, 80, 'TWO', 'Two')];
+  const byKey = (opts) => Object.fromEntries(buildCityMatrix(rows, { ...group, ...opts }).rows.map((x) => [x.key, x.expandable]));
+  assert.deepEqual(byKey({ expandSingle: false }), { ONE: false, TWO: true });
+  assert.deepEqual(byKey({}), { ONE: true, TWO: true });
+});

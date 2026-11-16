@@ -134,7 +134,16 @@ export function textWidth(box) {
 
 // Same grid, but airports in one BTS city market are one row (or aircraft in one family: rows with a `group_label` name their group). A group can be opened (`open` lists market ids),
 // which puts its airports on rows directly beneath.
-export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null, flown = 'ever', firstYear, lastYear, hideSmall = false } = {}) {
+// A comparator for rows kept by size: by the earliest year each flew (`first`) or the latest, latest first (`last`), ties by
+// size, then by name; any other order is by size alone
+function lifeOrder(order, yearsOf, sizeOf, nameOf) {
+  const bySize = (a, b) => sizeOf(b) - sizeOf(a) || String(nameOf(a)).localeCompare(String(nameOf(b)));
+  if (order !== 'first' && order !== 'last') return bySize;
+  const edge = (x) => (order === 'first' ? Math.min(...yearsOf(x)) : -Math.max(...yearsOf(x)));
+  return (a, b) => edge(a) - edge(b) || bySize(a, b);
+}
+
+export function buildCityMatrix(rows, { measure = 'passengers', service = 'all', n = 25, open = [], rankYear = null, flown = 'ever', firstYear, lastYear, hideSmall = false, order = 'size', expandSingle = true } = {}) {
   const kept = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const openSet = new Set(open.map(String));
   const groups = new Map(); // key -> { rank, airports: Map(dest -> {rank, name, nameYear, byYear}), byYear: Map(year -> {value, parts: Map}) }
@@ -173,7 +182,8 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
     .filter((g) => g.rank > 0 && listed(g.years))
     .map((g) => ({ ...g, list: [...g.airports.values()].filter((a) => a.rank > 0).sort(byVolume) }))
     .sort((a, b) => b.rank - a.rank || a.list[0].dest.localeCompare(b.list[0].dest))
-    .slice(0, n);
+    .slice(0, n)
+    .sort(lifeOrder(order, (g) => [...g.byYear].filter(([, cell]) => cell.value > 0).map(([year]) => Number(year)), (g) => g.rank, (g) => g.key));
 
   const outRows = [];
   const cells = [];
@@ -184,7 +194,7 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
     for (const a of g.list) carried.set(a.name || a.dest, (carried.get(a.name || a.dest) || 0) + a.rank);
     const label = g.name || [...carried].sort((x, y) => y[1] - x[1])[0][0]; // rows can name their own group (a family)
     const isOpen = openSet.has(g.key);
-    outRows.push({ key: g.key, kind: 'group', label, expandable: true, open: isOpen, codes: g.list.map((a) => a.dest) });
+    outRows.push({ key: g.key, kind: 'group', label, expandable: expandSingle || g.list.length > 1, open: isOpen, codes: g.list.map((a) => a.dest) });
     for (const [year, cell] of g.byYear) {
       if (cell.value <= 0) continue;
       const parts = [...cell.parts].map(([dest, value]) => ({ dest, value })).filter((p) => p.value > 0)
@@ -194,7 +204,8 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
     if (isOpen) {
       // with hideSmall, the airports under 2% of the city are one row of their own (see common/small.js)
       const { shown, small } = hideSmall ? splitSmall(g.list) : { shown: g.list, small: [] };
-      for (const a of shown) {
+      const flownYears = (a) => [...a.byYear].filter(([, v]) => v > 0).map(([year]) => Number(year));
+      for (const a of [...shown].sort(lifeOrder(order, flownYears, (a) => a.rank, (a) => a.dest))) {
         const key = `${g.key}/${a.dest}`;
         outRows.push({ key, kind: 'airport', code: a.dest, groupKey: g.key, label: a.dest, name: a.name });
         for (const [year, value] of a.byYear) if (value > 0) cells.push({ row: key, year, value, share: value / yearTotals[year], peak: value / yearMax[year] });
@@ -209,7 +220,7 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
     }
   }
   addRowPeaks(cells, (c) => c.row);
-  const order = new Map(outRows.map((r, i) => [r.key, i]));
-  cells.sort((x, y) => x.year - y.year || order.get(x.row) - order.get(y.row));
+  const rowIndex = new Map(outRows.map((r, i) => [r.key, i]));
+  cells.sort((x, y) => x.year - y.year || rowIndex.get(x.row) - rowIndex.get(y.row));
   return { rows: outRows, years: yearDomain([...yearSet]), cells, yearTotals, yearMax };
 }
