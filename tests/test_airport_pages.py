@@ -50,6 +50,19 @@ def test_the_distances_page(ds, db_path):
     assert "Distances of flight segments from and to SFO in 2025" in r.text
 
 
+def test_the_overall_distances_page(ds, db_path):
+    years(db_path)
+    r = get(ds, "/airports/distances")
+    assert r.status_code == 200
+    assert 'id="distance-chart"' in r.text and 'id="ds-measure"' in r.text and 'id="ds-bars"' in r.text
+    assert "<h1 id=\"title\">Distances</h1>" in r.text
+    assert "Distances of all flight segments in 2025" in r.text
+    for attr in ('data-axis-max="0"', 'data-ratio="0.1"', 'data-miles="50"', 'data-year="2025"'):
+        assert attr in r.text, attr
+    assert "data-origin" not in r.text and 'id="dir"' not in r.text  # every segment once: no airport, no direction
+    assert "/static/charts/distances.js" in r.text
+
+
 def test_the_distances_page_lowercase_and_one_way(ds, db_path):
     years(db_path)
     r = get(ds, "/airports/sfo/distances?dir=in")
@@ -73,6 +86,7 @@ def test_crumbs(ds):
     assert crumbs(ds, "/airports/SFO/destinations") == [site, airports, ("SFO", "/airports/SFO"), ("destinations", None)]
     assert crumbs(ds, "/airports/sfo/changes") == [site, airports, ("SFO", "/airports/SFO"), ("changes", None)]
     assert crumbs(ds, "/airports/SFO/distances") == [site, airports, ("SFO", "/airports/SFO"), ("distances", None)]
+    assert crumbs(ds, "/airports/distances") == [site, airports, ("distances", None)]
 
 
 def test_first_and_last_years_come_from_the_airports_totals(ds, db_path):

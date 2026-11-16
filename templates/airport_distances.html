@@ -1,23 +1,30 @@
 {% extends "t100_base.html" %}
+{# an airport's distances page, or with no origin every flight segment of the year (/airports/distances) #}
 
-{% block title %}{{ origin }} distances{% endblock %}
+{% block title %}{% if origin %}{{ origin }} distances{% else %}Distances of flight segments{% endif %}{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
 {% endblock %}
-{% block body_attrs %} data-origin="{{ origin }}" data-dir="{{ dir }}" data-year="{{ year }}" data-axis-max="{{ axis_max }}" data-bin="{{ bin_miles }}" data-ratio="{{ ratio }}" data-miles="{{ miles }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
+{% block body_attrs %}{% if origin %} data-origin="{{ origin }}" data-dir="{{ dir }}"{% endif %} data-year="{{ year }}" data-axis-max="{{ axis_max }}" data-bin="{{ bin_miles }}" data-ratio="{{ ratio }}" data-miles="{{ miles }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
 
 {% block content %}
+  {% if origin %}
     <h1 id="title">{{ origin }}: distances</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
     <h2>Distances of flight segments {{ {"out": "from", "in": "to"}.get(dir, "from and to") }} {{ origin }} in {{ year }}</h2>
+  {% else %}
+    <h1 id="title">Distances</h1>
+    <p class="intro" id="subtitle">How far every flight segment in {{ year }} went, between every pair of airports. Each airport's distances page has the same scale, so its shape compares with this one.</p>
+    <h2>Distances of all flight segments in {{ year }}</h2>
+  {% endif %}
     <p class="chart-sentence" id="distance-summary"></p>
     <p class="chart-sentence">
       Show <select id="ds-measure" aria-label="Measure"></select> by the distance of each flight segment, in <select id="ds-bars" aria-label="Bars"></select>.
     </p>
     <div id="distance-chart" aria-live="polite">Loading chart…</div>
-    <p class="note" id="distance-note">A flight segment is one takeoff and landing: a passenger who changes planes counts on each segment, and a one-stop flight is two. Distances are BTS's, checked against the airports' coordinates. Every airport's chart has the same scale, up to the longest segment flown in {{ year }}.</p>
+    <p class="note" id="distance-note">A flight segment is one takeoff and landing: a passenger who changes planes counts on each segment, and a one-stop flight is two. Distances are BTS's, checked against the airports' coordinates. {% if origin %}Every airport's chart has{% else %}This chart and every airport's have{% endif %} the same scale, up to the longest segment flown in {{ year }}.</p>
 {% endblock %}
 
 {% block scripts %}

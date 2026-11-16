@@ -207,6 +207,23 @@ databases:
           FROM route_band_year
           ORDER BY year, rest, passengers DESC
 
+      # the overall distances page (/airports/distances): every airport pair flown in one year, both directions together, with its
+      # BTS and great-circle distances, so the page can bin all the year's flight segments by distance
+      pair_distances_by_year:
+        title: "Every airport pair's distance and traffic in a year"
+        description: "One row per airport pair (both directions together, a before b) flown in the year, with its BTS distance and its great-circle distance in miles (from pair_distance; empty where either is unknown), and its flights, passengers and freight. Flights from an airport to itself, and pairs with no flights, passengers or freight, are left out."
+        sql: |
+          SELECT p.a, p.b, d.distance, d.gc_distance, p.deps, p.passengers, p.freight
+          FROM (
+            SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, SUM(deps) AS deps, SUM(passengers) AS passengers, SUM(freight) AS freight
+            FROM route_year_totals
+            WHERE year = CAST(:year AS integer) AND origin != dest
+            GROUP BY 1, 2
+            HAVING SUM(deps) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0
+          ) AS p
+          LEFT JOIN pair_distance AS d ON d.a = p.a AND d.b = p.b
+          ORDER BY p.passengers DESC
+
       # the routes matrix grouped by city: the BTS city market pairs that could be among its top 50, as top_routes_by_year
       top_markets_by_year:
         title: "The busiest city market pairs by year"

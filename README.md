@@ -14,6 +14,7 @@ It has two layers:
 - an **airport network map** at `/airports/<AIRPORT>/globe` (for example `/airports/ATL/globe`): pick an airport, see its routes by year on a globe, an Equal Earth map or an azimuthal map centred on the airport (so distances and directions from it are true; `?proj=flat` or `azimuthal`), with Fit routes and Centre buttons (international in orange, domestic in blue), play through the years, and drill down to months. ← and → step the year (or month), space plays and 1–3 pick the map type, on the airline map and the airports map too. Clicking a route links to its route page.
 - a **routes-over-time** page, the main page for an airport, at `/airports/<AIRPORT>`: a destination-by-year matrix (optionally grouped by BTS city market, with rows that open into their airports).
 - a **distances** page for an airport at `/airports/<AIRPORT>/distances`: a histogram of its flight segments in the latest full year (`max_year`) by distance, in bars a fixed number of pixels wide whatever the chart's width (20, or one-pixel columns with `?bars=fine`, so the miles a bar covers change with the width and no two columns draw over each other), against passengers, flight segments or freight, both directions or one. Every airport's chart runs to the same distance, the longest checked segment flown that year, so their shapes compare. A pair whose BTS distance is off its great-circle one (`pair_distance.gc_distance`) by more than `distance_check` under `plugins: t100_globe` in `datasette.yml` allows (10% and 50 miles) is left out and counted in the small print. Reads `routes_by_year` with `year` and `min_deps=0`.
+- an **overall distances** page at `/airports/distances`: the same chart for every flight segment of that year, between every pair of airports (each segment counted once, so there is no direction choice), on the same scale, with each bar's busiest airport pairs on hover. It is one of the airports section's views, between Routes and Map, and reads `pair_distances_by_year`.
 - a **route** page at `/airports/<FROM>/<TO>` (and `/airports/<FROM>/<TO>/<YEAR>` for the months of one year): a stacked chart and a table, each split by carrier, aircraft family, aircraft, carrier and family, or carrier and aircraft. These replace the Datasette `route` and `route_year` pages for browsing; those queries remain as raw data tables.
 - the standard **Datasette interface** for tables and canned queries, for exploring everything else.
 
@@ -80,6 +81,7 @@ npm test        # the map's pure JavaScript modules
 
 ## Canned queries
 
+- **`pair_distances_by_year`**: every airport pair flown in a year (`year`), both directions together, with its BTS `distance` and `gc_distance` from `pair_distance`, and its flights, passengers and freight: the overall distances page's data (about 26,000 rows for 2025).
 - **`destinations`**: aggregate statistics (passengers, seats, freight) for flights from an airport, by month, as a plain table.
 - **`route`**: a specific route (origin to destination) by year, carrier and aircraft type.
 - **`route_year`**: month-by-month data for a route in one year.

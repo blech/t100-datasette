@@ -59,6 +59,7 @@ def register_routes():
         (r"^/airports/movers$", airport_movers_page),
         (r"^/airports/over-time$", rollup_page("airports")),
         (r"^/airports/routes$", rollup_page("toproutes")),
+        (r"^/airports/distances$", overall_distances_page),
         # a BTS city market (Los Angeles is 32575, the Bay Area 32457) is a group of airports, so its pages are in the Airports section:
         # the city's destinations, and a pair of cities' airport pairs; the list of cities is the busiest-airports table by city
         (r"^/airports/cities/(?P<a>[0-9]{5})/(?P<b>[0-9]{5})$", city_pair_page),
@@ -136,13 +137,13 @@ def views_for(path):
 
     match parts:
         case ["airports"] | ["airports", "dedicated"] | ["airports", "movers"] | ["airports", "over-time"] | ["airports", "routes"] | \
-                ["airports", "globe"] | ["airports", "cities"] | ["airports", "countries"]:
+                ["airports", "distances"] | ["airports", "globe"] | ["airports", "cities"] | ["airports", "countries"]:
             # the cities and countries are the busiest-airports table grouped another way
             view = {"cities": [], "countries": []}.get(parts[1], parts[1:]) if parts[1:] else []
             return make(("Busiest airports", "/airports", None), ("Over time", "/airports/over-time", None),
                         ("Most dedicated", "/airports/dedicated", None), ("Risers and fallers", "/airports/movers", None),
-                        ("Routes", "/airports/routes", None), ("Map", "/airports/globe", None),
-                        current=[[], ["over-time"], ["dedicated"], ["movers"], ["routes"], ["globe"]].index(view))
+                        ("Routes", "/airports/routes", None), ("Distances", "/airports/distances", None), ("Map", "/airports/globe", None),
+                        current=[[], ["over-time"], ["dedicated"], ["movers"], ["routes"], ["distances"], ["globe"]].index(view))
         case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["distances"], ["changes"], ["globe"]):
             c = code.upper()
             return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
@@ -746,6 +747,16 @@ async def distances_context(datasette, origin):
 
 
 airport_distances_page = airport_view("airport_distances.html", "distances", distances_context)
+
+
+async def overall_distances_page(datasette, request):
+    """Every flight segment of the latest full year by distance, on the axis the airports' distances pages share."""
+    html = await datasette.render_template(
+        "airport_distances.html",
+        {"origin": None, "crumbs": trail(datasette, ("airports", "/airports"), ("distances", None)), **await distances_context(datasette, None)},
+        request=request,
+    )
+    return Response.html(html)
 
 
 def route_view(template, table):

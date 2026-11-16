@@ -135,3 +135,9 @@ test('profile with a count: a distance on a bin edge goes in the bin it starts, 
   const q = profile([r(300, 1)], { ...opts(), bin: undefined, count: 10, max: 1000 });
   assert.equal(q.bins[3].value, 1);
 });
+
+test('summaryText without an airport speaks of all the year\'s segments', () => {
+  assert.equal(summaryText(null, 2025, 'passengers', 900), 'Half of all passengers in 2025 flew segments of 900 miles or less.');
+  assert.equal(summaryText(null, 2025, 'deps', 512), 'Half of all flight segments in 2025 were 512 miles or less.');
+  assert.equal(summaryText(null, 2025, 'freight', 3100), 'Half of all freight in 2025 went on segments of 3,100 miles or less.');
+});

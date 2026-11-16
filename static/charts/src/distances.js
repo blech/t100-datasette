@@ -73,12 +73,14 @@ export function barLayout(width, { marginLeft, marginRight, pixels }) {
 
 export const measuresOffered = (rows) => ['passengers', 'deps', ...(hasFreight(rows) ? ['freight'] : [])];
 
+// code is the airport, or null for every flight segment of the year
 export function summaryText(code, year, measure, median) {
   const n = exactCount(median);
+  const whose = code ? `${code}'s` : 'all';
   return {
-    passengers: `Half of ${code}'s passengers in ${year} flew segments of ${n} miles or less.`,
-    deps: `Half of ${code}'s flight segments in ${year} were ${n} miles or less.`,
-    freight: `Half of ${code}'s freight in ${year} went on segments of ${n} miles or less.`,
+    passengers: `Half of ${whose} passengers in ${year} flew segments of ${n} miles or less.`,
+    deps: `Half of ${whose} flight segments in ${year} were ${n} miles or less.`,
+    freight: `Half of ${whose} freight in ${year} went on segments of ${n} miles or less.`,
   }[measure];
 }
 

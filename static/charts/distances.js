@@ -8,9 +8,10 @@ import { formatCount, formatTons, exactCount, millionsAxis } from '/static/commo
 import { replaceSearch } from '/static/nav/src/state.js';
 import { parseDir, setDir } from '/static/common/direction.js';
 
-// An airport's distances page: its flight segments in the latest full year, by distance, on the x-axis every airport shares
+// An airport's distances page: its flight segments in the latest full year, by distance, on the x-axis every airport shares;
+// or, with no airport (/airports/distances), every airport pair's
 const data = document.body.dataset;
-const origin = data.origin;
+const origin = data.origin || null;
 const year = Number(data.year);
 const axisMax = Number(data.axisMax);
 const check = { ratio: Number(data.ratio), miles: Number(data.miles) };
@@ -47,7 +48,7 @@ function draw() {
   const extra = $('distance-note-extra') || $('distance-note').appendChild(Object.assign(document.createElement('span'), { id: 'distance-note-extra' }));
   extra.textContent = noteText(p, measure);
   if (p.empty) {
-    box.textContent = p.unavailable ? 'Distances aren\'t available yet.' : `No ${LABELS[measure]} at ${origin} in ${year}.`;
+    box.textContent = p.unavailable ? 'Distances aren\'t available yet.' : `No ${LABELS[measure]}${origin ? ` at ${origin}` : ''} in ${year}.`;
     $('distance-summary').textContent = '';
     return;
   }
@@ -79,10 +80,13 @@ function draw() {
 }
 
 async function main() {
-  $('dir').addEventListener('change', (e) => setDir(e.target.value));
-  setDataLink('routes_by_year', { origin, dir, year, min_deps: 0 });
+  // an airport's destinations, or every pair (labelled A–B for the popovers) with no airport
+  const [query, args] = origin ? ['routes_by_year', { origin, dir, year, min_deps: 0 }] : ['pair_distances_by_year', { year }];
+  if (origin) $('dir').addEventListener('change', (e) => setDir(e.target.value));
+  setDataLink(query, args);
   try {
-    rows = (await fetchRows(queryUrl('routes_by_year', { origin, dir, year, min_deps: 0 }))).rows;
+    rows = (await fetchRows(queryUrl(query, args))).rows;
+    if (!origin) rows = rows.map((r) => ({ ...r, dest: `${r.a}–${r.b}` }));
   } catch (err) {
     $('distance-chart').textContent = 'Could not load the chart data.';
     return;
