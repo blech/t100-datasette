@@ -33,6 +33,27 @@ def test_carrier_group_by_year_keeps_the_group_name(ds, db_path):
     assert (row["group_id"], row["group_name"], row["kind"], row["passengers"]) == ("DL", "Delta", "passenger", 300)
 
 
+def member(year, airline_id, group_id, passengers):
+    return dict(year=year, airline_id=airline_id, group_id=group_id, group_name=group_id.title(), domestic=1, service_class="F",
+                deps=4, seats=400, passengers=passengers, freight=0)
+
+
+def test_carrier_member_by_year_keeps_each_member_of_a_group(ds, db_path):
+    put(db_path, "carrier_group_year", [member(2005, "19790", "delta", 300), member(2005, "19386", "delta", 100)])
+    put(db_path, "carrier_group", [dict(airline_id="19790", group_id="delta", group_name="Delta", airline_name="Delta Air Lines Inc."),
+                                   dict(airline_id="19386", group_id="delta", group_name="Delta", airline_name="Northwest Airlines Inc.")])
+    rows = get_json(ds, "/t100/carrier_member_by_year.json?_shape=objects")["rows"]
+    assert len(rows) == 2
+    assert {(r["airline_id"], r["airline_name"], r["group_id"], r["passengers"]) for r in rows} == {
+        ("19790", "Delta Air Lines Inc.", "delta", 300), ("19386", "Northwest Airlines Inc.", "delta", 100)}
+
+
+def test_carrier_member_by_year_names_an_airline_with_no_group_row_after_its_group(ds, db_path):
+    put(db_path, "carrier_group_year", [member(2005, "99999", "solo", 5)])
+    row = get_json(ds, "/t100/carrier_member_by_year.json?_shape=objects")["rows"][0]
+    assert (row["airline_name"], row["service"], row["kind"]) == ("Solo", "domestic", "passenger")
+
+
 def test_engines_by_year_keeps_the_distance_band(ds, db_path):
     put(db_path, "aircraft_group_band_year", [dict(year=2019, aircraft_group="6", distance_band=3000, domestic=0, service_class="F",
                                                    deps=7, seats=700, passengers=500, freight=0)])

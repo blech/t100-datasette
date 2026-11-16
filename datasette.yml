@@ -682,6 +682,22 @@ databases:
           GROUP BY year, group_id, group_name, service, kind
           ORDER BY year, group_name
 
+      # the same, one row per member airline too: the over-time matrix opens a group into them, and the mergers page stacks them
+      carrier_member_by_year:
+        title: "Airline groups and their member airlines by year"
+        description: "One row per airline group, member airline, year, service and kind."
+        sql: |
+          SELECT
+            d.year, d.group_id, d.group_name, d.airline_id,
+            COALESCE(g.airline_name, d.group_name) AS airline_name,
+            CASE WHEN d.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN d.service_class IN ('G', 'P') THEN 'freight' ELSE 'passenger' END AS kind,
+            SUM(d.deps) AS deps, SUM(d.seats) AS seats, SUM(d.passengers) AS passengers, SUM(d.freight) AS freight
+          FROM carrier_group_year d
+            LEFT JOIN carrier_group g ON g.airline_id = d.airline_id
+          GROUP BY d.year, d.group_id, d.group_name, d.airline_id, airline_name, service, kind
+          ORDER BY d.year, d.group_name, d.airline_id
+
       aircraft_by_year:
         title: "Aircraft by year, with their family"
         description: "One row per aircraft, year, service and kind, with the aircraft's family, maker and BTS type."
