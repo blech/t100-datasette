@@ -277,3 +277,15 @@ def test_airline_routes_and_changes_can_split_each_direction(ds, db_path):
 def delta(db_path):
     put(db_path, "carrier_group", [dict(airline_id="19790", group_id="delta", group_name="Delta", airline_name="Delta Air Lines Inc.")])
     put(db_path, "carrier_group_year", [dict(year=2019, airline_id="19790", group_id="delta", group_name="Delta", domestic=1, service_class="F", deps=4, seats=400, passengers=300, freight=0)])
+
+
+def test_the_mergers_page_charts_the_airlines_that_merged(ds):
+    r = get(ds, "/airlines/mergers")
+    assert r.status_code == 200
+    html = r.text
+    assert 'id="passenger-chart"' in html
+    assert re.search(r'<script type="module" src="[^"]*charts/mergers[^"]*\.js"', html)
+    assert 'data-min-year="' in html and 'data-max-year="' in html
+    assert '<li aria-current="page">mergers</li>' in html
+    assert 'href="/airlines/over-time"' in html
+

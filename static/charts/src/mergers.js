@@ -50,7 +50,12 @@ export function mergerBands(rows) {
 
   const series = [...everyone.map((a) => seriesOf.get(a.id)), OTHER_AIRLINES];
   const points = [];
-  for (const a of everyone) for (const [year, passengers] of a.byYear) points.push({ year, series: seriesOf.get(a.id), passengers });
+  for (const a of everyone) {
+    for (const [year, passengers] of a.byYear) points.push({ year, series: seriesOf.get(a.id), passengers });
+    // a band ends (and begins) at nothing, a year beyond its flying, so the bands beside it slope with it rather than leaving a gap
+    const flew = [...a.byYear].filter(([, passengers]) => passengers > 0).map(([year]) => year);
+    for (const year of [Math.min(...flew) - 1, Math.max(...flew) + 1]) if (years.includes(year) && !a.byYear.has(year)) points.push({ year, series: seriesOf.get(a.id), passengers: 0 });
+  }
   for (const year of years) {
     const listed = everyone.reduce((sum, a) => sum + (a.byYear.get(year) || 0), 0);
     points.push({ year, series: OTHER_AIRLINES, passengers: totals.get(year) - listed });

@@ -75,6 +75,7 @@ def register_routes():
         (r"^/aircraft$", aircraft_table_page),
         (r"^/airlines$", airline_table_page),
         (r"^/airlines/over-time$", rollup_page("airlines")),
+        (r"^/airlines/mergers$", mergers_page),  # before the airline pages, which would take "mergers" for an airline
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/changes$", airline_changes_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/routes$", airline_routes_page),
         (r"^/airlines/(?P<slug>[A-Za-z0-9_-]+)/aircraft$", airline_aircraft_page),
@@ -158,8 +159,9 @@ def views_for(path):
             # a family or one of its aircraft is a page of the section but not one of these views: none is current
             views = [[], ["over-time"], ["makers"], ["groups"]]
             return make(*aircraft, current=views.index(rest) if rest in views else -1)
-        case ["airlines"] | ["airlines", "over-time"]:
-            return make(("Airlines", "/airlines", None), ("Over time", "/airlines/over-time", None), current=len(parts) - 1)
+        case ["airlines"] | ["airlines", "over-time"] | ["airlines", "mergers"]:
+            return make(("Airlines", "/airlines", None), ("Over time", "/airlines/over-time", None), ("Mergers", "/airlines/mergers", None),
+                        current=[[], ["over-time"], ["mergers"]].index(parts[1:]))
         case ["airlines", slug, *rest] if rest in ([], ["routes"], ["aircraft"], ["changes"], ["globe"]):
             return make(("Over time", f"/airlines/{slug}", None), ("Routes", f"/airlines/{slug}/routes", None),
                         ("Aircraft", f"/airlines/{slug}/aircraft", None), ("Changes", f"/airlines/{slug}/changes", "changes-link"),
@@ -1196,6 +1198,17 @@ airline_page = airline_view("airline.html", ())
 airline_changes_page = airline_view("airline_changes.html", (("changes", None),))
 airline_routes_page = airline_view("airline_routes.html", (("routes", None),))
 airline_aircraft_page = airline_view("airline_aircraft.html", (("aircraft", None),))
+
+
+async def mergers_page(datasette, request):
+    """The airlines that merged: a stacked chart of passengers with each survivor's absorbed airlines in shades of its colour."""
+    min_year, max_year = year_range(datasette)
+    html = await datasette.render_template(
+        "mergers.html",
+        {"min_year": min_year, "max_year": max_year, "crumbs": trail(datasette, ("airlines", "/airlines"), ("mergers", None))},
+        request=request,
+    )
+    return Response.html(html)
 
 
 async def about_page(datasette, request):

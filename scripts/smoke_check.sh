@@ -42,6 +42,7 @@ check 404 /aircraft/boeing-737/no-such-plane
 check 404 /aircraft/no-such-plane
 check 200 /airlines                                                 "airline-table"
 check 200 /airlines/over-time                                       "matrix-kind"
+check 200 /airlines/mergers                                        "passenger-chart"
 check 301 "/airlines?scale=busiest"
 check 200 /airlines/delta                                          "size-chart"
 check 200 /airlines/delta/routes                                   "matrix"

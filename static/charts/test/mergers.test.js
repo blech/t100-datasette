@@ -76,3 +76,15 @@ test('two airlines with the same short name keep distinct series', () => {
 test('years run from the first to the last in the data', () => {
   assert.deepEqual(mergerBands(rows).years, [2005, 2025]);
 });
+
+test('an airline\'s band tapers to nothing the year after it ends and from the year before it begins, so no gap opens beside it', () => {
+  const life = [
+    m(2000, '1', 'g', 'Big Air', 100), m(2001, '1', 'g', 'Big Air', 100), m(2002, '1', 'g', 'Big Air', 100), m(2003, '1', 'g', 'Big Air', 100),
+    m(2001, '2', 'g', 'Small Air', 20), m(2002, '2', 'g', 'Small Air', 20),
+  ];
+  const { bands } = mergerBands(life);
+  const at = (year) => bands.find((b) => b.year === year && b.series === 'Small Air');
+  assert.equal(at(2000).passengers, 0);
+  assert.equal(at(2003).passengers, 0);
+  assert.equal(at(2001).passengers, 20);
+});

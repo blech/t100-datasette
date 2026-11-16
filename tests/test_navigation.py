@@ -10,7 +10,7 @@ from tests.test_rollup_pages import fam, put
 @pytest.mark.parametrize("path, section", [
     ("/", None), ("/airports", "airports"), ("/airports/globe", "airports"), ("/airports/ATL/LAX/2024", "airports"),
     ("/aircraft", "aircraft"), ("/aircraft/groups", "aircraft"), ("/aircraft/boeing-737", "aircraft"),
-    ("/airlines", "airlines"), ("/airlines/delta/globe", "airlines"), ("/about", "about"),
+    ("/airlines", "airlines"), ("/airlines/mergers", "airlines"), ("/airlines/delta/globe", "airlines"), ("/about", "about"),
     ("/t100/airports", None), ("/-/derived", None),
 ])
 def test_section_of(path, section):
@@ -82,8 +82,9 @@ PAGES = {
     "/aircraft/over-time": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),
     "/aircraft/groups": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),
     "/aircraft/makers": ("aircraft", ["Families", "Over time", "Makers", "Groups"]),
-    "/airlines": ("airlines", ["Airlines", "Over time"]),
-    "/airlines/over-time": ("airlines", ["Airlines", "Over time"]),
+    "/airlines": ("airlines", ["Airlines", "Over time", "Mergers"]),
+    "/airlines/over-time": ("airlines", ["Airlines", "Over time", "Mergers"]),
+    "/airlines/mergers": ("airlines", ["Airlines", "Over time", "Mergers"]),
     "/about": ("about", ["About", "Changes"]),
     "/changelog": ("about", ["About", "Changes"]),
 }
@@ -135,10 +136,11 @@ def test_a_route_links_to_more_from_its_origin(ds):
     assert 'href="/airports/ATL"' in html and 'id="map-link"' in html
 
 
-def test_the_airlines_table_and_matrix_are_two_views_of_the_section():
+def test_the_airlines_table_matrix_and_mergers_are_views_of_the_section():
     assert [(v["label"], v["href"], v["current"]) for v in views_for("/airlines")] == [
-        ("Airlines", "/airlines", True), ("Over time", "/airlines/over-time", False)]
-    assert [v["current"] for v in views_for("/airlines/over-time")] == [False, True]
+        ("Airlines", "/airlines", True), ("Over time", "/airlines/over-time", False), ("Mergers", "/airlines/mergers", False)]
+    assert [v["current"] for v in views_for("/airlines/over-time")] == [False, True, False]
+    assert [v["current"] for v in views_for("/airlines/mergers")] == [False, False, True]
     assert [v["label"] for v in views_for("/airlines/delta")] == ["Over time", "Routes", "Aircraft", "Changes", "Map"]  # an airline is still its own subject
 
 
