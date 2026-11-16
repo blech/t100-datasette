@@ -8,7 +8,7 @@ export function shortAirlineName(name) {
   return out;
 }
 
-const brand = (name) => shortAirlineName(name).replace(/\s+Air\s?Lines$/i, '') || shortAirlineName(name);
+export const brand = (name) => shortAirlineName(name).replace(/\s+Air\s?Lines$/i, '') || shortAirlineName(name);
 
 // top_carrier_history rows -> one point per year and airline, and the airlines biggest-first in the latest year
 export function airlineLines(rows) {
@@ -59,7 +59,7 @@ export function passengerBands(rows, series) {
 }
 
 // livery colours for the airlines that have been in the top four, and distinct fallbacks for any newcomer
-const LIVERY = { Southwest: '#D99A00', Delta: '#C8102E', American: '#7A8A96', United: '#1F5FD1', 'US Airways': '#2E8B57' };
+const LIVERY = { Southwest: '#D99A00', Delta: '#C8102E', American: '#7A8A96', United: '#1F5FD1', 'US Airways': '#2E8B57', Alaska: '#0E8A7D' };
 const FALLBACK = ['#8E5BB5', '#2A9D8F', '#D9763A', '#5C6BC0'];
 
 export function airlineColours(names) {

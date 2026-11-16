@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { shortAirlineName, airlineLines, stackShares, passengerBands, OTHER_AIRLINES, airlineColours } from '../src/airlines.js';
+import { shortAirlineName, airlineLines, stackShares, passengerBands, OTHER_AIRLINES, airlineColours, brand } from '../src/airlines.js';
 
 test('shortAirlineName drops the legal ending, as the server does', () => {
   assert.equal(shortAirlineName('Southwest Airlines Co.'), 'Southwest Airlines');
@@ -59,4 +59,15 @@ test('airlineColours gives each big airline its livery colour, and others a fall
   assert.deepEqual(airlineColours(['Southwest', 'American', 'Delta', 'United']), ['#D99A00', '#7A8A96', '#C8102E', '#1F5FD1']);
   const [a, b] = airlineColours(['Alaska', 'JetBlue']);
   assert.ok(a && b && a !== b);
+});
+
+test('Alaska has a livery of its own, apart from the other four', () => {
+  const colours = airlineColours(['Southwest', 'Delta', 'American', 'United', 'Alaska']);
+  assert.equal(new Set(colours).size, 5);
+  assert.notEqual(airlineColours(['Alaska'])[0], airlineColours(['Some newcomer'])[0]); // not one of the fallbacks
+});
+
+test('brand is the short name without "Air Lines" or "Airlines"', () => {
+  assert.equal(brand('Delta Air Lines Inc.'), 'Delta');
+  assert.equal(brand('Northwest Airlines Inc.'), 'Northwest');
 });
