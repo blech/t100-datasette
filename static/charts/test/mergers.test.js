@@ -88,3 +88,11 @@ test('an airline\'s band tapers to nothing the year after it ends and from the y
   assert.equal(at(2003).passengers, 0);
   assert.equal(at(2001).passengers, 20);
 });
+
+test('a survivor with many absorbed airlines still gives each a shade of its own', () => {
+  const many = [m(2000, '0', 'g', 'Lead Air', 100), ...['1', '2', '3', '4', '5'].map((id) => m(2000, id, 'g', `Absorbed ${id} Air`, 10 - Number(id)))];
+  const { colours, groups } = mergerBands(many);
+  const shades = groups[0].members.slice(1).map((s) => colours.get(s));
+  assert.equal(new Set(shades).size, 5);
+  assert.ok(!shades.includes('#ffffff'));
+});

@@ -6,6 +6,10 @@ export function shade(hex, t) {
   return `#${[0, 1, 2].map((i) => channel(i).toString(16).padStart(2, '0')).join('')}`;
 }
 
+// how much of the way to white the jth absorbed airline of `count` is: 0.3 for the first, then 0.2 further for each, kept short of 0.8
+// by spreading them if there are more than three
+const absorbedShade = (j, count) => 0.3 + Math.min(0.2, 0.5 / Math.max(1, count - 1)) * (j - 1);
+
 // Rows from carrier_member_by_year -> the mergers chart: the airline groups that absorbed another, each survivor's band with its
 // absorbed airlines stacked on it in lighter shades of its colour, then everyone else. Survivors are ordered by their size in the
 // latest year, absorbed airlines by their size over all years.
@@ -46,7 +50,7 @@ export function mergerBands(rows) {
 
   const survivorColours = airlineColours(groups.map((g) => brand(g.airlines[0].name)));
   const colours = new Map();
-  groups.forEach((g, i) => g.airlines.forEach((a, j) => colours.set(seriesOf.get(a.id), j === 0 ? survivorColours[i] : shade(survivorColours[i], Math.min(0.8, 0.3 + 0.2 * (j - 1))))));
+  groups.forEach((g, i) => g.airlines.forEach((a, j) => colours.set(seriesOf.get(a.id), j === 0 ? survivorColours[i] : shade(survivorColours[i], absorbedShade(j, g.airlines.length - 1)))));
 
   const series = [...everyone.map((a) => seriesOf.get(a.id)), OTHER_AIRLINES];
   const points = [];

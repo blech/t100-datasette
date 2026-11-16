@@ -355,8 +355,8 @@ function fillControls() {
     });
   } else if ($('matrix-group')) { $('matrix-group').value = state.group; bind('matrix-group', 'group'); }
   if ($('matrix-n') && kind !== 'citypair') bind('matrix-n', 'n', Number);
-  if (!byYear) bind('matrix-rank', 'rank');
   if ($('matrix-order')) bind('matrix-order', 'order');
+  if (!byYear) bind('matrix-rank', 'rank');
   else if (kind === 'citypair') {
     // a city pair's page has all its rows already: a new year only ranks them again
     $('matrix-rank').addEventListener('change', (e) => { state.year = e.target.value ? Number(e.target.value) : null; pushState(); draw(); });

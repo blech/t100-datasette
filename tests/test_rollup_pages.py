@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 import pytest
 
@@ -289,3 +290,11 @@ def test_the_mergers_page_charts_the_airlines_that_merged(ds):
     assert '<li aria-current="page">mergers</li>' in html
     assert 'href="/airlines/over-time"' in html
 
+
+
+def test_the_order_menu_does_not_take_over_the_ranked_by_handlers():
+    # the `else if (kind === 'citypair')` / `else` handlers belong to `if (!byYear)`: they must follow the line binding the rank menu,
+    # or every page without an order menu would refetch the routes with a year of NaN whenever "ranked by" changed
+    lines = [line.strip() for line in Path("static/charts/rollup.js").read_text().splitlines()]
+    at = lines.index("else if (kind === 'citypair') {")
+    assert lines[at - 1] == "if (!byYear) bind('matrix-rank', 'rank');"
