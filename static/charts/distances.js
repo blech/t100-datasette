@@ -14,7 +14,8 @@ const origin = data.origin;
 const year = Number(data.year);
 const axisMax = Number(data.axisMax);
 const check = { ratio: Number(data.ratio), miles: Number(data.miles) };
-const bin = Number(data.bin);
+const exact = new URLSearchParams(location.search).get('bars') === 'exact'; // experiment: a column per mile
+const bin = exact ? 1 : Number(data.bin);
 const dir = parseDir(location.search);
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -44,7 +45,7 @@ function draw() {
     return;
   }
   $('distance-summary').textContent = summaryText(origin, year, measure, p.median);
-  const bars = p.bins.map((b) => ({ ...b, mid: (b.from + b.to) / 2, y: shown(measure, b.value) }));
+  const bars = p.bins.filter((b) => !exact || b.value).map((b) => ({ ...b, mid: exact ? b.from : (b.from + b.to) / 2, y: shown(measure, b.value) }));
   const top = Math.max(0, ...bars.map((b) => b.y));
   const label = measure === 'freight' ? 'Freight, short tons' : `${LABELS[measure][0].toUpperCase()}${LABELS[measure].slice(1)}`;
   const chart = Plot.plot({
@@ -53,14 +54,16 @@ function draw() {
     x: { domain: [0, axisMax], label: 'Distance (miles)', labelAnchor: 'center', labelArrow: 'none', tickFormat: (v) => exactCount(v) },
     y: { ...millionsAxis(top, label), grid: true, tickSize: 0 },
     marks: [
-      Plot.rectY(bars, { x1: 'from', x2: 'to', y: 'y', fill: palette(isDark()).accent, insetLeft: 0.5, insetRight: 0.5 }),
+      exact
+        ? Plot.ruleX(bars, { x: 'from', y1: 0, y2: 'y', stroke: palette(isDark()).accent, strokeWidth: 1 })
+        : Plot.rectY(bars, { x1: 'from', x2: 'to', y: 'y', fill: palette(isDark()).accent, insetLeft: 0.5, insetRight: 0.5 }),
       Plot.ruleY([0]),
       Plot.ruleX(bars, Plot.pointerX({ x: 'mid', y: 'y', strokeOpacity: 0 })),
     ],
   });
   box.replaceChildren(...attachPopover(chart, {
     content: (b) => ({
-      title: `${exactCount(b.from)}–${miles(b.to)}`,
+      title: exact ? miles(b.from) : `${exactCount(b.from)}–${miles(b.to)}`,
       rows: [{ label: LABELS[measure], value: valueText(measure, b.value), extra: `${formatCount(b.share * 100)}%` },
         ...b.top.map((d) => ({ label: d.dest, value: valueText(measure, d.value), extra: '' })),
         ...(b.more ? [{ label: `… and ${exactCount(b.more)} more`, value: '', extra: '' }] : [])],
