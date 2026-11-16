@@ -96,3 +96,24 @@ test('a survivor with many absorbed airlines still gives each a shade of its own
   assert.equal(new Set(shades).size, 5);
   assert.ok(!shades.includes('#ffffff'));
 });
+
+test('each group has bands of its own airlines only, stacked to the group, with no one else on top', () => {
+  const { groups } = mergerBands(rows);
+  const delta = groups.find((g) => g.id === 'delta');
+  assert.deepEqual([...new Set(delta.bands.map((b) => b.series))].sort(), ['Delta', 'Northwest']);
+  const top = (year) => Math.max(...delta.bands.filter((b) => b.year === year).map((b) => b.y2));
+  assert.equal(top(2005), 400);
+  assert.equal(top(2025), 507);
+  assert.equal(delta.bands.find((b) => b.year === 2005 && b.series === 'Delta').y1, 0);
+});
+
+test('a group\'s peak is its busiest year\'s passengers, all its airlines together', () => {
+  const { groups } = mergerBands(rows);
+  assert.deepEqual(groups.find((g) => g.id === 'delta').peak, { year: 2025, passengers: 507 });
+  assert.deepEqual(groups.find((g) => g.id === 'american').peak, { year: 2025, passengers: 400 });
+});
+
+test('a group\'s tapering points do not make its peak a year it did not fly', () => {
+  const life = [m(2000, '1', 'g', 'Big Air', 100), m(2001, '1', 'g', 'Big Air', 90), m(2001, '2', 'g', 'Small Air', 20), m(2002, '1', 'g', 'Big Air', 80)];
+  assert.deepEqual(mergerBands(life).groups[0].peak, { year: 2001, passengers: 110 });
+});

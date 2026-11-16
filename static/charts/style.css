@@ -154,3 +154,9 @@ details.note summary {
 .rank-line {
   margin: 4px 0 12px;
 }
+
+/* the mergers page: one chart per group, two across where there is room */
+.group-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 2rem; }
+.group-charts h3 { margin: 0 0 0.25rem; font-size: 1rem; }
+.group-charts .peak { font-weight: 400; opacity: 0.7; }
+@media (max-width: 800px) { .group-charts { grid-template-columns: minmax(0, 1fr); } }

@@ -3,6 +3,7 @@
 {% block title %}Airlines that merged{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="/static/home/style.css">
+  <link rel="stylesheet" href="/static/charts/style.css">
 {% endblock %}
 {% block head %}
 {{ modulepreload("/static/charts/mergers.js") }}
@@ -15,6 +16,9 @@
       Passengers carried each year by the airlines that took over others: each colour is a surviving airline, and the lighter shades above it are the airlines it absorbed, such as Northwest in Delta or US Airways and TWA in American. Grey is everyone else. The airlines are counted as they flew then, so an absorbed airline's band ends when BTS began reporting it with its new owner, which can be after the deal. Hover over a year to see each airline.
     </p>
     <div class="graphic chart-box" id="passenger-chart"><p class="graphic-status">Loading chart…</p></div>
+    <h2 id="groups-heading">Each merger on its own</h2>
+    <p class="note">Each chart has its own scale, so read its axis: the heading gives the group's busiest year. The same years run across every chart.</p>
+    <div id="group-charts" class="group-charts"></div>
     <p class="note">How airlines are <a href="/about#groupings">grouped</a>. The <a href="/airlines/over-time">over time</a> matrix counts a merged airline with its owner throughout and can open each group into its airlines.</p>
 {% endblock %}
 

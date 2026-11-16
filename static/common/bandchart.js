@@ -38,34 +38,38 @@ function fadeEdges(plot, colourOf) {
   });
 }
 
-// passengers carried: the airlines in `series` order, then everyone else, stacked to the whole market
-function passengerChart(box, { series, bands, colourOf, minYear, maxYear }) {
-  const height = chartHeight();
+// passengers carried: the airlines in `series` order, then (unless `rest` is false) everyone else, stacked to the whole market
+function passengerChart(box, { series, bands, colourOf, minYear, maxYear, rest = true, height = chartHeight() }) {
   const yMax = Math.max(...bands.map((d) => d.y2));
-  const totalByYear = stackTotals(bands);
-  const tips = periodRows([...bands, ...[...totalByYear].map(([year, y2]) => ({ year, series: ALL_AIRLINES, passengers: y2, y2 }))], {
-    key: (d) => d.year, order: [...series, OTHER_AIRLINES, ALL_AIRLINES], value: (d) => d.passengers,
+  const totalByYear = rest ? stackTotals(bands) : new Map();
+  const everything = rest ? [...bands, ...[...totalByYear].map(([year, y2]) => ({ year, series: ALL_AIRLINES, passengers: y2, y2 }))] : bands;
+  const tips = periodRows(everything, {
+    key: (d) => d.year, order: rest ? [...series, OTHER_AIRLINES, ALL_AIRLINES] : series, value: (d) => d.passengers,
     format: (n) => formatCount(n), top: (ds) => Math.max(...ds.map((d) => d.y2)),
   });
   const others = bands.filter((d) => d.series === OTHER_AIRLINES);
+  const named = rest ? [...series, OTHER_AIRLINES] : series;
   return Plot.plot({
     ...plotFrame(box, height, { minYear, maxYear }),
-    y: { ...millionsAxis(yMax, 'Passengers'), domain: [0, yMax], grid: true, tickSize: 0, nice: true, ticks: 6 },
-    color: { domain: [...series, OTHER_AIRLINES], range: [...series, OTHER_AIRLINES].map(colourOf), legend: true },
+    y: { ...millionsAxis(yMax, 'Passengers'), domain: [0, yMax], grid: true, tickSize: 0, nice: true, ticks: rest ? 6 : 4 },
+    color: { domain: named, range: named.map(colourOf), legend: true },
     marks: [
       ...airlineBands(bands.filter((d) => d.series !== OTHER_AIRLINES), colourOf),
       // everyone else: a faint grey, its top edge (the whole market) dashed in the text colour
-      Plot.areaY(others, { x: 'year', y1: 'y1', y2: 'y2', fill: 'series', fillOpacity: 0.2 }),
-      Plot.lineY(others, { x: 'year', y: 'y2', stroke: 'currentColor', strokeOpacity: 0.6, strokeWidth: 1.5, strokeDasharray: '4 3', className: 'others-edge' }),
+      ...(rest ? [
+        Plot.areaY(others, { x: 'year', y1: 'y1', y2: 'y2', fill: 'series', fillOpacity: 0.2 }),
+        Plot.lineY(others, { x: 'year', y: 'y2', stroke: 'currentColor', strokeOpacity: 0.6, strokeWidth: 1.5, strokeDasharray: '4 3', className: 'others-edge' }),
+      ] : []),
       Plot.ruleY([0]),
       Plot.ruleX(tips, Plot.pointerX({ x: 'period', strokeOpacity: 0 })),
     ],
   });
 }
 
-// draw the stacked passenger chart into `box`, with its highlight and its popover listing every airline in the year
-export function drawPassengerBands(box, { series, bands, colourOf, minYear, maxYear }) {
-  const chart = passengerChart(box, { series, bands, colourOf, minYear, maxYear });
+// draw the stacked passenger chart into `box`, with its highlight and its popover listing every airline in the year; with
+// `rest: false` only the airlines in `series`, on a scale of their own, a shorter chart
+export function drawPassengerBands(box, { series, bands, colourOf, minYear, maxYear, rest = true }) {
+  const chart = passengerChart(box, { series, bands, colourOf, minYear, maxYear, rest, height: rest ? chartHeight() : Math.round(chartHeight() * 0.7) });
   attachHighlight(chart);
   fadeEdges(chart, colourOf);
   box.replaceChildren(...attachPopover(chart, {

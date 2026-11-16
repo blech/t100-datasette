@@ -15,7 +15,8 @@ const absorbedShade = (j, count) => 0.3 + Math.min(0.2, 0.5 / Math.max(1, count 
 // latest year, absorbed airlines by their size over all years.
 //   series  the bands, bottom to top, the last being OTHER_AIRLINES
 //   bands   one { year, series, passengers, y1, y2 } per band and year (as passengerBands gives the front page)
-//   groups  [{ id, name, survivor, members }] with series names, survivor first
+//   groups  [{ id, name, survivor, members, bands, peak }]: series names survivor first, the group's own stacked bands, and its
+//           busiest year { year, passengers }
 //   colours series -> colour;   years  [first, last]
 export function mergerBands(rows) {
   const flown = new Map(); // airline_id -> { id, group, groupName, name, total, byYear: Map(year -> passengers) }
@@ -53,23 +54,39 @@ export function mergerBands(rows) {
   groups.forEach((g, i) => g.airlines.forEach((a, j) => colours.set(seriesOf.get(a.id), j === 0 ? survivorColours[i] : shade(survivorColours[i], absorbedShade(j, g.airlines.length - 1)))));
 
   const series = [...everyone.map((a) => seriesOf.get(a.id)), OTHER_AIRLINES];
-  const points = [];
+  const pointsOf = new Map(); // airline_id -> its band's points
   for (const a of everyone) {
-    for (const [year, passengers] of a.byYear) points.push({ year, series: seriesOf.get(a.id), passengers });
+    const own = [...a.byYear].map(([year, passengers]) => ({ year, series: seriesOf.get(a.id), passengers }));
     // a band ends (and begins) at nothing, a year beyond its flying, so the bands beside it slope with it rather than leaving a gap
     const flew = [...a.byYear].filter(([, passengers]) => passengers > 0).map(([year]) => year);
-    for (const year of [Math.min(...flew) - 1, Math.max(...flew) + 1]) if (years.includes(year) && !a.byYear.has(year)) points.push({ year, series: seriesOf.get(a.id), passengers: 0 });
+    for (const year of [Math.min(...flew) - 1, Math.max(...flew) + 1]) if (years.includes(year) && !a.byYear.has(year)) own.push({ year, series: seriesOf.get(a.id), passengers: 0 });
+    pointsOf.set(a.id, own);
   }
+  const points = [...pointsOf.values()].flat();
   for (const year of years) {
     const listed = everyone.reduce((sum, a) => sum + (a.byYear.get(year) || 0), 0);
     points.push({ year, series: OTHER_AIRLINES, passengers: totals.get(year) - listed });
   }
   const bands = stackShares(points, (d) => series.indexOf(d.series), (d) => d.passengers);
 
+  // each group on its own: its airlines stacked, and the year its airlines together carried most
+  const groupOut = groups.map((g) => {
+    const members = g.airlines.map((a) => seriesOf.get(a.id));
+    let peak = { year: null, passengers: 0 };
+    for (const year of years) {
+      const passengers = g.airlines.reduce((sum, a) => sum + (a.byYear.get(year) || 0), 0);
+      if (passengers > peak.passengers) peak = { year, passengers };
+    }
+    return {
+      id: g.id, name: g.name, survivor: members[0], members, peak,
+      bands: stackShares(g.airlines.flatMap((a) => pointsOf.get(a.id)), (d) => members.indexOf(d.series), (d) => d.passengers),
+    };
+  });
+
   return {
     series,
     bands,
-    groups: groups.map((g) => ({ id: g.id, name: g.name, survivor: seriesOf.get(g.airlines[0].id), members: g.airlines.map((a) => seriesOf.get(a.id)) })),
+    groups: groupOut,
     colours,
     years: [years[0], latest],
   };

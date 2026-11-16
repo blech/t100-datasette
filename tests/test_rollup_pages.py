@@ -284,7 +284,7 @@ def test_the_mergers_page_charts_the_airlines_that_merged(ds):
     r = get(ds, "/airlines/mergers")
     assert r.status_code == 200
     html = r.text
-    assert 'id="passenger-chart"' in html
+    assert 'id="passenger-chart"' in html and 'id="group-charts"' in html
     assert re.search(r'<script type="module" src="[^"]*charts/mergers[^"]*\.js"', html)
     assert 'data-min-year="' in html and 'data-max-year="' in html
     assert '<li aria-current="page">mergers</li>' in html
