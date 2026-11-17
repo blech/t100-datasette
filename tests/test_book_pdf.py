@@ -9,7 +9,7 @@ except (ImportError, OSError) as e:   # OSError: installed, but Pango isn't on t
     pytest.skip(f"WeasyPrint unavailable ({type(e).__name__}); see this file's docstring", allow_module_level=True)
 
 from scripts.book.data import Destination
-from scripts.book.pdf import broken_spreads, layout, poster_offsets, write_pdf
+from scripts.book.pdf import broken_spreads, write_pdf
 from tests.test_book_render import render, entry, facts
 
 
@@ -34,11 +34,18 @@ def test_an_overflowing_data_page_breaks_its_spread(tmp_path):
     assert broken_spreads(data, posters) == [4]
 
 
-def test_poster_offsets_centre_each_poster_on_its_data(tmp_path):
-    html = _book(["ATL", "MEM"])
-    offsets = poster_offsets(layout(html, tmp_path))
-    assert set(offsets) == {"ATL", "MEM"}
-    assert all(px >= 0 for px in offsets.values())
-    centred = layout(render([(entry(c), facts(c)) for c in ("ATL", "MEM")], poster_offsets=offsets), tmp_path)
-    assert all(abs(px) < 1 for px in poster_offsets(centred).values())   # already centred: nothing more to move
-    assert len(centred.pages) == 10
+def test_the_poster_fills_its_page(tmp_path):
+    import weasyprint
+
+    page = weasyprint.HTML(string=_book(["ATL"]), base_url=str(tmp_path)).render().pages[4]   # 5: ATL's poster
+    root = page._page_box.children[0]
+    svg = next(b for b in _boxes(root) if str(getattr(b, "element_tag", "")).endswith("svg"))
+    assert (svg.border_box_x(), svg.border_box_y()) == (0, 0)
+    assert (round(svg.border_width()), round(svg.border_height())) == (round(page.width), round(page.height))
+    assert not [b for b in page._page_box.children[1:] if getattr(b, "children", None)]   # no page number
+
+
+def _boxes(box):
+    yield box
+    for child in getattr(box, "children", ()):
+        yield from _boxes(child)

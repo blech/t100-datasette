@@ -31,7 +31,8 @@ def poster(code):
 
 def render(airports=None, **kw):
     airports = airports or [(entry("ATL"), facts("ATL")), (entry("MEM"), facts("MEM"))]
-    return book_html(airports, {e.code: poster(e.code) for e, _ in airports}, **kw)
+    posters = {e.code: poster(e.code) for e, _ in airports}
+    return book_html(airports, posters, **{"endpaper_posters": posters, **kw})
 
 
 def _section(html, id_):
@@ -125,12 +126,6 @@ def test_poster_page_has_only_the_poster():
     assert not re.search(r"<p[ >]", page) and "Atlville" not in page
 
 
-def test_poster_offset_moves_the_poster_down():
-    html = render(poster_offsets={"ATL": 12.5})
-    assert re.search(r"#poster-ATL svg \{ margin-top: 12.5px", html)
-    assert "#poster-MEM svg" not in html
-
-
 def test_top_airlines_a_table_of_four_then_the_others():
     f = facts(top_airlines=[("Delta Air Lines", 0.72), ("Fish & Chips Air", 0.08)], other_airlines_share=0.2)
     data = _section(render([(entry(), f)]), "data-ATL")
@@ -217,12 +212,12 @@ def test_page_numbers_in_the_outer_bottom_corners_but_not_on_the_cover_pages():
     assert re.search(r"@page :right \{[^}]*@bottom-right \{ content: counter\(page\)", html)
     for section in ("title", "back-cover"):
         assert re.search(rf"section\.{section} \{{ page: bare; \}}", html)
-    assert re.search(r"section\.endpaper \{ page: endpaper; \}", html)
+    assert re.search(r"section\.endpaper, section\.poster \{ page: bleed; \}", html)
 
 
 def test_endpapers_bleed_to_the_page_edge():
     html = render()
-    assert re.search(r"@page endpaper \{ margin: 0;", html)
+    assert re.search(r"@page bleed \{ margin: 0;", html)
     front = _section(html, "endpaper-front")
     assert "grid-template-columns: repeat(1, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr))" in front
 
@@ -246,11 +241,25 @@ def test_endpapers_are_alphabetical_unlike_the_contents():
     assert re.findall(r'id="front-(\w+)-r1"', _section(html, "endpaper-front")) == ["ATL", "MEM"]
 
 
-def test_page_posters_face_their_data_pages_and_the_endpaper_keeps_the_plain_ones():
+def test_the_print_posters_face_their_data_and_the_endpaper_has_its_own():
     airports = [(entry("ATL"), facts("ATL")), (entry("MEM"), facts("MEM"))]
-    rail = {"ATL": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1260"><path id="ATL-rail" d="M0 0"/></svg>'}
-    html = book_html(airports, {e.code: poster(e.code) for e, _ in airports}, page_posters=rail, endpapers=("posters", "codes"))
-    assert 'id="ATL-rail"' in _section(html, "poster-ATL")
-    assert 'id="MEM-r1"' in _section(html, "poster-MEM")   # no rail version: the plain poster
+    prints = {c: poster(c).replace(f"{c}-r1", f"{c}-print") for c in ("ATL", "MEM")}
+    html = book_html(airports, prints, endpaper_posters={c: poster(c) for c in ("ATL", "MEM")}, endpapers=("posters", "codes"))
+    assert 'id="ATL-print"' in _section(html, "poster-ATL")
     front = _section(html, "endpaper-front")
-    assert "ATL-rail" not in front and 'id="front-ATL-r1"' in front
+    assert "ATL-print" not in front and 'id="front-ATL-r1"' in front
+
+
+def test_poster_endpapers_need_the_endpaper_posters():
+    airports = [(entry("ATL"), facts("ATL"))]
+    with pytest.raises(ValueError, match="poster endpapers"):
+        book_html(airports, {"ATL": poster("ATL")}, endpapers=("posters", "codes"))
+    assert book_html(airports, {"ATL": poster("ATL")}, endpapers=("codes", "codes"))
+
+
+@pytest.mark.parametrize("page_size, view_box", [("letter", "113.18 0 973.64 1260"), ("half-letter", "192.35 0 815.29 1260")])
+def test_posters_fill_their_pages_cropped_to_the_page_shape(page_size, view_box):
+    html = render(page_size=page_size)
+    assert re.search(r"@page bleed \{ margin: 0;", html)
+    assert re.search(r"section\.endpaper, section\.poster \{ page: bleed; \}", html)
+    assert f'viewBox="{view_box}"' in _section(html, "poster-ATL")

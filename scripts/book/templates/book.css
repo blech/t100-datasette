@@ -7,13 +7,13 @@
   @bottom-left { font: 8pt "Helvetica Neue", Helvetica, Arial, sans-serif; color: #71717a; }
   @bottom-right { font: 8pt "Helvetica Neue", Helvetica, Arial, sans-serif; color: #71717a; }
 }
-/* no number on the title, endpapers or back cover */
+/* no number on the title or back cover */
 @page bare { @bottom-left { content: none; } @bottom-right { content: none; } }
 section.title { page: bare; }
 section.back-cover { page: bare; }
-/* endpapers bleed: no margin, no number */
-@page endpaper { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
-section.endpaper { page: endpaper; }
+/* endpapers and posters bleed: no margin, no number */
+@page bleed { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+section.endpaper, section.poster { page: bleed; }
 
 html { font-size: {{ root_size }}; }
 body {
@@ -75,11 +75,8 @@ table.destinations .num { text-align: right; white-space: nowrap; }
 /* each box's width is set in the HTML, in proportion to its chart's span (render.py) */
 svg.chart { display: block; width: 100%; height: auto; }
 
-/* poster page */
-section.poster svg { display: block; width: 100%; height: auto; }
-/* each poster centred on its data page's height, measured from a first layout (pdf.poster_offsets) */
-{% for code, px in poster_offsets.items() %}#poster-{{ code }} svg { margin-top: {{ px }}px; }
-{% endfor %}
+/* poster page: the whole page, its viewBox already cropped to the page's shape (render.py) */
+section.poster svg { display: block; width: {{ page_width }}; height: {{ page_height }}; }
 
 /* endpapers: a grid of the posters, the runway diagrams, or the codes, in book order */
 /* the grid fills the whole page; each tile is scaled to cover its cell and cropped (preserveAspectRatio slice, render.py) */

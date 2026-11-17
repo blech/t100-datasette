@@ -12,7 +12,7 @@ from markupsafe import Markup
 from scripts.book.charts import FREIGHT_COLOR, PASSENGER_COLOR, bar_chart, chart_width
 from scripts.book.data import AirportFacts, BookAirport
 from scripts.book.format import DASH, dense_count, rank, share, tons
-from scripts.book.posters import reprefix
+from scripts.book.posters import crop, reprefix
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
 
@@ -140,11 +140,9 @@ def _tiles(kind, side, codes, posters, diagrams):
 
 def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[str, str], *, page_size: str = "letter",
               title: str = "US airports", subtitle: str = "", endpapers: tuple[str, str] = ("posters", "codes"),
-              diagrams: dict[str, str] | None = None, poster_offsets: dict[str, float] | None = None,
-              page_posters: dict[str, str] | None = None) -> str:
-    """posters: the plain ones, for the endpaper. page_posters: code -> the one facing its data page where it differs
-    (the rail version). poster_offsets: code -> px to move the poster down its page (pdf.poster_offsets measures them from
-    a first layout)."""
+              diagrams: dict[str, str] | None = None, endpaper_posters: dict[str, str] | None = None) -> str:
+    """posters: code -> the poster facing its data page, cropped here to the page's shape to fill it. endpaper_posters:
+    code -> the plainer one for a poster endpaper (aeroways and roads, no railways or labels)."""
     if page_size not in PAGE_SIZES:
         raise ValueError(f"unknown page size {page_size!r}: one of {', '.join(PAGE_SIZES)}")
     for kind in endpapers:
@@ -153,20 +151,23 @@ def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[st
     codes = [e.code for e, _ in airports]
     if "diagrams" in endpapers and not (diagrams and all(c in diagrams for c in codes)):
         raise ValueError("diagram endpapers need a diagram for every airport")
+    if "posters" in endpapers and not (endpaper_posters and all(c in endpaper_posters for c in codes)):
+        raise ValueError("poster endpapers need an endpaper poster for every airport")
+    width, height = PAGE_SIZES[page_size]
     env = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=True)
     grid = grid_shape(len(codes), page_size) if codes else (1, 1)
     css = env.get_template("book.css").render(
-        page_width=PAGE_SIZES[page_size][0], page_height=PAGE_SIZES[page_size][1], root_size=ROOT_SIZES[page_size],
-        poster_offsets=poster_offsets or {}, code_tile_padding=code_tile_padding(grid[1], page_size),
+        page_width=width, page_height=height, root_size=ROOT_SIZES[page_size],
+        code_tile_padding=code_tile_padding(grid[1], page_size),
     )
     book = dict.fromkeys(codes)
     first = airports[0][1] if airports else None
     return env.get_template("book.html").render(
         css=Markup(css), title=title, subtitle=subtitle,
         first_year=first.first_year if first else "", last_year=first.last_year if first else "",
-        pages=[_page(e, f, (page_posters or {}).get(e.code, posters[e.code]), book) for e, f in airports],
+        pages=[_page(e, f, crop(posters[e.code], _inches(width) / _inches(height)), book) for e, f in airports],
         grid=grid,
         alphabetical=sorted(codes),   # the endpapers: an index in their own order, not the contents again
-        endpapers=[dict(side=side, kind=kind, tiles=_tiles(kind, side, sorted(codes), posters, diagrams))
+        endpapers=[dict(side=side, kind=kind, tiles=_tiles(kind, side, sorted(codes), endpaper_posters, diagrams))
                    for side, kind in zip(("front", "back"), endpapers)],
     )

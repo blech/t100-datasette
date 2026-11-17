@@ -3,7 +3,7 @@ import re
 import pytest
 
 from scripts.book.__main__ import main
-from scripts.book.pdf import broken_spreads, centre_offset
+from scripts.book.pdf import broken_spreads
 from tests.test_book_data import build_world
 from tests.test_book_render import poster
 
@@ -20,7 +20,7 @@ def world(db_path, tmp_path):
 
 def _args(world, *extra):
     db, posters, out = world
-    return ["--db", str(db), "--posters", str(posters), "--out", str(out), "--html", "--top-passengers", "2", "--top-freight", "2", *extra]
+    return ["--db", str(db), "--posters", str(posters), "--endpaper-posters", str(posters), "--out", str(out), "--html", "--top-passengers", "2", "--top-freight", "2", *extra]
 
 
 def test_html_build_writes_a_file(world):
@@ -54,12 +54,6 @@ def test_missing_poster_stops_the_build(world, capsys):
     assert not world[2].parent.exists()
 
 
-def test_centre_offset():
-    assert centre_offset(0, 800, 0, 700, 900) == 50            # 100px shorter than the data: down by half
-    assert centre_offset(0, 600, 0, 700, 900) == 0             # taller than the data: stays at the top
-    assert centre_offset(0, 1000, 0, 700, 720) == 20           # never off the bottom of the page
-
-
 def test_endpapers_option(world):
     assert main(_args(world, "--endpapers", "codes,codes")) == 0
     html = world[2].with_suffix(".html").read_text()
@@ -71,9 +65,18 @@ def test_endpapers_option_rejects_a_bad_kind(world):
         main(_args(world, "--endpapers", "codes,maps"))
 
 
-def test_rail_posters_on_the_spreads_unless_turned_off(world):
+def test_print_posters_rotated_then_rail_then_plain(world):
+    (world[1] / "AAA-rail-rot.svg").write_text(poster("AAA").replace("AAA-r1", "AAA-rot"))
     (world[1] / "AAA-rail.svg").write_text(poster("AAA").replace("AAA-r1", "AAA-rail"))
+    (world[1] / "BBB-rail.svg").write_text(poster("BBB").replace("BBB-r1", "BBB-rail"))
     assert main(_args(world)) == 0
-    assert 'id="AAA-rail"' in world[2].with_suffix(".html").read_text()
-    assert main(_args(world, "--no-rail")) == 0
-    assert 'id="AAA-rail"' not in world[2].with_suffix(".html").read_text()
+    html = world[2].with_suffix(".html").read_text()
+    assert 'id="AAA-rot"' in html and 'id="AAA-rail"' not in html
+    assert 'id="BBB-rail"' in html
+    assert 'id="FFF-r1"' in html
+
+
+def test_endpaper_posters_only_loaded_for_a_poster_endpaper(world, tmp_path):
+    args = _args(world, "--endpapers", "codes,codes")
+    args[args.index("--endpaper-posters") + 1] = str(tmp_path / "nowhere")
+    assert main(args) == 0

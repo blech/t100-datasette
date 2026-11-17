@@ -1,6 +1,6 @@
 import pytest
 
-from scripts.book.posters import PosterError, load_diagrams, load_poster, load_posters, reprefix
+from scripts.book.posters import PosterError, crop, load_diagrams, load_poster, load_posters, reprefix
 
 
 def _poster(code, ids=("r2",), prefix=True):
@@ -95,14 +95,43 @@ def test_road_casing_mask_moves_from_the_group_to_each_road(tmp_path):
     assert '<g class="ac-ink"><path d="M5 5"/></g>' in svg
 
 
-def test_a_variant_is_used_where_there_is_one(tmp_path):
-    _write(tmp_path, "ABE")
-    _write(tmp_path, "BOS")
+def test_the_first_variant_there_is_wins(tmp_path):
+    (tmp_path / "ABE-rail-rot.svg").write_text(_poster("ABE", ids=("rot",)))
     (tmp_path / "ABE-rail.svg").write_text(_poster("ABE", ids=("rail",)))
-    posters = load_posters(tmp_path, ["ABE", "BOS"], variant="rail")
-    assert 'id="ABE-rail"' in posters["ABE"]
-    assert 'id="BOS-r2"' in posters["BOS"]   # no BOS-rail.svg: the plain poster
-    assert 'id="ABE-r2"' in load_posters(tmp_path, ["ABE"])["ABE"]
+    (tmp_path / "BOS-rail.svg").write_text(_poster("BOS", ids=("rail",)))
+    _write(tmp_path, "MCI")
+    posters = load_posters(tmp_path, ["ABE", "BOS", "MCI"], variants=("rail-rot", "rail"))
+    assert 'id="ABE-rot"' in posters["ABE"]
+    assert 'id="BOS-rail"' in posters["BOS"]
+    assert 'id="MCI-r2"' in posters["MCI"]   # no variant: the plain poster
+
+
+def test_a_variant_alone_is_enough(tmp_path):
+    (tmp_path / "BOS-rail.svg").write_text(_poster("BOS", ids=("rail",)))
+    assert load_posters(tmp_path, ["BOS"], variants=("rail-rot", "rail"))
+    with pytest.raises(PosterError, match="BOS"):
+        load_posters(tmp_path, ["BOS"])
+
+
+def test_every_group_mask_moves_to_its_paths(tmp_path):
+    # the runway ink has a mask too (knocking out the labels' halos), on a group of paths rather than of <use>s
+    (tmp_path / "ABE.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><defs><mask id="ABE-lm"><rect width="10" height="10" fill="#fff"/>'
+        '<g fill="#000"><text x="1" y="1">09</text></g></mask></defs>'
+        '<g class="ac-ink" mask="url(#ABE-lm)"><path stroke-width="1.2" d="M5 5"/><path stroke-width="6" d="M6 6"/></g></svg>')
+    svg = load_poster(tmp_path, "ABE")
+    assert ('<g class="ac-ink"><path stroke-width="1.2" d="M5 5" mask="url(#ABE-lm)"/>'
+            '<path stroke-width="6" d="M6 6" mask="url(#ABE-lm)"/></g>') in svg
+
+
+@pytest.mark.parametrize("view_box, ratio, cropped", [
+    ("0 0 1400 1850", 8.5 / 11, "0 19.12 1400 1811.76"),   # a print poster on Letter: a little off the top and bottom
+    ("0 0 1200 1260", 8.5 / 11, "113.18 0 973.64 1260"),   # wider than the page: off the sides
+    ("0 0 850 1100", 8.5 / 11, "0 0 850 1100"),
+])
+def test_crop_centres_the_page_shape_in_the_view_box(view_box, ratio, cropped):
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{view_box}" role="img"><rect viewBox="0 0 1 1"/></svg>'
+    assert crop(svg, ratio) == f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{cropped}" role="img"><rect viewBox="0 0 1 1"/></svg>'
 
 
 def test_missing_diagrams_are_all_named(tmp_path):
