@@ -45,6 +45,21 @@ def test_the_poster_fills_its_page(tmp_path):
     assert not [b for b in page._page_box.children[1:] if getattr(b, "children", None)]   # no page number
 
 
+def _number(page, text):
+    """(right edge, vertical middle) of the text box reading `text`, wherever it is on the page (margin boxes too)."""
+    box = next(b for b in _boxes(page._page_box) if getattr(b, "text", None) == text)
+    return box.position_x + box.width, box.position_y + box.height / 2
+
+
+def test_the_poster_number_sits_where_a_right_hand_page_has_its_own(tmp_path):
+    import weasyprint
+
+    pages = weasyprint.HTML(string=_book(["ATL"]), base_url=str(tmp_path)).render().pages
+    contents_x, contents_y = _number(pages[2], "3")   # contents: a right-hand page with a margin number
+    poster_x, poster_y = _number(pages[4], "5")       # ATL's poster: the number laid over it
+    assert abs(poster_x - contents_x) < 1 and abs(poster_y - contents_y) < 1
+
+
 def _boxes(box):
     yield box
     for child in getattr(box, "children", ()):

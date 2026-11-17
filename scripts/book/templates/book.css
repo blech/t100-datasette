@@ -76,7 +76,15 @@ table.destinations .num { text-align: right; white-space: nowrap; }
 svg.chart { display: block; width: 100%; height: auto; }
 
 /* poster page: the whole page, its viewBox already cropped to the page's shape (render.py) */
+section.poster { position: relative; }
 section.poster svg { display: block; width: {{ page_width }}; height: {{ page_height }}; }
+/* a bleed page has no margin for its number, so it's laid over the poster where a right-hand page's own would be (the
+   outer 0.5in margin, the middle of the bottom 0.5in), on a white box to keep it legible over roads and labels */
+section.poster .folio {
+  position: absolute; right: 33pt; bottom: 11pt; padding: 2pt 3pt; line-height: 10pt;
+  background: #fff; font: 8pt "Helvetica Neue", Helvetica, Arial, sans-serif; color: #71717a;
+}
+section.poster .folio::after { content: target-counter(attr(data-page url), page); }
 
 /* endpapers: a grid of the posters, the runway diagrams, or the codes, in book order */
 /* the grid fills the whole page; each tile is scaled to cover its cell and cropped (preserveAspectRatio slice, render.py) */

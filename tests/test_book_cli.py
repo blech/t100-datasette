@@ -65,14 +65,12 @@ def test_endpapers_option_rejects_a_bad_kind(world):
         main(_args(world, "--endpapers", "codes,maps"))
 
 
-def test_print_posters_rotated_then_rail_then_plain(world):
+def test_print_posters_north_up_rail_then_plain(world):
     (world[1] / "AAA-rail-rot.svg").write_text(poster("AAA").replace("AAA-r1", "AAA-rot"))
     (world[1] / "AAA-rail.svg").write_text(poster("AAA").replace("AAA-r1", "AAA-rail"))
-    (world[1] / "BBB-rail.svg").write_text(poster("BBB").replace("BBB-r1", "BBB-rail"))
     assert main(_args(world)) == 0
     html = world[2].with_suffix(".html").read_text()
-    assert 'id="AAA-rot"' in html and 'id="AAA-rail"' not in html
-    assert 'id="BBB-rail"' in html
+    assert 'id="AAA-rail"' in html and 'id="AAA-rot"' not in html   # never the turned one: every poster north-up
     assert 'id="FFF-r1"' in html
 
 

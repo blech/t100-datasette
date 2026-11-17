@@ -15,9 +15,9 @@ from scripts.book.render import ENDPAPERS, PAGE_SIZES, book_html
 REPO = Path(__file__).resolve().parents[2]
 POSTERS = Path.home() / "Documents (Local)" / "code" / "airportcity" / "posters"
 DIAGRAMS = REPO / "static" / "svg" / "diagram"
-# the print posters, each the first there is of CODE-rail-rot.svg (turned for an airport wider than it's tall),
-# CODE-rail.svg and CODE.svg
-PRINT_VARIANTS = ("rail-rot", "rail")
+# the print posters, CODE-rail.svg where there is one, else CODE.svg. Not CODE-rail-rot.svg (turned a quarter, for an
+# airport wider than it's tall): north-up throughout keeps the same-scale posters comparable from spread to spread.
+PRINT_VARIANTS = ("rail",)
 
 
 def endpapers(value: str) -> tuple[str, str]:

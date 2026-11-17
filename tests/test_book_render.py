@@ -121,9 +121,13 @@ def test_charts_on_the_data_page():
     assert data.count('class="chart"') == 2
 
 
-def test_poster_page_has_only_the_poster():
-    page = _section(render(), "poster-ATL")
+def test_poster_page_has_only_the_poster_and_its_number():
+    html = render()
+    page = _section(html, "poster-ATL")
     assert not re.search(r"<p[ >]", page) and "Atlville" not in page
+    # a bleed page has no margin for the number, so it sits over the poster, on white
+    assert '<span class="folio" data-page="#poster-ATL"></span>' in page
+    assert re.search(r"section\.poster \.folio \{[^}]*background: #fff", html)
 
 
 def test_top_airlines_a_table_of_four_then_the_others():
