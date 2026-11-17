@@ -8,9 +8,10 @@ import sys
 from pathlib import Path
 
 from scripts.book.data import airport_facts, book_airports
+from scripts.book.history import airport_coordinates, airport_history, all_ranks
 from scripts.book.pdf import broken_spreads, library_env, needs_library_path, write_pdf
 from scripts.book.posters import PosterError, load_diagrams, load_posters
-from scripts.book.render import ENDPAPERS, PAGE_SIZES, book_html
+from scripts.book.render import DISTANCES, ENDPAPERS, PAGE_SIZES, book_html
 
 REPO = Path(__file__).resolve().parents[2]
 POSTERS = Path.home() / "Documents (Local)" / "code" / "airportcity" / "posters"
@@ -51,6 +52,8 @@ def parse(argv):
     p.add_argument("--endpapers", type=endpapers, default=("posters", "codes"),
                    help="pages 2 and the one before the back cover: posters, diagrams or codes, front then back (default: posters,codes)")
     p.add_argument("--diagrams", type=Path, default=DIAGRAMS, help="runway diagram SVGs, for diagram endpapers")
+    p.add_argument("--distances", choices=DISTANCES, default="foot",
+                   help="the distance rows at the data page's foot, just above its number, or straight after the charts (default: foot)")
     p.add_argument("--html", action="store_true", help="write the HTML instead of the PDF (no WeasyPrint needed)")
     return p.parse_args(argv)
 
@@ -79,12 +82,18 @@ def main(argv: list[str] | None = None) -> int:
         except PosterError as e:
             print(e, file=sys.stderr)
             return 2
-        airports = [(e, airport_facts(conn, e, args.first_year, args.year)) for e in entries]
+        ranks = all_ranks(conn, args.first_year, args.year)
+        coords = airport_coordinates(conn)
+        airports = []
+        for e in entries:
+            f = airport_facts(conn, e, args.first_year, args.year)
+            f.history = airport_history(conn, e, ranks, args.first_year, args.year, coords)
+            airports.append((e, f))
     finally:
         conn.close()
     subtitle = f"The {args.top_passengers} busiest by passengers and the {args.top_freight} busiest by freight in {args.year}"
     options = dict(page_size=args.page_size, subtitle=subtitle, endpapers=args.endpapers, diagrams=diagrams,
-                   endpaper_posters=endpaper_posters)
+                   endpaper_posters=endpaper_posters, distances=args.distances)
     html = book_html(airports, posters, **options)
     if args.html:
         out = args.out.with_suffix(".html")

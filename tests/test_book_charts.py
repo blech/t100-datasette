@@ -2,8 +2,10 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from scripts.book.charts import FREIGHT_COLOR, PASSENGER_COLOR, bar_chart, chart_width
+from scripts.book.charts import (FREIGHT_COLOR, PASSENGER_COLOR, airline_sparklines, bar_chart, chart_width, distance_rows,
+                                 rank_chart, rank_floor)
 from scripts.book.format import MILLIONS
+from scripts.book.history import AirlineHistory, AirlineLine, DistanceRow, End
 
 NS = "{http://www.w3.org/2000/svg}"
 
@@ -80,3 +82,108 @@ def test_width_follows_the_year_span_so_bars_match():
     assert float(short.get("viewBox").split()[2]) == pytest.approx(chart_width(2003, 2025))
     assert _bars(long)[0].get("width") == _bars(short)[0].get("width")
     assert _bars(long)[0].get("height") == _bars(short)[0].get("height")   # the same height, for the same value
+
+
+# rank over time
+
+
+def _lines(svg):
+    return [p for p in svg.iter(f"{NS}path") if p.get("class", "").startswith("line")]
+
+
+def test_rank_axis_runs_from_1_at_the_top_to_at_least_50():
+    assert rank_floor([3, 8]) == 50
+    assert rank_floor([3, 63]) == 70
+    assert rank_floor([3, 847]) == 900
+    svg = ET.fromstring(rank_chart({"passengers": [(1990, 1), (1991, 50)]}, first_year=1990, last_year=1991))
+    labels = _texts(svg, "y-label")
+    assert labels[0] == "1" and labels[-1] == "50"
+    ys = {t.text: float(t.get("y")) for t in svg.iter(f"{NS}text") if t.get("class") == "y-label"}
+    assert ys["1"] < ys["50"]   # 1 at the top
+
+
+@pytest.mark.parametrize("worst, ticks", [
+    (8, ["1", "10", "20", "30", "40", "50"]),
+    (63, ["1", "20", "40", "60", "70"]),
+    (847, ["1", "500", "900"]),
+])
+def test_rank_ticks_stay_few_on_a_deep_axis(worst, ticks):
+    svg = ET.fromstring(rank_chart({"freight": [(2003, worst), (2004, 1)]}, first_year=2003, last_year=2004))
+    assert _texts(svg, "y-label") == ticks
+
+
+def test_rank_lines_solid_for_the_page_measure_dotted_for_the_other():
+    svg = ET.fromstring(rank_chart({"freight": [(2003, 2), (2004, 1)], "passengers": [(1990, 30), (2004, 20)]},
+                                   first_year=1990, last_year=2004))
+    first, second = _lines(svg)
+    assert first.get("stroke") == FREIGHT_COLOR and not first.get("stroke-dasharray")
+    assert second.get("stroke") == PASSENGER_COLOR and second.get("stroke-dasharray")
+    assert _texts(svg, "legend") == ["Freight", "Passengers"]
+
+
+def test_rank_line_breaks_where_there_is_no_rank():
+    svg = ET.fromstring(rank_chart({"passengers": [(1990, 5), (1991, None), (1992, 6), (1993, 7)]}, first_year=1990, last_year=1993))
+    d = _lines(svg)[0].get("d")
+    assert d.count("M") == 2   # two runs: 1990 alone, and 1992-1993
+
+
+# airline shares
+
+
+def _history():
+    return AirlineHistory(lines=[AirlineLine("Delta Air Lines", {1990: 0.5, 2025: 0.72}, 0.72),
+                                 AirlineLine("Fish & Chips Air", {1990: 0.3, 2025: 0.0}, 0.0)],
+                          others=AirlineLine("Others", {1990: 0.2, 2025: 0.28}, 0.28), others_count=12)
+
+
+def test_airline_sparklines_a_row_each_with_the_last_share():
+    svg = ET.fromstring(airline_sparklines(_history(), first_year=1990, last_year=2025, color=PASSENGER_COLOR))
+    assert _texts(svg, "airline") == ["Delta Air Lines", "Fish & Chips Air", "Others (12)"]
+    assert _texts(svg, "share") == ["72.0%", "0.0%", "28.0%"]
+    assert len(_lines(svg)) == 3
+
+
+def test_a_sparkline_row_is_0_to_100_percent_of_its_height():
+    shares = {y: 1.0 if y == 1990 else 0.0 for y in range(1990, 2026)}
+    svg = ET.fromstring(airline_sparklines(AirlineHistory([AirlineLine("A", shares, 0.0)], None, 0),
+                                           first_year=1990, last_year=2025, color=PASSENGER_COLOR))
+    row = next(r for r in svg.iter(f"{NS}rect") if r.get("class") == "row")
+    top, height = float(row.get("y")), float(row.get("height"))
+    d = _lines(svg)[0].get("d")
+    ys = [float(pt.split(",")[1]) for pt in d.lstrip("M").split("L")]
+    assert min(ys) == pytest.approx(top) and max(ys) == pytest.approx(top + height)
+    assert d.count("M") == 1
+
+
+def test_a_year_without_traffic_breaks_the_sparkline():
+    svg = ET.fromstring(airline_sparklines(AirlineHistory([AirlineLine("A", {1990: 0.5, 1991: 0.5, 1995: 0.5}, None)], None, 0),
+                                           first_year=1990, last_year=2025, color=PASSENGER_COLOR))
+    assert _lines(svg)[0].get("d").count("M") == 2
+
+
+# distances
+
+
+def test_distance_rows_name_the_ends_and_the_median():
+    rows = [DistanceRow(1990, End("OAK", "Oakland, CA", 11.4), 1461.2, End("HKG", "Hong Kong, Hong Kong", 6915)),
+            DistanceRow(2025, None, None, None)]
+    svg = ET.fromstring(distance_rows(rows, scale=10_000, color=PASSENGER_COLOR))
+    text = "".join(svg.itertext())
+    assert "OAK" in text and "Oakland, CA" in text and "11 miles" in text
+    assert "HKG" in text and "6,915 miles" in text and "1,461 miles" in text
+    assert _texts(svg, "year") == ["1990", "2025"]
+
+
+def test_close_ends_keep_their_labels_apart():
+    rows = [DistanceRow(2025, End("ONT", "Ontario, CA", 400), 870, End("DLT", "Somewhere Long, Far Away", 900))]
+    svg = ET.fromstring(distance_rows(rows, scale=10_000, color=PASSENGER_COLOR))
+    short, long_ = (t for t in svg.iter(f"{NS}text") if t.get("class", "").startswith("end"))
+    assert short.get("text-anchor") == "start" and long_.get("text-anchor") == "start"
+    assert float(long_.get("x")) > float(short.get("x")) + 6.2 * len("ONT Ontario, CA, 400 miles")
+
+
+def test_distance_marks_sit_in_proportion_to_the_scale():
+    rows = [DistanceRow(2025, End("A", "A", 0), 5_000, End("B", "B", 10_000))]
+    svg = ET.fromstring(distance_rows(rows, scale=10_000, color=PASSENGER_COLOR))
+    xs = {m.get("class"): float(m.get("cx")) for m in svg.iter(f"{NS}circle")}
+    assert xs["mark median"] - xs["mark shortest"] == pytest.approx(xs["mark longest"] - xs["mark median"])

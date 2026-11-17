@@ -60,6 +60,16 @@ def test_endpapers_option(world):
     assert 'class="endpaper endpaper-front endpaper-codes"' in html and 'class="endpaper endpaper-back endpaper-codes"' in html
 
 
+def test_each_page_has_its_history_and_distances_go_where_asked(world):
+    assert main(_args(world)) == 0
+    html = world[2].with_suffix(".html").read_text()
+    assert html.count('class="chart ranks"') == 3 and '<div class="distances foot">' in html
+    assert main(_args(world, "--distances", "flow")) == 0
+    assert '<div class="distances flow">' in world[2].with_suffix(".html").read_text()
+    with pytest.raises(SystemExit):
+        main(_args(world, "--distances", "side"))
+
+
 def test_endpapers_option_rejects_a_bad_kind(world):
     with pytest.raises(SystemExit):
         main(_args(world, "--endpapers", "codes,maps"))

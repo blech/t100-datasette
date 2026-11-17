@@ -62,6 +62,7 @@ class AirportFacts:
     destinations: list[Destination]
     measure: str   # "passengers" or "freight": what the page ranks destinations and airlines by, and its city market floor
     series: list[YearFigures] = field(default_factory=list)
+    history: object = None   # history.History, its year-by-year ranks, airlines and distances (history.airport_history)
 
 
 def ranks(conn, year: int, measure: str) -> dict[str, int]:

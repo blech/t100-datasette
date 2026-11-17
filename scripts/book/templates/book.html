@@ -57,18 +57,25 @@
   {% endfor %}
   </table>
   {% endif %}
+  {% if p.rank_chart %}
   <h2>Rank over time</h2>
-  <table class="destinations ranks">
-    <tr><th></th>{% for y in p.rank_years %}<th class="num">{{ y }}</th>{% endfor %}</tr>
-  {% for label, first, last in p.ranks %}
-    <tr><td>{{ label }}</td><td class="num">{{ first }}</td><td class="num">{{ last }}</td></tr>
-  {% endfor %}
-  </table>
+  {{ p.rank_chart }}
+  {% endif %}
+  {% if p.airlines_chart %}
+  <h2>Share of {{ p.destinations_by }} by airline</h2>
+  {{ p.airlines_chart }}
+  {% endif %}
   <div class="charts">
   {% for chart in p.charts %}
     <div class="chart-box" style="width: {{ chart.width }}%">{{ chart.svg }}</div>
   {% endfor %}
   </div>
+  {% if p.distances_chart %}
+  <div class="distances {{ distances }}">
+    <h2>{{ p.distances_title }}</h2>
+    {{ p.distances_chart }}
+  </div>
+  {% endif %}
 </section>
 <section id="poster-{{ p.code }}" class="poster">
   {{ p.poster }}

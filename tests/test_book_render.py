@@ -5,8 +5,19 @@ import pytest
 
 from scripts.book.data import AirportFacts, BookAirport, Destination, YearFigures
 from scripts.book.charts import chart_width
+from scripts.book.history import AirlineHistory, AirlineLine, DistanceRow, End, History
 from scripts.book.render import TABLE_ROWS, book_html, code_tile_padding, grid_shape, label_for
 
+
+def history():
+    return History(
+        ranks={"passengers": [(y, 1 + (2025 - y) // 10) for y in range(1990, 2026)],
+               "freight": [(y, 12) for y in range(2003, 2026)]},
+        airlines=AirlineHistory([AirlineLine("Delta Air Lines", {y: 0.7 for y in range(1990, 2026)}, 0.72)],
+                                AirlineLine("Others", {y: 0.3 for y in range(1990, 2026)}, 0.28), 30),
+        distances=[DistanceRow(1990, End("PDK", "Atlanta, GA", 11), 600, End("NRT", "Tokyo, Japan", 6800)),
+                   DistanceRow(2025, End("CSG", "Columbus, GA", 83), 700, End("JNB", "Johannesburg, South Africa", 8439))],
+    )
 
 
 def facts(code="ATL", **kw):
@@ -17,6 +28,7 @@ def facts(code="ATL", **kw):
         places=220, airline_groups=30, top_airlines=[("Delta Air Lines", 0.72), ("Southwest Airlines", 0.08)], other_airlines_share=None,
         destinations=[Destination("MCO", "Orlando International", 2_700_000, 5_000_000), Destination("LGA", "LaGuardia", 2_200_000, 600_000)],
         measure="passengers", series=[YearFigures(y, 1_000_000 * (y - 1980), 10_000_000) for y in range(1990, 2026)],
+        history=history(),
     )
     return replace(base, **kw)
 
@@ -64,16 +76,49 @@ def test_table_rows_follow_table_rows():
 def test_facts_table_rows():
     data = _section(render(), "data-ATL")
     assert re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', data) == [
-        "Places served (24+ flights)", "Airlines at this airport, 2025", "Top airlines"]
+        "Places served (24+ flights)", "Airlines at this airport, 2025"]
     assert "Busiest international" not in data
 
 
-def test_rank_over_time_table_above_the_charts():
-    data = _section(render([(entry(), facts(passenger_rank_first=None))]), "data-ATL")
-    table = data[data.index("<h2>Rank over time</h2>"):data.index('class="charts"')]
-    assert data.index('class="destinations"') < data.index("<h2>Rank over time</h2>")
-    cells = [re.sub(r"<[^>]+>", "", c) for c in re.findall(r"<t[hd][^>]*>.*?</t[hd]>", table)]
-    assert cells == ["", "1990", "2025", "Passenger", "—", "1st", "Freight", "10th", "12th"]
+def test_the_page_in_order_destinations_ranks_airlines_charts():
+    data = _section(render(), "data-ATL")
+    order = [data.index(s) for s in ('class="destinations"', "<h2>Rank over time</h2>", 'class="chart ranks"',
+                                     "<h2>Share of passengers by airline</h2>", 'class="chart airlines"', 'class="charts"')]
+    assert order == sorted(order)
+    assert "Top airlines" not in data
+
+
+def test_the_rank_chart_draws_what_the_history_holds():
+    data = _section(render(), "data-ATL")
+    chart = data[data.index('class="chart ranks"'):]
+    assert 'class="line line-passengers"' in chart and 'class="line line-freight"' in chart
+
+
+def test_a_freight_page_names_freight_for_its_airlines():
+    data = _section(render([(entry(), facts(measure="freight"))]), "data-ATL")
+    assert "<h2>Share of freight by airline</h2>" in data
+
+
+def test_distances_at_the_foot_of_the_page_or_in_the_flow():
+    foot = _section(render(), "data-ATL")
+    assert '<div class="distances foot">' in foot
+    assert foot.index('class="charts"') < foot.index('class="distances foot"')
+    assert '<div class="distances flow">' in _section(render(distances="flow"), "data-ATL")
+    with pytest.raises(ValueError):
+        render(distances="side")
+
+
+def test_distance_scale_is_10000_miles_unless_a_route_is_longer():
+    def longest(miles):
+        h = history()
+        return replace(h, distances=[DistanceRow(2025, End("OAK", "Oakland, CA", 11), 2000, End("FAR", "Far, Away", miles))])
+    def longest_x(html, code):
+        return float(re.search(r'class="mark longest" cx="([\d.]+)"', _section(html, f"data-{code}")).group(1))
+
+    short = render([(entry(), facts(history=longest(5000)))])
+    far = render([(entry("ATL"), facts(history=longest(5000))), (entry("MEM"), facts("MEM", history=longest(10_400)))])
+    assert longest_x(far, "ATL") < longest_x(short, "ATL")   # one scale for the book, stretched to MEM's 10,400
+    assert longest_x(far, "MEM") == pytest.approx(812)   # the track's end
 
 
 def test_freight_ranked_destinations_put_freight_first():
@@ -128,17 +173,6 @@ def test_poster_page_has_only_the_poster_and_its_number():
     # a bleed page has no margin for the number, so it sits over the poster, on white
     assert '<span class="folio" data-page="#poster-ATL"></span>' in page
     assert re.search(r"section\.poster \.folio \{[^}]*background: #fff", html)
-
-
-def test_top_airlines_a_table_of_four_then_the_others():
-    f = facts(top_airlines=[("Delta Air Lines", 0.72), ("Fish & Chips Air", 0.08)], other_airlines_share=0.2)
-    data = _section(render([(entry(), f)]), "data-ATL")
-    table = data[data.index("<th>Top airlines</th>"):]
-    table = table[:table.index("</table>")]
-    assert re.findall(r'<tr><td>([^<]*)</td><td class="num">(.*?)</td>', table) == [
-        ("Delta Air Lines", "72.0%"), ("Fish &amp; Chips Air", "8.0%"), ("Others", "20.0%")]
-    plain = _section(render(), "data-ATL")
-    assert "Others" not in plain
 
 
 def test_freight_page_chart_order():
