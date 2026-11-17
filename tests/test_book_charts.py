@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from scripts.book.charts import FREIGHT_COLOR, PASSENGER_COLOR, bar_chart, chart_width
-from scripts.book.format import dense_count
+from scripts.book.format import MILLIONS
 
 NS = "{http://www.w3.org/2000/svg}"
 
@@ -39,12 +39,20 @@ def test_bars_are_proportional():
     assert float(a.get("height")) * 2 == pytest.approx(float(b.get("height")))
 
 
-def test_axis_labels_use_dense_count():
-    labels = _texts(_svg([(1990, 2_400_000)]), "y-label")
-    assert 3 <= len(labels) <= 6
-    assert "1.00 million" in labels and "2.00 million" in labels
+@pytest.mark.parametrize("top, labels", [
+    (55_000_000, ["0", f"20{MILLIONS}", f"40{MILLIONS}"]),   # whole millions, not 20.0 million
+    (2_400_000, ["0", f"1{MILLIONS}", f"2{MILLIONS}"]),
+    (1_200_000, ["0", "500,000", "1,000,000"]),   # a step under a million: every tick in full, so 1,000,000 by 500,000
+    (48_000, ["0", "20,000", "40,000"]),
+    (2, ["0", "0.5", "1", "1.5", "2"]),
+])
+def test_axis_labels_are_whole_and_alike_up_one_axis(top, labels):
+    assert _texts(_svg([(1990, top)]), "y-label") == labels
+
+
+def test_freight_axis_in_tons():
     freight = _texts(_svg([(1990, 2_000_000)], scale=2000, color=FREIGHT_COLOR, label="Freight (tons)"), "y-label")
-    assert dense_count(1000) in freight   # 2,000,000 lb = 1,000 tons
+    assert "1,000" in freight   # 2,000,000 lb = 1,000 tons
 
 
 def test_last_year_label_inside_the_chart():

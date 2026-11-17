@@ -3,7 +3,7 @@
 import math
 from html import escape
 
-from scripts.book.format import dense_count
+from scripts.book.format import MILLIONS, _digits
 
 # static/common/palette.js, light theme, kind
 PASSENGER_COLOR = "#e36d2a"
@@ -26,6 +26,14 @@ def _step(top):
     raw = top / 4
     power = 10 ** math.floor(math.log10(raw))
     return next(m * power for m in (1, 2, 5, 10) if m * power >= raw)
+
+
+def _tick_label(v, step):
+    """Whole numbers, one style up an axis: whole millions when the step is a million or more (20 million), else in full,
+    millions too (500,000 / 1,000,000). Not dense_count's three figures, which made 20.0 million and 1.00 million."""
+    if step >= 1e6 and v:
+        return f"{round(v / 1e6):,}{MILLIONS}"
+    return _digits(v)
 
 
 def chart_width(first_year: int, last_year: int) -> float:
@@ -52,7 +60,7 @@ def bar_chart(points, *, first_year, last_year, color, label, scale=1.0):
     while tick <= ceiling + 1e-9:
         y = y_of(tick)
         out.append(f'<line class="grid" x1="{LEFT}" x2="{width - RIGHT:.2f}" y1="{y:.2f}" y2="{y:.2f}" stroke="{RULE}" stroke-width="0.8"/>')
-        out.append(f'<text class="y-label" x="{LEFT - 6}" y="{y + 3:.2f}" text-anchor="end" {FONT} font-size="12" fill="{MUTED}">{escape(dense_count(tick))}</text>')
+        out.append(f'<text class="y-label" x="{LEFT - 6}" y="{y + 3:.2f}" text-anchor="end" {FONT} font-size="12" fill="{MUTED}">{escape(_tick_label(tick, step))}</text>')
         tick += step
     for year, v in sorted(values.items()):
         if v <= 0:
