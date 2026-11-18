@@ -4,7 +4,7 @@ import pytest
 
 from scripts.book.history import (airline_history, airport_history, all_ranks, distance_row, great_circle_miles, rank_history,
                                   weighted_median)
-from tests.helpers import _insert, add_airports, add_overrides
+from tests.helpers import _insert, add_airports, add_overrides, add_segments
 
 US = 34
 
@@ -21,6 +21,13 @@ def _pair(airline_id, pax, freight=0, year=2025, origin="AAA", dest="BBB", group
 
 def _route(origin, dest, pax, freight=0, deps=30, year=2025):
     return dict(year=year, origin=origin, dest=dest, deps=deps, domestic_deps=deps, seats=0, passengers=pax, freight=freight)
+
+
+def _scheduled_routes(db_path, routes):
+    """Routes, and segments saying all their flights were scheduled (class F)."""
+    _insert(db_path, "route_year_totals", routes)
+    add_segments(db_path, "t100_domestic", [dict(year=r["year"], month=1, origin=r["origin"], dest=r["dest"], departures_performed=r["deps"],
+                                                 passengers=0, freight=0, **{"class": "F"}) for r in routes])
 
 
 @pytest.fixture
@@ -124,7 +131,7 @@ def _places(db_path):
 
 def test_distance_ends_need_24_flights_and_the_median_weighs_the_load(db_path, conn):
     _places(db_path)
-    _insert(db_path, "route_year_totals", [
+    _scheduled_routes(db_path, [
         _route("AAA", "BBB", 10, deps=12), _route("BBB", "AAA", 10, deps=12),   # 24 both ways: the shortest
         _route("AAA", "CCC", 100, deps=23),   # 23 flights: not an end, but counted in the median
         _route("AAA", "DDD", 5, deps=20),   # further, but too few flights to be the longest
@@ -140,7 +147,7 @@ def test_distance_ends_need_24_flights_and_the_median_weighs_the_load(db_path, c
 
 def test_distance_row_by_freight_ignores_routes_without_freight(db_path, conn):
     _places(db_path)
-    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 100, freight=0), _route("AAA", "DDD", 0, freight=50)])
+    _scheduled_routes(db_path, [_route("AAA", "BBB", 100, freight=0), _route("AAA", "DDD", 0, freight=50)])
     row = distance_row(conn, "AAA", "freight", 2025)
     assert row.shortest.code == row.longest.code == "DDD"
     assert row.longest.label == "Dville, DD"
@@ -152,11 +159,56 @@ def test_a_year_without_routes_has_an_empty_row(db_path, conn):
     assert row.shortest is None and row.longest is None and row.median is None
 
 
+def _segment(origin, dest, cls, deps, year=2025, month=1):
+    return dict(year=year, month=month, origin=origin, dest=dest, departures_performed=deps, passengers=0, freight=0,
+                **{"class": cls})
+
+
+def test_an_end_needs_24_scheduled_flights(db_path, conn):
+    """DFW-DAL in 2025: 31 flights, 26 of them non-scheduled (class L) and empty."""
+    _places(db_path)
+    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 10, deps=31), _route("AAA", "CCC", 10, deps=30),
+                                           _route("AAA", "DDD", 10, deps=30)])
+    add_segments(db_path, "t100_domestic", [
+        _segment("AAA", "BBB", "F", 5), _segment("BBB", "AAA", "L", 26),   # 5 scheduled: not an end
+        _segment("AAA", "CCC", "F", 20), _segment("CCC", "AAA", "F", 4, month=2),   # 24 both ways, over two months
+        _segment("AAA", "DDD", "F", 30), _segment("AAA", "DDD", "G", 0)])
+    row = distance_row(conn, "AAA", "passengers", 2025)
+    assert row.shortest.code == "CCC" and row.longest.code == "DDD"
+    assert round(row.median) == 691   # every route's passengers still count in the median
+
+
+def test_scheduled_flights_abroad_count_too(db_path, conn):
+    _places(db_path)
+    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 10, deps=30), _route("ABR", "AAA", 10, deps=30)])
+    add_segments(db_path, "t100_domestic", [_segment("AAA", "BBB", "F", 30)])
+    add_segments(db_path, "t100_international", [_segment("ABR", "AAA", "F", 30)])
+    assert distance_row(conn, "AAA", "passengers", 2025).longest.code == "ABR"
+
+
+def test_a_freight_end_counts_scheduled_cargo_flights(db_path, conn):
+    _places(db_path)
+    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 0, freight=50, deps=30), _route("AAA", "DDD", 0, freight=50, deps=30)])
+    add_segments(db_path, "t100_domestic", [_segment("AAA", "BBB", "G", 30), _segment("AAA", "DDD", "P", 30),
+                                            _segment("AAA", "CCC", "L", 30)])
+    _insert(db_path, "route_year_totals", [_route("AAA", "CCC", 0, freight=50, deps=30)])
+    row = distance_row(conn, "AAA", "freight", 2025)
+    # P, non-scheduled all-cargo, counts: Amazon's and DHL's networks are filed as P. L, passenger charters, doesn't
+    assert (row.shortest.code, row.longest.code) == ("BBB", "DDD")
+
+
+def test_a_passenger_end_doesnt_count_cargo_flights(db_path, conn):
+    _places(db_path)
+    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 10, deps=30)])
+    add_segments(db_path, "t100_domestic", [_segment("AAA", "BBB", "G", 30)])
+    assert distance_row(conn, "AAA", "passengers", 2025).shortest is None
+
+
 def test_a_known_bad_route_is_left_out_entirely(db_path, conn, monkeypatch):
     import scripts.book.history as history
     monkeypatch.setattr(history, "BAD_ROUTES", {frozenset(("AAA", "DDD"))})
     _places(db_path)
-    _insert(db_path, "route_year_totals", [_route("AAA", "CCC", 10), _route("DDD", "AAA", 1000, deps=40)])
+    _scheduled_routes(db_path, [_route("AAA", "CCC", 10), _route("DDD", "AAA", 1000, deps=40)])
     row = distance_row(conn, "AAA", "passengers", 2025)
     assert row.longest.code == "CCC" and round(row.median) == 691   # DDD's passengers aren't in the median either
 
@@ -196,6 +248,6 @@ def test_freight_history_starts_in_2003(db_path, conn):
 
 def test_a_flight_back_to_its_own_airport_is_no_end(db_path, conn):
     _places(db_path)
-    _insert(db_path, "route_year_totals", [_route("AAA", "AAA", 100, deps=40), _route("AAA", "CCC", 10)])
+    _scheduled_routes(db_path, [_route("AAA", "AAA", 100, deps=40), _route("AAA", "CCC", 10)])
     row = distance_row(conn, "AAA", "passengers", 2025)
     assert row.shortest.code == "CCC" and round(row.median) == 691

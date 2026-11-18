@@ -148,10 +148,31 @@ def weighted_median(pairs) -> float | None:
     return None
 
 
+# The BTS service classes whose flights count towards an end's floor. A passenger page counts F, scheduled passenger
+# service: L, non-scheduled, is charters and repositioning (DFW-DAL had 31 flights in 2025, 26 of them class L and empty).
+# A freight page counts all-cargo flights scheduled (G) or not (P) as well, since the cargo networks are mostly filed as
+# P: all of ILN's (DHL) and LAL's (Amazon) freight in 2025, and over half of CVG's.
+SCHEDULED = {"passengers": ("F",), "freight": ("F", "G", "P")}
+
+
+def scheduled_flights(conn, a: str, b: str, year: int, measure: str) -> int:
+    """Scheduled flights between a and b in the year, both ways, domestic and international: read from the segment tables
+    by their (origin, dest, year) index, for the few routes that might be a page's ends."""
+    classes = SCHEDULED[measure]
+    marks = ",".join("?" for _ in classes)
+    total = 0
+    for table in ("t100_domestic", "t100_international"):
+        for origin, dest in ((a, b), (b, a)):
+            total += conn.execute(
+                f"""SELECT COALESCE(SUM(departures_performed), 0) FROM {table}
+                    WHERE origin = ? AND dest = ? AND year = ? AND class IN ({marks})""", (origin, dest, year, *classes)).fetchone()[0]
+    return total
+
+
 def distance_row(conn, code: str, measure: str, year: int, coords=None) -> DistanceRow:
-    """The year's shortest and longest routes carrying the measure with at least PLACE_MIN_FLIGHTS flights both ways, by the
-    great-circle distance between the airports, and the distance the middle passenger (or pound of freight) travels, over
-    every route. A route to an airport without coordinates is left out."""
+    """The year's shortest and longest routes carrying the measure with at least PLACE_MIN_FLIGHTS scheduled flights both
+    ways, by the great-circle distance between the airports, and the distance the middle passenger (or pound of freight)
+    travels, over every route. A route to an airport without coordinates, or in BAD_ROUTES, is left out."""
     coords = airport_coordinates(conn) if coords is None else coords
     key = 0 if measure == "passengers" else 1
     if code not in coords:
@@ -160,11 +181,17 @@ def distance_row(conn, code: str, measure: str, year: int, coords=None) -> Dista
     routes = {o: (great_circle_miles(*here, *coords[o]), t) for o, t in _routes(conn, code, year).items()
               if t[key] > 0 and o in coords and o != code   # not a flight back to where it left
               and frozenset((code, o)) not in BAD_ROUTES}
-    regular = [(miles, o) for o, (miles, t) in routes.items() if t[2] >= PLACE_MIN_FLIGHTS]
     median = weighted_median([(miles, t[key]) for miles, t in routes.values()])
-    if not regular:
+    # all flights first (the rollup), then scheduled ones (the segments) for each candidate, from each end inwards
+    candidates = sorted((miles, o) for o, (miles, t) in routes.items() if t[2] >= PLACE_MIN_FLIGHTS)
+
+    def first_regular(ordered):
+        return next((c for c in ordered if scheduled_flights(conn, code, c[1], year, measure) >= PLACE_MIN_FLIGHTS), None)
+
+    shortest = first_regular(candidates)
+    if shortest is None:
         return DistanceRow(year, None, median, None)
-    shortest, longest = min(regular), max(regular)
+    longest = first_regular(reversed(candidates))
     labels = _labels(conn, [shortest[1], longest[1]], year)
     return DistanceRow(year, End(shortest[1], labels[shortest[1]], shortest[0]), median,
                        End(longest[1], labels[longest[1]], longest[0]))

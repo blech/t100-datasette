@@ -209,8 +209,8 @@ def distance_rows(rows, *, scale, color):
                        f'stroke-width="3" stroke-opacity="0.35"/>')
         short_end = None   # where the shortest's label ends, so the longest's can keep clear of it
         for kind, end, anchor in (("shortest", row.shortest, "start"), ("longest", row.longest, "end")):
-            if not end:
-                continue
+            if not end or (kind == "longest" and row.shortest and end.code == row.shortest.code):
+                continue   # one route, both shortest and longest: marked and named once
             x = x_of(end.miles)
             out.append(f'<circle class="mark {kind}" cx="{x:.2f}" cy="{track_y}" r="3.5" fill="{color}"/>')
             plain = f"{end.code} {end.label}, {miles(round(end.miles))}"

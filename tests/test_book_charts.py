@@ -175,6 +175,12 @@ def test_close_ends_keep_their_labels_apart():
     assert float(long_.get("x")) > float(short.get("x")) + 6.2 * len("ONT Ontario, CA, 400 miles")
 
 
+def test_one_route_both_shortest_and_longest_is_named_once():
+    bna = End("BNA", "Nashville, TN", 625)
+    svg = ET.fromstring(distance_rows([DistanceRow(2025, bna, 600, bna)], scale=10_000, color=PASSENGER_COLOR))
+    assert "".join(svg.itertext()).count("BNA") == 1
+
+
 def test_distance_marks_sit_in_proportion_to_the_scale():
     rows = [DistanceRow(2025, End("A", "A", 0), 5_000, End("B", "B", 10_000))]
     svg = ET.fromstring(distance_rows(rows, scale=10_000, color=PASSENGER_COLOR))
