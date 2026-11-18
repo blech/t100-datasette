@@ -18,3 +18,9 @@ test('a route panel names its flight count for the direction counted', () => {
   assert.deepEqual(['', 'out', 'in'].map((d) => routeFigures({ deps: 2, seats: 0, passengers: 0, freight: 0 }, d)[0]),
     [{ label: 'Flights', shown: '2', title: '2 flights' }, { label: 'Departures', shown: '2', title: '2 departures' }, { label: 'Arrivals', shown: '2', title: '2 arrivals' }]);
 });
+
+test('a route with a distance lists it last, in whole miles; one without has no row for it', () => {
+  const rows = routeFigures({ deps: 2, seats: 0, passengers: 0, freight: 0, distance: 2586 });
+  assert.deepEqual(rows.at(-1), { label: 'Distance', shown: '2,586 miles', title: 'Great-circle distance between the airports' });
+  assert.equal(routeFigures({ deps: 2, seats: 0, passengers: 0, freight: 0 }).length, 4);
+});

@@ -7,6 +7,11 @@ plugins:
   t100_globe:
     min_year: 1990
     max_year: 2025
+    # an airport pair's BTS distance is left off the distances page when it is off the great-circle one by more than this
+    # ratio of it and more than these miles (plugins/t100_distances.py)
+    distance_check:
+      ratio: 0.1
+      miles: 50
 
 databases:
   t100:
@@ -165,6 +170,27 @@ databases:
           WHERE deps > 0 OR passengers > 0 OR freight > 0
           ORDER BY year, airport
 
+      # the airports map (/airports/globe): a year's busiest airport pairs, both directions together, by passengers; service is
+      # domestic or international (by which file most departures are in), or empty for both
+      busiest_routes_year:
+        title: "A year's busiest airport pairs"
+        description: "The top n airport pairs (both directions together) by passengers in one year, optionally only domestic or international ones, each with its distance in miles (from pair_distance; empty where BTS gave none)."
+        sql: |
+          SELECT t.origin, t.dest, t.service, t.deps, t.seats, t.passengers, t.freight, d.distance
+          FROM (
+            SELECT MIN(origin, dest) AS origin, MAX(origin, dest) AS dest,
+              CASE WHEN SUM(domestic_deps) * 2 >= SUM(deps) THEN 'domestic' ELSE 'international' END AS service,
+              SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+            FROM route_year_totals
+            WHERE year = CAST(:year AS integer)
+            GROUP BY 1, 2
+            HAVING :service = '' OR service = :service
+            ORDER BY passengers DESC
+            LIMIT CAST(:n AS integer)
+          ) t
+          LEFT JOIN pair_distance d ON d.a = t.origin AND d.b = t.dest
+          ORDER BY t.passengers DESC
+
       # the routes matrix: the airport pairs that could be among its top 50, by year, and every pair's totals for the shares of a year
       top_routes_by_year:
         title: "The busiest airport pairs by year"
@@ -180,6 +206,23 @@ databases:
           SELECT '', '', year, service, band, band, deps, seats, passengers, freight, 1
           FROM route_band_year
           ORDER BY year, rest, passengers DESC
+
+      # the overall distances page (/airports/distances): every airport pair flown in one year, both directions together, with its
+      # BTS and great-circle distances, so the page can bin all the year's flight segments by distance
+      pair_distances_by_year:
+        title: "Every airport pair's distance and traffic in a year"
+        description: "One row per airport pair (both directions together, a before b) flown in the year, with its BTS distance and its great-circle distance in miles (from pair_distance; empty where either is unknown), and its flights, passengers and freight. Flights from an airport to itself, and pairs with no flights, passengers or freight, are left out."
+        sql: |
+          SELECT p.a, p.b, d.distance, d.gc_distance, p.deps, p.passengers, p.freight
+          FROM (
+            SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, SUM(deps) AS deps, SUM(passengers) AS passengers, SUM(freight) AS freight
+            FROM route_year_totals
+            WHERE year = CAST(:year AS integer) AND origin != dest
+            GROUP BY 1, 2
+            HAVING SUM(deps) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0
+          ) AS p
+          LEFT JOIN pair_distance AS d ON d.a = p.a AND d.b = p.b
+          ORDER BY p.passengers DESC
 
       # the routes matrix grouped by city: the BTS city market pairs that could be among its top 50, as top_routes_by_year
       top_markets_by_year:
@@ -256,7 +299,7 @@ databases:
             AND (SUM(r.deps) > 0 OR SUM(r.passengers) > 0 OR SUM(r.freight) > 0)
           ORDER BY r.year, r.dest
 
-      # the front page map: the 100 busiest US airports by passengers in one year (column named as the chooser's)
+      # the front page map: the 100 busiest US airports by passengers in one year
       busiest_airports:
         sql: |
           -- passengers boarding or leaving there: both directions; market_id is the BTS city market, which the front page map
@@ -267,18 +310,6 @@ databases:
           WHERE d.year = CAST(:year AS integer)
             AND d.wac BETWEEN 1 AND 93
             AND d.passengers_out + d.passengers_in > 0
-          ORDER BY passengers DESC, d.airport
-          LIMIT 100
-
-      # the network globe's list and dots: US airports by passengers boarding or leaving there, over all years
-      globe_chooser:
-        sql: |
-          SELECT d.airport, COALESCE(n.name, MAX(d.city_name)) AS city, SUM(d.passengers_out + d.passengers_in) AS passengers
-          FROM airport_dir_year d
-          LEFT JOIN airport_names n ON n.code = d.airport
-          WHERE d.wac BETWEEN 1 AND 93
-          GROUP BY d.airport
-          HAVING passengers > 0
           ORDER BY passengers DESC, d.airport
           LIMIT 100
 
@@ -527,7 +558,7 @@ databases:
             DESC
       routes_by_year:
         title: "Other airports from and to an airport, by year"
-        description: "One row per other airport (dest) and year, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it), with routes under the minimum flights (24 both ways, 12 one way, when empty) left out, and the pair's distance in miles."
+        description: "One row per other airport (dest) and year, counting flights both ways, or set dir to out (departures from the origin) or in (arrivals at it), with routes under the minimum flights (24 both ways, 12 one way, when empty) left out, the pair's distance in miles, and its great-circle distance from the airports' coordinates (gc_distance, empty where either has none). Set year for one year only."
         sql: |
           -- dir other than out or in counts both directions; dest is the other airport either way
           SELECT
@@ -535,6 +566,7 @@ databases:
             m.market_id,
             n.name AS city,
             d.distance,
+            d.gc_distance,
             r.year,
             SUM(r.deps) AS deps,
             SUM(r.seats) AS seats,
@@ -543,8 +575,10 @@ databases:
             CASE WHEN SUM(r.domestic_deps) * 2 > SUM(r.deps) THEN 'domestic' ELSE 'international' END AS service
           FROM (
             SELECT dest, year, deps, domestic_deps, seats, passengers, freight FROM route_year_totals WHERE origin = :origin AND :dir <> 'in'
+              AND (NULLIF(:year, '') IS NULL OR year = CAST(:year AS integer))
             UNION ALL
             SELECT origin, year, deps, domestic_deps, seats, passengers, freight FROM route_year_totals WHERE dest = :origin AND :dir <> 'out'
+              AND (NULLIF(:year, '') IS NULL OR year = CAST(:year AS integer))
           ) r
           LEFT JOIN airport_names n ON n.code = r.dest
           LEFT JOIN airport_market m ON m.code = r.dest
@@ -648,19 +682,6 @@ databases:
           FROM gone
           WHERE year = peak_year
           ORDER BY peak_deps DESC, code, member_deps DESC
-
-      # every domestic airport pair in one year, both directions together (a before b), for hovering an airport on the
-      # all-airports map: the same routes, with the same rule for domestic and the same 24-flight cut-off, as routes_by_year
-      # gives one airport by default with international hidden
-      domestic_routes:
-        sql: |
-          SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, year,
-            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight, 'domestic' AS service
-          FROM route_year_totals
-          WHERE year = CAST(:year AS integer) AND origin <> dest
-          GROUP BY 1, 2
-          HAVING SUM(deps) >= 24 AND SUM(domestic_deps) * 2 > SUM(deps)
-          ORDER BY a, b
 
       family_by_year:
         sql: |
@@ -873,11 +894,12 @@ databases:
           ORDER BY deps DESC
 
       # the header search: up to three typed words (t1, t2, t3, any left empty), each of which must start a word of the thing's terms;
-      # at most 6 airports, 6 airlines and 6 aircraft, an exact code first, then a label that starts with the first word, then the busiest;
-      # the kind with the best match leads, so the first row is the best match overall (airports, airlines, aircraft when kinds tie)
+      # at most 6 airports, 6 cities (markets with two or more airports), 6 airlines and 6 aircraft, an exact code first, then a label that
+      # starts with the first word, then the busiest; the kind with the best match leads, so the first row is the best match overall
+      # (airports, cities, airlines, aircraft when kinds tie)
       search:
-        title: "Search for an airport, airline or aircraft"
-        description: "Up to six airports, six airlines and six aircraft (families included) each, for up to three words (t1, t2, t3) that each start a word of its code, name, city or country. An exact code comes first, then a name starting with the first word, then the busiest."
+        title: "Search for an airport, city, airline or aircraft"
+        description: "Up to six airports, six cities (BTS city markets with two or more airports), six airlines and six aircraft (families included) each, for up to three words (t1, t2, t3) that each start a word of its code, name, city or country. An exact code comes first, then a name starting with the first word, then the busiest."
         sql: |
           WITH q AS (
             SELECT lower(trim(COALESCE(:t1, ''))) AS t1, lower(trim(COALESCE(:t2, ''))) AS t2, lower(trim(COALESCE(:t3, ''))) AS t3
@@ -901,7 +923,14 @@ databases:
               MIN(score) OVER (PARTITION BY kind) AS best FROM hits
           )
           SELECT kind, href, label, hint FROM ranked WHERE n <= 6
-          ORDER BY best, CASE kind WHEN 'airport' THEN 0 WHEN 'airline' THEN 1 ELSE 2 END, score, rank DESC, label
+          ORDER BY best, CASE kind WHEN 'airport' THEN 0 WHEN 'city' THEN 1 WHEN 'airline' THEN 2 ELSE 3 END, score, rank DESC, label
+
+      # what the airport find box offers besides the airports: the city markets with two or more airports (the search index's city rows)
+      city_list:
+        title: "City markets with two or more airports, busiest first"
+        description: "One row per BTS city market with two or more airports flown from or to: its name, the page it opens, and its airports and years as a hint."
+        sql: |
+          SELECT label, href, hint FROM search_index WHERE kind = 'city' ORDER BY rank DESC, label
 
       # what the aircraft search offers: every aircraft flown, with its family, named as the aircraft pages name them, busiest first
       aircraft_list:

@@ -154,3 +154,8 @@ details.note summary {
 .rank-line {
   margin: 4px 0 12px;
 }
+
+/* the distances chart: room between its sentence and the y-axis label */
+#distance-chart {
+  margin-top: 16px;
+}

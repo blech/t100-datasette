@@ -23,7 +23,7 @@
 
     <h2 id="direction">Directions</h2>
     <p>
-      Each row of T-100 is one nonstop flight segment in one direction, from an origin airport to a destination airport. The pages add the two directions together unless you choose one:
+      Each row of T-100 describes one nonstop flight segment in one direction, from an origin airport to a destination airport. The pages add the two directions together unless you choose one:
     </p>
     <ul>
       <li><strong>Route pages.</strong> ATL &harr; LAX counts flights both ways between the two airports, as <strong>Flights</strong>. Choose ATL &rarr; LAX or LAX &rarr; ATL to see one way, counted as <strong>Departures</strong> from the airport that leads.</li>
@@ -58,13 +58,16 @@
     <p>
       Freight and mail are separate columns in the data, and the site shows <strong>freight only</strong>, not mail. The data is in pounds; the site converts to <strong>short tons</strong> (2,000 lb), the US ton.
     </p>
+    <p>
+      See also <a href="#breaks">Known gaps and breaks</a> regarding the 2002 changes to how freight data was recorded.
+    </p>
 
     <h2 id="measures">What the numbers measure</h2>
     <ul>
-      <li><strong>Departures</strong> are flights actually performed (BTS also records those scheduled, which the site does not use).</li>
+      <li><strong>Departures</strong> are flights actually performed (BTS also records those scheduled, which the site currently does not expose).</li>
       <li><strong>Seats</strong> are the seats available on those flights, and <strong>passengers</strong> are those carried. <strong>Load factor</strong> is passengers divided by seats.</li>
       <li><strong>Passengers count each leg.</strong> A segment is a nonstop flight, not a journey. Someone flying Seattle&ndash;Denver&ndash;Boston is counted once on each leg, and counted again going home. Passenger totals therefore are not numbers of trips, and an airport's total includes people connecting through it.</li>
-      <li><strong>Distance</strong> is the great-circle distance between the airports, in miles. The aircraft pages group it into under 500, 500 to 1,500, 1,500 to 3,000 and 3,000 or more.</li>
+      <li><strong>Distance</strong> is the great-circle distance between the airports, in miles. The aircraft pages group it into under 500, 500 to 1,500, 1,500 to 3,000 and 3,000 or more. Real flight distances can be significantly longer.</li>
       <li><strong>Flight times</strong> (air time, and ramp to ramp) are totals for the month, so the average is that total divided by departures. A zero means <em>not reported</em>, not an instant flight: Concorde and some routes have no times at all.</li>
       <li><strong>Routes with fewer than 12 departures</strong> in a year are hidden on the route charts and the map, to keep out one-off charters and positioning flights.</li>
     </ul>
@@ -95,10 +98,13 @@
 
     <h2 id="source">Source</h2>
     <p>
-      The data is the Bureau of Transportation Statistics' Data Bank 28DS and 28IS: <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/data-bank-28ds-t-100-domestic-segment-data">T-100 Domestic Segment</a> and <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/%E2%80%A2-data-bank-28is-t-100-and-t-100f">T-100 International Segment</a>. Airport names and coordinates come from <a href="https://openflights.org/data.html">OpenFlights</a>, with some corrections of our own, and city names are BTS's. The grouping rules and the code behind the site are in the <a href="https://github.com/blech/t100-datasette">project on GitHub</a>.
+      The data is the Bureau of Transportation Statistics' Data Bank 28DS and 28IS: <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/data-bank-28ds-t-100-domestic-segment-data">T-100 Domestic Segment</a> and <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/%E2%80%A2-data-bank-28is-t-100-and-t-100f">T-100 International Segment</a>. Airport names and coordinates come from <a href="https://openflights.org/data.html">OpenFlights</a>, with some corrections of our own, and city names are BTS's.
     </p>
     <p>
-      Every page links to the data it draws, under &ldquo;This page's data&rdquo; at the foot of the page (on a map, &ldquo;This map's data&rdquo; among its controls). That opens the query behind the page, filled in with the page's settings. The fields at the top of it can be changed: most queries that read an airline group take <code>group</code>, the group's id as it appears in its page's address (<code>delta</code>, <code>united</code>), and left empty it means every airline. The underlying segments can be browsed and filtered column by column in the <a href="/t100/t100">t100 table</a>, though that uses BTS's own carrier and aircraft codes rather than this site's groups and families.
+      The grouping rules and the code behind the site are in the <a href="https://github.com/blech/t100-datasette">project on GitHub</a>.
+    </p>
+    <p>
+      Every page links to the data it draws, under &ldquo;This page's data&rdquo; at the foot of the page (on a map, at the foot of its controls). That opens the query behind the page, filled in with the page's settings. The fields at the top of it can be changed: most queries that read an airline group take <code>group</code>, the group's id as it appears in its page's address (<code>delta</code>, <code>united</code>), and left empty it means every airline. The underlying segments can be browsed and filtered column by column in the <a href="/t100/t100">t100 table</a>, though that uses BTS's own carrier and aircraft codes rather than this site's groups and families.
     </p>
     <h2 id="privacy">Privacy</h2>
     <p>

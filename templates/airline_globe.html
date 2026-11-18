@@ -3,6 +3,7 @@
 {% block title %}{{ name }} network{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="/static/globe/style.css">
+  <link rel="stylesheet" href="/static/common/yearbar.css">
   <link rel="stylesheet" href="/static/charts/airlineglobe.css">
 {% endblock %}
 {% block body_attrs %} data-group="{{ group }}" data-airline="{{ airline }}"{% endblock %}
@@ -27,7 +28,6 @@
   <div id="controls">
     <div id="legend">
       <span id="legend-chips"></span>
-      <span class="note">Airport pairs flown at least <select id="min" aria-label="Minimum flights"><option value="1">once</option><option value="24">24 times</option><option value="104">104 times</option></select> in the year, both directions together. <a href="/about#groupings">How airlines are grouped</a>.</span>
     </div>
     <div class="row">
       <button id="play" type="button" aria-label="Play through the years">▶</button>
@@ -38,15 +38,18 @@
       </div>
       <span id="year-label"></span>
     </div>
-    <div id="range-hint">Drag the hollow handle back to compare with an earlier year: new routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</div>
+    {# one paragraph of small print under the year bar: what is counted, then how to compare (its words set by the script) #}
+    <p id="map-note"><span class="note">Airport pairs flown at least <select id="min" aria-label="Minimum flights"><option value="1">once</option><option value="24">24 times</option><option value="104">104 times</option></select> in the year, both directions together. <a href="/about#groupings">How airlines are grouped</a>.</span>
+      <span id="range-hint">To compare two years, go to the earlier one, then drag forward. New routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</span></p>
     <div class="row">
-      <select id="proj" aria-label="Map type"><option value="globe">Globe</option><option value="flat">Flat map</option></select>
+      <select id="proj" aria-label="Map type"></select>
+      <button id="fit" type="button" title="Zoom to fit the routes shown">Fit routes</button>
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: departures</option><option value="freight">Width: freight</option></select>
       <select id="colour" aria-label="Colour routes by"><option value="single">Colour: single colour</option><option value="service">Colour: domestic or international</option><option value="change">Colour: kept, added or dropped</option></select>
-      <select id="theme" aria-label="Theme"></select>
-      <a id="data-link" class="data-link" href="" hidden>This map's data</a>
     </div>
     <div id="footnote"></div>
+    {# the site's footer (theme, data link, about), at the foot of the controls since the map fills the window #}
+    {% include "_footer.html" %}
   </div>
 {% endblock %}
 

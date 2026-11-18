@@ -125,7 +125,7 @@ async function showMap() {
   canvas.addEventListener('pointerleave', () => { highlight = -1; hideTip(); canvas.classList.remove('pointing'); draw(); });
   canvas.addEventListener('click', (e) => {
     const i = pointAt(e);
-    if (i >= 0) location.href = `/airports/${encodeURIComponent(placed[i].code)}`;
+    if (i >= 0) location.href = placed[i].href;
   });
   document.addEventListener('t100:theme', (e) => { theme = THEMES[e.detail.id] || theme; describe(); draw(); });
   new ResizeObserver(layout).observe(box);

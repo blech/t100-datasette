@@ -111,3 +111,19 @@ def test_a_merged_groups_code_is_its_busiest_members_and_every_members_code_find
 def test_an_airline_that_never_flew_is_not_indexed(db_path):
     put_group(db_path, "21205", "Inter Island Airways", [("21205", "II", 0)])
     assert not [h for k, h in index(db_path) if k == "airline"]
+
+
+def market(db_path, ids, names):
+    put(db_path, "airport_market", [dict(code=c, market_id=m) for c, m in ids])
+    put(db_path, "market_name", [dict(market_id=m, name=n) for m, n in names])
+
+
+def test_a_market_with_two_or_more_airports_is_indexed_as_a_city_but_a_one_airport_market_is_not(db_path):
+    put_airport_years(db_path, [airport_year("SEA", "Seattle, WA", 90), airport_year("BFI", "Seattle, WA", 10), airport_year("BOI", "Boise, ID", 20)])
+    market(db_path, [("SEA", "30559"), ("BFI", "30559"), ("BOI", "30000")], [("30559", "Seattle, WA"), ("30000", "Boise, ID")])
+    rows = index(db_path)
+    city = rows[("city", "/airports/cities/30559")]
+    assert city["label"] == "Seattle, WA" and city["rank"] == 100 and city["code"] == ""
+    assert city["hint"] == "SEA, BFI · 2019–2019"  # its busiest airport first
+    assert {"seattle", "wa", "sea", "bfi"} <= set(city["terms"].split())
+    assert ("city", "/airports/cities/30000") not in rows  # Boise is just BOI

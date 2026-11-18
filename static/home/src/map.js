@@ -11,9 +11,13 @@ export const rankPhrase = (rank, group) => `${rank === 1 ? '' : `${ordinal(rank)
 
 // The busiest `n` airports, or the busiest `n` cities (BTS city markets, as /airports?group=city counts them): a city is one dot
 // sized by its airports' passengers together, placed at their passenger-weighted centre, named for the place most of them are in,
-// and carrying its busiest airport's code to link to. Points are {code, city, pos: [lon, lat], passengers, marketId}.
+// and carrying its busiest airport's code, and the address a click on it goes to (the city's page, or the airport's). Points are {code, city, pos: [lon, lat], passengers, marketId}.
+const airportHref = (code) => `/airports/${encodeURIComponent(code)}`;
+// a city's page is /airports/cities/<5-digit market id>; one without a market (or with an odd id) goes to its airport's page
+const cityHref = (marketId, code) => (/^[0-9]{5}$/.test(String(marketId)) ? `/airports/cities/${marketId}` : airportHref(code));
+
 export function topDots(points, group, n = MAP_DOTS) {
-  if (group !== 'city') return points.slice(0, n).map((p) => ({ ...p, label: p.code, airports: [p.code] }));
+  if (group !== 'city') return points.slice(0, n).map((p) => ({ ...p, label: p.code, airports: [p.code], href: airportHref(p.code) }));
   const markets = new Map();
   for (const p of points) {
     const key = p.marketId ? `m${p.marketId}` : `a${p.code}`;
@@ -29,7 +33,7 @@ export function topDots(points, group, n = MAP_DOTS) {
     for (const p of members) names.set(p.city, (names.get(p.city) || 0) + weight(p));
     const city = [...names].sort((a, b) => b[1] - a[1])[0][0];
     const top = [...members].sort((a, b) => weight(b) - weight(a))[0];
-    return { code: top.code, city, label: String(city).split(',')[0], pos: [at(0), at(1)], passengers: total, airports: members.map((p) => p.code) };
+    return { code: top.code, city, label: String(city).split(',')[0], pos: [at(0), at(1)], passengers: total, airports: members.map((p) => p.code), href: cityHref(top.marketId, top.code) };
   });
   return dots.sort((a, b) => b.passengers - a.passengers || a.code.localeCompare(b.code)).slice(0, n);
 }

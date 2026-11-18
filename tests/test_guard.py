@@ -3,7 +3,7 @@ import pytest
 from tests.helpers import add_segments, get, make_datasette
 from tests.test_routes_by_year import seg
 
-TABLES = ["t100_domestic", "t100_international"]
+TABLES = ["t100_domestic", "t100_international", "family_year", "openflights_airports", "aircraft_group_band_year"]
 
 
 @pytest.fixture
@@ -40,3 +40,7 @@ def test_robots_txt_keeps_crawlers_out_of_the_data_pages_only(ds):
     assert "User-agent: *" in lines
     assert "Disallow: /t100/" in lines
     assert "Disallow: /" not in lines
+
+
+def test_a_row_page_and_a_canned_query_with_a_year_are_not_mistaken_for_paging(ds):
+    assert get(ds, "/t100/family_year/2019,Boeing%20737?_hide_sql=1").status_code != 403

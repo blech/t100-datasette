@@ -2,7 +2,7 @@ import { FINDERS } from '/static/charts/src/find.js';
 import { findAirline as findOption } from '/static/charts/src/airline.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 
-// A section's find box: an airline, an airport or an aircraft, picked by name, opens its page
+// A section's find box: an airline, an airport (or a city with several) or an aircraft, picked by name, opens its page
 const input = document.getElementById('find');
 const list = document.getElementById('find-list');
 const finder = FINDERS[input.dataset.find];
@@ -10,7 +10,11 @@ const finder = FINDERS[input.dataset.find];
 async function main() {
   let options;
   try {
-    options = finder.options((await fetchRows(queryUrl(finder.query))).rows, input.dataset.suffix || '');
+    const [main, also] = await Promise.all([
+      fetchRows(queryUrl(finder.query)),
+      finder.also ? fetchRows(queryUrl(finder.also)).catch(() => ({ rows: [] })) : { rows: [] },
+    ]);
+    options = finder.options(main.rows, input.dataset.suffix || '', also.rows);
   } catch (err) {
     console.error(err);
     input.disabled = true;

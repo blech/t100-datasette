@@ -143,4 +143,6 @@ test('rangeHint describes change colours, except in one colour', () => {
   assert.match(rangeHint('service'), /dashed pink/);
   assert.match(rangeHint('single'), /every route flown/);
   assert.doesNotMatch(rangeHint('single'), /pink/);
+  // both say how to get the hollow handle out from under the solid one
+  for (const m of ['change', 'service', 'single']) assert.match(rangeHint(m), /then drag forward/);
 });

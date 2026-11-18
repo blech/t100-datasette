@@ -1,7 +1,7 @@
 import { fetchRows } from '../globe/src/api.js';
 import { searchUrl, groupResults, moveSelection } from './src/search.js';
 
-// The header's search: a panel that finds an airport, airline or aircraft as you type and opens its page. Built on first use.
+// The header's search: a panel that finds an airport, city, airline or aircraft as you type and opens its page. Built on first use.
 const opener = document.getElementById('search-open');
 const DEBOUNCE_MS = 120;
 let dialog;
@@ -16,8 +16,8 @@ let timer;
 const el = (tag, props = {}, ...children) => { const e = Object.assign(document.createElement(tag), props); e.append(...children); return e; };
 
 function build() {
-  input = el('input', { type: 'search', placeholder: 'Airport, airline or aircraft: KEF, Reykjavik, Delta, Airbus A340', autocomplete: 'off', spellcheck: false });
-  input.setAttribute('aria-label', 'Search airports, airlines and aircraft');
+  input = el('input', { type: 'search', placeholder: 'Airport, city, airline or aircraft: KEF, Seattle, Delta, Airbus A340', autocomplete: 'off', spellcheck: false });
+  input.setAttribute('aria-label', 'Search airports, cities, airlines and aircraft');
   status = el('p', { className: 'search-status' });
   status.setAttribute('aria-live', 'polite');
   results = el('div', { className: 'search-results', id: 'search-results' });

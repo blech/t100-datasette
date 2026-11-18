@@ -51,9 +51,9 @@ test('mix blends two hex colours', () => {
 });
 
 const pts = [
-  { code: 'JFK', city: 'New York, NY', pos: [-73.8, 40.6], passengers: 300, marketId: '1' },
-  { code: 'ATL', city: 'Atlanta, GA', pos: [-84.4, 33.6], passengers: 250, marketId: '2' },
-  { code: 'LGA', city: 'New York, NY', pos: [-73.9, 40.8], passengers: 100, marketId: '1' },
+  { code: 'JFK', city: 'New York, NY', pos: [-73.8, 40.6], passengers: 300, marketId: '31703' },
+  { code: 'ATL', city: 'Atlanta, GA', pos: [-84.4, 33.6], passengers: 250, marketId: '30397' },
+  { code: 'LGA', city: 'New York, NY', pos: [-73.9, 40.8], passengers: 100, marketId: '31703' },
   { code: 'XXX', city: 'Nowhere, TX', pos: [-100, 30], passengers: 50, marketId: null },
 ];
 
@@ -89,4 +89,10 @@ test('layoutLabels takes a clear spot beside its dot, labelling each dot on its 
   const out = layoutLabels(placed, [{ index: 0, width: 20 }, { index: 1, width: 20 }]);
   assert.deepEqual(out.get(0).slice(0, 2), [58, 44.5]); // right of its dot
   assert.equal(out.get(1)[0], 98); // the second dot's own right-hand spot is clear
+});
+
+test('a dot links to its airport, or in cities mode to its city page (or its busiest airport without a market)', () => {
+  assert.equal(topDots(pts, 'airport', 1)[0].href, '/airports/JFK');
+  const d = topDots(pts, 'city');
+  assert.deepEqual(d.map((p) => p.href), ['/airports/cities/31703', '/airports/cities/30397', '/airports/XXX']);
 });

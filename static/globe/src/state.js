@@ -1,5 +1,6 @@
 import { parseStyle, styleParams } from './routestyle.js';
 import { parseDir } from '../../common/direction.js';
+import { parseMapType, parseSea } from './maptypes.js';
 
 const intOrNull = (v) => {
   const n = Number.parseInt(v, 10);
@@ -16,7 +17,8 @@ export function parseState(search) {
     year: yearOrNull(intOrNull(q.get('year'))),
     compare: yearOrNull(intOrNull(q.get('compare'))),
     month: month !== null && month >= 1 && month <= 12 ? month : null,
-    proj: q.get('proj') === 'flat' ? 'flat' : 'globe',
+    proj: parseMapType(q.get('proj')),
+    sea: parseSea(q.get('sea')),
     width: WIDTHS.includes(q.get('width')) ? q.get('width') : 'passengers',
     dir: parseDir(search),
     ...parseStyle(search),
@@ -28,7 +30,8 @@ export function toSearch(state, extra = {}) {
   if (state.year !== null) q.set('year', state.year);
   if (state.compare !== null) q.set('compare', state.compare);
   if (state.month !== null) q.set('month', state.month);
-  if (state.proj === 'flat') q.set('proj', 'flat');
+  if (state.proj !== 'globe') q.set('proj', state.proj);
+  if (state.sea === 'plain') q.set('sea', 'plain');
   if (state.width !== 'passengers') q.set('width', state.width);
   if (state.dir) q.set('dir', state.dir);
   for (const [k, v] of Object.entries({ ...styleParams(state), ...extra })) if (v) q.set(k, v);

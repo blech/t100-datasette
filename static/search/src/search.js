@@ -1,6 +1,6 @@
 import { queryUrl } from '../../globe/src/api.js';
 
-const TITLES = { airport: 'Airports', airline: 'Airlines', aircraft: 'Aircraft' };
+const TITLES = { airport: 'Airports', city: 'Cities', airline: 'Airlines', aircraft: 'Aircraft' };
 
 // What was typed -> the three words the search query takes: lowercase, the first three, padded with ''
 export const tokens = (text) => {

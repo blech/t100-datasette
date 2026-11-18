@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseState, toSearch } from '../src/state.js';
 
-const DEFAULTS = { year: null, compare: null, month: null, proj: 'globe', width: 'passengers', dir: '', colour: null, hide: [] };
+const DEFAULTS = { year: null, compare: null, month: null, proj: 'globe', sea: 'sea', width: 'passengers', dir: '', colour: null, hide: [] };
 
 test('defaults', () => {
   assert.deepEqual(parseState(''), DEFAULTS);
 });
 test('parses valid values', () => {
   assert.deepEqual(parseState('?year=2019&month=3&proj=flat&width=freight'), { ...DEFAULTS, year: 2019, month: 3, proj: 'flat', width: 'freight' });
+  assert.equal(parseState('?proj=azimuthal').proj, 'azimuthal');
+  assert.equal(parseState('?proj=equirect').proj, 'globe');
   assert.deepEqual(parseState('?year=2024&compare=2019&colour=service&hide=dropped'), { ...DEFAULTS, year: 2024, compare: 2019, colour: 'service', hide: ['dropped'] });
 });
 test('rejects out-of-range and garbage', () => {
@@ -19,6 +21,7 @@ test('rejects out-of-range and garbage', () => {
 test('round trips and omits defaults', () => {
   assert.equal(toSearch(DEFAULTS), '');
   assert.equal(toSearch({ ...DEFAULTS, year: 2019, proj: 'flat', width: 'deps' }), '?year=2019&proj=flat&width=deps');
+  assert.equal(toSearch({ ...DEFAULTS, proj: 'azimuthal' }), '?proj=azimuthal');
   const full = { ...DEFAULTS, year: 2024, compare: 2019, proj: 'flat', width: 'freight', colour: 'change', hide: ['domestic', 'dropped'] };
   assert.deepEqual(parseState(toSearch(full)), full);
 });
@@ -36,4 +39,11 @@ test('the direction survives a round trip through the address, and both ways is 
   assert.equal(parseState('?dir=sideways').dir, '');
   assert.equal(toSearch(parseState('?dir=out&year=2019')), '?year=2019&dir=out');
   assert.equal(toSearch(parseState('?year=2019')), '?year=2019');
+});
+
+test('sea=plain is kept, anything else is the sea', () => {
+  assert.equal(parseState('?sea=plain').sea, 'plain');
+  assert.equal(parseState('?sea=blue').sea, 'sea');
+  assert.match(toSearch(parseState('?sea=plain&year=2019')), /sea=plain/);
+  assert.doesNotMatch(toSearch(parseState('?year=2019')), /sea/);
 });

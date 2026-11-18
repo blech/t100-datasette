@@ -13,9 +13,25 @@ def test_lowercase_is_normalised(ds):
     assert 'data-origin="ATL"' in get(ds, "/airports/atl/globe").text
 
 
-def test_no_airport_shows_chooser_page(ds):
+def test_the_airports_map_is_the_busiest_routes_map(ds):
     r = get(ds, "/airports/globe")
-    assert r.status_code == 200 and 'data-origin=""' in r.text
+    assert r.status_code == 200 and "/static/charts/airportsglobe.js" in r.text and 'id="n"' in r.text
+    assert "data-origin" not in r.text and 'id="chooser"' not in r.text
+
+
+def test_the_airports_map_has_no_sea_menu_or_routes_table_link(ds):
+    html = get(ds, "/airports/globe").text
+    assert 'id="sea"' not in html and 'href="/airports/routes">The routes table' not in html
+
+
+def test_where_the_airports_map_was_tried_out_redirects_keeping_its_settings(ds):
+    r = get(ds, "/airports/globe/routes?year=2019&proj=flat")
+    assert r.status_code == 301 and r.headers["location"] == "/airports/globe?year=2019&proj=flat"
+
+
+def test_the_airports_map_points_at_its_data_without_javascript(ds):
+    html = get(ds, "/airports/globe").text
+    assert '<noscript><p>This map needs JavaScript.' in html and "/t100/busiest_routes_year?year=2025" in html
 
 
 def test_bad_code_is_404(ds):
@@ -48,5 +64,5 @@ def test_chart_assets_are_served(ds):
         assert get(ds, path).status_code == 200
 
 
-def test_chooser_knows_the_latest_year_for_its_routes(ds):
+def test_the_airports_map_knows_the_latest_year(ds):
     assert 'data-max-year="2025"' in get(ds, "/airports/globe").text
