@@ -743,7 +743,7 @@ airport_changes_page = airport_view("airport_changes.html", "changes")
 async def distances_context(datasette, origin):
     """The distances page's year (the latest full one), the x-axis every airport shares, its bins, and the check's margins."""
     year = (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025)
-    return {"year": year, "axis_max": await axis_max(datasette, year), "bin_miles": BIN_MILES, **check_margins(datasette)}
+    return {"year": year, "axis_max": await axis_max(datasette), "bin_miles": BIN_MILES, **check_margins(datasette)}
 
 
 airport_distances_page = airport_view("airport_distances.html", "distances", distances_context)
