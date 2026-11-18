@@ -52,7 +52,7 @@ const state = {
   rank: pick('rank', ['all', 'latest'], 'all'),
   // the routes matrix ranks by any full year (year=, or the old rank=latest), as the destinations matrix does; checked once loaded
   year: !byYear ? null : params.get('rank') === 'latest' ? latestFullYear : Number(params.get('year')) || null,
-  scale: pick('scale', ['absolute', 'year', 'busiest'], 'year'),
+  scale: pick('scale', ['absolute', 'year', 'busiest', 'row'], 'year'),
   // the airports matrix can show cities, and abroad countries; the routes matrix pairs of cities, each a link to its own page
   group: kind === 'airports' ? pick('group', abroad ? ['airport', 'city', 'country'] : ['airport', 'city'], 'airport') : kind === 'toproutes' ? pick('group', ['airport', 'city'], 'airport') : 'airport',
   open: (params.get('open') || '').split(',').filter(Boolean), // the cities opened to list their airports
@@ -67,7 +67,7 @@ const routesQuery = () => (state.group === 'city' ? 'top_markets_by_year' : page
 const ROW_PX = 20;
 const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
-const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
+const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak', row: 'rowPeak' }[state.scale]);
 const relative = () => state.scale !== 'absolute';
 const rankYear = () => (byYear ? state.year : state.rank === 'latest' ? latestFullYear : null);
 const grouped = () => (state.group !== 'airport' && kind !== 'toproutes') || aircraftLike; // the routes matrix's cities are rows of their own // rows that open into their parts: cities into airports, families into aircraft
@@ -106,6 +106,7 @@ const cellRows = (c) => [
   { label: MATRIX_MEASURES[state.measure], value: measureFormat(state.measure, formatCount)(c.value) },
   ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
   ...(state.scale === 'busiest' ? [{ label: "Of the year's biggest", value: fmtPct(c.peak) }] : []),
+  ...(state.scale === 'row' ? [{ label: 'Of its best year', value: fmtPct(c.rowPeak) }] : []),
 ];
 
 // airlines are named by their legal entity, which is long: label rows with the short name (the full one is the hover text)
@@ -228,7 +229,7 @@ function drawCities(box) {
 }
 
 const colourOptions = (cells) => (relative()
-  ? { type: 'sqrt', scheme: 'YlOrRd', label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: percentTicks(Math.max(0, ...cells.map((c) => c[fillField()]))) }
+  ? { type: 'sqrt', scheme: 'YlOrRd', label: { year: `Share of the year's ${unit()}`, busiest: `% of the year's biggest`, row: `% of the row's best year` }[state.scale], tickFormat: percentTicks(Math.max(0, ...cells.map((c) => c[fillField()]))) }
   : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) });
 
 // a city pair page's "for the top 10 routes" / "for all 13 routes", for the `count` pairs the measure and year can show
@@ -250,6 +251,7 @@ function draw() {
     absolute: '',
     year: `Colour shows each ${page.noun}'s share of all ${unit()} that year, counting every ${page.noun} (not just those listed), not the amount itself. Hover over a cell for both.`,
     busiest: `Colour compares each cell with the year's biggest ${page.noun}: the biggest is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own. Hover over a cell for both.`,
+    row: `Colour compares each cell with its own row's best year: that year is 100%, one with half as many ${unit()} is 50%. Each ${page.noun} is judged on its own, so a small one is as dark at its peak as a big one, and the colours show when it grew or faded, not how big it is. Hover over a cell for both.`,
   }[state.scale];
   if (!byYear) $('matrix-rank').options[1].textContent = `${latestFullYear} only`;
   $('rank-note').textContent = `Rows are ranked by the measure ${rankYear() === null ? 'summed over all years' : `in ${rankYear()} alone, so ones that did not fly then are not shown`}. Each cell is one ${page.noun} in one year; blank means none. Freight is in short tons (2,000 lb).${kind === 'airlines' ? ' Click an airline\'s name to see its routes. Airlines that merged are counted together for every year, including years before the merger.' : ''}${kind === 'airports' ? (state.group === 'country' ? ' A country adds up its airports; click one to see its page, or ▸ to list them here (any under 2% of the country\'s flights, passengers and freight are added up as "other airports"), and an airport\'s code to see which US airports it flies to.' : state.group === 'city' ? ' A city is a BTS city market (New York is JFK, LaGuardia and Newark); click one to see its page, or ▸ to list its airports here (any under 2% of the city\'s flights, passengers and freight are added up as "other airports"), and an airport\'s code to see where it flies.' : ' Click an airport\'s code to see where it flies.') : ''}${aircraftLike ? ' Each row is an aircraft family; ▸ opens it into the aircraft in it, BTS\'s own entries such as the Boeing 737-800. Each family is counted with all its versions.' : ''}${kind === 'fleet' ? ' Click a name to see that family or aircraft split by airline, with this one picked out.' : ''}${kind === 'routes' ? (each ? ' Each row is one direction of an airport pair, as flown; a year shows when the airline flew it at least 12 times.' : ' Each row is an airport pair, both directions together; a year shows when the airline flew it at least 24 times, roughly monthly each way.') + ' A merged airline counts its members together for every year. Click a route to see it with this airline picked out.' : ''}${kind === 'toproutes' ? (state.group === 'city'
@@ -280,7 +282,7 @@ function draw() {
     x: { type: 'band', domain: years, label: null, axis: 'top', tickSize: 0, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.dests, axis: null },
     color: relative()
-      ? { type: 'sqrt', scheme: 'YlOrRd', label: state.scale === 'year' ? `Share of the year's ${unit()}` : `% of the year's biggest`, tickFormat: percentTicks(Math.max(0, ...res.cells.map((c) => c[fillField()]))) }
+      ? { type: 'sqrt', scheme: 'YlOrRd', label: { year: `Share of the year's ${unit()}`, busiest: `% of the year's biggest`, row: `% of the row's best year` }[state.scale], tickFormat: percentTicks(Math.max(0, ...res.cells.map((c) => c[fillField()]))) }
       : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) },
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),

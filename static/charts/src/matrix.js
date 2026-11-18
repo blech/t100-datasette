@@ -39,6 +39,16 @@ export function rankYearFrom(search, { years, latest }) {
   return params.get('rank') === 'latest' ? latest ?? null : null;
 }
 
+// Give each cell `rowPeak`: its value against its own row's best year (1 in that year), whatever the other rows did. The year-based
+// colour scales (share of the year, compared to the year's biggest) judge a column, so a small row beside a giant stays pale
+// in every year; this one judges a row against itself, which shows when a small row grew, peaked or faded.
+export function addRowPeaks(cells, rowOf) {
+  const best = new Map();
+  for (const c of cells) best.set(rowOf(c), Math.max(best.get(rowOf(c)) || 0, c.value));
+  for (const c of cells) c.rowPeak = c.value / best.get(rowOf(c));
+  return cells;
+}
+
 // Rows from routes_by_year (one per destination, year and service) -> a destination-by-year grid.
 // Destinations are ranked by the measure summed over all years, or in `rankYear` alone (which drops
 // destinations that did not fly then); only the top `n` are kept, and their whole history is shown.
@@ -79,6 +89,7 @@ export function buildMatrix(rows, { measure = 'passengers', service = 'all', n =
     const [dest, year] = key.split('\u0000');
     if (top.has(dest) && value > 0) cells.push({ dest, year: Number(year), value, share: value / yearTotals[year], peak: value / yearMax[year] });
   }
+  addRowPeaks(cells, (c) => c.dest);
   cells.sort((a, b) => a.year - b.year || dests.indexOf(a.dest) - dests.indexOf(b.dest));
   return { dests, years: yearDomain([...yearSet]), cells, yearTotals, yearMax };
 }
@@ -197,6 +208,7 @@ export function buildCityMatrix(rows, { measure = 'passengers', service = 'all',
       }
     }
   }
+  addRowPeaks(cells, (c) => c.row);
   const order = new Map(outRows.map((r, i) => [r.key, i]));
   cells.sort((x, y) => x.year - y.year || order.get(x.row) - order.get(y.row));
   return { rows: outRows, years: yearDomain([...yearSet]), cells, yearTotals, yearMax };
