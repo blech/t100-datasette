@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isSuspect, profile, measuresOffered, summaryText, noteText, barLayout } from '../src/distances.js';
+import { isSuspect, profile, measuresOffered, summaryText, barLayout } from '../src/distances.js';
 
 const CHECK = { ratio: 0.1, miles: 50 };
 const r = (distance, passengers, extra = {}) =>
@@ -86,13 +86,6 @@ test('profile: a distance exactly at the end of the axis is on it, not beyond it
 test('profile leaves out loops (the same airport at both ends), which have no distance to chart or mention', () => {
   const p = profile([r(100, 10), r(null, 5, { dest: 'ATL', gc_distance: null })], { ...opts(), origin: 'ATL' });
   assert.deepEqual(p.noDistance, { pairs: 0, value: 0 });
-});
-
-test('noteText says what was left out, and nothing for an empty profile', () => {
-  assert.equal(noteText({ empty: true }, 'passengers'), '');
-  const p = profile([r(100, 10), r(320, 7, { gc_distance: 4138 }), r(300, 2, { gc_distance: null })], opts());
-  assert.equal(noteText(p, 'passengers'),
-    " 1 airport pair whose BTS distance disagreed with it (7 passengers) is left out; 1 airport pair couldn't be checked, as an airport has no coordinates, and is shown as BTS gives it.");
 });
 
 test('profile lists each bar\'s biggest destinations in the measure, the top five and how many more', () => {

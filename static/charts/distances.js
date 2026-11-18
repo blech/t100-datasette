@@ -1,6 +1,6 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { profile, measuresOffered, summaryText, noteText, barLayout } from '/static/charts/src/distances.js';
+import { profile, measuresOffered, summaryText, barLayout } from '/static/charts/src/distances.js';
 import { byYear, barHeight, scaleTop, readState, yearParams } from '/static/charts/src/distanceyears.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { syncRange, bindTrackPress } from '/static/globe/src/controls.js';
@@ -13,7 +13,7 @@ import { parseDir, setDir } from '/static/common/direction.js';
 
 // The distances pages: an airport's flight segments by distance, or with no airport (/airports/distances) every airport pair's,
 // in any one year, on the x-axis every chart shares in every year. The year bar plays through the years, and its hollow handle
-// outlines an earlier year's shape over the bars.
+// shades an earlier year's shape over the bars.
 const data = document.body.dataset;
 const origin = data.origin || null;
 const first = Number(data.firstYear);
@@ -62,14 +62,15 @@ async function loadAll() {
 const ensure = (year) => (origin ? Promise.resolve(loaded.get(year) || []) : loadYear(year));
 const prefetch = (year) => { if (!origin) for (let y = year + 1; y <= Math.min(last, year + AHEAD); y++) loadYear(y).catch(() => {}); };
 
-// one profile per year and setting, kept until the setting changes
-let profiles = new Map();
-let profilesFor = '';
+// one profile per year, measure and number of bars, kept until a new measure or width makes too many
+const profiles = new Map();
 function profileOf(year, measure, count) {
-  const key = `${measure}|${count}`;
-  if (key !== profilesFor) { profiles = new Map(); profilesFor = key; }
-  if (!profiles.has(year)) profiles.set(year, profile(loaded.get(year) || [], { measure, count, max: axisMax, origin, ...check }));
-  return profiles.get(year);
+  const key = `${year}|${measure}|${count}`;
+  if (!profiles.has(key)) {
+    if (profiles.size > 400) profiles.clear();
+    profiles.set(key, profile(loaded.get(year) || [], { measure, count, max: axisMax, origin, ...check }));
+  }
+  return profiles.get(key);
 }
 
 function remember() {
@@ -96,8 +97,6 @@ function draw() {
   const width = Math.floor(Math.min(box.clientWidth || 900, 1100));
   const { count, marginRight } = barLayout(width, { marginLeft: MARGIN.left, marginRight: MARGIN.right, pixels: BARS[$('ds-bars').value].pixels });
   const p = profileOf(year, measure, count);
-  const extra = $('distance-note-extra') || $('distance-note').appendChild(Object.assign(document.createElement('span'), { id: 'distance-note-extra' }));
-  extra.textContent = noteText(p, measure);
   if (p.empty) {
     box.textContent = p.unavailable ? 'Distances aren\'t available yet.' : `No ${LABELS[measure]}${origin ? ` at ${origin}` : ''} in ${year}.`;
     $('distance-summary').textContent = '';
@@ -107,10 +106,11 @@ function draw() {
   // the y scale holds still over every year loaded, so the shapes (or, as counts, the sizes) compare as the years change
   const top = scaleTop([...loaded.keys()].map((y) => profileOf(y, measure, count)), measure, scale) || 1;
   const bars = p.bins.filter((b) => !fine || b.value).map((b) => ({ ...b, mid: (b.from + b.to) / 2, y: barHeight(b, measure, scale) }));
-  const then = compare !== null && loaded.has(compare) ? profileOf(compare, measure, count) : null;
-  const outline = then && !then.empty
-    ? [...then.bins.map((b) => ({ x: b.from, y: barHeight(b, measure, scale) })), { x: axisMax, y: barHeight(then.bins.at(-1), measure, scale) }]
-    : [];
+  // the year compared with, in front as a translucent grey: in wide bars always, as one-pixel columns can't be read as a shape;
+  // set over one-pixel columns, each wide bar is their average height, to stay on their scale
+  const wide = barLayout(width, { marginLeft: MARGIN.left, marginRight: MARGIN.right, pixels: BARS.wide.pixels }).count;
+  const then = compare !== null && loaded.has(compare) ? profileOf(compare, measure, wide) : null;
+  const ghost = then && !then.empty ? then.bins.map((b) => ({ ...b, y: (barHeight(b, measure, scale) * wide) / count })) : [];
   const name = measure === 'freight' ? 'Freight, short tons' : `${LABELS[measure][0].toUpperCase()}${LABELS[measure].slice(1)}`;
   const y = scale === 'share'
     ? { label: `Share of the year's ${LABELS[measure]} (%)`, tickFormat: (v) => formatCount(v) }
@@ -124,7 +124,7 @@ function draw() {
     marks: [
       Plot.rectY(bars, { x1: 'from', x2: 'to', y: 'y', fill: colours.accent, ...(fine ? {} : { insetLeft: 0.5, insetRight: 0.5 }) }),
       Plot.ruleY([0]),
-      ...(outline.length ? [Plot.lineY(outline, { x: 'x', y: 'y', curve: 'step-after', stroke: 'currentColor', strokeWidth: 1.25, strokeOpacity: 0.8 })] : []),
+      ...(ghost.length ? [Plot.rectY(ghost, { x1: 'from', x2: 'to', y: 'y', fill: 'currentColor', fillOpacity: 0.25, insetLeft: 0.5, insetRight: 0.5 })] : []),
       Plot.ruleX(bars, Plot.pointerX({ x: 'mid', y: 'y', strokeOpacity: 0 })),
     ],
   });

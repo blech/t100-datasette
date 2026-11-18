@@ -1,6 +1,6 @@
 // An airport's distances page: its flight segments in one year (routes_by_year rows), binned by distance on an axis every
 // airport shares. A BTS distance far off the great-circle one is left out (the same check as plugins/t100_distances.py).
-import { exactCount, formatCount, formatTons } from '../../common/numbers.js';
+import { exactCount } from '../../common/numbers.js';
 import { hasFreight } from './flights.js';
 
 const num = (v) => Number(v) || 0;
@@ -82,22 +82,4 @@ export function summaryText(code, year, measure, median) {
     deps: `Half of ${whose} flight segments in ${year} were ${n} miles or less.`,
     freight: `Half of ${whose} freight in ${year} went on segments of ${n} miles or less.`,
   }[measure];
-}
-
-const LABELS = { passengers: 'passengers', deps: 'flight segments', freight: 'freight' };
-const amount = (measure, v) => (measure === 'freight' ? formatTons(v) : formatCount(v));
-
-// the small print after the page's own: what was left out, couldn't be checked, or went past the scale, for the measure shown
-export function noteText(p, measure) {
-  if (p.empty) return '';
-  const pairs = (n) => `${exactCount(n)} airport pair${n === 1 ? '' : 's'}`;
-  const is = (n) => (n === 1 ? 'is' : 'are');
-  const parts = [];
-  if (p.dropped.pairs) parts.push(`${pairs(p.dropped.pairs)} whose BTS distance disagreed with it (${amount(measure, p.dropped.value)} ${LABELS[measure]}) ${is(p.dropped.pairs)} left out`);
-  if (p.noDistance.pairs) parts.push(`${pairs(p.noDistance.pairs)} with no distance from BTS (${amount(measure, p.noDistance.value)} ${LABELS[measure]}) ${is(p.noDistance.pairs)} left out`);
-  if (p.unchecked.pairs) parts.push(`${pairs(p.unchecked.pairs)} couldn't be checked, as an airport has no coordinates, and ${is(p.unchecked.pairs)} shown as BTS gives ${p.unchecked.pairs === 1 ? 'it' : 'them'}`);
-  if (p.beyondAxis.pairs) parts.push(`${pairs(p.beyondAxis.pairs)} beyond the scale ${is(p.beyondAxis.pairs)} counted in the last bar`);
-  if (!parts.length) return '';
-  const text = parts.join('; ');
-  return ` ${text[0].toUpperCase()}${text.slice(1)}.`;
 }

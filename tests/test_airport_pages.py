@@ -205,3 +205,11 @@ def test_the_distances_pages_have_the_year_bar(ds, db_path):
 def test_the_maps_load_the_shared_year_bar_style(ds):
     for path in ("/airports/SFO/globe", "/airports/globe"):
         assert "/static/common/yearbar.css" in get(ds, path).text, path
+
+
+def test_the_distances_pages_small_print_is_the_same_in_every_year(ds, db_path):
+    years(db_path)
+    for path in ("/airports/SFO/distances", "/airports/distances"):
+        html = get(ds, path).text
+        assert "Pairs whose BTS distance disagrees with the airports' coordinates, or that have no distance, are left out." in html, path
+        assert "any segment beyond the scale counts in the last bar" in html, path
