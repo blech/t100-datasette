@@ -19,7 +19,7 @@ def _pair(airline_id, pax, freight=0, year=2025, origin="AAA", dest="BBB", group
                 freight=freight, first_month=1, last_month=12, domestic_deps=1)
 
 
-def _route(origin, dest, pax, freight=0, deps=30, year=2025):
+def _route(origin, dest, pax, freight=0, deps=60, year=2025):
     return dict(year=year, origin=origin, dest=dest, deps=deps, domestic_deps=deps, seats=0, passengers=pax, freight=freight)
 
 
@@ -129,10 +129,10 @@ def _places(db_path):
     _insert(db_path, "airport_dir_year", [_year(2025, "ABR", 1, wac=500)])
 
 
-def test_distance_ends_need_24_flights_and_the_median_weighs_the_load(db_path, conn):
+def test_distance_ends_and_the_median_weighs_the_load(db_path, conn):
     _places(db_path)
     _scheduled_routes(db_path, [
-        _route("AAA", "BBB", 10, deps=12), _route("BBB", "AAA", 10, deps=12),   # 24 both ways: the shortest
+        _route("AAA", "BBB", 10, deps=26), _route("BBB", "AAA", 10, deps=26),   # 52 both ways: the shortest
         _route("AAA", "CCC", 100, deps=23),   # 23 flights: not an end, but counted in the median
         _route("AAA", "DDD", 5, deps=20),   # further, but too few flights to be the longest
         _route("ABR", "AAA", 1, deps=40),   # the longest, and abroad
@@ -159,23 +159,43 @@ def test_a_year_without_routes_has_an_empty_row(db_path, conn):
     assert row.shortest is None and row.longest is None and row.median is None
 
 
-def _segment(origin, dest, cls, deps, year=2025, month=1):
-    return dict(year=year, month=month, origin=origin, dest=dest, departures_performed=deps, passengers=0, freight=0,
-                **{"class": cls})
+def _segment(origin, dest, cls, deps, year=2025, month=1, carrier="XX"):
+    return dict(year=year, month=month, origin=origin, dest=dest, carrier=carrier, departures_performed=deps, passengers=0,
+                freight=0, **{"class": cls})
 
 
-def test_an_end_needs_24_scheduled_flights(db_path, conn):
+def test_the_longest_needs_24_scheduled_flights(db_path, conn):
     """DFW-DAL in 2025: 31 flights, 26 of them non-scheduled (class L) and empty."""
     _places(db_path)
-    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 10, deps=31), _route("AAA", "CCC", 10, deps=30),
+    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 10, deps=52), _route("AAA", "CCC", 10, deps=30),
+                                           _route("AAA", "DDD", 10, deps=31)])
+    add_segments(db_path, "t100_domestic", [
+        _segment("AAA", "BBB", "F", 52), _segment("AAA", "BBB", "G", 0),
+        _segment("AAA", "CCC", "F", 20), _segment("CCC", "AAA", "F", 4, month=2),   # 24 both ways, over two months
+        _segment("AAA", "DDD", "F", 5), _segment("DDD", "AAA", "L", 26)])   # 5 scheduled: not an end
+    row = distance_row(conn, "AAA", "passengers", 2025)
+    assert row.shortest.code == "BBB" and row.longest.code == "CCC"
+    assert round(row.median) == 691   # every route's passengers still count in the median
+
+
+def test_the_shortest_needs_52_scheduled_flights_by_one_airline_and_the_longest_24(db_path, conn):
+    """IAD-DCA and JFK-LGA: a few diversions on each of many airlines. A seasonal long-haul still counts at 24."""
+    _places(db_path)
+    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 10, deps=60), _route("AAA", "CCC", 10, deps=52),
                                            _route("AAA", "DDD", 10, deps=30)])
     add_segments(db_path, "t100_domestic", [
-        _segment("AAA", "BBB", "F", 5), _segment("BBB", "AAA", "L", 26),   # 5 scheduled: not an end
-        _segment("AAA", "CCC", "F", 20), _segment("CCC", "AAA", "F", 4, month=2),   # 24 both ways, over two months
-        _segment("AAA", "DDD", "F", 30), _segment("AAA", "DDD", "G", 0)])
+        _segment("AAA", "BBB", "F", 30, carrier="XX"), _segment("AAA", "BBB", "F", 30, carrier="YY"),   # 60, 30 each
+        _segment("AAA", "CCC", "F", 26, carrier="XX"), _segment("CCC", "AAA", "F", 26, carrier="XX"),   # 52 both ways, one airline
+        _segment("AAA", "DDD", "F", 30, carrier="ZZ")])
     row = distance_row(conn, "AAA", "passengers", 2025)
-    assert row.shortest.code == "CCC" and row.longest.code == "DDD"
-    assert round(row.median) == 691   # every route's passengers still count in the median
+    assert (row.shortest.code, row.longest.code) == ("CCC", "DDD")
+
+
+def test_without_a_52_flight_route_there_is_a_longest_but_no_shortest(db_path, conn):
+    _places(db_path)
+    _scheduled_routes(db_path, [_route("AAA", "DDD", 10, deps=30)])
+    row = distance_row(conn, "AAA", "passengers", 2025)
+    assert row.shortest is None and row.longest.code == "DDD"
 
 
 def test_scheduled_flights_abroad_count_too(db_path, conn):
@@ -188,8 +208,8 @@ def test_scheduled_flights_abroad_count_too(db_path, conn):
 
 def test_a_freight_end_counts_scheduled_cargo_flights(db_path, conn):
     _places(db_path)
-    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 0, freight=50, deps=30), _route("AAA", "DDD", 0, freight=50, deps=30)])
-    add_segments(db_path, "t100_domestic", [_segment("AAA", "BBB", "G", 30), _segment("AAA", "DDD", "P", 30),
+    _insert(db_path, "route_year_totals", [_route("AAA", "BBB", 0, freight=50, deps=52), _route("AAA", "DDD", 0, freight=50, deps=30)])
+    add_segments(db_path, "t100_domestic", [_segment("AAA", "BBB", "G", 52), _segment("AAA", "DDD", "P", 30),
                                             _segment("AAA", "CCC", "L", 30)])
     _insert(db_path, "route_year_totals", [_route("AAA", "CCC", 0, freight=50, deps=30)])
     row = distance_row(conn, "AAA", "freight", 2025)

@@ -152,27 +152,32 @@ def weighted_median(pairs) -> float | None:
 # service: L, non-scheduled, is charters and repositioning (DFW-DAL had 31 flights in 2025, 26 of them class L and empty).
 # A freight page counts all-cargo flights scheduled (G) or not (P) as well, since the cargo networks are mostly filed as
 # P: all of ILN's (DHL) and LAL's (Amazon) freight in 2025, and over half of CVG's.
+SHORTEST_MIN_FLIGHTS = 52   # a weekly flight by one airline
 SCHEDULED = {"passengers": ("F",), "freight": ("F", "G", "P")}
 
 
-def scheduled_flights(conn, a: str, b: str, year: int, measure: str) -> int:
+def scheduled_flights(conn, a: str, b: str, year: int, measure: str, *, one_airline: bool = False) -> int:
     """Scheduled flights between a and b in the year, both ways, domestic and international: read from the segment tables
-    by their (origin, dest, year) index, for the few routes that might be a page's ends."""
+    by their (origin, dest, year) index, for the few routes that might be a page's ends. With one_airline, the most any one
+    airline flew."""
     classes = SCHEDULED[measure]
     marks = ",".join("?" for _ in classes)
-    total = 0
+    by_carrier = {}
     for table in ("t100_domestic", "t100_international"):
         for origin, dest in ((a, b), (b, a)):
-            total += conn.execute(
-                f"""SELECT COALESCE(SUM(departures_performed), 0) FROM {table}
-                    WHERE origin = ? AND dest = ? AND year = ? AND class IN ({marks})""", (origin, dest, year, *classes)).fetchone()[0]
-    return total
+            for carrier, n in conn.execute(
+                    f"""SELECT carrier, COALESCE(SUM(departures_performed), 0) FROM {table}
+                        WHERE origin = ? AND dest = ? AND year = ? AND class IN ({marks}) GROUP BY carrier""",
+                    (origin, dest, year, *classes)):
+                by_carrier[carrier] = by_carrier.get(carrier, 0) + n
+    return max(by_carrier.values(), default=0) if one_airline else sum(by_carrier.values())
 
 
 def distance_row(conn, code: str, measure: str, year: int, coords=None) -> DistanceRow:
-    """The year's shortest and longest routes carrying the measure with at least PLACE_MIN_FLIGHTS scheduled flights both
-    ways, by the great-circle distance between the airports, and the distance the middle passenger (or pound of freight)
-    travels, over every route. A route to an airport without coordinates, or in BAD_ROUTES, is left out."""
+    """The year's shortest and longest routes carrying the measure, by the great-circle distance between the airports, and
+    the distance the middle passenger (or pound of freight) travels, over every route. The longest needs PLACE_MIN_FLIGHTS scheduled flights both ways; the shortest needs
+    SHORTEST_MIN_FLIGHTS by one airline, since a nearby airport collects a few diversions on each of many airlines (IAD-DCA,
+    JFK-LGA). A route to an airport without coordinates, or in BAD_ROUTES, is left out."""
     coords = airport_coordinates(conn) if coords is None else coords
     key = 0 if measure == "passengers" else 1
     if code not in coords:
@@ -185,16 +190,18 @@ def distance_row(conn, code: str, measure: str, year: int, coords=None) -> Dista
     # all flights first (the rollup), then scheduled ones (the segments) for each candidate, from each end inwards
     candidates = sorted((miles, o) for o, (miles, t) in routes.items() if t[2] >= PLACE_MIN_FLIGHTS)
 
-    def first_regular(ordered):
-        return next((c for c in ordered if scheduled_flights(conn, code, c[1], year, measure) >= PLACE_MIN_FLIGHTS), None)
+    def first(ordered, floor, one_airline):
+        return next((c for c in ordered if scheduled_flights(conn, code, c[1], year, measure, one_airline=one_airline) >= floor),
+                    None)
 
-    shortest = first_regular(candidates)
-    if shortest is None:
+    longest = first(reversed(candidates), PLACE_MIN_FLIGHTS, False)
+    if longest is None:
         return DistanceRow(year, None, median, None)
-    longest = first_regular(reversed(candidates))
-    labels = _labels(conn, [shortest[1], longest[1]], year)
-    return DistanceRow(year, End(shortest[1], labels[shortest[1]], shortest[0]), median,
-                       End(longest[1], labels[longest[1]], longest[0]))
+    shortest = first((c for c in candidates if c[0] <= longest[0]), SHORTEST_MIN_FLIGHTS, True)
+    ends = [e for e in (shortest, longest) if e]
+    labels = _labels(conn, [e[1] for e in ends], year)
+    end = lambda e: e and End(e[1], labels[e[1]], e[0])
+    return DistanceRow(year, end(shortest), median, end(longest))
 
 
 def _labels(conn, codes, year):
