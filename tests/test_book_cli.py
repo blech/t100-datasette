@@ -90,3 +90,18 @@ def test_endpaper_posters_only_loaded_for_a_poster_endpaper(world, tmp_path):
     args = _args(world, "--endpapers", "codes,codes")
     args[args.index("--endpaper-posters") + 1] = str(tmp_path / "nowhere")
     assert main(args) == 0
+
+
+def test_the_scale_bar_comes_from_the_posters_folder(world):
+    from tests.test_book_posters import SCALE_BAR
+    db, posters, out = world
+    assert main(_args(world)) == 0
+    assert 'class="scale-bar"' not in out.with_suffix(".html").read_text()
+    (posters / "scale-7.5mpp.svg").write_text(SCALE_BAR)
+    assert main(_args(world)) == 0
+    assert '<div class="scale-bar"><svg' in out.with_suffix(".html").read_text()
+
+
+def test_the_posters_are_the_same_scale_ones_by_default():
+    from scripts.book.__main__ import parse
+    assert parse([]).posters.name == "scale"

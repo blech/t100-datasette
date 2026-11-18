@@ -45,6 +45,17 @@ def distances_top(page_size: str) -> float:
     return height - 2 * PAGE_MARGIN - svg - h2
 
 
+def scale_bar_box(bar, page_size: str) -> tuple[float, float]:
+    """The scale bar's top and width, in inches, on the credits page: at the posters' scale (a poster's canvas fills a page,
+    cropped to its shape, so the side it keeps whole sets the scale), its foot at the foot of the text area."""
+    width, height = (_inches(x) for x in PAGE_SIZES[page_size])
+    if bar.canvas_width / bar.canvas_height > width / height:
+        per_inch = bar.canvas_height / height   # a narrower page than the poster: its height kept, its sides cut
+    else:
+        per_inch = bar.canvas_width / width
+    return height - 2 * PAGE_MARGIN - bar.height / per_inch, bar.width / per_inch
+
+
 def _label(d):
     """A destination's name, with its country if it's outside the US."""
     return f"{d.label}, {d.country}" if d.country else d.label
@@ -153,10 +164,10 @@ def _tiles(kind, side, codes, posters, diagrams):
 def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[str, str], *, page_size: str = "letter",
               title: str = "US airports", subtitle: str = "", endpapers: tuple[str, str] = ("posters", "codes"),
               diagrams: dict[str, str] | None = None, endpaper_posters: dict[str, str] | None = None,
-              distances: str = "foot", history: str = "split") -> str:
+              distances: str = "foot", history: str = "split", scale_bar=None) -> str:
     """posters: code -> the poster facing its data page, cropped here to the page's shape to fill it. endpaper_posters:
     code -> the plainer one for a poster endpaper (aeroways and roads, no railways or labels). distances: where the
-    distance rows go (DISTANCES)."""
+    distance rows go (DISTANCES). scale_bar: the posters' (posters.ScaleBar), drawn at their scale on the credits page."""
     if page_size not in PAGE_SIZES:
         raise ValueError(f"unknown page size {page_size!r}: one of {', '.join(PAGE_SIZES)}")
     if distances not in DISTANCES:
@@ -179,6 +190,7 @@ def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[st
         content_height=f"{_inches(height) - 2 * PAGE_MARGIN:g}in",
         distances_top=f"{distances_top(page_size):.3f}in",
         code_tile_padding=code_tile_padding(grid[1], page_size),
+        scale_bar=scale_bar and dict(zip(("top", "width"), (f"{v:.3f}in" for v in scale_bar_box(scale_bar, page_size)))),
     )
     book = dict.fromkeys(codes)
     first = airports[0][1] if airports else None
@@ -189,6 +201,7 @@ def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[st
                for e, f in airports],
         distances=distances,
         history=history,
+        scale_bar=Markup(scale_bar.svg) if scale_bar else None,
         grid=grid,
         alphabetical=sorted(codes),   # the endpapers: an index in their own order, not the contents again
         endpapers=[dict(side=side, kind=kind, tiles=_tiles(kind, side, sorted(codes), endpaper_posters, diagrams))

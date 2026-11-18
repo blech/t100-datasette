@@ -103,6 +103,10 @@ section.endpaper a.tile::after { content: target-counter(attr(href url), page); 
 /* credits */
 section.credits { font-size: 0.85em; color: #52525b; padding-top: 70%; }
 section.credits .url { white-space: nowrap; color: #18181b; }
+/* the posters' scale bar, at their scale, its foot at the foot of the text area (placed from the top: render.scale_bar_box) */
+section.credits { position: relative; }
+{% if scale_bar %}section.credits .scale-bar { position: absolute; left: 0; top: {{ scale_bar.top }}; width: {{ scale_bar.width }}; }{% endif %}
+section.credits .scale-bar svg { display: block; width: 100%; height: auto; }
 
 /* back cover: placeholder */
 section.back-cover { padding-top: 80%; text-align: center; color: #71717a; }

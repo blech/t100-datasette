@@ -10,13 +10,13 @@ from pathlib import Path
 from scripts.book.data import airport_facts, book_airports
 from scripts.book.history import airport_coordinates, airport_history, all_ranks
 from scripts.book.pdf import broken_spreads, library_env, needs_library_path, write_pdf
-from scripts.book.posters import PosterError, load_diagrams, load_posters
+from scripts.book.posters import PosterError, load_diagrams, load_posters, load_scale_bar
 from scripts.book.render import DISTANCES, ENDPAPERS, HISTORIES, PAGE_SIZES, book_html
 
 REPO = Path(__file__).resolve().parents[2]
 POSTERS = Path.home() / "Documents (Local)" / "code" / "airportcity" / "posters"
 DIAGRAMS = REPO / "static" / "svg" / "diagram"
-# the print posters, CODE-rail.svg where there is one, else CODE.svg. Not CODE-rail-rot.svg (turned a quarter, for an
+# the posters, CODE-rail.svg where there is one, else CODE.svg. Not CODE-rail-rot.svg (turned a quarter, for an
 # airport wider than it's tall): north-up throughout keeps the same-scale posters comparable from spread to spread.
 PRINT_VARIANTS = ("rail",)
 
@@ -38,8 +38,9 @@ def default_db() -> Path:
 def parse(argv):
     p = argparse.ArgumentParser(prog="python -m scripts.book", description="Build the airport book as a PDF.")
     p.add_argument("--db", type=Path, help="t100.db (default: the main checkout's)")
-    p.add_argument("--posters", type=Path, default=POSTERS / "print",
-                   help=f"print posters, one facing each data page (default: {POSTERS / 'print'})")
+    p.add_argument("--posters", type=Path, default=POSTERS / "scale",
+                   help=f"posters at one scale (metres per pixel), one facing each data page, and their scale-<m>mpp.svg "
+                        f"bar for the credits page (default: {POSTERS / 'scale'})")
     p.add_argument("--endpaper-posters", type=Path, default=POSTERS,
                    help=f"plain posters (aeroways and roads), for a poster endpaper (default: {POSTERS})")
     p.add_argument("--out", type=Path, default=REPO / "book" / "out" / "airport-book.pdf")
@@ -79,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             codes = [e.code for e in entries]
             posters = load_posters(args.posters, codes, variants=PRINT_VARIANTS)
+            scale_bar = load_scale_bar(args.posters)
             endpaper_posters = load_posters(args.endpaper_posters, codes) if "posters" in args.endpapers else None
             diagrams = load_diagrams(args.diagrams, [e.code for e in entries]) if "diagrams" in args.endpapers else None
         except PosterError as e:
@@ -95,7 +97,8 @@ def main(argv: list[str] | None = None) -> int:
         conn.close()
     subtitle = f"The {args.top_passengers} busiest by passengers and the {args.top_freight} busiest by freight in {args.year}"
     options = dict(page_size=args.page_size, subtitle=subtitle, endpapers=args.endpapers, diagrams=diagrams,
-                   endpaper_posters=endpaper_posters, distances=args.distances, history=args.history)
+                   endpaper_posters=endpaper_posters, distances=args.distances, history=args.history,
+                   scale_bar=scale_bar)
     html = book_html(airports, posters, **options)
     if args.html:
         out = args.out.with_suffix(".html")

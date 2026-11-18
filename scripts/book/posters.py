@@ -1,9 +1,10 @@
-"""The Airport Cities posters (airportcity/posters/print/<CODE>*.svg for the pages, airportcity/posters/<CODE>.svg for an
-endpaper) and the site's runway diagrams (static/svg/diagram/<CODE>.svg), made ready to inline in the book's HTML: CSS
+"""The Airport Cities posters (airportcity/posters/scale/<CODE>*.svg for the pages, all at one scale, with their scale
+bar; airportcity/posters/<CODE>.svg for an endpaper) and the site's runway diagrams (static/svg/diagram/<CODE>.svg), made ready to inline in the book's HTML: CSS
 variables become their fallback colours, so they print as drawn, and the root's fixed size goes, so the page's CSS sizes
 them."""
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 # innermost first: var(--a, var(--b, #000)) resolves in two passes
@@ -21,6 +22,21 @@ _VIEW_BOX = re.compile(r'\bviewBox="([^"]*)"')
 
 class PosterError(Exception):
     pass
+
+
+@dataclass
+class ScaleBar:
+    svg: str   # its viewBox cut down to the bar and its labels
+    width: float   # that viewBox's size, in the posters' units
+    height: float
+    canvas_width: float   # the posters' whole canvas, which the book fits to the page, so the bar can be drawn at their scale
+    canvas_height: float
+
+
+_TEXT = re.compile(r'<text\b([^>]*)>([^<]*)</text>')
+_FONT_SIZE = re.compile(r'\bfont-size="([\d.]+)"')
+_MOVE = re.compile(r"M\s*([\d.]+)[\s,]+([\d.]+)")
+CHAR_EM = 0.6   # a generous average width of a character, for the labels' extent
 
 
 def _inline(svg: str, name: str) -> str:
@@ -68,7 +84,7 @@ def _candidates(directory: Path, code: str, variants: tuple[str, ...]) -> list[P
 
 
 def load_poster(directory: Path, code: str, variants: tuple[str, ...] = ()) -> str:
-    """The first of CODE-<variant>.svg, in the order given, that there is, else CODE.svg. The print posters come as
+    """The first of CODE-<variant>.svg, in the order given, that there is, else CODE.svg. The posters come as
     CODE-rail-rot.svg (turned a quarter, for an airport wider than it's tall), CODE-rail.svg, and CODE.svg (no railway)."""
     path = next(p for p in _candidates(directory, code, variants) if p.is_file())
     svg = _mask_each_child(_inline(path.read_text(), path.name))
@@ -99,3 +115,39 @@ def load_diagrams(directory: Path, codes: list[str]) -> dict[str, str]:
 def reprefix(svg: str, code: str, prefix: str) -> str:
     """A second copy of a poster (an endpaper's thumbnail) needs ids of its own: CODE-x becomes <prefix>CODE-x, references too."""
     return re.sub(rf'(\bid="|#){re.escape(code)}-', rf"\g<1>{prefix}{code}-", svg)
+
+
+def _attr(attrs, name, default=None):
+    m = re.search(rf'\b{name}="([^"]*)"', attrs)
+    return m.group(1) if m else default
+
+
+def load_scale_bar(directory: Path) -> ScaleBar | None:
+    """The posters' scale bar, scale-<m>mpp.svg beside them: drawn on the posters' canvas, low down on the left, so its
+    viewBox is cut down to the bar and its labels (their extent estimated from the text). None if there isn't one."""
+    found = sorted(Path(directory).glob("scale-*mpp.svg"))
+    if not found:
+        return None
+    if len(found) > 1:
+        raise PosterError(f"more than one scale bar in {directory}: {', '.join(p.name for p in found)}")
+    svg = _inline(found[0].read_text(), found[0].name)
+    root = _ROOT.search(svg)
+    _, _, canvas_width, canvas_height = (float(v) for v in _VIEW_BOX.search(root.group(0)).group(1).replace(",", " ").split())
+    m = _FONT_SIZE.search(svg)
+    default_size = float(m.group(1)) if m else 16
+    xs, ys = [], []
+    for x, y in _MOVE.findall(svg):
+        xs.append(float(x))
+        ys.append(float(y))
+    for attrs, body in _TEXT.findall(svg):
+        x, y, size = float(_attr(attrs, "x")), float(_attr(attrs, "y")), float(_attr(attrs, "font-size", default_size))
+        w = len(body.strip()) * size * CHAR_EM
+        start = {"middle": x - w / 2, "end": x - w}.get(_attr(attrs, "text-anchor", "start"), x)
+        xs += [start, start + w]
+        ys += [y - size, y + 0.25 * size]
+    pad = 4
+    x, y = round(min(xs) - pad, 2), round(min(ys) - pad, 2)
+    width, height = round(max(xs) + pad - x, 2), round(max(ys) + pad - y, 2)
+    box = " ".join(f"{v:g}" for v in (x, y, width, height))
+    svg = svg[:root.start()] + _VIEW_BOX.sub(f'viewBox="{box}"', root.group(0), count=1) + svg[root.end():]
+    return ScaleBar(svg, width, height, canvas_width, canvas_height)

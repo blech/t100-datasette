@@ -1,6 +1,8 @@
+import re
+
 import pytest
 
-from scripts.book.posters import PosterError, crop, load_diagrams, load_poster, load_posters, reprefix
+from scripts.book.posters import PosterError, crop, load_diagrams, load_poster, load_posters, load_scale_bar, reprefix
 
 
 def _poster(code, ids=("r2",), prefix=True):
@@ -138,3 +140,31 @@ def test_missing_diagrams_are_all_named(tmp_path):
     with pytest.raises(PosterError) as e:
         load_diagrams(tmp_path, ["YYY", "XXX"])
     assert "XXX" in str(e.value) and "YYY" in str(e.value)
+
+
+SCALE_BAR = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1850" width="1400" height="1850">
+<style>.ac-ink{stroke:var(--ac-ink,#000)}</style>
+<path class="ac-ink" fill="none" stroke-width="2.5" d="M100 1690h429.2M100.0 1690v-14M529.2 1690v-14M100 1690h400.0M500.0 1690v14"/>
+<g class="ac-label" font-family="Helvetica,Arial,sans-serif" font-size="22"><text x="100.0" y="1668" text-anchor="start">0</text>
+<text x="529.2" y="1668" text-anchor="middle">2 miles</text><text x="100.0" y="1728" text-anchor="start">0</text>
+<text x="500.0" y="1728" text-anchor="middle">3 km</text></g>
+</svg>"""
+
+
+def test_the_scale_bar_is_cut_down_to_the_bar_on_the_posters_canvas(tmp_path):
+    (tmp_path / "scale-7.5mpp.svg").write_text(SCALE_BAR)
+    bar = load_scale_bar(tmp_path)
+    assert (bar.canvas_width, bar.canvas_height) == (1400, 1850)
+    x, y, w, h = (float(v) for v in re.search(r'viewBox="([^"]+)"', bar.svg).group(1).split())
+    assert x <= 100 and x + w >= 529.2 + 3.5 * 22 * 0.6   # "2 miles", centred on the 2-mile tick
+    assert y <= 1668 - 22 and y + h >= 1728 and h < 150   # both rows of labels, and no more
+    assert (bar.width, bar.height) == (w, h)
+    assert 'width="1400"' not in bar.svg and "var(" not in bar.svg
+
+
+def test_no_scale_bar_is_none_and_two_is_an_error(tmp_path):
+    assert load_scale_bar(tmp_path) is None
+    (tmp_path / "scale-7.5mpp.svg").write_text(SCALE_BAR)
+    (tmp_path / "scale-10mpp.svg").write_text(SCALE_BAR)
+    with pytest.raises(PosterError):
+        load_scale_bar(tmp_path)

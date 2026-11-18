@@ -330,3 +330,22 @@ def test_posters_fill_their_pages_cropped_to_the_page_shape(page_size, view_box)
     assert re.search(r"@page bleed \{ margin: 0;", html)
     assert re.search(r"section\.endpaper, section\.poster \{ page: bleed; \}", html)
     assert f'viewBox="{view_box}"' in _section(html, "poster-ATL")
+
+
+def _bar():
+    from scripts.book.posters import ScaleBar
+    return ScaleBar('<svg viewBox="80 1640 520 100"></svg>', 520, 100, 1400, 1850)
+
+
+@pytest.mark.parametrize("page_size, units_per_inch, content_height", [("letter", 1400 / 8.5, 10), ("half-letter", 1850 / 8.5, 7.5)])
+def test_the_scale_bar_is_at_the_posters_scale_at_the_foot_of_the_credits(page_size, units_per_inch, content_height):
+    """A letter page keeps a poster's whole width (it's a little wider in shape); half-letter its whole height."""
+    html = render(scale_bar=_bar(), page_size=page_size)
+    credits = _section(html, "credits")
+    assert '<div class="scale-bar"><svg viewBox="80 1640 520 100"></svg></div>' in credits
+    width, height = 520 / units_per_inch, 100 / units_per_inch
+    assert f"section.credits .scale-bar {{ position: absolute; left: 0; top: {content_height - height:.3f}in; width: {width:.3f}in; }}" in html
+
+
+def test_no_scale_bar_without_one():
+    assert "scale-bar" not in _section(render(), "credits")

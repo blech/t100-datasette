@@ -82,7 +82,8 @@
   <p>Passenger and freight figures: US Bureau of Transportation Statistics, T-100 segment data, {{ first_year }}–{{ last_year }}.
      <span class="url">transtats.bts.gov</span></p>
   <p>Airport posters: Airport Cities, from OpenStreetMap data, © OpenStreetMap contributors. <span class="url">openstreetmap.org/copyright</span></p>
-  <p>All the airport posters are drawn to the same scale.</p>
+  <p>All the airport posters are drawn to the same scale{% if scale_bar %}, shown below{% endif %}.</p>
+  {% if scale_bar %}<div class="scale-bar">{{ scale_bar }}</div>{% endif %}
 </section>
 
 {{ endpaper(endpapers[1]) }}
