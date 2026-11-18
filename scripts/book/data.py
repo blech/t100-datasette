@@ -14,6 +14,7 @@ TOP_DESTINATIONS = 5
 TOP_AIRLINES = 4   # then the others, together
 MARKET_MIN_SHARE = 0.01   # a city market's other airports, named only with at least 1% of this airport's traffic in the page's measure
 
+LB_PER_WORK_LOAD_UNIT = 220.462   # ACI's work load unit: one passenger, or 100 kg of freight
 _COLUMN = {"passengers": "passengers_out + passengers_in", "freight": "freight_out + freight_in"}
 
 
@@ -40,6 +41,10 @@ class BookAirport:
     freight_rank: int | None
     in_passengers: bool
     in_freight: bool
+    measure: str = ""   # the page's: the one it's in the book by, or, in by both, whichever carries more work load units
+
+    def __post_init__(self):
+        self.measure = self.measure or ("passengers" if self.in_passengers else "freight")
 
 
 @dataclass
@@ -77,12 +82,24 @@ def ranks(conn, year: int, measure: str) -> dict[str, int]:
 
 
 def book_airports(conn, year: int, top_passengers: int, top_freight: int) -> list[BookAirport]:
-    """The passenger top N in rank order, then the freight top N that aren't among them, in freight rank order."""
+    """The passenger top N and the freight top N together, busiest first by work load units (ACI's: a passenger, or 100 kg
+    of freight). An airport in both goes by whichever of its passengers and freight is the more units."""
     pax, freight = ranks(conn, year, "passengers"), ranks(conn, year, "freight")
-    in_pax = sorted((c for c, r in pax.items() if r <= top_passengers), key=pax.get)
+    in_pax = {c for c, r in pax.items() if r <= top_passengers}
     in_freight = {c for c, r in freight.items() if r <= top_freight}
-    order = in_pax + sorted(in_freight - set(in_pax), key=freight.get)
-    return [BookAirport(c, pax.get(c), freight.get(c), c in in_pax, c in in_freight) for c in order]
+    codes = sorted(in_pax | in_freight)
+    marks = ",".join("?" for _ in codes)
+    units = {c: (p or 0, (f or 0) / LB_PER_WORK_LOAD_UNIT) for c, p, f in conn.execute(
+        f"""SELECT airport, SUM({_COLUMN['passengers']}), SUM({_COLUMN['freight']}) FROM airport_dir_year
+            WHERE year = ? AND {US_WAC} AND airport IN ({marks}) GROUP BY airport""", (year, *codes))}
+
+    def measure(c):
+        if c in in_pax and c in in_freight:
+            return "freight" if units[c][1] > units[c][0] else "passengers"
+        return "passengers" if c in in_pax else "freight"
+
+    order = sorted(codes, key=lambda c: (-sum(units[c]), c))
+    return [BookAirport(c, pax.get(c), freight.get(c), c in in_pax, c in in_freight, measure(c)) for c in order]
 
 
 def _names(conn, codes):
@@ -133,7 +150,7 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     )]
     by_year = {s.year: s for s in series}
     last = by_year.get(last_year)
-    by = "passengers" if entry.in_passengers else "freight"
+    by = entry.measure
     key = 0 if by == "passengers" else 1
 
     def amount(s):

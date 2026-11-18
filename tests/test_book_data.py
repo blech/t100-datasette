@@ -90,6 +90,39 @@ def test_book_airports_union_and_order(conn):
     assert entries[2] == BookAirport("FFF", 5, 1, False, True)
 
 
+def _work_load_world(db_path):
+    """By work load units (a passenger or 100 kg, 220.462 lb, of freight): FRT 2000, BTH 1500, PAX 1000."""
+    lb = 220.462
+    _insert(db_path, "airport_dir_year", [_year(2025, "PAX", 1000, 0), _year(2025, "BTH", 500, 1000 * lb),
+                                          _year(2025, "FRT", 0, 2000 * lb), _year(2025, "SML", 100, 100 * lb)])
+
+
+def test_book_airports_go_by_work_load_units(db_path):
+    _work_load_world(db_path)
+    conn = sqlite3.connect(db_path)
+    entries = book_airports(conn, 2025, 2, 2)
+    assert [e.code for e in entries] == ["FRT", "BTH", "PAX"]
+    assert [e.measure for e in entries] == ["freight", "freight", "passengers"]   # BTH: in both, more freight than passengers
+
+
+def test_an_airport_in_both_goes_by_whichever_outweighs_the_other(db_path):
+    _work_load_world(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("UPDATE airport_dir_year SET freight_in = ? WHERE airport = 'PAX'", (1500 * 220.462,))   # 1000 passengers, 1500 units
+    entries = {e.code: e for e in book_airports(conn, 2025, 2, 3)}
+    assert entries["BTH"].measure == "freight" and entries["PAX"].measure == "freight"
+    conn.execute("UPDATE airport_dir_year SET passengers_in = 600 WHERE airport = 'BTH'")   # 1100 passengers, 1000 units
+    assert {e.code: e for e in book_airports(conn, 2025, 2, 3)}["BTH"].measure == "passengers"
+
+
+def test_an_airport_in_one_top_list_goes_by_that_measure(db_path):
+    """ONT: in the freight top 50 only, so a freight page, though its passengers outweigh its freight."""
+    _work_load_world(db_path)
+    conn = sqlite3.connect(db_path)
+    entries = {e.code: e for e in book_airports(conn, 2025, 2, 1)}   # BTH is only in the passenger top 2
+    assert entries["BTH"].measure == "passengers" and entries["FRT"].measure == "freight"
+
+
 def test_facts_totals_and_ranks(conn):
     f = _facts(conn, "AAA")
     totals = {s.year: (s.passengers, s.freight_lb) for s in f.series}

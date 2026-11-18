@@ -229,7 +229,7 @@ def _start(measure, first_year):
 def airport_history(conn, entry, ranks, first_year: int, last_year: int, coords=None) -> History:
     """What the page draws: the ranks in the page's measure, and in the other when the airport is in the book by that too;
     the airlines and the distances in the page's measure, for its first and last years."""
-    measure = "passengers" if entry.in_passengers else "freight"
+    measure = entry.measure
     measures = [measure] + [m for m, inside in (("passengers", entry.in_passengers), ("freight", entry.in_freight))
                             if inside and m != measure]
     start = _start(measure, first_year)
