@@ -40,8 +40,8 @@
 <section id="data-{{ p.code }}" class="data">
   <header>
     <h1>{{ p.code }}</h1>
-    <p class="place">{{ p.place }}</p>
     <p class="name">{{ p.name }}</p>
+    <p class="place">{{ p.place }}{% if p.see_also %} (see also {% for c in p.see_also %}<a class="see" href="#data-{{ c }}">{{ c }}</a>{% if not loop.last %}; {% endif %}{% endfor %}){% endif %}</p>
   </header>
   <table class="facts">
   {% for label, value in p.rows %}

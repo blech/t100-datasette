@@ -73,6 +73,29 @@ def test_table_rows_follow_table_rows():
     assert "Metropolitan area" in _section(render([(entry(), facts(market="New York area", market_airports=["JFK", "LGA"]))]), "data-ATL")
 
 
+def _header(html, code):
+    data = _section(html, f"data-{code}")
+    return data[data.index("<header>"):data.index("</header>")]
+
+
+def test_header_code_then_name_then_place():
+    header = _header(render(), "ATL")
+    assert header.index("<h1>ATL</h1>") < header.index('<p class="name">ATL International</p>') < header.index('<p class="place">Atlville, GA')
+    assert "see also" not in header
+
+
+def test_header_sees_also_the_market_airports_in_the_book_in_page_order():
+    airports = [(entry("LAX"), facts("LAX", market_peers=["BUR", "ONT", "SNA"])), (entry("SNA"), facts("SNA", market_peers=["LAX", "ONT"])),
+                (entry("ONT"), facts("ONT", market_peers=["LAX", "SNA"]))]
+    header = _header(render(airports), "LAX")
+    assert re.findall(r'<a class="see" href="#data-(\w+)">', header) == ["SNA", "ONT"]   # page order; BUR isn't in the book
+    assert "(see also " in header and "</a>; <a" in header and header.rstrip().endswith(")</p>")
+
+
+def test_see_also_page_numbers_follow_their_links():
+    assert re.search(r'a\.see::after \{[^}]*content: ", p\. " target-counter\(attr\(href url\), page\)', render())
+
+
 def test_facts_table_rows():
     data = _section(render(), "data-ATL")
     assert re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', data) == [

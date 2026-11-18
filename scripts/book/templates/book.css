@@ -49,8 +49,11 @@ section.contents a::after { float: right; content: target-counter(attr(href url)
 /* data page */
 section.data header h1 { font-size: 2.6em; margin: 0; line-height: 1; }
 section.data header p { margin: 0.15em 0 0; }
-section.data header .place { font-size: 1.1em; }
-section.data header .name { color: #52525b; }
+section.data header .name { font-size: 1.1em; }
+section.data header .place { color: #52525b; }
+/* the market's other airports in the book, each with its page */
+section.data header a.see { color: inherit; text-decoration: none; }
+section.data header a.see::after { content: ", p. " target-counter(attr(href url), page); }
 section.data h2 { font-size: 0.95em; margin: 1.1em 0 0.3em; }
 table { border-collapse: collapse; width: 100%; font-size: 0.85em; }
 table.facts { margin-top: 1em; }

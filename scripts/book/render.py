@@ -148,7 +148,9 @@ def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict, scale: f
         charts.reverse()
     total = sum(w for w, _ in charts)
     return dict(
-        code=f.code, name=f.name, place=f.place, rows=[(label, value) for label, value in rows if value != ""],
+        code=f.code, name=f.name, place=f.place,
+        see_also=[c for c in book if c in f.market_peers],   # the book's dict keeps page order
+        rows=[(label, value) for label, value in rows if value != ""],
         destinations_by=f.measure,
         columns=[name for name, _ in columns],
         destinations=[(d.code, _label(d), [cell(d) for _, cell in columns]) for d in f.destinations],

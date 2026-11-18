@@ -62,6 +62,7 @@ class AirportFacts:
     destinations: list[Destination]
     measure: str   # "passengers" or "freight": what the page ranks destinations and airlines by, and its city market floor
     series: list[YearFigures] = field(default_factory=list)
+    market_peers: list[str] = field(default_factory=list)   # every other airport in its BTS city market, any traffic
     history: object = None   # history.History, its year-by-year ranks, airlines and distances (history.airport_history)
 
 
@@ -151,9 +152,11 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     def destination(o):
         return Destination(o, names.get(o) or bts.get(o) or o, routes[o][0], routes[o][1], countries.get(o) if o in abroad else None)
 
-    market, market_airports = None, []
+    market, market_airports, market_peers = None, [], []
     row = conn.execute("SELECT market_id FROM airport_market WHERE code = ?", (code,)).fetchone()
     if row:
+        market_peers = [r[0] for r in conn.execute(
+            "SELECT DISTINCT code FROM airport_market WHERE market_id = ? AND code != ? ORDER BY code", (row[0], code))]
         floor = MARKET_MIN_SHARE * (amount(last) if last else 0)
         market_airports = [r[0] for r in conn.execute(
             f"""SELECT m.code FROM airport_market AS m JOIN airport_dir_year AS y ON y.airport = m.code AND y.year = ?
@@ -180,7 +183,7 @@ def airport_facts(conn, entry: BookAirport, first_year: int, last_year: int) -> 
     freight_ranks = {y: ranks(conn, y, "freight").get(code) for y in (first_year, last_year)}
     return AirportFacts(
         code=code, name=names.get(code) or code, place=bts.get(code) or "",
-        market=market, market_airports=market_airports if market else [],
+        market=market, market_airports=market_airports if market else [], market_peers=market_peers,
         first_year=first_year, last_year=last_year,
         passenger_rank_first=pax_ranks[first_year], passenger_rank_last=pax_ranks[last_year],
         freight_rank_first=freight_ranks[first_year], freight_rank_last=freight_ranks[last_year],

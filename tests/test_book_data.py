@@ -137,6 +137,12 @@ def test_market_only_when_shared(conn):
     assert b.market is None and b.market_airports == []
 
 
+def test_market_peers_are_every_other_airport_in_the_market(conn):
+    assert _facts(conn, "AAA").market_peers == ["NEW", "TNY"]   # no traffic floor: the page keeps those in the book
+    assert _facts(conn, "BBB").market_peers == []
+    assert _facts(conn, "CCC").market_peers == []   # in no market
+
+
 def test_top_airlines_shares(conn):
     f = _facts(conn, "AAA")
     assert f.airline_groups == 4
