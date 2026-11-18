@@ -125,7 +125,7 @@ function draw() {
     width, height: 340, marginLeft: MARGIN.left, marginRight, marginBottom: 44,
     style: { background: 'transparent', fontSize: '12px' },
     x: { domain: [0, axisMax], label: 'Distance (miles)', labelAnchor: 'center', labelArrow: 'none', tickFormat: (v) => exactCount(v) },
-    y: { ...y, domain: [0, top], grid: true, tickSize: 0 },
+    y: { ...y, domain: [0, top], nice: true, grid: true, tickSize: 0 },
     marks: [
       ...(ghost.length ? [Plot.rectY(ghost, { x1: 'from', x2: 'to', y: 'y', fill: 'currentColor', fillOpacity: 0.14, insetLeft: 0.5, insetRight: 0.5 })] : []),
       Plot.rectY(bars, { x1: 'from', x2: 'to', y: 'y', fill: colours.accent, ...(fine ? {} : { insetLeft: 0.5, insetRight: 0.5 }) }),
