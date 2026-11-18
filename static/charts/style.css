@@ -185,3 +185,8 @@ details.note summary {
     margin-left: 16px;
   }
 }
+
+/* the distances chart: room between its sentence and the y-axis label */
+#distance-chart {
+  margin-top: 16px;
+}

@@ -32,5 +32,5 @@ explore/cubes.duckdb
 static/dist/
 node_modules/
 
-# airport book output (scripts/book)
+# Outputs
 book/out/

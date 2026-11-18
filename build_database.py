@@ -1,6 +1,7 @@
 """Build helpers for the T-100 database: schema, indexes, view, coordinate overrides."""
 import collections
 import csv
+import math
 import re
 import sqlite3
 from pathlib import Path
@@ -148,9 +149,10 @@ CREATE TABLE IF NOT EXISTS "route_year_totals" (
    [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
    PRIMARY KEY ([year], [origin], [dest])
 ) WITHOUT ROWID;
--- Each airport pair's distance in miles (a before b, both directions), as BTS gives it in the last year flown, by rebuild_pair_distance()
+-- Each airport pair's distance in miles (a before b, both directions), as BTS gives it in the last year flown, and the
+-- great-circle distance between the airports' coordinates (gc_distance, empty when either has none), by rebuild_pair_distance()
 CREATE TABLE IF NOT EXISTS "pair_distance" (
-   [a] TEXT, [b] TEXT, [distance] INTEGER,
+   [a] TEXT, [b] TEXT, [distance] INTEGER, [gc_distance] INTEGER,
    PRIMARY KEY ([a], [b])
 ) WITHOUT ROWID;
 -- The airport pairs (a before b, both directions) the routes matrix can list, by year, by rebuild_top_route_year(): any pair in
@@ -217,7 +219,7 @@ def _view_sql():
 
 # derived tables that gained a column: an older copy is dropped (it is only ever rebuilt data) so the rebuild recreates it
 _ADDED_COLUMNS = [("carrier_group", "airline_name"), ("carrier_group_year", "airline_id"), ("aircraft_carrier_year", "airline_id"),
-                  ("top_route_year", "year_rank")]
+                  ("top_route_year", "year_rank"), ("pair_distance", "gc_distance")]
 
 
 def drop_outdated_derived_tables(conn: sqlite3.Connection) -> list:
@@ -562,15 +564,41 @@ def rebuild_route_year_totals(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM route_year_totals").fetchone()[0]
 
 
-def rebuild_pair_distance(conn: sqlite3.Connection) -> int:
+EARTH_RADIUS_MILES = 3958.8
+
+
+def great_circle_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """The great-circle (haversine) distance between two points, in statute miles."""
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    return 2 * EARTH_RADIUS_MILES * math.asin(math.sqrt(h))
+
+
+def airport_coordinates(conn: sqlite3.Connection) -> dict:
+    """Each airport code's (latitude, longitude), as the airports canned query gives them: airport_overrides first, then
+    openflights_airports by IATA code (the lowest id where a code is there twice)."""
+    coords = {}
+    for code, lat, lon in conn.execute(
+            "SELECT iata_code, latitude, longitude FROM openflights_airports WHERE iata_code IS NOT NULL AND iata_code NOT IN ('', '\\N') "
+            "AND latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY id DESC"):
+        coords[code] = (lat, lon)
+    for code, lat, lon in conn.execute("SELECT code, latitude, longitude FROM airport_overrides WHERE latitude IS NOT NULL AND longitude IS NOT NULL"):
+        coords[code] = (lat, lon)
+    return coords
+
+
+def rebuild_pair_distance(conn: sqlite3.Connection, require_coordinates: bool = False) -> int:
     """Recompute pair_distance: each airport pair's distance, both directions together. BTS gives a distance on every segment;
-    a pair's can change when an airport moves (Denver in 1995 kept its code), so the last year flown gives it."""
+    a pair's can change when an airport moves (Denver in 1995 kept its code), so the last year flown gives it. gc_distance is the
+    great-circle distance between the airports' coordinates, to check BTS's by; require_coordinates (a full rebuild) refuses to
+    leave it empty everywhere because the coordinate tables aren't loaded."""
     create_schema(conn)
+    coords = airport_coordinates(conn)
     with conn:
         conn.execute("DELETE FROM pair_distance")
         conn.execute(
             """
-            INSERT INTO pair_distance
+            INSERT INTO pair_distance (a, b, distance)
             SELECT a, b, distance FROM (
               SELECT a, b, distance, ROW_NUMBER() OVER (PARTITION BY a, b ORDER BY year DESC) AS latest
               FROM (SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, year, MAX(distance) AS distance
@@ -578,6 +606,11 @@ def rebuild_pair_distance(conn: sqlite3.Connection) -> int:
             ) WHERE latest = 1
             """
         )
+        pairs = conn.execute("SELECT a, b FROM pair_distance").fetchall()
+        if require_coordinates and pairs and not coords:
+            raise RuntimeError("pair_distance needs openflights_airports / airport_overrides loaded")
+        conn.executemany("UPDATE pair_distance SET gc_distance = ? WHERE a = ? AND b = ?",
+                         [(round(great_circle_miles(*coords[a], *coords[b])), a, b) for a, b in pairs if a in coords and b in coords])
     return conn.execute("SELECT COUNT(*) FROM pair_distance").fetchone()[0]
 
 
@@ -928,7 +961,7 @@ def rebuild_derived_tables(conn: sqlite3.Connection) -> dict:
         "family_detail_year": rebuild_family_detail_year(conn),
         "aircraft_carrier_year": rebuild_aircraft_carrier_year(conn),
         "route_year_totals": rebuild_route_year_totals(conn),
-        "pair_distance": rebuild_pair_distance(conn),
+        "pair_distance": rebuild_pair_distance(conn, require_coordinates=True),
         "top_route_year": rebuild_top_route_year(conn),
         "airport_dir_year": rebuild_airport_dir_year(conn),
         "airport_carrier_dir_year": rebuild_airport_carrier_dir_year(conn),

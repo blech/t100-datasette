@@ -1,4 +1,5 @@
 from tests.helpers import add_segments, get_json, make_datasette, rolled_json
+from tests.test_rollup_queries import put
 
 
 def seg(origin, dest, year, deps, pax, seats=100, freight=0, month=1):
@@ -6,8 +7,8 @@ def seg(origin, dest, year, deps, pax, seats=100, freight=0, month=1):
                 passengers=pax, seats=seats, freight=freight)
 
 
-def rows(ds, origin="ATL", min_deps=None, dir="out"):
-    extra = "" if min_deps is None else f"&min_deps={min_deps}"
+def rows(ds, origin="ATL", min_deps=None, dir="out", year=None):
+    extra = ("" if min_deps is None else f"&min_deps={min_deps}") + ("" if year is None else f"&year={year}")
     body = rolled_json(ds, f"/t100/routes_by_year.json?origin={origin}&dir={dir}{extra}&_shape=objects")
     assert body["truncated"] is False
     return {(r["dest"], r["year"]): r for r in body["rows"]}
@@ -125,3 +126,17 @@ def test_service_is_majority_over_counted_directions(ds, db_path):
     add_segments(db_path, "t100_international", [seg("ATL", "YYZ", 2019, 20, 1)])
     add_segments(db_path, "t100_domestic", [seg("YYZ", "ATL", 2019, 30, 1)])
     assert [rows(ds, dir=d)[("YYZ", 2019)]["service"] for d in ("out", "in", "")] == ["international", "domestic", "domestic"]
+
+
+def test_rows_carry_the_great_circle_distance(ds, db_path):
+    put(db_path, "pair_distance", [dict(a="ATL", b="LAX", distance=1946, gc_distance=1950)])
+    add_segments(db_path, "t100_domestic", [seg("ATL", "LAX", 2018, 100, 10000)])
+    r = rows(ds)[("LAX", 2018)]
+    assert r["distance"] == 1946 and r["gc_distance"] == 1950
+
+
+def test_year_limits_the_rows_to_one_year(ds, db_path):
+    add_segments(db_path, "t100_domestic", [seg("ATL", "LAX", 2017, 100, 10000), seg("ATL", "LAX", 2018, 100, 10000)])
+    assert set(rows(ds, year=2018)) == {("LAX", 2018)}
+    assert set(rows(ds, year="")) == {("LAX", 2017), ("LAX", 2018)}
+    assert set(rows(ds)) == {("LAX", 2017), ("LAX", 2018)}

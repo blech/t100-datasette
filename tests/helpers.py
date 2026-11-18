@@ -24,6 +24,11 @@ def _insert(db_path, table, rows):
     conn.close()
 
 
+def add_coordinates(db_path, codes):
+    """One openflights row per airport code, at made-up distinct coordinates, so a full rebuild can fill pair_distance."""
+    _insert(db_path, "openflights_airports", [dict(id=i, iata_code=c, latitude=10.0 + i, longitude=20.0 + i) for i, c in enumerate(codes, 1)])
+
+
 def add_segments(db_path, table, rows):
     for row in rows:
         unknown = set(row) - set(_NAMES)

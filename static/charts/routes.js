@@ -28,7 +28,7 @@ const state = {
   group: pick('group', ['airport', 'city'], defaultGroup),
   year: null, // the year ranking the destinations, or null for all years; read from the address once the rows are in
   flown: pick('flown', FLOWN, 'ever'),
-  scale: pick('scale', ['absolute', 'year', 'busiest'], 'absolute'),
+  scale: pick('scale', ['absolute', 'year', 'busiest', 'row'], 'absolute'),
   open: (params.get('open') || '').split(',').filter(Boolean),
 };
 let rows = [];
@@ -119,9 +119,9 @@ function cityHref(other, year = null, airport = null) {
   return `/airports/cities/${market}/${other}${q.size ? `?${q}` : ''}`;
 }
 const relative = () => state.scale !== 'absolute';
-const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak' }[state.scale]);
+const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak', row: 'rowPeak' }[state.scale]);
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
-const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination` });
+const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination`, row: `% of the row's best year` });
 const colourScale = (cells) => (relative()
   ? { type: 'sqrt', scheme: 'YlOrRd', label: SCALE_LEGEND()[state.scale], tickFormat: percentTicks(Math.max(0, ...cells.map((c) => c[fillField()]))) }
   : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) });
@@ -130,6 +130,7 @@ const cellRows = (c) => [
   { label: MATRIX_MEASURES[state.measure], value: measureFormat(state.measure, formatCount)(c.value) },
   ...(state.scale === 'year' ? [{ label: 'Share of the year', value: fmtPct(c.share) }] : []),
   ...(state.scale === 'busiest' ? [{ label: "Of the year's top", value: fmtPct(c.peak) }] : []),
+  ...(state.scale === 'row' ? [{ label: 'Of its best year', value: fmtPct(c.rowPeak) }] : []),
 ];
 const unit = () => MATRIX_MEASURES[state.measure].toLowerCase();
 
@@ -217,6 +218,7 @@ function draw() {
     absolute: '',
     year: `Colour shows each destination's share of ${here}'s ${unit()} in that year, counting every destination (not just those listed), not the amount itself. A route can keep its colour while carrying more if the airport grew as fast. Hover over a cell for both.`,
     busiest: `Colour compares each cell with ${here}'s top ${state.group === 'city' ? 'city' : 'destination'} that year, the one with the most ${unit()}: the top one is 100%, one with half as many ${unit()} is 50%. Each year is judged on its own, so colours show how a destination ranked then, not how much it carried. Hover over a cell for both.`,
+    row: `Colour compares each cell with its own row's best year: that year is 100%, one with half as many ${unit()} is 50%. Each destination is judged on its own, so a small one is as dark at its peak as a big one, and the colours show when it grew or faded, not how big it is. Hover over a cell for both.`,
   }[state.scale];
   $('matrix-rank').value = state.year === null ? '' : String(state.year);
   $('flown-note').innerHTML = {
