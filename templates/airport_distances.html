@@ -4,8 +4,9 @@
 {% block title %}{% if origin %}{{ origin }} distances{% else %}Distances of flight segments{% endif %}{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
+  <link rel="stylesheet" href="/static/common/yearbar.css">
 {% endblock %}
-{% block body_attrs %}{% if origin %} data-origin="{{ origin }}" data-dir="{{ dir }}"{% endif %} data-year="{{ year }}" data-axis-max="{{ axis_max }}" data-bin="{{ bin_miles }}" data-ratio="{{ ratio }}" data-miles="{{ miles }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
+{% block body_attrs %}{% if origin %} data-origin="{{ origin }}" data-dir="{{ dir }}"{% endif %} data-year="{{ year }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}" data-axis-max="{{ axis_max }}" data-bin="{{ bin_miles }}" data-ratio="{{ ratio }}" data-miles="{{ miles }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
 
 {% block content %}
   {% if origin %}
@@ -13,18 +14,27 @@
     <p class="intro" id="subtitle">{{ label }}</p>
     {% include "_foreign_note.html" %}
     <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
-    <h2>Distances of flight segments {{ {"out": "from", "in": "to"}.get(dir, "from and to") }} {{ origin }} in {{ year }}</h2>
+    <h2>Distances of flight segments {{ {"out": "from", "in": "to"}.get(dir, "from and to") }} {{ origin }} in <span id="distance-year">{{ year }}</span></h2>
   {% else %}
     <h1 id="title">Distances</h1>
-    <p class="intro" id="subtitle">How far every flight segment in {{ year }} went, between every pair of airports. Each airport's distances page has the same scale, so its shape compares with this one.</p>
-    <h2>Distances of all flight segments in {{ year }}</h2>
+    <p class="intro" id="subtitle">How far every flight segment went in a year, between every pair of airports. Each airport's distances page has the same scale, so its shape compares with this one.</p>
+    <h2>Distances of all flight segments in <span id="distance-year">{{ year }}</span></h2>
   {% endif %}
     <p class="chart-sentence" id="distance-summary"></p>
     <p class="chart-sentence">
-      Show <select id="ds-measure" aria-label="Measure"></select> by the distance of each flight segment, in <select id="ds-bars" aria-label="Bars"></select>.
+      Show <select id="ds-measure" aria-label="Measure"></select> by the distance of each flight segment, in <select id="ds-bars" aria-label="Bars"></select>, as <select id="ds-scale" aria-label="Scale"><option value="share">shares of the year</option><option value="count">counts</option></select>.
     </p>
     <div id="distance-chart" aria-live="polite">Loading chart…</div>
-    <p class="note" id="distance-note">A flight segment is one takeoff and landing: a passenger who changes planes counts on each segment, and a one-stop flight is two. Distances are BTS's, checked against the airports' coordinates. {% if origin %}Every airport's chart has{% else %}This chart and every airport's have{% endif %} the same scale, up to the longest segment flown in {{ year }}.</p>
+    <div class="year-bar">
+      <button id="play" type="button" aria-label="Play through the years">▶</button>
+      <div id="range">
+        <div id="range-fill"></div>
+        <input id="year-from" type="range" min="0" max="0" value="0" step="1" aria-label="Compare with this year">
+        <input id="year" type="range" min="0" max="0" value="0" step="1" aria-label="Year">
+      </div>
+      <span id="year-label">{{ year }}</span>
+    </div>
+    <p class="note" id="distance-note">A flight segment is one takeoff and landing: a passenger who changes planes counts on each segment, and a one-stop flight is two. Distances are BTS's, checked against the airports' coordinates. {% if origin %}Every airport's chart has{% else %}This chart and every airport's have{% endif %} the same scale in every year, up to the longest segment flown at least 12 times in a year. Play steps through the years; move the hollow handle back to outline an earlier year's shape over the bars, and ← → step a year.</p>
 {% endblock %}
 
 {% block scripts %}

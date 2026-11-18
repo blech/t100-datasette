@@ -705,7 +705,7 @@ async def airport_rank_line(datasette, origin, foreign):
 
 def airport_view(template, crumb, extra=None):
     """One of an airport's views: its charts over time (no crumb of its own), its destinations matrix, its distances, or what
-    changed. extra, if given, is an async (datasette, origin) -> dict of more for the template."""
+    changed. extra, if given, is an async (datasette, origin, request) -> dict of more for the template."""
 
     async def view(datasette, request):
         origin = request.url_vars["origin"].upper()
@@ -726,7 +726,7 @@ def airport_view(template, crumb, extra=None):
                 "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, await is_foreign(datasette, origin)),
                 "rank_line": await airport_rank_line(datasette, origin, await is_foreign(datasette, origin)) if template == "airport.html" else "",
                 **airport_direction(request),
-                **(await extra(datasette, origin) if extra else {}),
+                **(await extra(datasette, origin, request) if extra else {}),
             },
             request=request,
         )
@@ -740,10 +740,23 @@ routes_page = airport_view("routes.html", "destinations")
 airport_changes_page = airport_view("airport_changes.html", "changes")
 
 
-async def distances_context(datasette, origin):
-    """The distances page's year (the latest full one), the x-axis every airport shares, its bins, and the check's margins."""
-    year = (datasette.plugin_config("t100_globe") or {}).get("max_year", 2025)
-    return {"year": year, "axis_max": await axis_max(datasette), "bin_miles": BIN_MILES, **check_margins(datasette)}
+def distances_year(request, first, last):
+    """The year a distances page opens on: ?year= when it is one of the page's years, else the last of them."""
+    try:
+        year = int(request.args.get("year", ""))
+    except ValueError:
+        return last
+    return year if first <= year <= last else last
+
+
+async def distances_context(datasette, origin, request):
+    """A distances page's years (the airport's own, or every year in the data, up to the latest full one), the year it opens on,
+    the x-axis every chart shares, its bins, and the check's margins."""
+    min_year, max_year = year_range(datasette)
+    first, last = (await airport_years(datasette, origin)) if origin else (min_year, max_year)
+    first, last = max(first or min_year, min_year), min(last or max_year, max_year)
+    return {"year": distances_year(request, first, last), "first_year": first, "last_year": last,
+            "axis_max": await axis_max(datasette), "bin_miles": BIN_MILES, **check_margins(datasette)}
 
 
 airport_distances_page = airport_view("airport_distances.html", "distances", distances_context)
@@ -753,7 +766,8 @@ async def overall_distances_page(datasette, request):
     """Every flight segment of the latest full year by distance, on the axis the airports' distances pages share."""
     html = await datasette.render_template(
         "airport_distances.html",
-        {"origin": None, "crumbs": trail(datasette, ("airports", "/airports"), ("distances", None)), **await distances_context(datasette, None)},
+        {"origin": None, "crumbs": trail(datasette, ("airports", "/airports"), ("distances", None)),
+         **await distances_context(datasette, None, request)},
         request=request,
     )
     return Response.html(html)

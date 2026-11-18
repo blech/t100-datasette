@@ -3,6 +3,7 @@
 {% block title %}{{ origin }} routes{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="/static/globe/style.css">
+  <link rel="stylesheet" href="/static/common/yearbar.css">
 {% endblock %}
 {% block body_attrs %} data-origin="{{ origin }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
 
