@@ -77,7 +77,7 @@ def bar_chart(points, *, first_year, last_year, color, label, scale=1.0):
 
 # The full-width charts: 820 units across the page's text width, so 12-unit type comes out the size of the bar charts'
 WIDE = 820
-HALF = 400   # a chart in half the text width, at the same scale as a WIDE one (render.py leaves the 20 between them)
+HALF = 394   # a chart in 48% of the text width, at the same scale as a WIDE one: a 4% gap between two, as the bar charts have
 COLORS = {"passengers": PASSENGER_COLOR, "freight": FREIGHT_COLOR}
 LABELS = {"passengers": "Passengers", "freight": "Freight"}
 TRACK = "#f4f4f5"
@@ -104,7 +104,7 @@ def _runs(points, x_of, y_of):
     return "".join(d)
 
 
-YEAR_LABEL_GAP = 28   # a year label is about 25 units wide
+YEAR_LABEL_GAP = 36   # a year label is about 27 units wide, and needs a little room on each side
 
 
 def _year_labels(first_year, last_year, x_of, y):

@@ -117,10 +117,11 @@ def test_rank_and_airlines_side_by_side_or_one_above_the_other():
     split = _section(render(), "data-ATL")
     block = split[split.index('<div class="history split">'):split.index('class="charts"')]
     assert block.index('class="chart ranks"') < block.index('class="chart airlines"')
-    assert 'viewBox="0 0 400 ' in block and 'viewBox="0 0 820 ' not in block   # each chart half the width
+    assert 'viewBox="0 0 394 ' in block and 'viewBox="0 0 820 ' not in block   # each chart half the width, less the gap the bar charts have
     wide = _section(render(history="wide"), "data-ATL")
     block = wide[wide.index('<div class="history wide">'):wide.index('class="charts"')]
-    assert 'viewBox="0 0 820 ' in block and 'viewBox="0 0 400 ' not in block
+    assert 'viewBox="0 0 820 ' in block and 'viewBox="0 0 394 ' not in block
+    assert '.history.split .part { width: 48.05%; }' in render()
     with pytest.raises(ValueError):
         render(history="sideways")
 

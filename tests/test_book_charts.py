@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from scripts.book.charts import (FREIGHT_COLOR, PASSENGER_COLOR, airline_sparklines, bar_chart, chart_width, distance_rows,
+from scripts.book.charts import (FREIGHT_COLOR, HALF, PASSENGER_COLOR, airline_sparklines, bar_chart, chart_width, distance_rows,
                                  rank_chart)
 from scripts.book.format import MILLIONS
 from scripts.book.history import AirlineHistory, AirlineLine, DistanceRow, End
@@ -160,11 +160,12 @@ def test_both_history_charts_can_be_drawn_narrower(width):
         _within(svg, width)
 
 
-def test_a_short_sparkline_keeps_its_year_labels_apart():
-    svg = ET.fromstring(airline_sparklines(_history(), first_year=1990, last_year=2025, color=PASSENGER_COLOR, width=400))
+@pytest.mark.parametrize("first", [1990, 2003])
+def test_a_short_sparkline_keeps_its_year_labels_apart(first):
+    svg = ET.fromstring(airline_sparklines(_history(), first_year=first, last_year=2025, color=PASSENGER_COLOR, width=HALF))
     xs = sorted(float(t.get("x")) for t in svg.iter(f"{NS}text") if t.get("class") == "x-label")
-    assert _texts(svg, "x-label")[0] == "1990" and _texts(svg, "x-label")[-1] == "2025"
-    assert all(b - a >= 28 for a, b in zip(xs, xs[1:]))
+    assert _texts(svg, "x-label")[0] == str(first) and _texts(svg, "x-label")[-1] == "2025"
+    assert all(b - a >= 36 for a, b in zip(xs, xs[1:]))
 
 
 def test_a_sparkline_row_is_0_to_100_percent_of_its_height():

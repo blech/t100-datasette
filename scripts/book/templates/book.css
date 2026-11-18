@@ -62,11 +62,11 @@ table.destinations th, table.destinations td { padding: 0.1em 0.6em 0.1em 0; }
 table.destinations tr > :last-child { padding-right: 0; }
 table.destinations .code { font-weight: 700; width: 3em; }
 table.destinations .num { text-align: right; white-space: nowrap; }
-/* the rank chart and the airlines: side by side, each drawn HALF (400) of WIDE (820) units wide, or one above the other */
+/* the rank chart and the airlines: side by side, each drawn HALF (394) of WIDE (820) units wide, 4% apart like the bar charts, or one above the other */
 .history.split { display: flex; justify-content: space-between; align-items: flex-start; }
-.history.split .part { width: 48.78%; }
+.history.split .part { width: 48.05%; }
 /* the two charts side by side; their look is set inside the SVG (charts.py) */
-.charts { margin-top: 1.4em; display: flex; justify-content: space-between; }
+.charts { margin-top: 2.6em; display: flex; justify-content: space-between; }
 /* each box's width is set in the HTML, in proportion to its chart's span (render.py) */
 svg.chart { display: block; width: 100%; height: auto; }
 /* the distance rows: at the foot of the text area, just above the page number (placed from the top, render.distances_top),
