@@ -96,7 +96,7 @@ def test_see_also_page_numbers_follow_their_links():
 def test_the_page_in_order_destinations_ranks_airlines_charts():
     data = _section(render(), "data-ATL")
     order = [data.index(s) for s in ('class="destinations"', "<h2>Rank over time</h2>", 'class="chart ranks"',
-                                     "<h2>Share of passengers by airline</h2>", 'class="chart airlines"', 'class="charts"')]
+                                     "<h2>Biggest airlines by passengers, 1990–2025</h2>", 'class="chart airlines"', 'class="charts"')]
     assert order == sorted(order)
     assert "Top airlines" not in data
 
@@ -107,9 +107,22 @@ def test_the_rank_chart_draws_what_the_history_holds():
     assert 'class="line line-passengers"' in chart and 'class="line line-freight"' in chart
 
 
-def test_a_freight_page_names_freight_for_its_airlines():
+def test_the_airlines_heading_names_the_measure_and_the_span():
+    assert "<h2>Biggest airlines by passengers, 1990–2025</h2>" in _section(render(), "data-ATL")
     data = _section(render([(entry(), facts(measure="freight"))]), "data-ATL")
-    assert "<h2>Share of freight by airline</h2>" in data
+    assert "<h2>Biggest airlines by freight, 2003–2025</h2>" in data
+
+
+def test_rank_and_airlines_side_by_side_or_one_above_the_other():
+    split = _section(render(), "data-ATL")
+    block = split[split.index('<div class="history split">'):split.index('class="charts"')]
+    assert block.index('class="chart ranks"') < block.index('class="chart airlines"')
+    assert 'viewBox="0 0 400 ' in block and 'viewBox="0 0 820 ' not in block   # each chart half the width
+    wide = _section(render(history="wide"), "data-ATL")
+    block = wide[wide.index('<div class="history wide">'):wide.index('class="charts"')]
+    assert 'viewBox="0 0 820 ' in block and 'viewBox="0 0 400 ' not in block
+    with pytest.raises(ValueError):
+        render(history="sideways")
 
 
 def test_distances_at_the_foot_of_the_page_or_in_the_flow():

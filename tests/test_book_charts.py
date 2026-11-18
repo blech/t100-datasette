@@ -129,11 +129,42 @@ def _history():
                           others=AirlineLine("Others", {1990: 0.2, 2025: 0.28}, 0.28), others_count=12)
 
 
-def test_airline_sparklines_a_row_each_with_the_last_share():
+def test_airline_sparklines_a_row_each_with_the_first_and_last_shares_under_their_years():
     svg = ET.fromstring(airline_sparklines(_history(), first_year=1990, last_year=2025, color=PASSENGER_COLOR))
     assert _texts(svg, "airline") == ["Delta Air Lines", "Fish & Chips Air", "Others (12)"]
-    assert _texts(svg, "share") == ["72.0%", "0.0%", "28.0%"]
+    assert _texts(svg, "share") == ["50.0%", "72.0%", "30.0%", "0.0%", "20.0%", "28.0%"]
+    assert _texts(svg, "share-year") == ["1990", "2025"]
     assert len(_lines(svg)) == 3
+
+
+def test_an_airline_absent_in_the_first_year_has_a_dash_there():
+    h = AirlineHistory([AirlineLine("New Air", {2025: 0.4}, 0.4)], None, 0)
+    svg = ET.fromstring(airline_sparklines(h, first_year=1990, last_year=2025, color=PASSENGER_COLOR))
+    assert _texts(svg, "share") == ["—", "40.0%"]
+
+
+def _within(svg, width):
+    for el in svg.iter():
+        if el.tag == f"{NS}rect":
+            assert float(el.get("x")) + float(el.get("width")) <= width + 0.01
+        if el.tag == f"{NS}text":
+            assert float(el.get("x")) <= width + 0.01
+
+
+@pytest.mark.parametrize("width", [400, 820])
+def test_both_history_charts_can_be_drawn_narrower(width):
+    ranks = ET.fromstring(rank_chart({"passengers": [(1990, 5), (2025, 6)]}, first_year=1990, last_year=2025, width=width))
+    airlines = ET.fromstring(airline_sparklines(_history(), first_year=1990, last_year=2025, color=PASSENGER_COLOR, width=width))
+    for svg in (ranks, airlines):
+        assert svg.get("viewBox").split()[2] == str(width)
+        _within(svg, width)
+
+
+def test_a_short_sparkline_keeps_its_year_labels_apart():
+    svg = ET.fromstring(airline_sparklines(_history(), first_year=1990, last_year=2025, color=PASSENGER_COLOR, width=400))
+    xs = sorted(float(t.get("x")) for t in svg.iter(f"{NS}text") if t.get("class") == "x-label")
+    assert _texts(svg, "x-label")[0] == "1990" and _texts(svg, "x-label")[-1] == "2025"
+    assert all(b - a >= 28 for a, b in zip(xs, xs[1:]))
 
 
 def test_a_sparkline_row_is_0_to_100_percent_of_its_height():

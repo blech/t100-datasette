@@ -77,13 +77,14 @@ def bar_chart(points, *, first_year, last_year, color, label, scale=1.0):
 
 # The full-width charts: 820 units across the page's text width, so 12-unit type comes out the size of the bar charts'
 WIDE = 820
+HALF = 400   # a chart in half the text width, at the same scale as a WIDE one (render.py leaves the 20 between them)
 COLORS = {"passengers": PASSENGER_COLOR, "freight": FREIGHT_COLOR}
 LABELS = {"passengers": "Passengers", "freight": "Freight"}
 TRACK = "#f4f4f5"
 
 
-def _svg(height, cls):
-    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDE} {height:g}" width="100%" class="chart {cls}">'
+def _svg(height, cls, width=WIDE):
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height:g}" width="100%" class="chart {cls}">'
 
 
 def _text(cls, x, y, body, anchor="start", size=12, fill=MUTED, extra=""):
@@ -103,22 +104,31 @@ def _runs(points, x_of, y_of):
     return "".join(d)
 
 
+YEAR_LABEL_GAP = 28   # a year label is about 25 units wide
+
+
 def _year_labels(first_year, last_year, x_of, y):
-    years = sorted({y for y in range(first_year, last_year + 1) if y % 10 == 0} | {first_year, last_year})
+    """The first and last years, and the decades between that keep clear of them and of each other."""
+    years = [first_year]
+    for decade in range(first_year + 1, last_year):
+        if decade % 10 == 0 and x_of(decade) - x_of(years[-1]) >= YEAR_LABEL_GAP <= x_of(last_year) - x_of(decade):
+            years.append(decade)
+    if last_year != first_year:
+        years.append(last_year)
     return [_text("x-label", x_of(year), y, year, anchor="middle") for year in years]
 
 
 RANK_FLOOR = 50   # the book's own cut: the chart shows ranks 1 to 50 only
 
 
-def rank_chart(series, *, first_year, last_year):
+def rank_chart(series, *, first_year, last_year, width=WIDE):
     """series: measure -> [(year, rank or None)], the page's measure first, drawn solid; the other dotted. Rank 1 at the top,
     50 at the foot; a year ranked below 50 breaks the line, like a year without a rank."""
     height, left, right, top, bottom = 130, 34, 18, 22, 20
     floor = RANK_FLOOR
     ticks = [1] + list(range(10, floor + 1, 10))
     series = {m: [(y, r if r and r <= floor else None) for y, r in points] for m, points in series.items()}
-    slot = (WIDE - left - right) / (last_year - first_year + 1)
+    slot = (width - left - right) / (last_year - first_year + 1)
     plot_h = height - top - bottom
 
     def x_of(year):
@@ -127,10 +137,10 @@ def rank_chart(series, *, first_year, last_year):
     def y_of(r):
         return top + (r - 1) / (floor - 1) * plot_h
 
-    out = [_svg(height, "ranks")]
+    out = [_svg(height, "ranks", width)]
     for tick in ticks:
         y = y_of(tick)
-        out.append(f'<line class="grid" x1="{left}" x2="{WIDE - right}" y1="{y:.2f}" y2="{y:.2f}" stroke="{RULE}" stroke-width="0.8"/>')
+        out.append(f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y:.2f}" y2="{y:.2f}" stroke="{RULE}" stroke-width="0.8"/>')
         out.append(_text("y-label", left - 6, y + 3, tick, anchor="end"))
     x = left   # the legend, along the top
     for i, (measure, points) in enumerate(series.items()):
@@ -146,31 +156,37 @@ def rank_chart(series, *, first_year, last_year):
     return "".join(out)
 
 
-def airline_sparklines(history, *, first_year, last_year, color):
-    """A row per airline, then the others: its name, its share of the airport's traffic year by year as a line with 0 at the
-    row's foot and 100% at its head, and the last year's share."""
+def airline_sparklines(history, *, first_year, last_year, color, width=WIDE):
+    """A row per airline, then the others: its name, its share of the airport's traffic year by year as a short line with 0
+    at the row's foot and 100% at its head, and its shares in the first and last years, under those years."""
     from scripts.book.format import share
 
-    name_w, share_w, row_h, gap, foot = 190, 60, 20, 5, 18
+    narrow = width < WIDE
+    name_w, share_w, row_h, gap, head, foot = (150 if narrow else 260), 50, 20, 5, 16, 18
     lines = list(history.lines) + ([history.others] if history.others else [])
-    height = len(lines) * (row_h + gap) + foot
-    left, right = name_w, WIDE - share_w
+    height = head + len(lines) * (row_h + gap) + foot
+    left = name_w
+    right = left + min(300, width - name_w - 2 * share_w - 12)
+    columns = (width - share_w, width)   # where the first and last years' shares end
     slot = (right - left) / (last_year - first_year + 1)
 
     def x_of(year):
         return left + (year - first_year + 0.5) * slot
 
-    out = [_svg(height, "airlines")]
+    out = [_svg(height, "airlines", width)]
+    for x, year in zip(columns, (first_year, last_year)):
+        out.append(_text("share-year", x, 10, year, anchor="end"))
     for i, line in enumerate(lines):
-        top = i * (row_h + gap)
+        top = head + i * (row_h + gap)
         name = f"Others ({history.others_count:,})" if line is history.others else line.name
         out.append(_text("airline", 0, top + row_h / 2 + 4, escape(name), fill=INK))
-        out.append(f'<rect class="row" x="{left}" y="{top}" width="{right - left}" height="{row_h}" fill="{TRACK}"/>')
+        out.append(f'<rect class="row" x="{left}" y="{top}" width="{right - left:.2f}" height="{row_h}" fill="{TRACK}"/>')
         points = [(y, line.shares.get(y)) for y in range(first_year, last_year + 1)]
         d = _runs(points, x_of, lambda s, top=top: top + (1 - s) * row_h)
         out.append(f'<path class="line" d="{d}" fill="none" stroke="{color}" stroke-width="1.6" stroke-linejoin="round" '
                    f'stroke-linecap="round"/>')
-        out.append(_text("share", WIDE, top + row_h / 2 + 4, share(line.last_share), anchor="end", fill=INK))
+        for x, value in zip(columns, (line.shares.get(first_year), line.last_share)):
+            out.append(_text("share", x, top + row_h / 2 + 4, share(value), anchor="end", fill=INK))
     out.extend(_year_labels(first_year, last_year, x_of, height - 4))
     out.append("</svg>")
     return "".join(out)

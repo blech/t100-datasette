@@ -8,7 +8,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
-from scripts.book.charts import (COLORS, FREIGHT_COLOR, PASSENGER_COLOR, WIDE, airline_sparklines, bar_chart, chart_width,
+from scripts.book.charts import (COLORS, HALF, FREIGHT_COLOR, PASSENGER_COLOR, WIDE, airline_sparklines, bar_chart, chart_width,
                                  distance_rows, distance_rows_height, rank_chart)
 from scripts.book.data import AirportFacts, BookAirport
 from scripts.book.format import dense_count, tons
@@ -28,6 +28,7 @@ H2_LINES = 0.95 * (1.3 + 0.3)   # a data page h2 with no top margin, in root ems
 ENDPAPERS = ("posters", "diagrams", "codes")
 # where the distance rows go: at the foot of the data page, just above its number, or straight after the charts
 DISTANCES = ("foot", "flow")
+HISTORIES = ("split", "wide")   # rank and airlines side by side, half the width each, or one above the other
 DISTANCE_SCALE = 10_000   # miles, unless a route in the book is longer
 DISTANCE_TITLES = {"passengers": "How far its passengers fly", "freight": "How far its freight flies"}
 
@@ -86,7 +87,7 @@ def _cover(svg: str) -> str:
     return _SVG_ROOT.sub('<svg preserveAspectRatio="xMidYMid slice"', svg, count=1)
 
 
-def _history(f: AirportFacts, distance_scale: float) -> dict:
+def _history(f: AirportFacts, distance_scale: float, layout: str = "split") -> dict:
     """The year-by-year parts: ranks, airlines' shares and distances, all in the page's measure (ranks in both, when the
     airport is in the book by both)."""
     h = f.history
@@ -95,10 +96,13 @@ def _history(f: AirportFacts, distance_scale: float) -> dict:
     first = min((points[0][0] for points in h.ranks.values() if points), default=f.first_year)
     airline_first = max(f.first_year, FREIGHT_FIRST_YEAR) if f.measure == "freight" else f.first_year
     color = COLORS[f.measure]
+    width = HALF if layout == "split" else WIDE
     return dict(
-        rank_chart=Markup(rank_chart(h.ranks, first_year=first, last_year=f.last_year)),
-        airlines_chart=Markup(airline_sparklines(h.airlines, first_year=airline_first, last_year=f.last_year, color=color))
+        rank_chart=Markup(rank_chart(h.ranks, first_year=first, last_year=f.last_year, width=width)),
+        airlines_chart=Markup(airline_sparklines(h.airlines, first_year=airline_first, last_year=f.last_year, color=color,
+                                                 width=width))
         if h.airlines.lines else None,
+        airlines_title=f"Biggest airlines by {f.measure}, {airline_first}–{f.last_year}",
         distances_chart=Markup(distance_rows(h.distances, scale=distance_scale, color=color)) if h.distances else None,
         distances_title=DISTANCE_TITLES[f.measure],
     )
@@ -110,7 +114,7 @@ def distance_scale(airports) -> float:
     return max([DISTANCE_SCALE, *longest])
 
 
-def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict, scale: float = DISTANCE_SCALE):
+def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict, scale: float = DISTANCE_SCALE, layout: str = "split"):
     columns = [("Passengers", lambda d: dense_count(d.passengers)), ("Freight", lambda d: tons(d.freight_lb))]
     freight_first = max(f.first_year, FREIGHT_FIRST_YEAR)
     charts = [
@@ -131,7 +135,7 @@ def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict, scale: f
         destinations_by=f.measure,
         columns=[name for name, _ in columns],
         destinations=[(d.code, _label(d), [cell(d) for _, cell in columns]) for d in f.destinations],
-        **_history(f, scale),
+        **_history(f, scale, layout),
         # widths in proportion to the charts' own, so their bars come out the same width (charts.SLOT)
         charts=[dict(width=f"{w / total * (100 - CHART_GAP):.3f}", svg=Markup(svg)) for w, svg in charts],
         poster=Markup(poster),
@@ -149,7 +153,7 @@ def _tiles(kind, side, codes, posters, diagrams):
 def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[str, str], *, page_size: str = "letter",
               title: str = "US airports", subtitle: str = "", endpapers: tuple[str, str] = ("posters", "codes"),
               diagrams: dict[str, str] | None = None, endpaper_posters: dict[str, str] | None = None,
-              distances: str = "foot") -> str:
+              distances: str = "foot", history: str = "split") -> str:
     """posters: code -> the poster facing its data page, cropped here to the page's shape to fill it. endpaper_posters:
     code -> the plainer one for a poster endpaper (aeroways and roads, no railways or labels). distances: where the
     distance rows go (DISTANCES)."""
@@ -157,6 +161,8 @@ def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[st
         raise ValueError(f"unknown page size {page_size!r}: one of {', '.join(PAGE_SIZES)}")
     if distances not in DISTANCES:
         raise ValueError(f"unknown distances position {distances!r}: one of {', '.join(DISTANCES)}")
+    if history not in HISTORIES:
+        raise ValueError(f"unknown history layout {history!r}: one of {', '.join(HISTORIES)}")
     for kind in endpapers:
         if kind not in ENDPAPERS:
             raise ValueError(f"unknown endpaper {kind!r}: one of {', '.join(ENDPAPERS)}")
@@ -179,9 +185,10 @@ def book_html(airports: list[tuple[BookAirport, AirportFacts]], posters: dict[st
     return env.get_template("book.html").render(
         css=Markup(css), title=title, subtitle=subtitle,
         first_year=first.first_year if first else "", last_year=first.last_year if first else "",
-        pages=[_page(e, f, crop(posters[e.code], _inches(width) / _inches(height)), book, distance_scale(airports))
+        pages=[_page(e, f, crop(posters[e.code], _inches(width) / _inches(height)), book, distance_scale(airports), history)
                for e, f in airports],
         distances=distances,
+        history=history,
         grid=grid,
         alphabetical=sorted(codes),   # the endpapers: an index in their own order, not the contents again
         endpapers=[dict(side=side, kind=kind, tiles=_tiles(kind, side, sorted(codes), endpaper_posters, diagrams))

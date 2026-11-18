@@ -52,14 +52,14 @@
   {% endfor %}
   </table>
   {% endif %}
+  <div class="history {{ history }}">
   {% if p.rank_chart %}
-  <h2>Rank over time</h2>
-  {{ p.rank_chart }}
+    <div class="part"><h2>Rank over time</h2>{{ p.rank_chart }}</div>
   {% endif %}
   {% if p.airlines_chart %}
-  <h2>Share of {{ p.destinations_by }} by airline</h2>
-  {{ p.airlines_chart }}
+    <div class="part"><h2>{{ p.airlines_title }}</h2>{{ p.airlines_chart }}</div>
   {% endif %}
+  </div>
   <div class="charts">
   {% for chart in p.charts %}
     <div class="chart-box" style="width: {{ chart.width }}%">{{ chart.svg }}</div>

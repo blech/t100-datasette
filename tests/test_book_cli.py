@@ -66,6 +66,8 @@ def test_each_page_has_its_history_and_distances_go_where_asked(world):
     assert html.count('class="chart ranks"') == 3 and '<div class="distances foot">' in html
     assert main(_args(world, "--distances", "flow")) == 0
     assert '<div class="distances flow">' in world[2].with_suffix(".html").read_text()
+    assert main(_args(world, "--history", "wide")) == 0
+    assert '<div class="history wide">' in world[2].with_suffix(".html").read_text()
     with pytest.raises(SystemExit):
         main(_args(world, "--distances", "side"))
 

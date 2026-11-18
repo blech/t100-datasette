@@ -11,7 +11,7 @@ from scripts.book.data import airport_facts, book_airports
 from scripts.book.history import airport_coordinates, airport_history, all_ranks
 from scripts.book.pdf import broken_spreads, library_env, needs_library_path, write_pdf
 from scripts.book.posters import PosterError, load_diagrams, load_posters
-from scripts.book.render import DISTANCES, ENDPAPERS, PAGE_SIZES, book_html
+from scripts.book.render import DISTANCES, ENDPAPERS, HISTORIES, PAGE_SIZES, book_html
 
 REPO = Path(__file__).resolve().parents[2]
 POSTERS = Path.home() / "Documents (Local)" / "code" / "airportcity" / "posters"
@@ -54,6 +54,8 @@ def parse(argv):
     p.add_argument("--diagrams", type=Path, default=DIAGRAMS, help="runway diagram SVGs, for diagram endpapers")
     p.add_argument("--distances", choices=DISTANCES, default="foot",
                    help="the distance rows at the data page's foot, just above its number, or straight after the charts (default: foot)")
+    p.add_argument("--history", choices=HISTORIES, default="split",
+                   help="the rank chart and the airlines side by side, half the width each, or one above the other (default: split)")
     p.add_argument("--html", action="store_true", help="write the HTML instead of the PDF (no WeasyPrint needed)")
     return p.parse_args(argv)
 
@@ -93,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
         conn.close()
     subtitle = f"The {args.top_passengers} busiest by passengers and the {args.top_freight} busiest by freight in {args.year}"
     options = dict(page_size=args.page_size, subtitle=subtitle, endpapers=args.endpapers, diagrams=diagrams,
-                   endpaper_posters=endpaper_posters, distances=args.distances)
+                   endpaper_posters=endpaper_posters, distances=args.distances, history=args.history)
     html = book_html(airports, posters, **options)
     if args.html:
         out = args.out.with_suffix(".html")
