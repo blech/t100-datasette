@@ -6,7 +6,7 @@ import pytest
 from scripts.book.data import AirportFacts, BookAirport, Destination, YearFigures
 from scripts.book.charts import chart_width
 from scripts.book.history import AirlineHistory, AirlineLine, DistanceRow, End, History
-from scripts.book.render import TABLE_ROWS, book_html, code_tile_padding, grid_shape, label_for
+from scripts.book.render import book_html, code_tile_padding, grid_shape
 
 
 def history():
@@ -64,13 +64,10 @@ def test_contents_links_every_airport():
     assert re.findall(r'href="#data-(\w+)"', contents) == ["ATL", "MEM"]
 
 
-def test_table_rows_follow_table_rows():
-    data = _section(render(), "data-ATL")
-    shown = re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', data)
-    expected = [label_for(label, facts("ATL")) for label, value in TABLE_ROWS if value(facts("ATL"), {}) != ""]
-    assert shown == expected
-    assert "Metropolitan area" not in data
-    assert "Metropolitan area" in _section(render([(entry(), facts(market="New York area", market_airports=["JFK", "LGA"]))]), "data-ATL")
+def test_no_facts_table_the_header_then_destinations():
+    data = _section(render([(entry(), facts(market="New York area", market_airports=["JFK", "LGA"]))]), "data-ATL")
+    assert 'class="facts"' not in data and "Metropolitan area" not in data and "Places served" not in data
+    assert data.index("</header>") < data.index('class="destinations"')
 
 
 def _header(html, code):
@@ -94,13 +91,6 @@ def test_header_sees_also_the_market_airports_in_the_book_in_page_order():
 
 def test_see_also_page_numbers_follow_their_links():
     assert re.search(r'a\.see::after \{[^}]*content: ", p\. " target-counter\(attr\(href url\), page\)', render())
-
-
-def test_facts_table_rows():
-    data = _section(render(), "data-ATL")
-    assert re.findall(r'<tr class="fact[^"]*"><th>(.*?)</th>', data) == [
-        "Places served (24+ flights)", "Airlines at this airport, 2025"]
-    assert "Busiest international" not in data
 
 
 def test_the_page_in_order_destinations_ranks_airlines_charts():
@@ -214,12 +204,6 @@ def test_freight_chart_from_2003_with_bars_as_wide_as_the_passenger_chart():
     assert re.findall(r'class="x-label"[^>]*>(\d+)<', freight)[0] == "2003"
     assert re.findall(r'class="x-label"[^>]*>(\d+)<', pax)[0] == "1990"
     assert float(pax_width) / float(freight_width) == pytest.approx(chart_width(1990, 2025) / chart_width(2003, 2025), rel=1e-3)
-
-
-def test_market_airports_in_the_book_get_page_numbers():
-    f = facts(market="Memphis area", market_airports=["MEM", "NQA"])
-    data = _section(render([(entry(), f), (entry("MEM"), facts("MEM"))]), "data-ATL")
-    assert 'Memphis area (with <a class="ref" href="#data-MEM">MEM</a>, NQA)' in data
 
 
 def test_destination_headers_padded_like_their_cells():

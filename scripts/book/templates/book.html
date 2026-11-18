@@ -43,11 +43,6 @@
     <p class="name">{{ p.name }}</p>
     <p class="place">{{ p.place }}{% if p.see_also %} (see also {% for c in p.see_also %}<a class="see" href="#data-{{ c }}">{{ c }}</a>{% if not loop.last %}; {% endif %}{% endfor %}){% endif %}</p>
   </header>
-  <table class="facts">
-  {% for label, value in p.rows %}
-    <tr class="fact{% if loop.last %} last{% endif %}"><th>{{ label }}</th><td>{{ value }}</td></tr>
-  {% endfor %}
-  </table>
   {% if p.destinations %}
   <h2>Top destinations, by {{ p.destinations_by }}</h2>
   <table class="destinations">

@@ -4,7 +4,6 @@
 import math
 import re
 from pathlib import Path
-from typing import Callable
 
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
@@ -26,14 +25,6 @@ INNER_MARGIN = 0.75   # inches, the binding side (book.css's :left and :right)
 H2_LINES = 0.95 * (1.3 + 0.3)   # a data page h2 with no top margin, in root ems: its size, line height and bottom margin (book.css)
 
 
-def distances_top(page_size: str) -> float:
-    """Where the distance rows start, in inches below the data page's top, so they end at the foot of its text area.
-    WeasyPrint places an absolutely positioned box by the content's height, not the page's, so bottom: 0 won't do."""
-    width, height = (_inches(x) for x in PAGE_SIZES[page_size])
-    text_width = width - PAGE_MARGIN - INNER_MARGIN
-    svg = text_width * distance_rows_height(2) / WIDE
-    h2 = H2_LINES * float(ROOT_SIZES[page_size].removesuffix("pt")) / 72
-    return height - 2 * PAGE_MARGIN - svg - h2
 ENDPAPERS = ("posters", "diagrams", "codes")
 # where the distance rows go: at the foot of the data page, just above its number, or straight after the charts
 DISTANCES = ("foot", "flow")
@@ -43,31 +34,19 @@ DISTANCE_TITLES = {"passengers": "How far its passengers fly", "freight": "How f
 CHART_GAP = 4   # % of the page's width between the two charts
 
 
+def distances_top(page_size: str) -> float:
+    """Where the distance rows start, in inches below the data page's top, so they end at the foot of its text area.
+    WeasyPrint places an absolutely positioned box by the content's height, not the page's, so bottom: 0 won't do."""
+    width, height = (_inches(x) for x in PAGE_SIZES[page_size])
+    text_width = width - PAGE_MARGIN - INNER_MARGIN
+    svg = text_width * distance_rows_height(2) / WIDE
+    h2 = H2_LINES * float(ROOT_SIZES[page_size].removesuffix("pt")) / 72
+    return height - 2 * PAGE_MARGIN - svg - h2
+
+
 def _label(d):
     """A destination's name, with its country if it's outside the US."""
     return f"{d.label}, {d.country}" if d.country else d.label
-
-
-def _market(f, book):
-    """The market's other airports, those in the book linked to their page (the page number is added by the CSS)."""
-    if not f.market:
-        return ""
-    others = Markup(", ").join(Markup('<a class="ref" href="#data-{0}">{0}</a>').format(c) if c in book else c
-                               for c in f.market_airports)
-    return Markup("{} (with {})").format(f.market, others)
-
-
-# The facts table, in order: (label, value(facts, codes in the book)). Labels may use {first} and {last} for the years. A
-# value of "" leaves the row out. Cut or reorder rows here; the ranks and the yearly figures have tables and charts of their own.
-TABLE_ROWS: list[tuple[str, Callable[[AirportFacts, dict], str]]] = [
-    ("Places served (24+ flights)", lambda f, book: f"{f.places:,}"),
-    ("Metropolitan area", _market),   # BTS's city market, named only when it has other airports
-    ("Airlines at this airport, {last}", lambda f, book: f"{f.airline_groups:,}"),
-]
-
-
-def label_for(label: str, f: AirportFacts) -> str:
-    return label.format(first=f.first_year, last=f.last_year)
 
 
 def _inches(length: str) -> float:
@@ -132,7 +111,6 @@ def distance_scale(airports) -> float:
 
 
 def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict, scale: float = DISTANCE_SCALE):
-    rows = [(label_for(label, f), value(f, book)) for label, value in TABLE_ROWS]
     columns = [("Passengers", lambda d: dense_count(d.passengers)), ("Freight", lambda d: tons(d.freight_lb))]
     freight_first = max(f.first_year, FREIGHT_FIRST_YEAR)
     charts = [
@@ -150,7 +128,6 @@ def _page(entry: BookAirport, f: AirportFacts, poster: str, book: dict, scale: f
     return dict(
         code=f.code, name=f.name, place=f.place,
         see_also=[c for c in book if c in f.market_peers],   # the book's dict keeps page order
-        rows=[(label, value) for label, value in rows if value != ""],
         destinations_by=f.measure,
         columns=[name for name, _ in columns],
         destinations=[(d.code, _label(d), [cell(d) for _, cell in columns]) for d in f.destinations],
