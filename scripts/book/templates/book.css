@@ -55,6 +55,8 @@ section.data header .place { color: #52525b; }
 section.data header a.see { color: inherit; text-decoration: none; }
 section.data header a.see::after { content: ", p. " target-counter(attr(href url), page); }
 section.data h2 { font-size: 0.95em; margin: 1.1em 0 0.3em; }
+/* a blank line, about a heading's height, above each section: the destinations here, the rank and airlines and the bar charts below */
+section.data header + h2 { margin-top: 2.35em; }
 table { border-collapse: collapse; width: 100%; font-size: 0.85em; }
 table.destinations th { font-weight: 400; color: #52525b; text-align: left; }
 /* headers padded like their cells, so a right-aligned header ends where its numbers do */
@@ -62,6 +64,7 @@ table.destinations th, table.destinations td { padding: 0.1em 0.6em 0.1em 0; }
 table.destinations tr > :last-child { padding-right: 0; }
 table.destinations .code { font-weight: 700; width: 3em; }
 table.destinations .num { text-align: right; white-space: nowrap; }
+.history { margin-top: 1.2em; }
 /* the rank chart and the airlines: side by side, each drawn HALF (394) of WIDE (820) units wide, 4% apart like the bar charts, or one above the other */
 .history.split { display: flex; justify-content: space-between; align-items: flex-start; }
 .history.split .part { width: 48.05%; }

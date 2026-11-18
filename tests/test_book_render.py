@@ -122,6 +122,14 @@ def test_rank_and_airlines_side_by_side_or_one_above_the_other():
     block = wide[wide.index('<div class="history wide">'):wide.index('class="charts"')]
     assert 'viewBox="0 0 820 ' in block and 'viewBox="0 0 394 ' not in block
     assert '.history.split .part { width: 48.05%; }' in render()
+
+
+def test_a_blank_line_above_each_section():
+    """About a heading's height (1.2em of the page's text) more above the destinations, the rank and airlines, and the bar charts."""
+    css = render()
+    assert "section.data header + h2 { margin-top: 2.35em; }" in css   # in the heading's own 0.95em: 1.1em + 1.2 / 0.95
+    assert ".history { margin-top: 1.2em; }" in css
+    assert ".charts { margin-top: 2.6em;" in css
     with pytest.raises(ValueError):
         render(history="sideways")
 
