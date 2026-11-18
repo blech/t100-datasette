@@ -12,6 +12,11 @@ from scripts.book.data import PLACE_MIN_FLIGHTS, US_WAC, _abroad, _airline, _COL
 TOP_AIRLINE_LINES = 4   # then the others, together
 DBA = re.compile(r"\s+d/b/a\s.*$", re.I)   # "Sun Country Airlines d/b/a MN Airlines": the airline's own name, not its brand
 EARTH_RADIUS_MILES = 3958.8
+# Routes BTS has wrong, left out of the distances entirely (ends and median). Its distance can't give these away, since BTS
+# worked it out from the same wrong airport.
+BAD_ROUTES = {
+    frozenset(("SJU", "TUM")),   # 1990: LACSA, 80 flights to "Tumut, Australia", 10,045 miles; a miscoded Caribbean airport
+}
 
 
 @dataclass
@@ -153,7 +158,8 @@ def distance_row(conn, code: str, measure: str, year: int, coords=None) -> Dista
         return DistanceRow(year, None, None, None)
     here = coords[code]
     routes = {o: (great_circle_miles(*here, *coords[o]), t) for o, t in _routes(conn, code, year).items()
-              if t[key] > 0 and o in coords and o != code}   # not a flight back to where it left
+              if t[key] > 0 and o in coords and o != code   # not a flight back to where it left
+              and frozenset((code, o)) not in BAD_ROUTES}
     regular = [(miles, o) for o, (miles, t) in routes.items() if t[2] >= PLACE_MIN_FLIGHTS]
     median = weighted_median([(miles, t[key]) for miles, t in routes.values()])
     if not regular:

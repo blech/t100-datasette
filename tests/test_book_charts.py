@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from scripts.book.charts import (FREIGHT_COLOR, PASSENGER_COLOR, airline_sparklines, bar_chart, chart_width, distance_rows,
-                                 rank_chart, rank_floor)
+                                 rank_chart)
 from scripts.book.format import MILLIONS
 from scripts.book.history import AirlineHistory, AirlineLine, DistanceRow, End
 
@@ -91,25 +91,18 @@ def _lines(svg):
     return [p for p in svg.iter(f"{NS}path") if p.get("class", "").startswith("line")]
 
 
-def test_rank_axis_runs_from_1_at_the_top_to_at_least_50():
-    assert rank_floor([3, 8]) == 50
-    assert rank_floor([3, 63]) == 70
-    assert rank_floor([3, 847]) == 900
-    svg = ET.fromstring(rank_chart({"passengers": [(1990, 1), (1991, 50)]}, first_year=1990, last_year=1991))
-    labels = _texts(svg, "y-label")
-    assert labels[0] == "1" and labels[-1] == "50"
+@pytest.mark.parametrize("worst", [8, 63, 847])
+def test_rank_axis_is_always_1_at_the_top_to_50(worst):
+    svg = ET.fromstring(rank_chart({"passengers": [(1990, 1), (1991, worst)]}, first_year=1990, last_year=1991))
+    assert _texts(svg, "y-label") == ["1", "10", "20", "30", "40", "50"]
     ys = {t.text: float(t.get("y")) for t in svg.iter(f"{NS}text") if t.get("class") == "y-label"}
     assert ys["1"] < ys["50"]   # 1 at the top
 
 
-@pytest.mark.parametrize("worst, ticks", [
-    (8, ["1", "10", "20", "30", "40", "50"]),
-    (63, ["1", "20", "40", "60", "70"]),
-    (847, ["1", "500", "900"]),
-])
-def test_rank_ticks_stay_few_on_a_deep_axis(worst, ticks):
-    svg = ET.fromstring(rank_chart({"freight": [(2003, worst), (2004, 1)]}, first_year=2003, last_year=2004))
-    assert _texts(svg, "y-label") == ticks
+def test_ranks_below_50_are_left_off_the_chart():
+    svg = ET.fromstring(rank_chart({"freight": [(2003, 847), (2004, 51), (2005, 50), (2006, 3)]}, first_year=2003, last_year=2006))
+    d = _lines(svg)[0].get("d")
+    assert d.count("M") == 1 and d.count("L") == 1   # 2005 to 2006 only
 
 
 def test_rank_lines_solid_for_the_page_measure_dotted_for_the_other():

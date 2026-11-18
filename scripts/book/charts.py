@@ -108,22 +108,16 @@ def _year_labels(first_year, last_year, x_of, y):
     return [_text("x-label", x_of(year), y, year, anchor="middle") for year in years]
 
 
-def rank_floor(ranks) -> int:
-    """The rank at the chart's foot: 50, the book's own cut, or the worst rank drawn, rounded up (63 -> 70, 847 -> 900)."""
-    worst = max((r for r in ranks if r), default=1)
-    if worst <= 50:
-        return 50
-    step = 10 ** math.floor(math.log10(worst))
-    return math.ceil(worst / step) * step
+RANK_FLOOR = 50   # the book's own cut: the chart shows ranks 1 to 50 only
 
 
 def rank_chart(series, *, first_year, last_year):
-    """series: measure -> [(year, rank or None)], the page's measure first, drawn solid; the other dotted. Rank 1 at the top."""
+    """series: measure -> [(year, rank or None)], the page's measure first, drawn solid; the other dotted. Rank 1 at the top,
+    50 at the foot; a year ranked below 50 breaks the line, like a year without a rank."""
     height, left, right, top, bottom = 130, 34, 18, 22, 20
-    floor = rank_floor(r for points in series.values() for _, r in points)
-    step = 10 if floor <= 50 else _step(floor)   # a deep axis gets few ticks: 1, 500, 900
-    ticks = [1] + list(range(step, floor + 1, step))
-    ticks += [floor] if ticks[-1] != floor else []
+    floor = RANK_FLOOR
+    ticks = [1] + list(range(10, floor + 1, 10))
+    series = {m: [(y, r if r and r <= floor else None) for y, r in points] for m, points in series.items()}
     slot = (WIDE - left - right) / (last_year - first_year + 1)
     plot_h = height - top - bottom
 

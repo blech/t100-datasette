@@ -152,6 +152,20 @@ def test_a_year_without_routes_has_an_empty_row(db_path, conn):
     assert row.shortest is None and row.longest is None and row.median is None
 
 
+def test_a_known_bad_route_is_left_out_entirely(db_path, conn, monkeypatch):
+    import scripts.book.history as history
+    monkeypatch.setattr(history, "BAD_ROUTES", {frozenset(("AAA", "DDD"))})
+    _places(db_path)
+    _insert(db_path, "route_year_totals", [_route("AAA", "CCC", 10), _route("DDD", "AAA", 1000, deps=40)])
+    row = distance_row(conn, "AAA", "passengers", 2025)
+    assert row.longest.code == "CCC" and round(row.median) == 691   # DDD's passengers aren't in the median either
+
+
+def test_sju_tumut_is_a_known_bad_route():
+    from scripts.book.history import BAD_ROUTES
+    assert frozenset(("SJU", "TUM")) in BAD_ROUTES
+
+
 # one airport's history, as its page draws it
 
 
