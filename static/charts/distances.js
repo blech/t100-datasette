@@ -106,11 +106,16 @@ function draw() {
   // the y scale holds still over every year loaded, so the shapes (or, as counts, the sizes) compare as the years change
   const top = scaleTop([...loaded.keys()].map((y) => profileOf(y, measure, count)), measure, scale) || 1;
   const bars = p.bins.filter((b) => !fine || b.value).map((b) => ({ ...b, mid: (b.from + b.to) / 2, y: barHeight(b, measure, scale) }));
-  // the year compared with, in front as a translucent grey: in wide bars always, as one-pixel columns can't be read as a shape;
-  // set over one-pixel columns, each wide bar is their average height, to stay on their scale
+  // the year compared with: a pale grey shape behind, in wide bars always, as one-pixel columns can't be read as a shape
+  // (behind one-pixel columns, each wide bar is their average height, to stay on their scale); where the bars stand in
+  // front of it, they're darkened up to its height, so both the rise and the fall show
   const wide = barLayout(width, { marginLeft: MARGIN.left, marginRight: MARGIN.right, pixels: BARS.wide.pixels }).count;
   const then = compare !== null && loaded.has(compare) ? profileOf(compare, measure, wide) : null;
   const ghost = then && !then.empty ? then.bins.map((b) => ({ ...b, y: (barHeight(b, measure, scale) * wide) / count })) : [];
+  const under = ghost.length
+    ? bars.map((b) => ({ ...b, y: Math.min(b.y, ghost[Math.min(ghost.length - 1, Math.floor((b.mid * ghost.length) / axisMax))].y) }))
+      .filter((b) => b.y > 0)
+    : [];
   const name = measure === 'freight' ? 'Freight, short tons' : `${LABELS[measure][0].toUpperCase()}${LABELS[measure].slice(1)}`;
   const y = scale === 'share'
     ? { label: `Share of the year's ${LABELS[measure]} (%)`, tickFormat: (v) => formatCount(v) }
@@ -122,9 +127,10 @@ function draw() {
     x: { domain: [0, axisMax], label: 'Distance (miles)', labelAnchor: 'center', labelArrow: 'none', tickFormat: (v) => exactCount(v) },
     y: { ...y, domain: [0, top], grid: true, tickSize: 0 },
     marks: [
+      ...(ghost.length ? [Plot.rectY(ghost, { x1: 'from', x2: 'to', y: 'y', fill: 'currentColor', fillOpacity: 0.14, insetLeft: 0.5, insetRight: 0.5 })] : []),
       Plot.rectY(bars, { x1: 'from', x2: 'to', y: 'y', fill: colours.accent, ...(fine ? {} : { insetLeft: 0.5, insetRight: 0.5 }) }),
+      ...(under.length ? [Plot.rectY(under, { x1: 'from', x2: 'to', y: 'y', fill: '#000', fillOpacity: 0.18, ...(fine ? {} : { insetLeft: 0.5, insetRight: 0.5 }) })] : []),
       Plot.ruleY([0]),
-      ...(ghost.length ? [Plot.rectY(ghost, { x1: 'from', x2: 'to', y: 'y', fill: 'currentColor', fillOpacity: 0.25, insetLeft: 0.5, insetRight: 0.5 })] : []),
       Plot.ruleX(bars, Plot.pointerX({ x: 'mid', y: 'y', strokeOpacity: 0 })),
     ],
   });
