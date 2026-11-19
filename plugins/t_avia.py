@@ -134,12 +134,14 @@ async def index_page(datasette, request):
     years = [r[0] for r in await db.execute("SELECT DISTINCT year FROM route_year ORDER BY year DESC")]
     year = request.args.get("year", "")
     year = int(year) if year.isdigit() and int(year) in years else DEFAULT_YEAR
+    eurostat_last = (await db.execute("SELECT MAX(year) FROM route_year WHERE source <> 'caa'")).first()[0]  # later years are the CAA's alone
     sql = datasette.config["databases"][DATABASE]["queries"]["europe_airports"]["sql"]
     from t100_globe import prose_count
     rows = [{**dict(r), "passengers_text": prose_count(r["passengers"])} for r in (await db.execute(sql, {"year": year})).rows]
     html = await datasette.render_template(
         "europe_airports.html",
-        {"crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", None)), "year": year, "years": years, "rows": rows, "base": BASE, "pax_floor": PAX_FLOOR},
+        {"crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", None)), "year": year, "years": years, "rows": rows, "base": BASE, "pax_floor": PAX_FLOOR,
+         "eurostat_last": eurostat_last},
         request=request,
     )
     return Response.html(html)

@@ -131,6 +131,8 @@ def test_the_index_lists_reporting_airports(both):
     r = get(both, "/airports/europe?year=2019")
     assert r.status_code == 200 and 'href="/airports/europe/LHR"' in r.text
     assert '<td class="num">2</td>' in r.text  # JFK and CDG; Dubai is under the floor and EG90 is no place
+    assert "Eurostat's tables end in 2019" in r.text
+    assert "2020 has UK airports only" in get(both, "/airports/europe?year=2020").text  # the tiny database's CAA-only year
 
 
 def test_routes_count_by_passengers_and_leave_out_placeholders(both):

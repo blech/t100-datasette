@@ -12,6 +12,13 @@
       Every airport that reports its routes to Eurostat, the EU's statistics office, and every UK airport in the Civil Aviation Authority's tables: their passengers and destinations in {{ year }}.
       Pick one to see where it flies and how that changed, on the same pages the US airports have.
     </p>
+    <p class="intro" id="eurostat-end">
+      {%- if year > eurostat_last %}
+      <strong>{{ year }} has UK airports only:</strong> Eurostat's tables end in {{ eurostat_last }}, and the CAA's run to {{ years[0] }}.
+      {%- else %}
+      Eurostat's tables end in {{ eurostat_last }}; after that only UK airports, from the CAA's tables, appear (to {{ years[0] }}).
+      {%- endif %}
+    </p>
 
     <form class="bar" method="get" action="{{ base }}">
       <h2 id="heading">Busiest in {{ year }}</h2>
