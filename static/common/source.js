@@ -1,11 +1,11 @@
 // Which data a page shows: the T-100 site's own (the t100 database, pages under /airports/) or the European airports'
-// (the t_avia database, from Eurostat and the CAA, pages under /europe/airports/), from <body data-database>. The shared
+// (the t_avia database, from Eurostat and the CAA, pages under /airports/europe/), from <body data-database>. The shared
 // charts ask this for their queries and data links, how they count a destination, and where an airport links.
 // Design: docs/superpowers/specs/2026-11-18-european-airports-design.md.
 
 const body = () => (typeof document === 'undefined' ? null : document.body);
 
-export const EUROPE_BASE = '/europe/airports';
+export const EUROPE_BASE = '/airports/europe';
 export const database = () => body()?.dataset.database || 't100';
 export const isEurope = () => database() === 't_avia';
 

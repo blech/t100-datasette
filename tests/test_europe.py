@@ -71,17 +71,17 @@ def test_eurostat_placeholders_are_recognised():
 # --- the pages
 
 def test_european_paths_are_airports_pages_with_the_same_views():
-    assert section_of("/europe/airports/LHR/globe") == "airports"
-    views = views_for("/europe/airports/LHR/destinations")
-    assert [v["href"] for v in views] == ["/europe/airports/LHR", "/europe/airports/LHR/destinations", "/europe/airports/LHR/distances",
-                                          "/europe/airports/LHR/changes", "/europe/airports/LHR/globe"]
+    assert section_of("/airports/europe/LHR/globe") == "airports"
+    views = views_for("/airports/europe/LHR/destinations")
+    assert [v["href"] for v in views] == ["/airports/europe/LHR", "/airports/europe/LHR/destinations", "/airports/europe/LHR/distances",
+                                          "/airports/europe/LHR/changes", "/airports/europe/LHR/globe"]
     assert [v["current"] for v in views] == [False, True, False, False, False]
-    assert views_for("/europe/airports/EGXX")[0]["href"] == "/europe/airports/EGXX"  # an ICAO code where there's no IATA one
+    assert views_for("/airports/europe/EGXX")[0]["href"] == "/airports/europe/EGXX"  # an ICAO code where there's no IATA one
 
 
 def test_without_the_european_database_its_pages_are_not_found(ds):
-    assert get(ds, "/europe/airports/LHR").status_code == 404
-    assert get(ds, "/europe/airports").status_code == 404
+    assert get(ds, "/airports/europe/LHR").status_code == 404
+    assert get(ds, "/airports/europe").status_code == 404
 
 
 def tiny_t_avia(path):
@@ -118,18 +118,18 @@ def both(db_path, tmp_path):
 
 def test_a_european_airport_has_the_airport_pages_reading_t_avia(both):
     for path in ("", "/destinations", "/changes", "/distances", "/globe"):
-        r = get(both, f"/europe/airports/LHR{path}")
+        r = get(both, f"/airports/europe/LHR{path}")
         assert r.status_code == 200, path
         assert 'data-database="t_avia"' in r.text and 'data-count-by="passengers"' in r.text
         assert 'id="europe-note"' in r.text and "the CAA's alone" in r.text
-    assert get(both, "/europe/airports/JFK").status_code == 404  # not a reporting airport
-    over_time = get(both, "/europe/airports/LHR").text
+    assert get(both, "/airports/europe/JFK").status_code == 404  # not a reporting airport
+    over_time = get(both, "/airports/europe/LHR").text
     assert '<option value="airline">' not in over_time and "10,000 passengers" in over_time
 
 
 def test_the_index_lists_reporting_airports(both):
-    r = get(both, "/europe/airports?year=2019")
-    assert r.status_code == 200 and 'href="/europe/airports/LHR"' in r.text
+    r = get(both, "/airports/europe?year=2019")
+    assert r.status_code == 200 and 'href="/airports/europe/LHR"' in r.text
     assert '<td class="num">2</td>' in r.text  # JFK and CDG; Dubai is under the floor and EG90 is no place
 
 
@@ -150,6 +150,6 @@ def test_where_airports_link_from_a_european_page(both):
 def test_a_t100_airport_abroad_links_to_its_european_pages_only_when_there_are_some(both, ds):
     from plugins.t100_globe import europe_link
     import asyncio
-    assert asyncio.run(europe_link(both, "LHR")) == {"europe_href": "/europe/airports/LHR", "europe_uk": True}
+    assert asyncio.run(europe_link(both, "LHR")) == {"europe_href": "/airports/europe/LHR", "europe_uk": True}
     assert asyncio.run(europe_link(both, "DXB")) == {}
     assert asyncio.run(europe_link(ds, "LHR")) == {}  # no t_avia database

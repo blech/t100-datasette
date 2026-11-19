@@ -125,8 +125,6 @@ def section_of(path):
     first = path.strip("/").split("/")[0]
     if first and first == 'changelog':
         first = 'about'
-    if first == 'europe':  # the European airports' pages (plugins/t_avia.py) are airports too
-        first = 'airports'
     return first if first in SECTIONS else None
 
 
@@ -147,11 +145,11 @@ def views_for(path):
                         ("Most dedicated", "/airports/dedicated", None), ("Risers and fallers", "/airports/movers", None),
                         ("Routes", "/airports/routes", None), ("Distances", "/airports/distances", None), ("Map", "/airports/globe", None),
                         current=[[], ["over-time"], ["dedicated"], ["movers"], ["routes"], ["distances"], ["globe"]].index(view))
-        case ["airports", code, *rest] | ["europe", "airports", code, *rest] if (
-                (AIRPORT_CODE.match(code) or (parts[0] == "europe" and EUROPE_CODE.match(code)))
+        case ["airports", "europe", code, *rest] | ["airports", code, *rest] if (
+                (EUROPE_CODE.match(code) if parts[1] == "europe" else AIRPORT_CODE.match(code))
                 and rest in ([], ["destinations"], ["distances"], ["changes"], ["globe"])):
             c = code.upper()
-            base = f"/europe/airports/{c}" if parts[0] == "europe" else f"/airports/{c}"   # a European airport's pages have the same views
+            base = f"/airports/europe/{c}" if parts[1] == "europe" else f"/airports/{c}"   # a European airport's pages have the same views
             return make(("Over time", base, None), ("Destinations", f"{base}/destinations", None),
                         ("Distances", f"{base}/distances", None),
                         ("Changes", f"{base}/changes", "changes-link"), ("Map", f"{base}/globe", None),
@@ -215,7 +213,7 @@ async def europe_link(datasette, code):
     if not code or "t_avia" not in datasette.databases:
         return {}
     row = (await datasette.get_database("t_avia").execute("SELECT icao FROM airport_info WHERE code = ? AND reporting = 1", [code])).first()
-    return {"europe_href": f"/europe/airports/{code}", "europe_uk": row[0].startswith("EG")} if row else {}
+    return {"europe_href": f"/airports/europe/{code}", "europe_uk": row[0].startswith("EG")} if row else {}
 
 
 async def airport_info(datasette, codes):

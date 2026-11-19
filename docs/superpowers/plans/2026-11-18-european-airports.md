@@ -15,12 +15,12 @@ task-by-task plan; this file records what was built, the decisions made without 
   (old ICAO codes merged into current ones, and corrected names or IATA codes).
 - **Queries** under `databases: t_avia:` in `datasette.yml`, with the T-100 airport pages' names, parameters and columns
   (`airports`, `routes_by_year`, `routes_by_month`, `airport_size`, `airport_changes`, `airport_gone`) and `europe_airports`.
-- **`plugins/t_avia.py`**: `/europe/airports` (every reporting airport in a year, busiest first) and
-  `/europe/airports/<code>`, `/destinations`, `/changes`, `/distances`, `/globe`, from the T-100 airport templates. Without
+- **`plugins/t_avia.py`**: `/airports/europe` (every reporting airport in a year, busiest first) and
+  `/airports/europe/<code>`, `/destinations`, `/changes`, `/distances`, `/globe`, from the T-100 airport templates. Without
   `t_avia.db` loaded they answer 404.
 - **Shared code**: `static/common/source.js` (which database, how a destination counts, where an airport links), read by
   `queryUrl`, `dataHref`, the over-time/changes, matrix and globe scripts; template conditionals on `europe`; the T-100
-  plugin's views line and nav section for `/europe/` paths, and a link from a T-100 airport abroad to its European pages.
+  plugin's views line and nav section for `/airports/europe/` paths, and a link from a T-100 airport abroad to its European pages.
 - **Tests**: `tests/test_europe.py` (the loader's rules, the pages and queries over a tiny `t_avia.db`, the 404s) and
   `static/common/test/source.test.js`, plus a passengers case in `static/charts/test/airport.test.js`.
 
@@ -60,7 +60,7 @@ task-by-task plan; this file records what was built, the decisions made without 
    in 1997, which shows as a gap).
 9. **`t_avia`'s airports table is `airport_info`**: named `airports`, Datasette served the table (100 rows a page) instead of the
    canned query of the same name, and the map found no coordinates.
-10. **A way in**: `/europe/airports`, the reporting airports of a year (2024 by default, the last year most countries have),
+10. **A way in**: `/airports/europe`, the reporting airports of a year (2024 by default, the last year most countries have),
     busiest first. There's no nav section for Europe; the T-100 page of an airport abroad links to its European pages.
 11. **Distances use the T-100 pages' axis** (`t100_distances.axis_max`), so Heathrow's chart compares with JFK's, and
     great-circle distances; the BTS distance check has nothing to do. The distances page opens on 2024.
@@ -72,6 +72,10 @@ task-by-task plan; this file records what was built, the decisions made without 
 14. **The European pages say what the data is** in a note in place of T-100's "outside the US" one (`_europe_note.html`): the
     sources, passengers carried, the CAA-only years with what's missing then, the 10,000 floor, and a link to the airport's T-100
     pages where it has some. The footer credits Eurostat and the CAA, and the tab title says "European airports".
+15. **The pages live at `/airports/europe/...`** (moved from `/europe/airports/...` on 2026-11-19, the user's call, before any
+    deploy): inside the Airports section, beside `/airports/cities` and `/airports/countries`, since most non-US sources are
+    airport-only. `/europe` redirects to the index. A later, separate change may move T-100's airport pages to `/airports/us/...`
+    (`us`, not `usa`: USA is Concord, NC's IATA code, and two letters can't clash with a 3-letter IATA or 4-letter ICAO code).
 
 ## Known gaps
 
@@ -87,8 +91,8 @@ task-by-task plan; this file records what was built, the decisions made without 
 
 ## Review focus
 
-1. **Heathrow's pages** (`/europe/airports/LHR` and its views): 1990–2025 throughout, no step at 1993 or 2020 in the
+1. **Heathrow's pages** (`/airports/europe/LHR` and its views): 1990–2025 throughout, no step at 1993 or 2020 in the
    places chart, the note naming 1990–1992 and 2020–2025 as CAA-only.
-2. **A non-UK airport** (`/europe/airports/FRA`): Eurostat only, months on the map, the note without the CAA sentences.
-3. **The T-100 site without `t_avia.db`**: unchanged, `/europe/...` 404 (`tests/test_europe.py`).
+2. **A non-UK airport** (`/airports/europe/FRA`): Eurostat only, months on the map, the note without the CAA sentences.
+3. **The T-100 site without `t_avia.db`**: unchanged, `/airports/europe/...` 404 (`tests/test_europe.py`).
 4. **The CAA naming** (`caa_names` in `t_avia.db`, `how` column): spot-check learnt codes with more than one candidate.

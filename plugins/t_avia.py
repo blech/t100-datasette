@@ -1,4 +1,4 @@
-# The European airports' pages (/europe/airports/...): the T-100 airport pages' own templates and scripts, reading the t_avia
+# The European airports' pages (/airports/europe/...): the T-100 airport pages' own templates and scripts, reading the t_avia
 # database (build_t_avia.py: Eurostat's route tables, with the CAA's for UK airports) instead of t100. Without t_avia.db
 # loaded they answer 404, so the T-100 site is unchanged. Design: docs/superpowers/specs/2026-11-18-european-airports-design.md;
 # what was decided while building it: docs/superpowers/plans/2026-11-18-european-airports.md.
@@ -13,7 +13,7 @@ from t100_direction import DIRECTION_CHOICES_AIRPORT, parse_dir  # noqa: E402
 from t100_distances import BIN_MILES, axis_max, check_margins  # noqa: E402
 
 DATABASE = "t_avia"
-BASE = "/europe/airports"
+BASE = "/airports/europe"  # inside the Airports section, beside /airports/cities and /airports/countries
 CODE = r"[A-Za-z0-9]{3,4}"  # IATA, or ICAO where an airport has none
 PAX_FLOOR = 10_000  # a destination's passengers a year, both ways: the European pages' default "at least"
 DEFAULT_YEAR = 2024  # the last year most of Eurostat's countries have
@@ -23,13 +23,13 @@ MATRIX_SETTINGS = ("n", "group", "rank", "year", "flown", "scale", "open")
 @hookimpl
 def register_routes():
     return [
-        (r"^/europe$", europe_root),
-        (r"^/europe/airports$", index_page),
-        (rf"^/europe/airports/(?P<origin>{CODE})$", europe_view("airport.html", None)),
-        (rf"^/europe/airports/(?P<origin>{CODE})/destinations$", europe_view("routes.html", "destinations")),
-        (rf"^/europe/airports/(?P<origin>{CODE})/changes$", europe_view("airport_changes.html", "changes")),
-        (rf"^/europe/airports/(?P<origin>{CODE})/distances$", europe_view("airport_distances.html", "distances")),
-        (rf"^/europe/airports/(?P<origin>{CODE})/globe$", europe_view("globe.html", "map")),
+        (r"^/europe$", europe_root),  # a short address for the index
+        (r"^/airports/europe$", index_page),
+        (rf"^/airports/europe/(?P<origin>{CODE})$", europe_view("airport.html", None)),
+        (rf"^/airports/europe/(?P<origin>{CODE})/destinations$", europe_view("routes.html", "destinations")),
+        (rf"^/airports/europe/(?P<origin>{CODE})/changes$", europe_view("airport_changes.html", "changes")),
+        (rf"^/airports/europe/(?P<origin>{CODE})/distances$", europe_view("airport_distances.html", "distances")),
+        (rf"^/airports/europe/(?P<origin>{CODE})/globe$", europe_view("globe.html", "map")),
     ]
 
 
@@ -50,7 +50,7 @@ def site_trail(datasette, *steps):
 
 
 def trail(datasette, *steps):
-    return site_trail(datasette, ("europe", BASE), *steps)
+    return site_trail(datasette, ("airports", "/airports"), ("europe", BASE), *steps)
 
 
 async def airport(datasette, code):
@@ -139,7 +139,7 @@ async def index_page(datasette, request):
     rows = [{**dict(r), "passengers_text": prose_count(r["passengers"])} for r in (await db.execute(sql, {"year": year})).rows]
     html = await datasette.render_template(
         "europe_airports.html",
-        {"crumbs": site_trail(datasette, ("europe", None)), "year": year, "years": years, "rows": rows, "base": BASE, "pax_floor": PAX_FLOOR},
+        {"crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", None)), "year": year, "years": years, "rows": rows, "base": BASE, "pax_floor": PAX_FLOOR},
         request=request,
     )
     return Response.html(html)
