@@ -49,7 +49,12 @@
     </div>
     {# one paragraph of small print under the year bar: what is counted, then how to compare (its words set by the script) #}
     <p id="map-note"><span class="note">{% include "_cutoff_note.html" %} {% include "_dir_note.html" %}</span>
-      <span id="range-hint">To compare two years, go to the earlier one, then drag forward. New routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</span></p>
+      <span id="range-hint">To compare two years, go to the earlier one, then drag forward. New routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</span>
+      {%- if europe %} <button type="button" class="info-button" popovertarget="europe-info" aria-label="About this data" title="About this data">ⓘ</button>{% endif %}</p>
+    {%- if europe %}
+    {# what the European data is, behind the ⓘ: on the map it would be a block of its own under the controls #}
+    <div id="europe-info" class="info-popover" popover>{% include "_europe_note.html" %}</div>
+    {%- endif %}
     <div class="row">
       {% include "_dir_choice.html" %}
       <select id="proj" aria-label="Map type"></select>
@@ -59,7 +64,9 @@
       <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: {{ "flights" if europe else count_word|lower }}</option><option value="freight">Width: freight</option></select>
     </div>
     <div id="footnote"></div>
+    {%- if not europe %}
     <div id="foreign-note-box">{% include "_foreign_note.html" %}</div>
+    {%- endif %}
     {# the site's footer (theme, data link, about), at the foot of the controls since the map fills the window #}
     {% include "_footer.html" %}
   </div>
