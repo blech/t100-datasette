@@ -57,7 +57,7 @@ US_COUNTRIES = ("United States", "Puerto Rico", "Guam", "Virgin Islands", "Ameri
 
 _route_columns = ",\n  ".join(f"{c} {'REAL' if c.startswith('freight') and 'flights' not in c else 'INTEGER'}" for c in COLUMNS)
 SCHEMA = f"""
-CREATE TABLE airports (
+CREATE TABLE airport_info (
   icao TEXT PRIMARY KEY, code TEXT UNIQUE, name TEXT, city TEXT, country TEXT, country_code TEXT,
   latitude REAL, longitude REAL, is_us INTEGER, reporting INTEGER, placeholder INTEGER, first_year INTEGER, last_year INTEGER
 );
@@ -423,11 +423,11 @@ def write_airports(db, t100, countries):
         placeholder = bool(PLACEHOLDER.match(icao))
         rows.append((icao, iata or icao, name or ("Other or unknown airports" if placeholder else None), city, country, countries.get(icao), lat, lon,
                      int(country in US_COUNTRIES), int(icao in reporting), int(placeholder), first, last))
-    db.executemany("INSERT INTO airports VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
-    db.execute("UPDATE route_year SET domestic = (SELECT IFNULL(a.country_code = b.country_code, 0) FROM airports a, airports b WHERE a.icao = route_year.airport AND b.icao = route_year.other)")
-    db.execute("UPDATE route_month SET domestic = (SELECT IFNULL(a.country_code = b.country_code, 0) FROM airports a, airports b WHERE a.icao = route_month.airport AND b.icao = route_month.other)")
+    db.executemany("INSERT INTO airport_info VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+    db.execute("UPDATE route_year SET domestic = (SELECT IFNULL(a.country_code = b.country_code, 0) FROM airport_info a, airport_info b WHERE a.icao = route_year.airport AND b.icao = route_year.other)")
+    db.execute("UPDATE route_month SET domestic = (SELECT IFNULL(a.country_code = b.country_code, 0) FROM airport_info a, airport_info b WHERE a.icao = route_month.airport AND b.icao = route_month.other)")
     pairs = db.execute("""SELECT DISTINCT a.code, b.code, a.latitude, a.longitude, b.latitude, b.longitude
-                          FROM route_year r JOIN airports a ON a.icao = r.airport JOIN airports b ON b.icao = r.other
+                          FROM route_year r JOIN airport_info a ON a.icao = r.airport JOIN airport_info b ON b.icao = r.other
                           WHERE a.latitude IS NOT NULL AND b.latitude IS NOT NULL""").fetchall()
     db.executemany("INSERT OR IGNORE INTO pair_distance VALUES (?,?,?)",
                    [(min(x, y), max(x, y), round(great_circle_miles(la, lo, lb, lob))) for x, y, la, lo, lb, lob in pairs])
@@ -487,7 +487,7 @@ def build(db_path, sources, t100):
     }
     db.executemany("INSERT INTO build_notes VALUES (?,?)", notes.items())
     db.commit()
-    counts = {t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ("route_year", "route_month", "airports", "caa_names")}
+    counts = {t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ("route_year", "route_month", "airport_info", "caa_names")}
     db.execute("VACUUM")
     db.close()
     tmp.replace(db_path)

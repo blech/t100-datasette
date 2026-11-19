@@ -4,7 +4,7 @@
 {% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
 {% endblock %}
-{% block body_attrs %} data-origin="{{ origin }}" data-latest-year="{{ latest_year }}" data-min-year="{{ min_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
+{% block body_attrs %} data-origin="{{ origin }}" data-latest-year="{{ latest_year }}" data-min-year="{{ min_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% include "_source_attrs.html" %}{% endblock %}
 
 {% block content %}
     <h1 id="title">{{ origin }}: destinations over time</h1>
@@ -16,7 +16,7 @@
       {% if foreign %}on <span id="matrix-service">international flights</span>{# every flight at a foreign airport is to or from the US #}
       {% else %}on <select id="matrix-service" aria-label="Flights"><option value="all">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>{% endif %}
       for the top <select id="matrix-n" aria-label="Number of destinations"><option>10</option><option selected>25</option><option>50</option></select>
-      <select id="matrix-group" aria-label="Group rows by"><option value="airport">airports</option><option value="city">cities (BTS markets)</option></select>
+      {% if europe %}<select id="matrix-group" aria-label="Group rows by" hidden><option value="airport">airports</option></select>destinations{% else %}<select id="matrix-group" aria-label="Group rows by"><option value="airport">airports</option><option value="city">cities (BTS markets)</option></select>{% endif %}
       <select id="matrix-flown" aria-label="Which destinations"><option value="ever">ever flown</option><option value="after">first flown after {{ min_year }}</option><option value="dropped">dropped by {{ latest_year }}</option></select>,
       ranked by <select id="matrix-rank" aria-label="Year used to rank destinations"><option value="">all years</option></select>.
     </p>
@@ -33,7 +33,7 @@
     </div>
     <p class="note" id="scale-note" hidden></p>
     <div id="matrix" aria-live="polite">Loading chart…</div>
-    <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> <span id="flown-note"></span> Each cell is one destination in one year; click a cell or a row's code to see the route over time, with a cell's year marked (or the ranking year, for a code), and from there any year month by month. In city view, click a row to open it into its airports. Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}</p>
+    <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> <span id="flown-note"></span> {% if europe %}Each cell is one destination in one year; click a cell or a row's code for the destination's own pages, where there are some (a European airport's, or a US airport's T-100 pages). {% include "_cutoff_note.html" %}{% else %}Each cell is one destination in one year; click a cell or a row's code to see the route over time, with a cell's year marked (or the ranking year, for a code), and from there any year month by month. In city view, click a row to open it into its airports. {% include "_cutoff_note.html" %}{% endif %} {% include "_dir_note.html" %}</p>
 {% endblock %}
 
 {% block scripts %}

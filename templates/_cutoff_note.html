@@ -1,0 +1,5 @@
+{%- if europe -%}
+Routes with fewer than {{ "{:,}".format(europe.pax_floor if dir == "" else europe.pax_floor // 2) }} passengers a year are hidden, other than freight routes.
+{%- else -%}
+Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden.
+{%- endif -%}

@@ -5,6 +5,7 @@ export function indexAirports(rows) {
       code: r.code, name: r.name, city: r.city, country: r.country,
       place: r.place || [r.city, r.country].filter(Boolean).join(', '),
       lat: r.latitude, lon: r.longitude, isUs: Boolean(r.is_us),
+      ...(r.page !== undefined ? { page: r.page } : {}), // on a European page: where the airport's own pages are (common/source.js)
     });
   }
   return m;

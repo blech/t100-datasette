@@ -1,11 +1,13 @@
 // A page's link to the canned query whose numbers it draws, with every parameter in the address (empty ones too, so the
 // data page's form shows them all, ready to narrow). The link sits hidden in the footer or a map's controls until a page sets it.
 
+import { database } from './source.js';
+
 export function dataHref(query, params = {}) {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) q.append(k, v === null || v === undefined ? '' : String(v));
   q.append('_hide_sql', '1');
-  return `/t100/${query}?${q}`;
+  return `/${database()}/${query}?${q}`;
 }
 
 export function setDataLink(query, params) {

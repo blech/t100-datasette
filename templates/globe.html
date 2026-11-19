@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="/static/globe/style.css">
   <link rel="stylesheet" href="/static/common/yearbar.css">
 {% endblock %}
-{% block body_attrs %} data-origin="{{ origin }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% endblock %}
+{% block body_attrs %} data-origin="{{ origin }}" data-max-year="{{ max_year }}" data-dir="{{ dir }}"{% if foreign %} data-foreign="1"{% endif %}{% include "_source_attrs.html" %}{% endblock %}
 
 {# the maps fill the window, so no <main>; the footer closes the controls #}
 {% block body %}
@@ -19,7 +19,7 @@
     <div class="picker-row">
       <input id="picker" list="airport-list" placeholder="Airport code or name" autocomplete="off" aria-label="Choose an airport">
       <datalist id="airport-list"></datalist>
-      <a href="/t100" class="plain">Data tables</a>
+      <a href="/{{ europe.database if europe else 't100' }}" class="plain">Data tables</a>
     </div>
   </header>
 
@@ -48,7 +48,7 @@
       <span id="year-label"></span>
     </div>
     {# one paragraph of small print under the year bar: what is counted, then how to compare (its words set by the script) #}
-    <p id="map-note"><span class="note">Routes with fewer than {{ 24 if dir == "" else 12 }} {{ count_word|lower }} a year are hidden. {% include "_dir_note.html" %}</span>
+    <p id="map-note"><span class="note">{% include "_cutoff_note.html" %} {% include "_dir_note.html" %}</span>
       <span id="range-hint">To compare two years, go to the earlier one, then drag forward. New routes show green, dropped ones dashed pink, and ones added and dropped again in between dashed grey. Click the legend to hide any kind of route.</span></p>
     <div class="row">
       {% include "_dir_choice.html" %}
@@ -56,7 +56,7 @@
       <button id="centre" type="button">Centre {{ origin }}</button>
       <button id="fit" type="button" title="Zoom to fit the routes shown">Fit routes</button>
       <select id="colour" aria-label="Colour routes by"><option value="single">Colour: single colour</option><option value="service">Colour: domestic or international</option><option value="change">Colour: kept, added or dropped</option></select>
-      <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: {{ count_word|lower }}</option><option value="freight">Width: freight</option></select>
+      <select id="width" aria-label="Line width shows"><option value="passengers">Width: passengers</option><option value="deps">Width: {{ "flights" if europe else count_word|lower }}</option><option value="freight">Width: freight</option></select>
     </div>
     <div id="footnote"></div>
     <div id="foreign-note-box">{% include "_foreign_note.html" %}</div>

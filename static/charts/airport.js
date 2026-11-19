@@ -16,6 +16,7 @@ import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js
 import { replaceSearch } from '/static/nav/src/state.js';
 import { yearDomain } from '/static/charts/src/span.js';
 import { parseDir, countWord, cutoff, setDir } from '/static/common/direction.js';
+import { countBy, isEurope, airportHref } from '/static/common/source.js';
 
 // the airport's two new views share this script: over time (how big, how many places) and what changed
 const origin = document.body.dataset.origin;
@@ -24,9 +25,14 @@ const lastYear = Number(document.body.dataset.lastYear) || null;
 const dir = parseDir(location.search);
 const MATRIX_MEASURES = matrixMeasures(dir);
 const flown = { '': 'to and from', out: 'to', in: 'from' }[dir];
+// a European airport's page counts a destination by its passengers (10,000 a year both ways by default), not its flights
+const EUROPE = isEurope();
+const BY = countBy();
+const MIN_CHOICES = EUROPE ? ['5000', '25000', '50000', '250000'] : ['1', '12', '52', '365'];
+const MIN_DEFAULT = EUROPE ? '5000' : '12';
 // the "at least" choices are counted one way; both ways doubles them, once stays once
 const atLeast = (v) => (Number(v) === 1 ? 1 : cutoff(dir, Number(v)));
-const timesWord = (v) => (Number(v) === 1 ? 'once' : `${atLeast(v)} times`);
+const timesWord = (v) => (EUROPE ? `${exactCount(atLeast(v))} passengers` : Number(v) === 1 ? 'once' : `${atLeast(v)} times`);
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
@@ -111,7 +117,7 @@ function drawSize() {
 }
 
 function drawPlaces() {
-  const counts = placeCounts(places, { min: atLeast($('ap-min').value) });
+  const counts = placeCounts(places, { min: atLeast($('ap-min').value), by: BY });
   const box = $('places-chart');
   if (!counts.length) { box.textContent = 'No destinations at that level.'; return; }
   const series = ['domestic', 'international'].filter((s) => counts.some((c) => c.service === s));
@@ -133,10 +139,10 @@ async function overTime() {
   $('ap-measure').value = pick('measure', Object.keys(MATRIX_MEASURES), 'passengers');
   $('ap-flights').value = pick('flights', FLIGHTS, defaultFlights($('ap-measure').value));
   $('ap-split').value = pick('split', ['service', 'kind', 'airline'], 'service');
-  $('ap-min').value = pick('min', ['1', '12', '52', '365'], '12');
+  $('ap-min').value = pick('min', MIN_CHOICES, MIN_DEFAULT);
   const save = () => remember(['measure', 'flights', 'split', 'min'], {
     measure: [$('ap-measure').value, 'passengers'], flights: [$('ap-flights').value, defaultFlights($('ap-measure').value)],
-    split: [$('ap-split').value, 'service'], min: [$('ap-min').value, '12'],
+    split: [$('ap-split').value, 'service'], min: [$('ap-min').value, MIN_DEFAULT],
   });
   // measure, flights and split are settled together (src/flights.js), once the rows show what's worth offering
   const menus = { measure: $('ap-measure'), flights: $('ap-flights'), split: $('ap-split') };
@@ -155,7 +161,7 @@ async function overTime() {
   }
   // an airport with no freight isn't offered it, nor freight flights or a split by kind with no freighters
   const asked = settings();
-  const offered = offeredBy(size, { measures: Object.keys(MATRIX_MEASURES), splits: ['service', 'kind', 'airline'] });
+  const offered = offeredBy(size, { measures: Object.keys(MATRIX_MEASURES), splits: EUROPE ? ['service', 'kind'] : ['service', 'kind', 'airline'] });
   offerOnly(menus, offered);
   let current = settle(asked, null, { offered });
   setMenus(menus, current);
@@ -181,7 +187,7 @@ let airportInfo = new Map(); // code -> the airports query's row, for a destinat
 let sortChoice = null; // the column last asked for; each status falls back to its own default where it can't sort by it
 
 const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
-const word = countWord(dir).toLowerCase();
+const word = EUROPE ? 'passengers' : countWord(dir).toLowerCase();
 const deps = (n) => { const td = cell(formatCount(n), 'num'); td.title = `${exactCount(n)} ${word}`; return td; };
 // a header row; a column with a sort key is a button (the busiest-airports table's), marked when the list is sorted by it
 const head = (labels, { sortable = [], sorted = null, onSort = () => {} } = {}) => {
@@ -223,8 +229,11 @@ function nameCell(show, id, name) {
     else td.append(Object.assign(document.createElement('a'), { href: `/airlines/${id}`, textContent: shortName(name), title: name }));
   } else {
     // the code at a fixed width, so the places beside it line up as a column of their own
-    td.append(Object.assign(document.createElement('a'), { href: `/airports/${origin}/${id}`, textContent: id, className: 'code', title: airportTip(id, airportInfo) }),
-      Object.assign(document.createElement('small'), { textContent: name || '' }));
+    // a T-100 destination opens the route; a European one the destination's own pages, where it has some
+    const href = EUROPE ? airportHref(id, '', airportInfo) : `/airports/${origin}/${id}`;
+    const code = Object.assign(document.createElement(href ? 'a' : 'span'), { textContent: id, className: 'code', title: airportTip(id, airportInfo) });
+    if (href) code.href = href;
+    td.append(code, Object.assign(document.createElement('small'), { textContent: name || '' }));
   }
   return td;
 }
@@ -266,6 +275,12 @@ async function drawTable() {
       ? [nameCell(show, x.id, x.name), deps(x.deps_a), deps(x.deps_b), cell(exactCount(x.places), 'num'), cell(String(x.year), 'left')]
       : [nameCell(show, x.code, x.city), deps(x.deps_a), deps(x.deps_b), cell(airlineList(x.airlines.map(shortName)), 'left'), cell(formatYearMonth(x.ym), 'left')]);
   }
+  if (EUROPE) {
+    // the European data doesn't name airlines, so there's no airlines column (its fourth)
+    columns.splice(3, 1);
+    const withAirlines = row;
+    row = (x) => { const cells = withAirlines(x); cells.splice(3, 1); return cells; };
+  }
   const shown = sortChanges(items, status, sorted);
   const sortable = ['a', 'b', 'peak', 'when'].filter((k) => changeSort(status, k) === k);
   table.tHead.replaceChildren(head(columns, { sortable, sorted, onSort: (key) => { sortChoice = key; saveChanges(); drawTable(); } }));
@@ -283,9 +298,10 @@ async function summarise() {
   const c = summariseChanges(classifyChanges(changes, { min: atLeast(min), show: 'destinations' }));
   const total = c.kept + c.dropped;
   const times = timesWord(min);
+  const had = EUROPE ? `had ${exactCount(total)} destination${total === 1 ? '' : 's'} with ${times} or more` : `had flights ${flown} ${exactCount(total)} airport${total === 1 ? '' : 's'} at least ${times}`;
   const text = total
-    ? `In ${a} ${origin} had flights ${flown} ${exactCount(total)} airport${total === 1 ? '' : 's'} at least ${times}. By ${b}, ${exactCount(c.kept)} were still served, ${exactCount(c.dropped)} were dropped and ${exactCount(c.added)} new ones had been added.`
-    : `No airports were flown ${dir ? flown : "to or from"} ${times} in ${a}.`;
+    ? `In ${a} ${origin} ${had}. By ${b}, ${exactCount(c.kept)} were still served, ${exactCount(c.dropped)} were dropped and ${exactCount(c.added)} new ones had been added.`
+    : EUROPE ? `No destinations had ${times} in ${a}.` : `No airports were flown ${dir ? flown : "to or from"} ${times} in ${a}.`;
   $('change-summary').textContent = text;
   const key = JSON.stringify(goneParams('destinations'));
   let between = 0;
@@ -319,13 +335,13 @@ async function whatChanged() {
   const defaultFrom = String(Math.max(firstYear, lastYear - 6));
   $('ap-b').value = within(params.get('to'), String(lastYear));
   $('ap-a').value = within(params.get('from'), defaultFrom);
-  $('ap-min').value = pick('min', ['1', '12', '52', '365'], '12');
+  $('ap-min').value = pick('min', MIN_CHOICES, MIN_DEFAULT);
   $('ap-show').value = pick('show', ['destinations', 'airlines'], 'destinations');
   $('ap-status').value = pick('status', ['dropped', 'gone', 'added', 'kept'], 'dropped');
   sortChoice = pick('sort', ['a', 'b', 'peak', 'when'], null);
   // the sort is kept in the address only where it isn't the status's own default
   const save = () => remember(['min', 'from', 'to', 'show', 'status', 'sort'], {
-    min: [$('ap-min').value, '12'], from: [$('ap-a').value, defaultFrom], to: [$('ap-b').value, String(lastYear)],
+    min: [$('ap-min').value, MIN_DEFAULT], from: [$('ap-a').value, defaultFrom], to: [$('ap-b').value, String(lastYear)],
     show: [$('ap-show').value, 'destinations'], status: [$('ap-status').value, 'dropped'],
     sort: [changeSort($('ap-status').value, sortChoice), changeSort($('ap-status').value, null)],
   });
@@ -333,10 +349,11 @@ async function whatChanged() {
   for (const id of ['ap-a', 'ap-b']) $(id).addEventListener('change', () => { save(); loadChanges(); });
   $('ap-min').addEventListener('change', () => { save(); summarise(); drawTable(); });
   for (const id of ['ap-show', 'ap-status']) $(id).addEventListener('change', () => { save(); drawTable(); });
-  fetchRows(queryUrl('airports')).then((res) => {
+  const loaded = fetchRows(queryUrl('airports')).then((res) => {
     airportInfo = new Map(res.rows.map((a) => [a.code, a]));
     for (const a of $('change-table').querySelectorAll('a.code')) a.title = airportTip(a.textContent, airportInfo);
   }, (err) => console.error(err));
+  if (EUROPE) await loaded; // where a destination links depends on the airport, so the table waits for the airports
   await loadChanges();
 }
 

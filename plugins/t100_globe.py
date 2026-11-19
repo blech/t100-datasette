@@ -117,6 +117,7 @@ def trail(datasette, *steps):
 
 SECTIONS = ("airports", "aircraft", "airlines", "about")
 AIRPORT_CODE = re.compile(r"^[A-Za-z0-9]{3}$")
+EUROPE_CODE = re.compile(r"^[A-Za-z0-9]{3,4}$")  # a European airport is its IATA code, or its ICAO code where it has none
 
 
 def section_of(path):
@@ -124,6 +125,8 @@ def section_of(path):
     first = path.strip("/").split("/")[0]
     if first and first == 'changelog':
         first = 'about'
+    if first == 'europe':  # the European airports' pages (plugins/t_avia.py) are airports too
+        first = 'airports'
     return first if first in SECTIONS else None
 
 
@@ -144,11 +147,14 @@ def views_for(path):
                         ("Most dedicated", "/airports/dedicated", None), ("Risers and fallers", "/airports/movers", None),
                         ("Routes", "/airports/routes", None), ("Distances", "/airports/distances", None), ("Map", "/airports/globe", None),
                         current=[[], ["over-time"], ["dedicated"], ["movers"], ["routes"], ["distances"], ["globe"]].index(view))
-        case ["airports", code, *rest] if AIRPORT_CODE.match(code) and rest in ([], ["destinations"], ["distances"], ["changes"], ["globe"]):
+        case ["airports", code, *rest] | ["europe", "airports", code, *rest] if (
+                (AIRPORT_CODE.match(code) or (parts[0] == "europe" and EUROPE_CODE.match(code)))
+                and rest in ([], ["destinations"], ["distances"], ["changes"], ["globe"])):
             c = code.upper()
-            return make(("Over time", f"/airports/{c}", None), ("Destinations", f"/airports/{c}/destinations", None),
-                        ("Distances", f"/airports/{c}/distances", None),
-                        ("Changes", f"/airports/{c}/changes", "changes-link"), ("Map", f"/airports/{c}/globe", None),
+            base = f"/europe/airports/{c}" if parts[0] == "europe" else f"/airports/{c}"   # a European airport's pages have the same views
+            return make(("Over time", base, None), ("Destinations", f"{base}/destinations", None),
+                        ("Distances", f"{base}/distances", None),
+                        ("Changes", f"{base}/changes", "changes-link"), ("Map", f"{base}/globe", None),
                         current=[[], ["destinations"], ["distances"], ["changes"], ["globe"]].index(rest))
         case ["airports", a, b, *rest] if AIRPORT_CODE.match(a) and AIRPORT_CODE.match(b) and b.lower() != "globe" and (
                 rest in ([], ["table"]) or (rest and rest[0].isdigit() and rest[1:] in ([], ["table"]))):
@@ -201,6 +207,15 @@ async def is_foreign(datasette, code):
     result = await datasette.get_database("t100").execute("SELECT origin_wac FROM t100 WHERE origin = ? LIMIT 1", [code])
     row = result.first()
     return bool(row) and row[0] is not None and not 1 <= row[0] <= 93
+
+
+async def europe_link(datasette, code):
+    """For an airport outside the US: its European pages' address and whether it's a UK airport, when the t_avia database
+    is loaded and the airport reports its routes there (plugins/t_avia.py); otherwise empty."""
+    if not code or "t_avia" not in datasette.databases:
+        return {}
+    row = (await datasette.get_database("t_avia").execute("SELECT icao FROM airport_info WHERE code = ? AND reporting = 1", [code])).first()
+    return {"europe_href": f"/europe/airports/{code}", "europe_uk": row[0].startswith("EG")} if row else {}
 
 
 async def airport_info(datasette, codes):
@@ -396,7 +411,8 @@ async def globe_page(datasette, request):
     html = await datasette.render_template(
         "globe.html",
         {"origin": origin, "crumbs": trail(datasette, *steps), "foreign": foreign, "max_year": year_range(datasette)[1],
-         "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, foreign), **airport_direction(request)},
+         "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, foreign), **airport_direction(request),
+         **(await europe_link(datasette, origin) if foreign else {})},
         request=request,
     )
     return Response.html(html)
@@ -725,6 +741,7 @@ def airport_view(template, crumb, extra=None):
                 "foreign": await is_foreign(datasette, origin),
                 "label": await linked_label(datasette, await airport_info(datasette, [origin]), origin, await is_foreign(datasette, origin)),
                 "rank_line": await airport_rank_line(datasette, origin, await is_foreign(datasette, origin)) if template == "airport.html" else "",
+                **(await europe_link(datasette, origin) if await is_foreign(datasette, origin) else {}),
                 **airport_direction(request),
                 **(await extra(datasette, origin, request) if extra else {}),
             },

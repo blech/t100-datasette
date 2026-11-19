@@ -1,7 +1,10 @@
+import { database } from '../../common/source.js';
+
+// a canned query's JSON, from the page's database (the t100 one unless the page says otherwise)
 export function queryUrl(name, params = {}) {
   const q = new URLSearchParams({ _shape: 'objects' });
   for (const [k, v] of Object.entries(params)) q.set(k, String(v));
-  return `/t100/${name}.json?${q}`;
+  return `/${database()}/${name}.json?${q}`;
 }
 
 export async function fetchRows(url, fetchImpl = fetch) {

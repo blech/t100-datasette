@@ -17,6 +17,7 @@ import { renderLegend, syncRange, bindTrackPress } from './src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
 import { countWord, setDir } from '/static/common/direction.js';
+import { isEurope, airportHref, EUROPE_BASE } from '/static/common/source.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -128,7 +129,8 @@ function showPanel(r) {
   close.onclick = () => { selected = -1; p.hidden = true; dirty = true; };
   const h = document.createElement('h2');
   const destLink = document.createElement('a');
-  destLink.href = `/airports/${encodeURIComponent(r.dest)}/globe${toSearch(state)}`;
+  const destMap = airportHref(r.dest, '/globe', airports);
+  if (destMap) destLink.href = `${destMap}${toSearch(state)}`;
   destLink.textContent = r.dest;
   destLink.title = `Show routes from ${r.dest}`;
   h.append(`${origin} ${{ '': '↔', out: '→', in: '←' }[state.dir]} `, destLink);
@@ -150,7 +152,13 @@ function showPanel(r) {
   const a2 = document.createElement('a');
   a2.href = `${routePath}/${figuresYear}${keepDir}`;
   a2.textContent = `Month by month in ${figuresYear} →`;
-  p.append(close, h, sub, dl, a1, a2);
+  if (isEurope()) {
+    // no route pages for the European data: the destination's own pages instead, where it has some
+    const own = airportHref(r.dest, '', airports);
+    a1.textContent = `${r.dest} over time →`;
+    if (own) a1.href = own; else a1.remove();
+    p.append(close, h, sub, dl, ...(own ? [a1] : []));
+  } else p.append(close, h, sub, dl, a1, a2);
   p.hidden = false;
 }
 
@@ -214,7 +222,8 @@ function fillPicker() {
   $('picker').value = origin;
   $('picker').addEventListener('change', (e) => {
     const code = e.target.value.trim().toUpperCase();
-    if (/^[A-Z0-9]{3}$/.test(code)) location.href = `/airports/${code}/globe${toSearch(state)}`;
+    if (isEurope()) { if (airports.get(code)?.page === 'europe') location.href = `${EUROPE_BASE}/${code}/globe${toSearch(state)}`; }
+    else if (/^[A-Z0-9]{3}$/.test(code)) location.href = `/airports/${code}/globe${toSearch(state)}`;
   });
 }
 

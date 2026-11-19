@@ -65,6 +65,18 @@ test('placeCounts counts destinations at or above the minimum, by service', () =
   assert.equal(placeCounts(rows, { min: 1 }).find((c) => c.year === 2019 && c.service === 'domestic').count, 2);
 });
 
+test('placeCounts can count by passengers, as a European airport does, including years with no flights', () => {
+  const rows = [
+    { dest: 'JFK', year: 2020, deps: null, passengers: 700000, service: 'international' },
+    { dest: 'DXB', year: 2020, deps: null, passengers: 8000, service: 'international' },
+    { dest: 'EDI', year: 2019, deps: 9000, passengers: 1200000, service: 'domestic' },
+  ];
+  assert.deepEqual(placeCounts(rows, { min: 10000, by: 'passengers' }), [
+    { year: 2019, service: 'domestic', count: 1 },
+    { year: 2020, service: 'international', count: 1 },
+  ]);
+});
+
 const c = (dest, group_id, group_name, deps_a, deps_b, first_ym = 199001, last_ym = 202512) =>
   ({ dest, city: `${dest} city`, group_id, group_name, deps_a, deps_b, pax_a: 0, first_ym, last_ym });
 
