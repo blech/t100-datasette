@@ -201,3 +201,16 @@ def test_the_index_ranks_by_any_of_its_columns(both):
     r = get(both, "/airports/europe?year=2019&sort=freight")
     assert 'data-sort="freight" aria-sort="descending"' in r.text and '<input type="hidden" name="sort" value="freight">' in r.text
     assert get(both, "/airports/europe?year=2019&sort=nonsense").status_code == 200  # an unknown sort is passengers
+
+
+def test_the_last_sort_asked_for_wins(both):
+    r = get(both, "/airports/europe?sort=freight&year=2019&sort=destinations")
+    assert 'data-sort="destinations" aria-sort="descending"' in r.text
+
+
+def test_schonefeld_is_berlin_brandenburgs_past(both):
+    from plugins.t_avia import INHERITED, FORMER
+    assert FORMER == {"SXF": "BER"} and INHERITED["BER"]["until"] == "October 2020"
+    r = get(both, "/airports/europe/SXF/destinations?year=2019")
+    assert r.status_code == 302 and r.headers["location"] == "/airports/europe/BER/destinations?year=2019"
+    assert get(both, "/airports/europe/LHR/SXF").headers["location"] == "/airports/europe/LHR/BER"

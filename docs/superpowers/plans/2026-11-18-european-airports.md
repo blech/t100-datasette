@@ -54,6 +54,8 @@ task-by-task plan; this file records what was built, the decisions made without 
    Johannesburg, ASSY → YSSY Sydney, HKNA → HKJK Nairobi and nine more). **Eurostat's placeholders** (`EG90`, `LF99`,
    `ZZZZ`: other or unknown airports) count in an airport's totals but are never a destination.
 7. **Berlin Brandenburg is EDDB/BER over all its years**, Schönefeld's history included (Eurostat keeps one code for both).
+   Kept merged as an inheritor airport (the user's call, 2026-11-19): BER's notes say its figures until October 2020 are
+   Schönefeld's, and `/airports/europe/SXF...` redirects to BER (`INHERITED` in `plugins/t_avia.py`).
 8. **The CAA's 1997–2000 tables are read from their spreadsheets with xlrd** (`uv run --with xlrd`; not added to the project's
    dependencies, and without it those years are skipped with a message). They are international only: 1997–2000 have no
    CAA domestic route table, so a UK airport's domestic routes then are Eurostat's (about ten for Heathrow in 1998–2000, none

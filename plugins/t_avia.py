@@ -19,6 +19,10 @@ CODE = r"[A-Za-z0-9]{3,4}"  # IATA, or ICAO where an airport has none
 PAX_FLOOR = 10_000  # a destination's passengers a year, both ways: the European pages' default "at least"
 DEFAULT_YEAR = 2024  # the last year most of Eurostat's countries have
 INDEX_SORTS = {"passengers": "Passengers", "flights": "Flights", "destinations": "Destinations", "freight": "Freight"}  # the index's columns to rank by
+# an airport whose code a newer one took over, with its history: Eurostat files both under the one ICAO code, so the newer
+# airport's pages carry the older one's years, said so in its note, and the older code's pages lead there
+INHERITED = {"BER": {"code": "SXF", "name": "Berlin Schönefeld", "until": "October 2020"}}
+FORMER = {v["code"]: k for k, v in INHERITED.items()}
 MATRIX_SETTINGS = ("n", "group", "rank", "year", "flown", "scale", "open")
 
 
@@ -98,6 +102,9 @@ def europe_view(template, crumb):
         origin = request.url_vars["origin"].upper()
         if template == "airport.html" and any(k in request.args for k in MATRIX_SETTINGS):
             return Response.redirect(f"{BASE}/{origin}/destinations?{request.query_string}", status=301)
+        if origin in FORMER:  # SXF's pages are BER's
+            path = request.path.replace(f"{BASE}/{request.url_vars['origin']}", f"{BASE}/{FORMER[origin]}", 1)
+            return Response.redirect(f"{path}?{request.query_string}" if request.query_string else path, status=302)
         info = await airport(datasette, origin)
         if not info:
             raise NotFound(f"No European airport {origin}")
@@ -122,6 +129,7 @@ def europe_view(template, crumb):
                 "database": DATABASE, "base": BASE, "icao": info["icao"], "pax_floor": PAX_FLOOR,
                 "caa_years": await caa_years(datasette, info["icao"]),
                 "uk": info["icao"].startswith("EG"),
+                "inherits": INHERITED.get(origin),
                 "t100_href": f"/airports/{origin}" if await t100_years(datasette, origin) else None,
             },
         }
@@ -142,7 +150,7 @@ async def index_page(datasette, request):
     year = request.args.get("year", "")
     year = int(year) if year.isdigit() and int(year) in years else DEFAULT_YEAR
     eurostat_last = (await db.execute("SELECT MAX(year) FROM route_year WHERE source <> 'caa'")).first()[0]  # later years are the CAA's alone
-    sort = request.args.get("sort", "")
+    sort = (request.args.getlist("sort") or [""])[-1]  # the form keeps the current sort; a heading's button adds the new one
     sort = sort if sort in INDEX_SORTS else "passengers"
     sql = datasette.config["databases"][DATABASE]["queries"]["europe_airports"]["sql"]
     from t100_globe import prose_count
@@ -189,6 +197,9 @@ async def route_page(datasette, request):
     origin = request.url_vars["origin"].upper()
     dest = request.url_vars["dest"].upper()
     year = request.url_vars.get("year") or ""
+    if origin in FORMER or dest in FORMER:
+        path = f"{BASE}/{FORMER.get(origin, origin)}/{FORMER.get(dest, dest)}{f'/{year}' if year else ''}"
+        return Response.redirect(f"{path}?{request.query_string}" if request.query_string else path, status=302)
     db = database(datasette)
     info = await places(datasette, [origin, dest])
     has = "SELECT 1 FROM route_year WHERE airport = ? AND other = ? LIMIT 1"
@@ -226,6 +237,7 @@ async def route_page(datasette, request):
          "dir_choices": DIRECTION_CHOICES_ROUTE(origin, dest),
          "label": {"": "{0} ↔ {1}", "out": "{0} → {1}", "in": "{1} → {0}"}[dir].format(*names),
          "europe": {"database": DATABASE, "base": BASE, "pax_floor": PAX_FLOOR, "uk": o["icao"].startswith("EG"),
+                    "inherits": [{**INHERITED[c], "successor": c} for c in (origin, dest) if c in INHERITED],
                     "caa_years": await caa_route_years(datasette, o["icao"], d["icao"]),
                     "reverse_href": f"{BASE}/{dest}/{origin}" if d["reporting"] else None}},
         request=request,
