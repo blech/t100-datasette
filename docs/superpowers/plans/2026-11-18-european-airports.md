@@ -100,6 +100,11 @@ task-by-task plan; this file records what was built, the decisions made without 
 - The months (the map's month play, first and last flown) are Eurostat's only, so CAA years have none.
 - Not deployed, and not checked with the JavaScript bundle (`npm run bundle`; the worktree has no `node_modules`).
 - The changelog is the user's to write.
+- **LF90 is Paris** (CDG and Orly together) in 1993 and 1996–2000: France reported its two Paris airports as one "other or
+  unknown" placeholder in those years, which is why CDG and ORY have nothing then. Its routes (Nice, Toulouse, Marseille, JFK…)
+  are Paris's, and other airports report their Paris routes to it too (Nice–LF90, 3.3m in 1999). As a placeholder it is left
+  out of the index and has no pages (2026-11-19), and other airports' Paris routes in those years are missing from their
+  destinations. A possible fix: treat LF90 in those years as a pseudo-airport, Paris (CDG and Orly together), code PAR.
 
 ## Review focus
 

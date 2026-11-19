@@ -214,3 +214,13 @@ def test_schonefeld_is_berlin_brandenburgs_past(both):
     r = get(both, "/airports/europe/SXF/destinations?year=2019")
     assert r.status_code == 302 and r.headers["location"] == "/airports/europe/BER/destinations?year=2019"
     assert get(both, "/airports/europe/LHR/SXF").headers["location"] == "/airports/europe/LHR/BER"
+
+
+def test_a_placeholder_that_reports_is_no_airport(both):
+    db = sqlite3.connect(both.databases["t_avia"].path)
+    db.execute("UPDATE airport_info SET reporting = 1 WHERE icao = 'EG90'")
+    db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers) VALUES ('EG90', 'KJFK', 2019, 'eurostat', 0, 99000000)")
+    db.commit()
+    db.close()
+    assert 'href="/airports/europe/EG90"' not in get(both, "/airports/europe?year=2019").text
+    assert get(both, "/airports/europe/EG90").status_code == 404

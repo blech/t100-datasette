@@ -63,7 +63,7 @@ def trail(datasette, *steps):
 async def airport(datasette, code):
     """The airports row of a reporting airport, by its code, or None."""
     row = (await database(datasette).execute(
-        "SELECT icao, code, name, city, country, first_year, last_year FROM airport_info WHERE code = ? AND reporting = 1", [code])).first()
+        "SELECT icao, code, name, city, country, first_year, last_year FROM airport_info WHERE code = ? AND reporting = 1 AND placeholder = 0", [code])).first()
     return dict(row) if row else None
 
 

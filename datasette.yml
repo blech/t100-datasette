@@ -1272,7 +1272,7 @@ databases:
             COUNT(CASE WHEN r.passengers >= 10000 AND r.other NOT IN (SELECT icao FROM airport_info WHERE placeholder = 1) THEN 1 END) AS destinations,
             MAX(r.source) AS source
           FROM airport_info a JOIN route_year r ON r.airport = a.icao AND r.year = CAST(:year AS integer)
-          WHERE a.reporting = 1
+          WHERE a.reporting = 1 AND a.placeholder = 0  -- Eurostat's "other or unknown" reporters (LF90: Paris, 1993 and 1996-2000) aren't airports
           GROUP BY a.icao
           )
           -- ranked outside the grouping: inside an expression, freight would be route_year's column, not the sum
