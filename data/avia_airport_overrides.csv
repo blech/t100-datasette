@@ -1,0 +1,15 @@
+icao,alias_of,iata,name,city,country,latitude,longitude,note
+FAJS,FAOR,,,,,,,Johannesburg's code until 2006
+EDVV,EDDV,,,,,,,Hannover's old code
+LPFU,LPMA,,,,,,,Madeira (Funchal)'s old code
+OKKK,OKBK,,,,,,,Kuwait's old code
+SPJC,SPIM,,,,,,,Lima's old code
+HKNA,HKJK,,,,,,,Nairobi's old code
+ASSY,YSSY,,,,,,,Sydney's old code
+AMML,YMML,,,,,,,Melbourne's old code
+ZSSA,ZSSS,,,,,,,Shanghai Hongqiao's old code
+GMAA,GMAD,,,,,,,"Agadir Inezgane, closed; Agadir's traffic moved to Al Massira"
+GMMC,GMMN,,,,,,,"Casablanca Anfa, closed; Casablanca's airport is Mohammed V"
+ETBS,EDDB,,,,,,,Berlin Schönefeld as Eurostat sometimes codes it
+EDDB,,BER,Berlin Brandenburg Airport,Berlin,Germany,,,Schönefeld became Brandenburg (BER) in 2020
+LTFM,,IST,Istanbul Airport,Istanbul,Turkey,41.2753,28.7519,opened 2018

@@ -24,6 +24,8 @@ source_downloads/
 !data/aircraft_makers.csv
 !data/carrier_groups.csv
 !data/airlines_overrides.csv
+!data/caa_airports.csv
+!data/avia_airport_overrides.csv
 
 # explore/ scratch cubes (rebuild with explore/README.md steps)
 explore/cubes.duckdb

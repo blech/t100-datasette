@@ -1235,3 +1235,172 @@ databases:
             a.name ASC,
             cp.name ASC,
             total_passengers DESC
+
+  # The European airports (build_t_avia.py): Eurostat's route tables, with the CAA's for UK airports. Its queries have the
+  # T-100 ones' names, parameters and columns, so the airport pages' scripts only need to know which database to ask; the
+  # differences are in each description. A destination counts by its passengers here, not its flights (the CAA's years have
+  # none): min_deps and min are the fewest passengers, empty meaning 10,000 a year both ways or 5,000 one way. Freight is in
+  # pounds, from Eurostat's tonnes, so the shared charts' short tons are right. Codes are IATA, or ICAO where there's none.
+  # Design: docs/superpowers/specs/2026-11-18-european-airports-design.md.
+  t_avia:
+    title: European airports (Eurostat and CAA), 1990-2025
+    source: Eurostat avia_par and avia_gor route tables; UK Civil Aviation Authority airport data, tables 12.1 and 12.2
+    source_url: https://ec.europa.eu/eurostat/web/transport/database
+
+    queries:
+      airports:
+        title: "Airports, with where their pages are"
+        description: "Every airport in the data, with its coordinates; page is europe for an airport with its own pages here (one that reports its routes), t100 for a US airport (its T-100 pages), and empty otherwise."
+        sql: |
+          SELECT
+            code, name, city, country, latitude, longitude, icao,
+            COALESCE(city || ', ' || country, country) AS place, is_us,
+            CASE WHEN reporting = 1 THEN 'europe' WHEN is_us = 1 THEN 't100' END AS page
+          FROM airports
+          WHERE placeholder = 0
+          ORDER BY code
+
+      europe_airports:
+        title: "Reporting airports in a year"
+        description: "Every airport with its own pages, with its passengers (both ways) in the year, busiest first."
+        sql: |
+          SELECT a.code, a.name, a.city, a.country, a.country_code, a.first_year, a.last_year,
+            SUM(r.passengers) AS passengers, COUNT(CASE WHEN r.passengers >= 10000 THEN 1 END) AS destinations,
+            MAX(r.source) AS source
+          FROM airports a JOIN route_year r ON r.airport = a.icao AND r.year = CAST(:year AS integer)
+          WHERE a.reporting = 1
+          GROUP BY a.icao
+          ORDER BY passengers DESC
+
+      routes_by_year:
+        title: "Other airports from and to an airport, by year"
+        description: "As T-100's: one row per other airport (dest) and year, both directions together or dir out or in, with routes under min_deps passengers (10,000 a year both ways, 5,000 one way, when empty) left out unless they are freight routes (24 freight flights both ways, 12 one way). deps is passenger and freight-only flights together, empty in the CAA's years; distance is great-circle. Eurostat's other or unknown airports are left out."
+        sql: |
+          WITH r AS (
+            SELECT o.code AS dest, o.city, r.year, r.domestic,
+              CASE :dir WHEN 'out' THEN r.pax_flights_out WHEN 'in' THEN r.pax_flights_in ELSE r.pax_flights END AS pf,
+              CASE :dir WHEN 'out' THEN r.freight_flights_out WHEN 'in' THEN r.freight_flights_in ELSE r.freight_flights END AS ff,
+              CASE :dir WHEN 'out' THEN r.seats_out WHEN 'in' THEN r.seats_in ELSE r.seats END AS seats,
+              CASE :dir WHEN 'out' THEN r.passengers_out WHEN 'in' THEN r.passengers_in ELSE r.passengers END AS passengers,
+              CASE :dir WHEN 'out' THEN r.freight_out WHEN 'in' THEN r.freight_in ELSE r.freight END AS freight
+            FROM route_year r JOIN airports o ON o.icao = r.other AND o.placeholder = 0
+            WHERE r.airport = (SELECT icao FROM airports WHERE code = :origin)
+              AND (NULLIF(:year, '') IS NULL OR r.year = CAST(:year AS integer))
+          )
+          SELECT
+            r.dest, NULL AS market_id, r.city, d.distance, d.distance AS gc_distance, r.year,
+            CASE WHEN r.pf IS NULL AND r.ff IS NULL THEN NULL ELSE IFNULL(r.pf, 0) + IFNULL(r.ff, 0) END AS deps,
+            r.seats, r.passengers, CAST(ROUND(r.freight * 2204.62) AS integer) AS freight,
+            CASE WHEN r.domestic = 1 THEN 'domestic' ELSE 'international' END AS service
+          FROM r
+          LEFT JOIN pair_distance d ON d.a = MIN(:origin, r.dest) AND d.b = MAX(:origin, r.dest)
+          WHERE IFNULL(r.passengers, 0) >= CAST(COALESCE(NULLIF(:min_deps, ''), CASE WHEN :dir IN ('out', 'in') THEN 5000 ELSE 10000 END) AS integer)
+            OR (NULLIF(:min_deps, '') IS NULL AND IFNULL(r.ff, 0) >= CASE WHEN :dir IN ('out', 'in') THEN 12 ELSE 24 END)
+          ORDER BY r.year, r.dest
+
+      routes_by_month:
+        title: "Other airports from and to an airport, by month of one year"
+        description: "As routes_by_year, by month of one year, Eurostat's months only (the CAA's tables are yearly); a route shows all its months or none, by its year's passengers."
+        sql: |
+          WITH o AS (SELECT icao FROM airports WHERE code = :origin),
+          kept AS (
+            SELECT other FROM route_year
+            WHERE airport = (SELECT icao FROM o) AND year = CAST(:year AS integer)
+              AND (IFNULL(CASE :dir WHEN 'out' THEN passengers_out WHEN 'in' THEN passengers_in ELSE passengers END, 0)
+                     >= CAST(COALESCE(NULLIF(:min_deps, ''), CASE WHEN :dir IN ('out', 'in') THEN 5000 ELSE 10000 END) AS integer)
+                OR IFNULL(CASE :dir WHEN 'out' THEN freight_flights_out WHEN 'in' THEN freight_flights_in ELSE freight_flights END, 0)
+                     >= CASE WHEN :dir IN ('out', 'in') THEN 12 ELSE 24 END)
+          )
+          SELECT
+            a.code AS dest, m.month,
+            IFNULL(CASE :dir WHEN 'out' THEN m.pax_flights_out WHEN 'in' THEN m.pax_flights_in ELSE m.pax_flights END, 0)
+              + IFNULL(CASE :dir WHEN 'out' THEN m.freight_flights_out WHEN 'in' THEN m.freight_flights_in ELSE m.freight_flights END, 0) AS deps,
+            CASE :dir WHEN 'out' THEN m.seats_out WHEN 'in' THEN m.seats_in ELSE m.seats END AS seats,
+            CASE :dir WHEN 'out' THEN m.passengers_out WHEN 'in' THEN m.passengers_in ELSE m.passengers END AS passengers,
+            CAST(ROUND(IFNULL(CASE :dir WHEN 'out' THEN m.freight_out WHEN 'in' THEN m.freight_in ELSE m.freight END, 0) * 2204.62) AS integer) AS freight,
+            CASE WHEN m.domestic = 1 THEN 'domestic' ELSE 'international' END AS service
+          FROM route_month m JOIN airports a ON a.icao = m.other AND a.placeholder = 0
+          WHERE m.airport = (SELECT icao FROM o) AND m.year = CAST(:year AS integer) AND m.other IN (SELECT other FROM kept)
+          ORDER BY m.month, a.code
+
+      airport_size:
+        title: "Traffic at an airport, by year, service and kind"
+        description: "As T-100's, with one airline group for every airline (Eurostat doesn't name them). The passenger kind is passenger flights, seats and passengers; the freight kind is freight-only flights and all the freight, on every kind of flight, in pounds. Flights are empty in the CAA's years. Eurostat's other or unknown airports count here."
+        sql: |
+          WITH r AS (SELECT * FROM route_year WHERE airport = (SELECT icao FROM airports WHERE code = :origin))
+          SELECT year, 'all' AS group_id, 'All airlines' AS group_name, service, kind,
+            SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, CAST(ROUND(SUM(freight) * 2204.62) AS integer) AS freight
+          FROM (
+            SELECT year, CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service, 'passenger' AS kind,
+              CASE :dir WHEN 'out' THEN pax_flights_out WHEN 'in' THEN pax_flights_in ELSE pax_flights END AS deps,
+              CASE :dir WHEN 'out' THEN seats_out WHEN 'in' THEN seats_in ELSE seats END AS seats,
+              CASE :dir WHEN 'out' THEN passengers_out WHEN 'in' THEN passengers_in ELSE passengers END AS passengers,
+              0 AS freight
+            FROM r
+            UNION ALL
+            SELECT year, CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END, 'freight',
+              CASE :dir WHEN 'out' THEN freight_flights_out WHEN 'in' THEN freight_flights_in ELSE freight_flights END,
+              0, 0,
+              CASE :dir WHEN 'out' THEN freight_out WHEN 'in' THEN freight_in ELSE freight END
+            FROM r
+          )
+          GROUP BY year, service, kind
+          HAVING SUM(deps) > 0 OR SUM(seats) > 0 OR SUM(passengers) > 0 OR SUM(freight) > 0
+          ORDER BY year
+
+      airport_changes:
+        title: "Other airports at an airport, in two years"
+        description: "As T-100's, counting passengers: deps_a and deps_b are the passengers in each year (both ways, or dir out or in), with the first and last month carried (the year alone in the CAA's years, which have no months)."
+        sql: |
+          WITH o AS (SELECT icao FROM airports WHERE code = :origin),
+          r AS (
+            SELECT other, year, CASE :dir WHEN 'out' THEN passengers_out WHEN 'in' THEN passengers_in ELSE passengers END AS pax
+            FROM route_year WHERE airport = (SELECT icao FROM o)
+          ),
+          months AS (
+            SELECT other, MIN(year * 100 + month) AS first_ym, MAX(year * 100 + month) AS last_ym
+            FROM route_month WHERE airport = (SELECT icao FROM o) AND passengers > 0 GROUP BY other
+          ),
+          years AS (SELECT other, MIN(year) AS first_year, MAX(year) AS last_year FROM r WHERE pax > 0 GROUP BY other)
+          SELECT
+            a.code AS dest, COALESCE(a.city, a.name) AS city, 'all' AS group_id, 'All airlines' AS group_name,
+            SUM(CASE WHEN r.year = CAST(:a AS integer) THEN r.pax ELSE 0 END) AS deps_a,
+            SUM(CASE WHEN r.year = CAST(:b AS integer) THEN r.pax ELSE 0 END) AS deps_b,
+            SUM(CASE WHEN r.year = CAST(:a AS integer) THEN r.pax ELSE 0 END) AS pax_a,
+            CASE WHEN m.first_ym / 100 = y.first_year THEN m.first_ym ELSE y.first_year * 100 END AS first_ym,
+            CASE WHEN m.last_ym / 100 = y.last_year THEN m.last_ym ELSE y.last_year * 100 END AS last_ym
+          FROM r JOIN airports a ON a.icao = r.other AND a.placeholder = 0
+          LEFT JOIN months m ON m.other = r.other
+          LEFT JOIN years y ON y.other = r.other
+          WHERE r.year IN (CAST(:a AS integer), CAST(:b AS integer))
+          GROUP BY r.other
+          HAVING deps_a > 0 OR deps_b > 0
+          ORDER BY deps_a DESC, deps_b DESC
+
+      airport_gone:
+        title: "Other airports at an airport no longer flown by a year"
+        description: "As T-100's, counting passengers (min, 10,000 a year both ways or 5,000 one way when empty), with one member, every airline; show=airlines has nothing to show here."
+        sql: |
+          WITH flown AS (
+            SELECT a.code, COALESCE(a.city, a.name) AS name, 'All airlines' AS member, r.year,
+              CASE :dir WHEN 'out' THEN r.passengers_out WHEN 'in' THEN r.passengers_in ELSE r.passengers END AS deps
+            FROM route_year r JOIN airports a ON a.icao = r.other AND a.placeholder = 0
+            WHERE r.airport = (SELECT icao FROM airports WHERE code = :origin) AND :show <> 'airlines'
+              AND r.year BETWEEN CAST(:a AS integer) AND CAST(:b AS integer)
+          ),
+          counted AS (
+            SELECT *, MAX(year = CAST(:b AS integer)) OVER (PARTITION BY code) AS at_b,
+              MIN(year) OVER (PARTITION BY code) AS first_year, MAX(year) OVER (PARTITION BY code) AS last_year,
+              MAX(deps) OVER (PARTITION BY code) AS peak_deps,
+              SUM(CASE WHEN year = CAST(:a AS integer) THEN deps ELSE 0 END) OVER (PARTITION BY code) AS deps_a
+            FROM flown
+            WHERE deps >= CAST(COALESCE(NULLIF(:min, ''), CASE WHEN :dir IN ('out', 'in') THEN 5000 ELSE 10000 END) AS integer)
+          ),
+          gone AS (
+            SELECT *, MAX(CASE WHEN deps = peak_deps THEN year END) OVER (PARTITION BY code) AS peak_year
+            FROM counted WHERE at_b = 0
+          )
+          SELECT code, name, member, deps AS member_deps, deps_a, first_year, last_year, peak_year, peak_deps
+          FROM gone
+          WHERE year = peak_year
+          ORDER BY peak_deps DESC, code
