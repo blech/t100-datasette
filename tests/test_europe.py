@@ -186,3 +186,18 @@ def test_the_route_queries_give_t100s_columns(both):
 
 def test_a_european_route_has_no_other_views():
     assert views_for("/airports/europe/LHR/JFK") == [] and views_for("/airports/europe/LHR/JFK/2019") == []
+
+
+def test_the_index_ranks_by_any_of_its_columns(both):
+    r = get(both, "/airports/europe?year=2019")
+    assert 'data-sort="passengers" aria-sort="descending"' in r.text and "by passengers" in r.text
+    assert "23,710 flights" in r.text and "110,231 short tons" in r.text  # LHR: passenger and freight-only flights, tonnes as short tons
+    order = lambda sort: [r["code"] for r in get(both, f"/t_avia/europe_airports.json?_shape=objects&year=2019&sort={sort}").json()["rows"]]
+    db = sqlite3.connect(both.databases["t_avia"].path)
+    db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers, freight) VALUES ('LFPG', 'OMDB', 2019, 'eurostat', 0, 1000, 900000)")
+    db.commit()
+    db.close()  # CDG: few passengers, much freight
+    assert order("freight") == ["CDG", "LHR"] and order("passengers") == ["LHR", "CDG"] and order("") == ["LHR", "CDG"]
+    r = get(both, "/airports/europe?year=2019&sort=freight")
+    assert 'data-sort="freight" aria-sort="descending"' in r.text and '<input type="hidden" name="sort" value="freight">' in r.text
+    assert get(both, "/airports/europe?year=2019&sort=nonsense").status_code == 200  # an unknown sort is passengers

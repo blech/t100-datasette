@@ -20,8 +20,9 @@
       {%- endif %}
     </p>
 
-    <form class="bar" method="get" action="{{ base }}">
-      <h2 id="heading">Busiest in {{ year }}</h2>
+    <form class="bar" id="index-form" method="get" action="{{ base }}">
+      <h2 id="heading">Busiest in {{ year }}, by {{ sorts[sort]|lower }}</h2>
+      {%- if sort != "passengers" %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
       <label>Year <select name="year" id="year" aria-label="Year" onchange="this.form.submit()">
           {%- for y in years %}
           <option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>
@@ -38,8 +39,13 @@
             <th scope="col" class="left">Airport</th>
             <th scope="col" class="left">Name</th>
             <th scope="col" class="left">Country</th>
-            <th scope="col" class="num">Passengers</th>
-            <th scope="col" class="num">Destinations</th>
+            {%- macro sort_th(key) %}
+            <th scope="col" class="num" data-sort="{{ key }}"{% if key == sort %} aria-sort="descending"{% endif %}><button type="submit" form="index-form" name="sort" value="{{ key }}">{{ sorts[key] }}</button></th>
+            {%- endmacro %}
+            {{ sort_th("passengers") }}
+            {{ sort_th("flights") }}
+            {{ sort_th("destinations") }}
+            {{ sort_th("freight") }}
             <th scope="col" class="left">Years</th>
           </tr>
         </thead>
@@ -50,13 +56,15 @@
             <td class="code"><a href="{{ base }}/{{ r.code }}">{{ r.code }}</a></td>
             <td class="city">{{ r.name or "" }}{% if r.city %} <small>{{ r.city }}</small>{% endif %}</td>
             <td class="left">{{ r.country or r.country_code or "" }}</td>
-            <td class="num">{{ r.passengers_text }}</td>
+            <td class="num" title="{{ '{:,}'.format(r.passengers) if r.passengers is not none else '' }} passengers">{{ r.passengers_text }}</td>
+            <td class="num"{% if r.flights is not none %} title="{{ '{:,}'.format(r.flights) }} flights"{% endif %}>{{ r.flights_text }}</td>
             <td class="num">{{ r.destinations }}</td>
+            <td class="num"{% if r.freight is not none %} title="{{ '{:,}'.format(r.freight) }} short tons"{% endif %}>{{ r.freight_text }}</td>
             <td class="left">{{ r.first_year }}–{{ r.last_year }}</td>
           </tr>
           {%- endfor %}
         </tbody>
       </table>
     </div>
-    <p class="note">Passengers are those carried, both ways; a destination has {{ "{:,}".format(pax_floor) }} passengers a year or more. Eurostat's countries report from different years (the UK from 1993 to 2019, Germany from 1993, Poland from 2004), and most have 2024 as their last; UK airports run from 1990 to 2025 in the CAA's tables. More on <a href="/about">what the T-100 data covers</a>; this data's own tables are at <a href="/t_avia">/t_avia</a>.</p>
+    <p class="note">Click a column's heading to rank by it. Passengers are those carried, both ways; flights are passenger and freight-only flights, both ways, and freight is freight and mail in short tons (2,000 lb), both Eurostat's alone, so a UK airport has none in the CAA's years (hover over a number for the exact figure); a destination has {{ "{:,}".format(pax_floor) }} passengers a year or more. Eurostat's countries report from different years (the UK from 1993 to 2019, Germany from 1993, Poland from 2004), and most have 2024 as their last; UK airports run from 1990 to 2025 in the CAA's tables. More on <a href="/about">what the T-100 data covers</a>; this data's own tables are at <a href="/t_avia">/t_avia</a>.</p>
 {% endblock %}

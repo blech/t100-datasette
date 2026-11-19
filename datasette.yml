@@ -1262,16 +1262,23 @@ databases:
 
       europe_airports:
         title: "Reporting airports in a year"
-        description: "Every airport with its own pages, with its passengers (both ways) in the year, busiest first."
+        description: "Every airport with its own pages, with its passengers, flights (passenger and freight-only) and freight (short tons) in the year, both ways, and its destinations of 10,000 passengers or more; sort is passengers (empty), flights, destinations or freight, biggest first. Flights and freight are Eurostat's alone, so a UK airport's CAA-only years have none."
         sql: |
+          WITH t AS (
           SELECT a.code, a.name, a.city, a.country, a.country_code, a.first_year, a.last_year,
             SUM(r.passengers) AS passengers,
+            CASE WHEN COUNT(r.pax_flights) + COUNT(r.freight_flights) > 0 THEN IFNULL(SUM(r.pax_flights), 0) + IFNULL(SUM(r.freight_flights), 0) END AS flights,
+            CAST(ROUND(SUM(r.freight) * 1.10231) AS integer) AS freight,
             COUNT(CASE WHEN r.passengers >= 10000 AND r.other NOT IN (SELECT icao FROM airport_info WHERE placeholder = 1) THEN 1 END) AS destinations,
             MAX(r.source) AS source
           FROM airport_info a JOIN route_year r ON r.airport = a.icao AND r.year = CAST(:year AS integer)
           WHERE a.reporting = 1
           GROUP BY a.icao
-          ORDER BY passengers DESC
+          )
+          -- ranked outside the grouping: inside an expression, freight would be route_year's column, not the sum
+          SELECT * FROM t
+          ORDER BY CASE :sort WHEN 'flights' THEN flights WHEN 'freight' THEN freight WHEN 'destinations' THEN destinations ELSE passengers END DESC NULLS LAST,
+            passengers DESC
 
       routes_by_year:
         title: "Other airports from and to an airport, by year"

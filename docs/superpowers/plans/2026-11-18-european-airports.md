@@ -61,7 +61,9 @@ task-by-task plan; this file records what was built, the decisions made without 
 9. **`t_avia`'s airports table is `airport_info`**: named `airports`, Datasette served the table (100 rows a page) instead of the
    canned query of the same name, and the map found no coordinates.
 10. **A way in**: `/airports/europe`, the reporting airports of a year (2024 by default, the last year most countries have),
-    busiest first. There's no nav section for Europe; the T-100 page of an airport abroad links to its European pages.
+    busiest first, with flights and freight beside passengers and destinations; any of the four ranks it (`?sort=`, a form
+    button in each heading, so it works without JavaScript). A UK airport's CAA-only years have no flights or freight, so it
+    ranks last by those. There's no nav section for Europe; the T-100 page of an airport abroad links to its European pages.
 11. **Distances use the T-100 pages' axis** (`t100_distances.axis_max`), so Heathrow's chart compares with JFK's, and
     great-circle distances; the BTS distance check has nothing to do. The distances page opens on 2024.
 12. **Links**: a matrix cell or row, a changes row and the map's panel open the route's page, as on T-100's pages (route pages

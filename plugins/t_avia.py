@@ -18,6 +18,7 @@ BASE = "/airports/europe"  # inside the Airports section, beside /airports/citie
 CODE = r"[A-Za-z0-9]{3,4}"  # IATA, or ICAO where an airport has none
 PAX_FLOOR = 10_000  # a destination's passengers a year, both ways: the European pages' default "at least"
 DEFAULT_YEAR = 2024  # the last year most of Eurostat's countries have
+INDEX_SORTS = {"passengers": "Passengers", "flights": "Flights", "destinations": "Destinations", "freight": "Freight"}  # the index's columns to rank by
 MATRIX_SETTINGS = ("n", "group", "rank", "year", "flown", "scale", "open")
 
 
@@ -141,12 +142,15 @@ async def index_page(datasette, request):
     year = request.args.get("year", "")
     year = int(year) if year.isdigit() and int(year) in years else DEFAULT_YEAR
     eurostat_last = (await db.execute("SELECT MAX(year) FROM route_year WHERE source <> 'caa'")).first()[0]  # later years are the CAA's alone
+    sort = request.args.get("sort", "")
+    sort = sort if sort in INDEX_SORTS else "passengers"
     sql = datasette.config["databases"][DATABASE]["queries"]["europe_airports"]["sql"]
     from t100_globe import prose_count
-    rows = [{**dict(r), "passengers_text": prose_count(r["passengers"])} for r in (await db.execute(sql, {"year": year})).rows]
+    rows = [{**dict(r), **{f"{k}_text": prose_count(r[k]) for k in ("passengers", "flights", "freight")}}
+            for r in (await db.execute(sql, {"year": year, "sort": sort})).rows]
     html = await datasette.render_template(
         "europe_airports.html",
-        {"crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", None)), "year": year, "years": years, "rows": rows, "base": BASE, "pax_floor": PAX_FLOOR,
+        {"crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", None)), "year": year, "years": years, "rows": rows, "base": BASE, "pax_floor": PAX_FLOOR, "sort": sort, "sorts": INDEX_SORTS,
          "eurostat_last": eurostat_last},
         request=request,
     )
