@@ -8,7 +8,7 @@ import { attachPopover } from '/static/common/popover.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { parseDir, setDir } from '/static/common/direction.js';
-import { isEurope, airportHref } from '/static/common/source.js';
+import { airportsBase } from '/static/common/source.js';
 
 const origin = document.body.dataset.origin;
 // a city page (/airports/cities/<market>) draws the same matrix for all of a BTS city market's airports together, named by its town
@@ -109,12 +109,11 @@ function drawAirports() {
 // any; the route's heading leads on to the other airport, and its bars down to months
 // on a city page a city opens the city pair (which counts both ways), and an airport the city pair narrowed to it (?b=VNY),
 // with the year marked
-// on a European page there are no route pages: a destination opens its own pages, where it has some (common/source.js)
+// on a European page a route is under /airports/europe (common/source.js)
 const routeHref = (dest, year = null) => {
-  if (isEurope()) return airportHref(dest, '', airportInfo) || undefined;
   if (market) return cityHref(marketOf.get(dest), year, dest) || `/airports/${encodeURIComponent(dest)}`;
   const q = new URLSearchParams([...(dir ? [['dir', dir]] : []), ...(year === null ? [] : [['year', year]])]);
-  return `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}${q.size ? `?${q}` : ''}`;
+  return `${airportsBase()}/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}${q.size ? `?${q}` : ''}`;
 };
 function cityHref(other, year = null, airport = null) {
   if (!market || !other || !/^[0-9]{5}$/.test(other)) return null;

@@ -155,3 +155,34 @@ def test_a_t100_airport_abroad_links_to_its_european_pages_only_when_there_are_s
     assert asyncio.run(europe_link(both, "LHR")) == {"europe_href": "/airports/europe/LHR", "europe_uk": True}
     assert asyncio.run(europe_link(both, "DXB")) == {}
     assert asyncio.run(europe_link(ds, "LHR")) == {}  # no t_avia database
+
+
+def test_a_route_has_its_page_from_the_origins_report(both):
+    r = get(both, "/airports/europe/LHR/JFK")
+    assert r.status_code == 200
+    assert 'data-database="t_avia"' in r.text and 'id="chart-split"' not in r.text and 'id="europe-note"' in r.text
+    assert "In 2020 there are the CAA's passengers alone" in r.text
+    assert 'href="/airports/europe/LHR/destinations"' in r.text and 'href="/airports/JFK/destinations"' in r.text  # JFK's T-100 pages
+    assert get(both, "/airports/europe/LHR/JFK/2019").status_code == 200
+    assert get(both, "/airports/europe/LHR/DXB").status_code == 200   # under the floor, but a route all the same
+    assert get(both, "/airports/europe/LHR/SYD").status_code == 404   # not an airport here
+    assert get(both, "/airports/europe/CDG/JFK").status_code == 404   # no such route in CDG's report
+
+
+def test_a_route_from_an_airport_that_doesnt_report_is_the_other_ends(both):
+    r = get(both, "/airports/europe/JFK/LHR/2019?dir=out&measure=seats")
+    assert r.status_code == 302 and r.headers["location"] == "/airports/europe/LHR/JFK/2019?measure=seats&dir=in"
+
+
+def test_the_route_queries_give_t100s_columns(both):
+    rows = get(both, "/t_avia/route.json?_shape=objects&origin=LHR&dest=JFK&dir=").json()["rows"]
+    assert [(r["year"], r["source"], r["deps"], r["total_passengers"]) for r in rows] == [(2020, "caa", None, 700_000), (2019, "caa+eurostat", 14_010, 3_000_000)]
+    assert rows[1]["total_freight"] == round(100_000 * 2204.62) and rows[1]["carrier"] is None
+    out = get(both, "/t_avia/route.json?_shape=objects&origin=LHR&dest=JFK&dir=out").json()["rows"]
+    assert [(r["year"], r["total_passengers"]) for r in out] == [(2019, 1_500_000)]  # the CAA's years have no directions
+    assert get(both, "/t_avia/route_by_month.json?_shape=objects&origin=LHR&dest=JFK&dir=&year=2019").json()["rows"] == []  # no months in the tiny one
+    assert "route_year" not in both.config["databases"]["t_avia"]["queries"]  # the route_year table would shadow it
+
+
+def test_a_european_route_has_no_other_views():
+    assert views_for("/airports/europe/LHR/JFK") == [] and views_for("/airports/europe/LHR/JFK/2019") == []

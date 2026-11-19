@@ -8,6 +8,8 @@ const body = () => (typeof document === 'undefined' ? null : document.body);
 export const EUROPE_BASE = '/airports/europe';
 export const database = () => body()?.dataset.database || 't100';
 export const isEurope = () => database() === 't_avia';
+// where this page's airports and routes are: /airports/LHR, /airports/LHR/JFK, or /airports/europe/LHR/JFK
+export const airportsBase = () => (isEurope() ? EUROPE_BASE : '/airports');
 
 // a destination counts by its flights on a T-100 page and by its passengers on a European one, where the CAA's years have
 // no flights and Eurostat publishes only routes of about 10,000 passengers a year

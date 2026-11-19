@@ -17,7 +17,7 @@ import { renderLegend, syncRange, bindTrackPress } from './src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
 import { countWord, setDir } from '/static/common/direction.js';
-import { isEurope, airportHref, EUROPE_BASE } from '/static/common/source.js';
+import { isEurope, airportHref, airportsBase, EUROPE_BASE } from '/static/common/source.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -119,7 +119,7 @@ function tooltipText(r) {
 
 function showPanel(r) {
   const p = $('panel');
-  const routePath = `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(r.dest)}`;
+  const routePath = `${airportsBase()}/${encodeURIComponent(origin)}/${encodeURIComponent(r.dest)}`;
   const keepDir = state.dir ? `?dir=${state.dir}` : ''; // departing here is the route's out, arriving its in
   p.innerHTML = '';
   const close = document.createElement('button');
@@ -152,13 +152,7 @@ function showPanel(r) {
   const a2 = document.createElement('a');
   a2.href = `${routePath}/${figuresYear}${keepDir}`;
   a2.textContent = `Month by month in ${figuresYear} →`;
-  if (isEurope()) {
-    // no route pages for the European data: the destination's own pages instead, where it has some
-    const own = airportHref(r.dest, '', airports);
-    a1.textContent = `${r.dest} over time →`;
-    if (own) a1.href = own; else a1.remove();
-    p.append(close, h, sub, dl, ...(own ? [a1] : []));
-  } else p.append(close, h, sub, dl, a1, a2);
+  p.append(close, h, sub, dl, a1, a2);
   p.hidden = false;
 }
 

@@ -1,1 +1,1 @@
-{% for c in heading_codes %}{% if not loop.first %} {{ heading_arrow }} {% endif %}<a href="{{ c.href }}" title="{{ c.tip }}">{{ c.code }}</a>{% endfor %}
+{% for c in heading_codes %}{% if not loop.first %} {{ heading_arrow }} {% endif %}{% if c.href %}<a href="{{ c.href }}" title="{{ c.tip }}">{{ c.code }}</a>{% else %}<span title="{{ c.tip }}">{{ c.code }}</span>{% endif %}{% endfor %}

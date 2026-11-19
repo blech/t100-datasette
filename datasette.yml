@@ -1405,3 +1405,52 @@ databases:
           FROM gone
           WHERE year = peak_year
           ORDER BY peak_deps DESC, code
+
+      route:
+        title: "A route, by year"
+        description: "As T-100's route, one row a year: the origin's own report of the route (Eurostat's, with the CAA's passengers for a UK airport), both directions or set dir to out or in. There are no airlines or aircraft (carrier and aircraft are empty). deps is passenger and freight-only flights; flights, seats and one direction's figures are Eurostat's alone, so the CAA's years have passengers both ways and nothing else. Freight is in pounds."
+        sql: |
+          SELECT
+            year, source,
+            NULL AS carrier, NULL AS aircraft, NULL AS group_id, NULL AS group_name, NULL AS family,
+            CASE WHEN COALESCE(pax, frt) IS NOT NULL THEN IFNULL(pax, 0) + IFNULL(frt, 0) END AS deps,
+            seats AS total_seats,
+            passengers AS total_passengers,
+            ROUND(100.0 * passengers / NULLIF(seats, 0), 1) AS load_factor,
+            CAST(ROUND(freight * 2204.62) AS integer) AS total_freight
+          FROM (SELECT year, source,
+                  CASE :dir WHEN 'out' THEN pax_flights_out WHEN 'in' THEN pax_flights_in ELSE pax_flights END AS pax,
+                  CASE :dir WHEN 'out' THEN freight_flights_out WHEN 'in' THEN freight_flights_in ELSE freight_flights END AS frt,
+                  CASE :dir WHEN 'out' THEN seats_out WHEN 'in' THEN seats_in ELSE seats END AS seats,
+                  CASE :dir WHEN 'out' THEN passengers_out WHEN 'in' THEN passengers_in ELSE passengers END AS passengers,
+                  CASE :dir WHEN 'out' THEN freight_out WHEN 'in' THEN freight_in ELSE freight END AS freight
+                FROM route_year
+                WHERE airport = (SELECT icao FROM airport_info WHERE code = :origin)
+                  AND other = (SELECT icao FROM airport_info WHERE code = :dest))
+          WHERE COALESCE(pax, frt, seats, passengers, freight) IS NOT NULL
+          ORDER BY year DESC
+
+      route_by_month:
+        title: "A route, by month, in one year"
+        description: "T-100's route_year (named apart from the route_year table, which would shadow it): as route, one row a month of one year: Eurostat's months only (the CAA's tables are yearly, so their years have none). Give a year."
+        sql: |
+          SELECT
+            year, printf('%02d', month) AS month,
+            NULL AS carrier, NULL AS aircraft, NULL AS group_id, NULL AS group_name, NULL AS family,
+            CASE WHEN COALESCE(pax, frt) IS NOT NULL THEN IFNULL(pax, 0) + IFNULL(frt, 0) END AS deps,
+            seats AS total_seats,
+            passengers AS total_passengers,
+            ROUND(100.0 * passengers / NULLIF(seats, 0), 1) AS load_factor,
+            CAST(ROUND(freight * 2204.62) AS integer) AS total_freight
+          FROM (SELECT year, month,
+                  CASE :dir WHEN 'out' THEN pax_flights_out WHEN 'in' THEN pax_flights_in ELSE pax_flights END AS pax,
+                  CASE :dir WHEN 'out' THEN freight_flights_out WHEN 'in' THEN freight_flights_in ELSE freight_flights END AS frt,
+                  CASE :dir WHEN 'out' THEN seats_out WHEN 'in' THEN seats_in ELSE seats END AS seats,
+                  CASE :dir WHEN 'out' THEN passengers_out WHEN 'in' THEN passengers_in ELSE passengers END AS passengers,
+                  CASE :dir WHEN 'out' THEN freight_out WHEN 'in' THEN freight_in ELSE freight END AS freight
+                FROM route_month
+                WHERE airport = (SELECT icao FROM airport_info WHERE code = :origin)
+                  AND other = (SELECT icao FROM airport_info WHERE code = :dest)
+                  AND year = CAST(:year AS integer))
+          WHERE COALESCE(pax, frt, seats, passengers, freight) IS NOT NULL
+          ORDER BY month

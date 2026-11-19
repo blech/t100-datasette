@@ -16,7 +16,7 @@ import { formatCount, exactCount, millionsAxis } from '/static/common/numbers.js
 import { replaceSearch } from '/static/nav/src/state.js';
 import { yearDomain } from '/static/charts/src/span.js';
 import { parseDir, countWord, cutoff, setDir } from '/static/common/direction.js';
-import { countBy, isEurope, airportHref } from '/static/common/source.js';
+import { countBy, isEurope, airportsBase } from '/static/common/source.js';
 
 // the airport's two new views share this script: over time (how big, how many places) and what changed
 const origin = document.body.dataset.origin;
@@ -229,10 +229,8 @@ function nameCell(show, id, name) {
     else td.append(Object.assign(document.createElement('a'), { href: `/airlines/${id}`, textContent: shortName(name), title: name }));
   } else {
     // the code at a fixed width, so the places beside it line up as a column of their own
-    // a T-100 destination opens the route; a European one the destination's own pages, where it has some
-    const href = EUROPE ? airportHref(id, '', airportInfo) : `/airports/${origin}/${id}`;
-    const code = Object.assign(document.createElement(href ? 'a' : 'span'), { textContent: id, className: 'code', title: airportTip(id, airportInfo) });
-    if (href) code.href = href;
+    // a destination opens the route
+    const code = Object.assign(document.createElement('a'), { href: `${airportsBase()}/${origin}/${id}`, textContent: id, className: 'code', title: airportTip(id, airportInfo) });
     td.append(code, Object.assign(document.createElement('small'), { textContent: name || '' }));
   }
   return td;
@@ -349,11 +347,10 @@ async function whatChanged() {
   for (const id of ['ap-a', 'ap-b']) $(id).addEventListener('change', () => { save(); loadChanges(); });
   $('ap-min').addEventListener('change', () => { save(); summarise(); drawTable(); });
   for (const id of ['ap-show', 'ap-status']) $(id).addEventListener('change', () => { save(); drawTable(); });
-  const loaded = fetchRows(queryUrl('airports')).then((res) => {
+  fetchRows(queryUrl('airports')).then((res) => {
     airportInfo = new Map(res.rows.map((a) => [a.code, a]));
     for (const a of $('change-table').querySelectorAll('a.code')) a.title = airportTip(a.textContent, airportInfo);
   }, (err) => console.error(err));
-  if (EUROPE) await loaded; // where a destination links depends on the airport, so the table waits for the airports
   await loadChanges();
 }
 

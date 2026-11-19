@@ -13,6 +13,7 @@ import { setDataLink } from '/static/common/datalink.js';
 import { parseFocus, focusSearch } from '/static/charts/src/focus.js';
 import { yearTick, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { parseDir, routeCountWord, noFlights, setDir } from '/static/common/direction.js';
+import { isEurope, airportsBase } from '/static/common/source.js';
 
 // the tallest stack, which sets the y axis's scale
 const stackMax = (points, key, value = (p) => p.value) => {
@@ -25,17 +26,21 @@ const { origin, dest, year: yearText, dir } = document.body.dataset;
 const year = yearText ? Number(yearText) : null;
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+// a European route (the t_avia database) has no airlines or aircraft to split by, and its CAA years no months
+const EUROPE = isEurope();
+// a route's months: T-100's route_year, which t_avia names apart from its route_year table (a table shadows a query)
+const MONTHS_QUERY = EUROPE ? 'route_by_month' : 'route_year';
 // the server wrote the headings for this direction; changing it reloads the page
 const measures = { ...MEASURES, deps: routeCountWord(dir) };
 const state = {
   measure: Object.hasOwn(measures, params.get('measure')) ? params.get('measure') : 'passengers',
-  split: Object.hasOwn(SPLITS, params.get('split')) ? params.get('split') : 'carrier',
+  split: EUROPE ? 'none' : Object.hasOwn(SPLITS, params.get('split')) ? params.get('split') : 'carrier',
   span: parseSpan(params.get('span')),
 };
 const bounds = { min: Number(document.body.dataset.minYear), max: Number(document.body.dataset.maxYear) };
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const routePath = (y) => `/airports/${origin}/${dest}${y ? `/${y}` : ''}`;
+const routePath = (y) => `${airportsBase()}/${origin}/${dest}${y ? `/${y}` : ''}`;
 // the route's two views share this script: over time (the chart) and the table
 const onTable = !document.getElementById('route-chart');
 const viewPath = (y) => `${routePath(y)}${onTable ? '/table' : ''}`;
@@ -51,13 +56,14 @@ function carryQuery() {
 }
 
 let allRows = [];   // the route, every year
+let yearly = new Set(); // years with no months to open (a European route's CAA years)
 let viewRows = [];  // the rows behind the chart and table: all years, or one year by month
 const fullNames = new Map(); // short carrier name -> BTS's full name
 
 function pushState() {
   const q = new URLSearchParams(location.search);
   q.set('measure', state.measure);
-  q.set('split', state.split);
+  if (!EUROPE) q.set('split', state.split);
   if (state.span === 'flown') q.delete('span'); else q.set('span', state.span);
   history.replaceState(null, '', `${location.pathname}?${q}`);
   carryQuery();
@@ -82,7 +88,7 @@ function fillSelect(select, options, value) {
 function dataLink() {
   const group = parseHighlight(location.search)?.id ?? '';
   if (year === null) setDataLink('route', { origin, dest, dir, group });
-  else setDataLink('route_year', { origin, dest, year, dir, group });
+  else setDataLink(MONTHS_QUERY, { origin, dest, year, dir, group });
 }
 
 function highlightLine(highlight, wanted, byAirline) {
@@ -128,7 +134,7 @@ function drawChart() {
   if (!res.points.length) { box.textContent = 'No data to chart for this selection.'; return; }
   const domain = monthly ? MONTHS.map((_, i) => String(i + 1)) : yearDomain(res.periods, { span: state.span, ...bounds }).map(String);
   const labelEvery = monthly || domain.length <= 15 ? 1 : 5;
-  const data = res.points.map((p) => ({ ...p, x: String(p.period), href: monthly ? null : routePath(p.period) }));
+  const data = res.points.map((p) => ({ ...p, x: String(p.period), href: monthly || yearly.has(p.period) ? null : routePath(p.period) }));
   // the year in focus, when the chart shows it: its label in bold, never left out, and a faint band behind it
   const marked = monthly ? null : parseFocus(location.search, domain);
   const x = {
@@ -166,9 +172,9 @@ function drawChart() {
     content: (d) => ({ title: monthly ? `${MONTH_NAMES[Number(d.period) - 1]} ${year}` : d.period, rows: d.rows }),
     at: (d) => [d.period, d.top],
     keyOf: res.stackable ? null : (label) => ({ kind: 'line', colour: chart.scale('color').apply(label) }),
-    link: (d) => (monthly ? null : routePath(Number(d.period))),
+    link: (d) => (monthly || yearly.has(Number(d.period)) ? null : routePath(Number(d.period))),
   }));
-  $('chart-note').textContent = monthly ? '' : 'Click a bar to see that year month by month.';
+  $('chart-note').textContent = monthly ? '' : `Click a bar to see that year month by month${yearly.size ? ' (not the CAA’s years, which are yearly)' : ''}.`;
 }
 
 function cell(text, className, title) {
@@ -258,7 +264,7 @@ async function main() {
     allRows = all.rows;
     viewRows = allRows;
     if (year !== null) {
-      const monthly = await fetchRows(queryUrl('route_year', { origin, dest, year, dir }));
+      const monthly = await fetchRows(queryUrl(MONTHS_QUERY, { origin, dest, year, dir }));
       viewRows = monthly.rows;
     }
     // long legal names ("Hyannis Air Service, Inc. dba Cape Air") crowd the chart and table: show short ones, keep the full as hover text
@@ -276,18 +282,19 @@ async function main() {
     return;
   }
   const years = [...new Set(allRows.map((r) => Number(r.year)))].sort((a, b) => a - b);
-  drawYears(years);
+  yearly = new Set(allRows.filter((r) => r.source === 'caa').map((r) => Number(r.year)));
+  drawYears(years.filter((y) => !yearly.has(y))); // the year links go to months, which the CAA's years haven't
   if (year !== null && !viewRows.length) {
-    $('status').textContent = `${noFlights(origin, dest, dir)} in ${year}.`;
+    $('status').textContent = yearly.has(year) ? `There are no months for ${year}: the CAA's tables are yearly.` : `${noFlights(origin, dest, dir)} in ${year}.`;
     offerBothWays();
     return;
   }
   const mapLink = $('map-link');
-  if (mapLink) mapLink.href = `/airports/${origin}/globe${year !== null ? `?year=${year}` : ''}`;
+  if (mapLink) mapLink.href = `${airportsBase()}/${origin}/globe${year !== null ? `?year=${year}` : ''}`;
   dataLink();
-  fillSelect($('chart-split'), SPLITS, state.split);
   $('chart-dir').addEventListener('change', (e) => setDir(e.target.value));
-  $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); if (onTable) drawTable(); else drawChart(); });
+  if (!EUROPE) fillSelect($('chart-split'), SPLITS, state.split);
+  if (!EUROPE) $('chart-split').addEventListener('change', (e) => { state.split = e.target.value; pushState(); if (onTable) drawTable(); else drawChart(); });
   if (onTable) {
     $('route-table').hidden = false;
     drawTable();

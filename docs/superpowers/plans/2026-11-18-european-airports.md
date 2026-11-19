@@ -64,9 +64,10 @@ task-by-task plan; this file records what was built, the decisions made without 
     busiest first. There's no nav section for Europe; the T-100 page of an airport abroad links to its European pages.
 11. **Distances use the T-100 pages' axis** (`t100_distances.axis_max`), so Heathrow's chart compares with JFK's, and
     great-circle distances; the BTS distance check has nothing to do. The distances page opens on 2024.
-12. **Links**: no route pages for the European data. A matrix cell or row, a changes row and the map's panel lead to the
-    destination's own pages by the user's rule (European, T-100 for a US airport, none otherwise); the map's panel has "LHR
-    over time" in place of the route links, and the airport picker only goes to European airports.
+12. **Links**: a matrix cell or row, a changes row and the map's panel open the route's page, as on T-100's pages (route pages
+    were added on 2026-11-19, the user's call; until then these opened the destination's own pages). A route heading's codes,
+    the map's destination and the matrix's tooltips follow the user's rule for an airport's own pages (European, T-100 for a US
+    airport, none otherwise); the airport picker only goes to European airports.
 13. **Left off European pages**: the airline split and airline columns (Eurostat names no airlines), the matrix's grouping by
     BTS city, the rank line.
 14. **The European pages say what the data is** in a note in place of T-100's "outside the US" one (`_europe_note.html`): the
@@ -76,6 +77,13 @@ task-by-task plan; this file records what was built, the decisions made without 
     deploy): inside the Airports section, beside `/airports/cities` and `/airports/countries`, since most non-US sources are
     airport-only. `/europe` redirects to the index. A later, separate change may move T-100's airport pages to `/airports/us/...`
     (`us`, not `usa`: USA is Concord, NC's IATA code, and two letters can't clash with a 3-letter IATA or 4-letter ICAO code).
+16. **Route pages** (`/airports/europe/<a>/<b>[/<year>]`, 2026-11-19): T-100's route template and script, from the origin's own
+    report of the route (a pair between two reporting airports is reported twice, and the figures may differ a little; the page
+    links to the other report). A route from an airport that doesn't report redirects to the other end's, the direction flipped.
+    No airline or aircraft split and no table view (one series a year; `/t_avia/route` has the numbers). A year's page is
+    Eurostat's months; the CAA's years have none, so their bars don't link and the year links skip them. One direction is
+    Eurostat's figures alone. The monthly query is `route_by_month`, not T-100's `route_year`: the `route_year` table would
+    shadow it (decision 9's trap again).
 
 ## Known gaps
 

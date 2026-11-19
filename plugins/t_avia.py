@@ -4,12 +4,13 @@
 # what was decided while building it: docs/superpowers/plans/2026-11-18-european-airports.md.
 import sys
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode
 
 from datasette import hookimpl
 from datasette.utils.asgi import NotFound, Response
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from t100_direction import DIRECTION_CHOICES_AIRPORT, parse_dir  # noqa: E402
+from t100_direction import DIRECTION_CHOICES_AIRPORT, DIRECTION_CHOICES_ROUTE, parse_dir, route_count_word, route_heading  # noqa: E402
 from t100_distances import BIN_MILES, axis_max, check_margins  # noqa: E402
 
 DATABASE = "t_avia"
@@ -30,6 +31,7 @@ def register_routes():
         (rf"^/airports/europe/(?P<origin>{CODE})/changes$", europe_view("airport_changes.html", "changes")),
         (rf"^/airports/europe/(?P<origin>{CODE})/distances$", europe_view("airport_distances.html", "distances")),
         (rf"^/airports/europe/(?P<origin>{CODE})/globe$", europe_view("globe.html", "map")),
+        (rf"^/airports/europe/(?P<origin>{CODE})/(?P<dest>{CODE})(?:/(?P<year>[0-9]{{4}}))?$", route_page),
     ]
 
 
@@ -64,15 +66,19 @@ async def caa_years(datasette, icao):
     """The years an airport's figures are the CAA's alone (passengers only), as runs: '1990–1992, 2020–2025'."""
     rows = await database(datasette).execute(
         "SELECT year FROM route_year WHERE airport = ? GROUP BY year HAVING MAX(source = 'eurostat' OR source = 'caa+eurostat') = 0 ORDER BY year", [icao])
-    years = [r[0] for r in rows]
-    runs, start = [], None
+    return runs([r[0] for r in rows])
+
+
+def runs(years):
+    """Sorted years as runs: [1990, 1991, 1992, 2020] -> '1990–1992, 2020'."""
+    out, start = [], None
     for i, y in enumerate(years):
         if start is None:
             start = y
         if i + 1 == len(years) or years[i + 1] != y + 1:
-            runs.append(str(start) if start == y else f"{start}–{y}")
+            out.append(str(start) if start == y else f"{start}–{y}")
             start = None
-    return ", ".join(runs)
+    return ", ".join(out)
 
 
 async def t100_years(datasette, code):
@@ -145,3 +151,86 @@ async def index_page(datasette, request):
         request=request,
     )
     return Response.html(html)
+
+
+async def places(datasette, codes):
+    """The airport_info rows of some codes, by code: for a route's heading and its links."""
+    marks = ", ".join("?" for _ in codes)
+    rows = await database(datasette).execute(
+        f"SELECT code, icao, name, city, country, is_us, reporting FROM airport_info WHERE code IN ({marks})", list(codes))
+    return {r["code"]: dict(r) for r in rows}
+
+
+def place_tip(row, code):
+    """A code's hover, as the T-100 headings have it: name, codes, then place."""
+    if not row:
+        return code
+    where = ", ".join(x for x in (row["city"], row["country"]) if x)
+    return "\n".join(x for x in (row["name"], f"{code} · {row['icao']}" if row["icao"] != code else code, where) if x)
+
+
+def place_href(row, code, suffix=""):
+    """Where an airport's own pages are, by the European pages' rule: here if it reports, T-100's if it's a US airport,
+    else none (as static/common/source.js's airportHref)."""
+    if row and row["reporting"]:
+        return f"{BASE}/{code}{suffix}"
+    if row and row["is_us"]:
+        return f"/airports/{code}{suffix}"
+    return None
+
+
+async def route_page(datasette, request):
+    """A route over time, or one year of it by month: the T-100 route page's template and script, from the origin's own
+    report of the route. A route from an airport that doesn't report goes to the other end's page, the other way round."""
+    origin = request.url_vars["origin"].upper()
+    dest = request.url_vars["dest"].upper()
+    year = request.url_vars.get("year") or ""
+    db = database(datasette)
+    info = await places(datasette, [origin, dest])
+    has = "SELECT 1 FROM route_year WHERE airport = ? AND other = ? LIMIT 1"
+    o, d = info.get(origin), info.get(dest)
+    if not (o and d and o["reporting"] and (await db.execute(has, [o["icao"], d["icao"]])).first()):
+        if o and d and d["reporting"] and (await db.execute(has, [d["icao"], o["icao"]])).first():
+            dir = {"out": "in", "in": "out"}.get(parse_dir(request.args.get("dir")), "")
+            q = urlencode([(k, v) for k, v in parse_qsl(request.query_string) if k != "dir"] + ([("dir", dir)] if dir else []))
+            return Response.redirect(f"{BASE}/{dest}/{origin}{f'/{year}' if year else ''}{f'?{q}' if q else ''}", status=302)
+        raise NotFound(f"No European route {origin}–{dest}")
+    dir = parse_dir(request.args.get("dir"))
+    span = await db.execute("SELECT MIN(year), MAX(year) FROM route_year WHERE airport = ? AND other = ?", [o["icao"], d["icao"]])
+    first, last = span.first()
+    marked = request.args.get("year", "")
+    focus = year or (marked if marked.isdigit() and first <= int(marked) <= last else "")
+    q = "&".join(f"{k}={v}" for k, v in (("dir", dir), ("year", focus)) if v)
+    steps = [(origin, f"{BASE}/{origin}")]
+    steps += [(dest, f"{BASE}/{origin}/{dest}?year={year}"), (year, None)] if year else [(dest, None)]
+
+    def heading_href(code):  # a heading's code opens that airport's destinations, counted the same way, where it has pages
+        h = place_href(info.get(code), code, "/destinations")
+        return h and (f"{h}?{q}" if q else h)
+
+    names = [", ".join(x for x in (info[c]["name"] or c, info[c]["city"]) if x) for c in (origin, dest)]
+    html = await datasette.render_template(
+        "route.html",
+        {"origin": origin, "dest": dest, "year": year, "min_year": first, "max_year": last, "view": "",
+         "crumbs": trail(datasette, *steps), "dir": dir, "heading": route_heading(origin, dest, dir),
+         "count_word": route_count_word(dir),
+         "heading_codes": [{"code": c, "href": heading_href(c), "tip": place_tip(info.get(c), c)}
+                           for c in ((dest, origin) if dir == "in" else (origin, dest))],
+         "heading_arrow": "→" if dir else "↔",
+         "origin_abbr": origin,
+         "other_way": route_heading(dest, origin, dir) if dir else "",
+         "dir_choices": DIRECTION_CHOICES_ROUTE(origin, dest),
+         "label": {"": "{0} ↔ {1}", "out": "{0} → {1}", "in": "{1} → {0}"}[dir].format(*names),
+         "europe": {"database": DATABASE, "base": BASE, "pax_floor": PAX_FLOOR, "uk": o["icao"].startswith("EG"),
+                    "caa_years": await caa_route_years(datasette, o["icao"], d["icao"]),
+                    "reverse_href": f"{BASE}/{dest}/{origin}" if d["reporting"] else None}},
+        request=request,
+    )
+    return Response.html(html)
+
+
+async def caa_route_years(datasette, a, b):
+    """The years a route's figures are the CAA's alone, as runs (caa_years for one route)."""
+    rows = await database(datasette).execute(
+        "SELECT year FROM route_year WHERE airport = ? AND other = ? AND source = 'caa' ORDER BY year", [a, b])
+    return runs([r[0] for r in rows])
