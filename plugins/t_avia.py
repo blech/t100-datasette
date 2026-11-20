@@ -23,6 +23,11 @@ INDEX_SORTS = {"passengers": "Passengers", "flights": "Flights", "destinations":
 # airport's pages carry the older one's years, said so in its note, and the older code's pages lead there
 INHERITED = {"BER": {"code": "SXF", "name": "Berlin Schönefeld", "until": "October 2020"}}
 FORMER = {v["code"]: k for k, v in INHERITED.items()}
+# a city's airports that a country reported as one in some years (Eurostat's LF90, given the city's IATA code by
+# data/avia_airport_overrides.csv): the combined code's pages and its airports' pages say where the other years are
+COMBINED = {"PAR": {"name": "Paris", "parts": ("CDG", "ORY"), "part_names": "Charles de Gaulle and Orly",
+                    "years": "1993 and 1996–2000", "routes": "1993–2000"}}
+PART_OF = {c: k for k, v in COMBINED.items() for c in v["parts"]}
 MATRIX_SETTINGS = ("n", "group", "rank", "year", "flown", "scale", "open")
 
 
@@ -130,6 +135,7 @@ def europe_view(template, crumb):
                 "caa_years": await caa_years(datasette, info["icao"]),
                 "uk": info["icao"].startswith("EG"),
                 "inherits": INHERITED.get(origin),
+                "combined": combined(origin),
                 "t100_href": f"/airports/{origin}" if await t100_years(datasette, origin) else None,
             },
         }
@@ -141,6 +147,13 @@ def europe_view(template, crumb):
         return Response.html(html)
 
     return view
+
+
+def combined(code):
+    """For a combined code (PAR) or one of its airports (CDG), the COMBINED entry, with `code` the combined one and `whole`
+    whether this is it; None for any other airport."""
+    key = code if code in COMBINED else PART_OF.get(code)
+    return key and {**COMBINED[key], "code": key, "whole": key == code}
 
 
 async def index_page(datasette, request):
@@ -238,6 +251,7 @@ async def route_page(datasette, request):
          "label": {"": "{0} ↔ {1}", "out": "{0} → {1}", "in": "{1} → {0}"}[dir].format(*names),
          "europe": {"database": DATABASE, "base": BASE, "pax_floor": PAX_FLOOR, "uk": o["icao"].startswith("EG"),
                     "inherits": [{**INHERITED[c], "successor": c} for c in (origin, dest) if c in INHERITED],
+                    "combined": [combined(c) for c in (origin, dest) if c in COMBINED],
                     "caa_years": await caa_route_years(datasette, o["icao"], d["icao"]),
                     "reverse_href": f"{BASE}/{dest}/{origin}" if d["reporting"] else None}},
         request=request,

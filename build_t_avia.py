@@ -420,7 +420,7 @@ def write_airports(db, t100, countries):
         if override[0] and override[0] in taken and override[0] != base[0]:
             iata = base[0]  # an override's IATA code another airport already has is ignored
         first, last = reporting.get(icao, (None, None))
-        placeholder = bool(PLACEHOLDER.match(icao))
+        placeholder = bool(PLACEHOLDER.match(icao)) and not override[1]  # a placeholder the overrides name is a place (LF90: Paris)
         rows.append((icao, iata or icao, name or ("Other or unknown airports" if placeholder else None), city, country, countries.get(icao), lat, lon,
                      int(country in US_COUNTRIES), int(icao in reporting), int(placeholder), first, last))
     db.executemany("INSERT INTO airport_info VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)

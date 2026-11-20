@@ -89,6 +89,14 @@ task-by-task plan; this file records what was built, the decisions made without 
     Eurostat's figures alone. The monthly query is `route_by_month`, not T-100's `route_year`: the `route_year` table would
     shadow it (decision 9's trap again).
 
+17. **Placeholders that are really airports** (2026-11-20, the user's call): Greece's LG03 in 1999–2000 is Santorini (the same
+    routes as Santorini's own 1998 report) and is merged into LGSR; Rhodes's 1993–1995 and 1998 figures, filed under Maritsa's
+    code LGRD, are merged into LGRP. France's LF90 is Paris's two airports together (1993 and 1996–2000 as a reporter, 1993–2000
+    as other airports' destination): `data/avia_airport_overrides.csv` names it PAR, "Paris (Charles de Gaulle and Orly
+    together)", at the city centre, and a placeholder the overrides name is no longer a placeholder. Its pages and CDG's and
+    ORY's say where the other years are (`COMBINED` in `plugins/t_avia.py`). Slovakia's LZ99 (2002–2005, routes only to other
+    countries' placeholders), Germany's ED00 and Italy's LI99 (small, freight) stay placeholders.
+
 ## Known gaps
 
 - **Eurostat's early years are incomplete outside the UK too**: Frankfurt shows about 20m passengers in 1993, when it handled
@@ -100,11 +108,7 @@ task-by-task plan; this file records what was built, the decisions made without 
 - The months (the map's month play, first and last flown) are Eurostat's only, so CAA years have none.
 - Not deployed, and not checked with the JavaScript bundle (`npm run bundle`; the worktree has no `node_modules`).
 - The changelog is the user's to write.
-- **LF90 is Paris** (CDG and Orly together) in 1993 and 1996–2000: France reported its two Paris airports as one "other or
-  unknown" placeholder in those years, which is why CDG and ORY have nothing then. Its routes (Nice, Toulouse, Marseille, JFK…)
-  are Paris's, and other airports report their Paris routes to it too (Nice–LF90, 3.3m in 1999). As a placeholder it is left
-  out of the index and has no pages (2026-11-19), and other airports' Paris routes in those years are missing from their
-  destinations. A possible fix: treat LF90 in those years as a pseudo-airport, Paris (CDG and Orly together), code PAR.
+- **Santorini has nothing in 2001–2002**, and **Slovakia's airports nothing in 2002–2005** (decision 17).
 
 ## Review focus
 

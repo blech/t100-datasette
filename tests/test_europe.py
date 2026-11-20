@@ -68,6 +68,12 @@ def test_eurostat_placeholders_are_recognised():
     assert all(b.PLACEHOLDER.match(c) for c in ("EG90", "LF99", "ZZZZ")) and not b.PLACEHOLDER.match("EGLL")
 
 
+def test_the_overrides_merge_rhodes_and_santorini_and_name_paris():
+    assert b.ALIASES["LGRD"] == "LGRP" and b.ALIASES["LG03"] == "LGSR"
+    paris = b.read_airport_overrides(ROOT / "data" / "avia_airport_overrides.csv")["LF90"]
+    assert paris[0] == "PAR" and paris[1].startswith("Paris")
+
+
 # --- the pages
 
 def test_european_paths_are_airports_pages_with_the_same_views():
@@ -224,3 +230,17 @@ def test_a_placeholder_that_reports_is_no_airport(both):
     db.close()
     assert 'href="/airports/europe/EG90"' not in get(both, "/airports/europe?year=2019").text
     assert get(both, "/airports/europe/EG90").status_code == 404
+
+
+def test_paris_combined_is_an_airport_that_cdg_points_to(both):
+    db = sqlite3.connect(both.databases["t_avia"].path)
+    db.execute("INSERT INTO airport_info VALUES ('LF90', 'PAR', 'Paris (Charles de Gaulle and Orly together)', 'Paris', 'France', 'FR', 48.86, 2.35, 0, 1, 0, 1999, 1999)")
+    db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers) VALUES ('LF90', 'EGLL', 1999, 'eurostat', 0, 4000000)")
+    db.commit()
+    db.close()
+    par = get(both, "/airports/europe/PAR")
+    assert par.status_code == 200 and "Charles de Gaulle and Orly, together" in par.text
+    assert 'href="/airports/europe/CDG"' in par.text and 'href="/airports/europe/ORY"' in par.text
+    assert 'href="/airports/europe/PAR"' in get(both, "/airports/europe/CDG").text
+    assert 'href="/airports/europe/PAR"' in get(both, "/airports/europe?year=1999").text
+    assert "PAR is Paris" in get(both, "/airports/europe/PAR/LHR").text
