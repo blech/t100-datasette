@@ -1,0 +1,64 @@
+{% extends "t100_base.html" %}
+{# Eurostat's reporting countries in a year (plugins/t_avia.py, the europe_countries query), each leading to its airports #}
+
+{% block title %}European countries, {{ year }}{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/static/landing/style.css">
+{% endblock %}
+
+{% block content %}
+    <h1>European countries</h1>
+    <p class="intro">
+      Every country whose airports report their routes to Eurostat, and the UK with the Civil Aviation Authority's tables: their airports' passengers, flights and freight in {{ year }}. A country is the one whose figures an airport's are filed with, so Basel is Switzerland's and Jersey the UK's.
+      Pick one for its airports.
+    </p>
+    <p class="intro" id="eurostat-end">
+      {%- if year > eurostat_last %}
+      <strong>{{ year }} has UK airports only:</strong> Eurostat's tables end in {{ eurostat_last }}, and the CAA's run to {{ years[0] }}.
+      {%- else %}
+      Eurostat's tables end in {{ eurostat_last }}; after that only UK airports, from the CAA's tables, appear (to {{ years[0] }}).
+      {%- endif %}
+    </p>
+
+    <form class="bar" id="index-form" method="get" action="{{ base }}/countries">
+      <h2 id="heading">Busiest in {{ year }}, by {{ sorts[sort]|lower }}</h2>
+      {%- if sort != "passengers" %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+      <label>Year <select name="year" id="year" aria-label="Year" onchange="this.form.submit()">
+          {%- for y in years %}
+          <option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>
+          {%- endfor %}
+        </select></label>
+      <noscript><button type="submit">Show</button></noscript>
+    </form>
+
+    <div class="scroll">
+      <table id="europe-countries">
+        <thead>
+          <tr>
+            <th scope="col" class="num">#</th>
+            <th scope="col" class="left">Country</th>
+            {%- macro sort_th(key) %}
+            <th scope="col" class="num" data-sort="{{ key }}"{% if key == sort %} aria-sort="descending"{% endif %}><button type="submit" form="index-form" name="sort" value="{{ key }}">{{ sorts[key] }}</button></th>
+            {%- endmacro %}
+            {{ sort_th("passengers") }}
+            {{ sort_th("flights") }}
+            {{ sort_th("airports") }}
+            {{ sort_th("freight") }}
+          </tr>
+        </thead>
+        <tbody>
+          {%- for r in rows %}
+          <tr>
+            <td class="num rank">{{ loop.index }}</td>
+            <td class="left">{% if r.slug %}<a href="{{ base }}/countries/{{ r.slug }}?year={{ year }}">{{ r.name }}</a>{% else %}{{ r.name }}{% endif %}</td>
+            <td class="num" title="{{ '{:,}'.format(r.passengers) if r.passengers is not none else '' }} passengers">{{ r.passengers_text }}</td>
+            <td class="num"{% if r.flights is not none %} title="{{ '{:,}'.format(r.flights) }} flights"{% endif %}>{{ r.flights_text }}</td>
+            <td class="num">{{ r.airports }}</td>
+            <td class="num"{% if r.freight is not none %} title="{{ '{:,}'.format(r.freight) }} short tons"{% endif %}>{{ r.freight_text }}</td>
+          </tr>
+          {%- endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Click a column's heading to rank by it. A country's figures are its airports' own reports added together, both ways, so a domestic flight counts at both its airports, as each airport's total counts it. Passengers are those carried; flights are passenger and freight-only flights, and freight is freight and mail in short tons (2,000 lb), both Eurostat's alone, so the UK's CAA-only years have none. <a href="/about#europe">More on the European data</a>.</p>
+{% endblock %}

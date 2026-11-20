@@ -422,3 +422,41 @@ def test_the_map_and_distances_open_on_the_last_year_most_countries_have(both):
     db.close()
     assert 'data-max-year="2024"' in get(both, "/airports/europe/globe").text
     assert 'data-year="2024"' in get(both, "/airports/europe/distances").text
+
+
+# --- countries
+
+def test_the_countries_list_links_each_reporting_country(both):
+    add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
+    r = get(both, "/airports/europe/countries?year=2019")
+    assert r.status_code == 200
+    assert 'href="/airports/europe/countries/france?year=2019"' in r.text and 'href="/airports/europe/countries/united-kingdom?year=2019"' in r.text
+
+
+def test_a_countrys_page_lists_its_airports_only(both):
+    add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
+    r = get(both, "/airports/europe/countries/france?year=2019")
+    assert r.status_code == 200 and "Airports in France" in r.text
+    assert 'href="/airports/europe/CDG"' in r.text and 'href="/airports/europe/LHR"' not in r.text
+
+
+def test_a_country_that_isnt_one_is_not_found(both):
+    assert get(both, "/airports/europe/countries/narnia").status_code == 404
+
+
+def test_the_countries_lists_last_sort_wins(both):
+    r = get(both, "/airports/europe/countries?sort=freight&year=2019&sort=airports")
+    assert 'data-sort="airports" aria-sort="descending"' in r.text
+
+
+def test_every_reporting_country_has_a_name():
+    import csv
+    names = {r["code"] for r in csv.DictReader((ROOT / "data" / "eurostat_countries.csv").open())}
+    built = ROOT / "t_avia.db"
+    if built.exists():
+        codes = {c for (c,) in sqlite3.connect(built).execute("SELECT DISTINCT country_code FROM airport_info WHERE reporting = 1 AND placeholder = 0")}
+        assert codes <= names
+
+
+def test_a_countrys_heading_reads_naturally(both):
+    assert "Airports in the United Kingdom" in get(both, "/airports/europe/countries/united-kingdom?year=2019").text

@@ -2,6 +2,7 @@
 # database (build_t_avia.py: Eurostat's route tables, with the CAA's for UK airports) instead of t100. Without t_avia.db
 # loaded they answer 404, so the T-100 site is unchanged. Design: docs/superpowers/specs/2026-11-18-european-airports-design.md;
 # what was decided while building it: docs/superpowers/plans/2026-11-18-european-airports.md.
+import csv
 import sys
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode
@@ -33,6 +34,15 @@ FORMER = {v["code"]: k for k, v in INHERITED.items()}
 COMBINED = {"PAR": {"name": "Paris", "parts": ("CDG", "ORY"), "part_names": "Charles de Gaulle and Orly",
                     "years": "1993 and 1996–2000", "routes": "1993–2000"}}
 PART_OF = {c: k for k, v in COMBINED.items() for c in v["parts"]}
+COUNTRY_SORTS = {"passengers": "Passengers", "flights": "Flights", "airports": "Airports", "freight": "Freight"}  # the countries list's columns
+# Eurostat's reporting countries (the file an airport's figures come from: Basel is Switzerland's, Jersey the UK's), by their
+# addresses' slugs; Eurostat's own two-letter codes (EL is Greece, UK the United Kingdom)
+with (Path(__file__).resolve().parent.parent / "data" / "eurostat_countries.csv").open(encoding="utf-8") as _f:
+    # `in_name` reads after "in": in the United Kingdom, in the Netherlands
+    COUNTRIES = {r["slug"]: {"code": r["code"], "name": r["name"],
+                             "in_name": f"the {r['name']}" if r["name"] in ("United Kingdom", "Netherlands") else r["name"]}
+                 for r in csv.DictReader(_f)}
+COUNTRY_SLUG = {c["code"]: slug for slug, c in COUNTRIES.items()}
 MATRIX_SETTINGS = ("n", "group", "rank", "year", "flown", "scale", "open")
 
 
@@ -45,6 +55,8 @@ def register_routes():
         (r"^/airports/europe/routes$", top_page("routes")),
         (r"^/airports/europe/distances$", top_page("distances")),
         (r"^/airports/europe/globe$", top_page("globe")),
+        (r"^/airports/europe/countries$", countries_page),
+        (r"^/airports/europe/countries/(?P<slug>[a-z-]+)$", index_page),
         (rf"^/airports/europe/(?P<origin>{CODE})$", europe_view("airport.html", None)),
         (rf"^/airports/europe/(?P<origin>{CODE})/destinations$", europe_view("routes.html", "destinations")),
         (rf"^/airports/europe/(?P<origin>{CODE})/changes$", europe_view("airport_changes.html", "changes")),
@@ -214,23 +226,53 @@ def top_page(view):
     return page
 
 
-async def index_page(datasette, request):
-    """Every reporting airport in a year, busiest first: the way into the European airports' pages."""
+async def listing(datasette, request, query, sorts, params):
+    """A ranked table's year (asked, else DEFAULT_YEAR), every year, Eurostat's last, sort and rows (with prose figures), for
+    the index, a country's page and the countries list."""
     db = database(datasette)
     years = [r[0] for r in await db.execute("SELECT DISTINCT year FROM route_year ORDER BY year DESC")]
     year = request.args.get("year", "")
     year = int(year) if year.isdigit() and int(year) in years else DEFAULT_YEAR
     eurostat_last = (await db.execute("SELECT MAX(year) FROM route_year WHERE source <> 'caa'")).first()[0]  # later years are the CAA's alone
     sort = (request.args.getlist("sort") or [""])[-1]  # the form keeps the current sort; a heading's button adds the new one
-    sort = sort if sort in INDEX_SORTS else "passengers"
-    sql = datasette.config["databases"][DATABASE]["queries"]["europe_airports"]["sql"]
+    sort = sort if sort in sorts else "passengers"
+    sql = datasette.config["databases"][DATABASE]["queries"][query]["sql"]
     from t100_globe import prose_count
     rows = [{**dict(r), **{f"{k}_text": prose_count(r[k]) for k in ("passengers", "flights", "freight")}}
-            for r in (await db.execute(sql, {"year": year, "sort": sort, "country": ""})).rows]
+            for r in (await db.execute(sql, {"year": year, "sort": sort, **params})).rows]
+    return {"year": year, "years": years, "eurostat_last": eurostat_last, "sort": sort, "sorts": sorts, "rows": rows}
+
+
+async def index_page(datasette, request):
+    """Every reporting airport in a year, busiest first: the way into the European airports' pages; at
+    /airports/europe/countries/<slug>, one country's."""
+    database(datasette)
+    slug = request.url_vars.get("slug")
+    country = COUNTRIES.get(slug) if slug else None
+    if slug and not country:
+        raise NotFound(f"No European country {slug}")
+    found = await listing(datasette, request, "europe_airports", INDEX_SORTS, {"country": country["code"] if country else ""})
+    steps = [("countries", f"{BASE}/countries"), (country["name"], None)] if country else []
     html = await datasette.render_template(
         "europe_airports.html",
-        {"crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", None)), "year": year, "years": years, "rows": rows, "base": BASE, "pax_floor": PAX_FLOOR, "sort": sort, "sorts": INDEX_SORTS,
-         "eurostat_last": eurostat_last},
+        {**found, "crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", BASE if country else None), *steps),
+         "base": BASE, "action": f"{BASE}/countries/{slug}" if country else BASE, "country": country, "pax_floor": PAX_FLOOR,
+         "country_slug": COUNTRY_SLUG},
+        request=request,
+    )
+    return Response.html(html)
+
+
+async def countries_page(datasette, request):
+    """Eurostat's reporting countries in a year, busiest first, each leading to its airports."""
+    database(datasette)
+    found = await listing(datasette, request, "europe_countries", COUNTRY_SORTS, {})
+    for r in found["rows"]:
+        slug = COUNTRY_SLUG.get(r["country_code"])
+        r.update({"slug": slug, "name": COUNTRIES[slug]["name"] if slug else r["country_code"]})
+    html = await datasette.render_template(
+        "europe_countries.html",
+        {**found, "crumbs": trail(datasette, ("countries", None)), "base": BASE},
         request=request,
     )
     return Response.html(html)
