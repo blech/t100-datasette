@@ -1,7 +1,7 @@
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { setDataLink } from '/static/common/datalink.js';
 import { replaceSearch } from '/static/nav/src/state.js';
-import { lowerFirst, airportHref, loadFactor, groupCities, yearLabel } from './src/table.js';
+import { lowerFirst, airportHref, loadFactor, groupCities, yearLabel, topBy, SORTS, sortLabels } from './src/table.js';
 import { splitSmall, othersLabel } from '/static/common/small.js';
 import { cell, countCell, tonsCell, percentCell, link } from './src/cells.js';
 import { airportTip } from '/static/charts/src/labels.js';
@@ -16,6 +16,9 @@ const word = lowerFirst(abroadCountWord(dir));
 const asked = Number.parseInt(new URLSearchParams(location.search).get('year'), 10);
 let year = new URLSearchParams(location.search).get('year') === 'all' ? 'all' : asked >= minYear && asked <= maxYear ? asked : maxYear;
 const group = new URLSearchParams(location.search).get('group') === 'city' ? 'city' : 'airport';
+const askedSort = new URLSearchParams(location.search).get('sort');
+let sort = Object.hasOwn(SORTS, askedSort) ? askedSort : 'passengers';
+const labels = sortLabels(dir, true);
 const open = new Set(); // the cities opened to list their airports
 let airportInfo = new Map();
 let rows = [];
@@ -29,7 +32,7 @@ function airportRow(r, member) {
   const tr = document.createElement('tr');
   if (member) tr.className = 'member';
   const code = cell('', 'code');
-  code.append(link(airportHref(r.airport, 'passengers'), r.airport, airportTip(r.airport, airportInfo)));
+  code.append(link(airportHref(r.airport, sort), r.airport, airportTip(r.airport, airportInfo)));
   const more = cell('', 'more');
   more.append(link(`/airports/${encodeURIComponent(r.airport)}/globe${year === 'all' ? '' : `?year=${year}`}`, 'Map →'));
   tr.append(code, cell(place(r.city), 'city'), countCell(r.passengers, 'passengers'), countCell(r.deps, word),
@@ -49,17 +52,21 @@ function othersRow(small) {
 }
 
 function render() {
-  $('heading').textContent = `Airports in ${country}, ${yearLabel(year, minYear, maxYear)}`;
+  for (const th of document.querySelectorAll('th[data-sort]')) {
+    if (th.dataset.sort === sort) th.setAttribute('aria-sort', 'descending');
+    else th.removeAttribute('aria-sort');
+  }
+  $('heading').textContent = `${group === 'city' ? 'Cities' : 'Airports'} in ${country} by ${lowerFirst(labels[sort])}, ${yearLabel(year, minYear, maxYear)}`;
   const body = document.querySelector('#airports tbody');
   const foot = document.querySelector('#airports tfoot');
   body.replaceChildren();
   foot.replaceChildren();
   const mine = rows.filter((r) => r.country === country);
   if (group === 'airport') {
-    for (const r of [...mine].sort((x, y) => (Number(y.passengers) || 0) - (Number(x.passengers) || 0) || x.airport.localeCompare(y.airport))) body.append(airportRow(r, false));
+    for (const r of topBy(mine, sort, mine.length)) body.append(airportRow(r, false));
   } else {
     // a city's row opens to list its airports; a lone airport's city has nothing to open
-    for (const c of groupCities(mine).sort((x, y) => y.passengers - x.passengers || x.name.localeCompare(y.name))) {
+    for (const c of groupCities(mine).sort((x, y) => (Number(y[sort]) || 0) - (Number(x[sort]) || 0) || x.name.localeCompare(y.name))) {
       const tr = document.createElement('tr');
       tr.className = 'city-row';
       const first = cell('', 'code');
@@ -72,7 +79,7 @@ function render() {
         toggle.addEventListener('click', () => { if (open.has(c.key)) open.delete(c.key); else open.add(c.key); render(); body.querySelector(`[data-key="${c.key}"]`)?.focus(); });
         first.append(toggle);
       } else {
-        first.append(link(airportHref(c.airports[0].airport, 'passengers'), c.airports[0].airport, airportTip(c.airports[0].airport, airportInfo)));
+        first.append(link(airportHref(c.airports[0].airport, sort), c.airports[0].airport, airportTip(c.airports[0].airport, airportInfo)));
       }
       tr.append(first, cell(place(c.name), 'city'), countCell(c.passengers, 'passengers'), countCell(c.deps, word),
         percentCell(loadFactor(c)), cell(String(c.dests), 'num'), tonsCell(c.freight), cell('', 'more'));
@@ -91,6 +98,14 @@ function render() {
   tr.append(cell('', 'code'), cell(`All of ${country}`, 'city'), countCell(total.passengers, 'passengers'), countCell(total.deps, word),
     percentCell(loadFactor(total)), cell(String(mine[0].country_dests), 'num'), tonsCell(total.freight), cell('', 'more'));
   foot.append(tr);
+}
+
+// the address keeps the year and the sort column, each left out at its default
+function pushState() {
+  const q = new URLSearchParams();
+  if (year !== maxYear) q.set('year', year);
+  if (sort !== 'passengers') q.set('sort', sort);
+  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['year', 'sort'], q.size ? `?${q}` : '')}`);
 }
 
 async function load() {
@@ -121,8 +136,11 @@ $('dir').addEventListener('change', (e) => setDir(e.target.value));
 $('year').value = String(year);
 $('year').addEventListener('change', () => {
   year = $('year').value === 'all' ? 'all' : Number($('year').value);
-  history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['year'], year === maxYear ? '' : `?year=${year}`)}`);
+  pushState();
   load();
 });
+for (const th of document.querySelectorAll('th[data-sort]')) {
+  th.querySelector('button').addEventListener('click', () => { sort = th.dataset.sort; pushState(); render(); });
+}
 load();
 fetchRows(queryUrl('airports')).then((res) => { airportInfo = new Map(res.rows.map((a) => [a.code, a])); render(); }, (err) => console.error(err));

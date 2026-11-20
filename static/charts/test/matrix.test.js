@@ -426,3 +426,13 @@ test('the colour key labels shares with enough places for its ticks to differ', 
   const { percentTicks } = await import('../src/matrix.js');
   assert.deepEqual([0.6, 0.05, 0.02, 0.00003].map(percentTicks), ['.0%', '.0%', '.2~p', '.2~p']);
 });
+
+test('rowPeak is each cell against its own row\'s best year, however big the other rows are', () => {
+  const { cells } = buildMatrix([r('BIG', 2018, 100_000), r('BIG', 2019, 90_000), r('SML', 2018, 10), r('SML', 2019, 40), r('SML', 2020, 20)], { n: 5 });
+  const peak = (dest, year) => cells.find((c) => c.dest === dest && c.year === year).rowPeak;
+  assert.equal(peak('BIG', 2018), 1);
+  assert.equal(peak('BIG', 2019), 0.9);
+  assert.equal(peak('SML', 2019), 1); // the small row is as dark at its peak as the big one
+  assert.equal(peak('SML', 2018), 0.25);
+  assert.ok(cells.find((c) => c.dest === 'SML' && c.year === 2018).peak < 0.001); // while "the year's biggest" leaves it pale
+});

@@ -1,7 +1,7 @@
 import sqlite3
 
 from build_database import rebuild_derived_tables, rebuild_aircraft_family, rebuild_aircraft_type_labels, rebuild_carrier_groups, rebuild_type_year
-from tests.helpers import add_segments
+from tests.helpers import add_coordinates, add_segments
 from tests.test_routes_by_year import seg
 
 
@@ -200,6 +200,7 @@ def test_carrier_group_year_adds_up_across_entities_and_ignores_duplicate_lookup
 
 def test_distance_bands_use_lower_bounds(db_path):
     add_segments(db_path, "t100_domestic", [flight(distance=d, aircraft_group="6", **{"class": "F"}, deps=1) for d in (499, 500, 2999, 3000, 4999, 5000)])
+    add_coordinates(db_path, ["ATL", "LAX"])
     rows = query(db_path, "SELECT distance_band, deps FROM aircraft_group_band_year WHERE aircraft_group='6' ORDER BY distance_band")
     assert rows == [(0, 1), (500, 1), (1500, 1), (3000, 2), (5000, 1)]
 
@@ -208,6 +209,7 @@ def test_rebuilding_twice_gives_the_same_tables(db_path):
     add_types(db_path, *TYPES)
     add_carriers(db_path, ("19790", "A1", "Delta Air Lines Inc."))
     add_segments(db_path, "t100_domestic", [flight(aircraft_type="614", carrier_entity="A1", distance=1000, aircraft_group="6", **{"class": "F"})])
+    add_coordinates(db_path, ["ATL", "LAX"])
     conn = sqlite3.connect(db_path)
     first = rebuild_derived_tables(conn)
     second = rebuild_derived_tables(conn)

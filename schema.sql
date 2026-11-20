@@ -102,7 +102,7 @@ CREATE TABLE "openflights_airports" (
 );
 
 CREATE TABLE "pair_distance" (
-   [a] TEXT, [b] TEXT, [distance] INTEGER,
+   [a] TEXT, [b] TEXT, [distance] INTEGER, [gc_distance] INTEGER,
    PRIMARY KEY ([a], [b])
 ) WITHOUT ROWID;
 
