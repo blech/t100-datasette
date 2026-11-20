@@ -17,6 +17,7 @@ import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from '/static/globe/src/panel.js';
 import { tapAction } from '/static/globe/src/tap.js';
 import { viewTracker } from '/static/globe/src/viewurl.js';
+import { isEurope, airportHref, routeHref } from '/static/common/source.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -39,6 +40,8 @@ const state = {
 };
 
 let airports = new Map();
+let airportInfo = new Map(); // code -> the airports query's row: on a European map, its `page` says where an airport links
+const europe = isEurope();
 let routes = [];
 let shown = [];
 let dots = [];
@@ -187,12 +190,13 @@ function airportMapHref(code) {
   const hidden = ['domestic', 'international'].filter((s) => !servicesShown().includes(s));
   if (hidden.length) q.set('hide', hidden.join(','));
   if (themeChosen !== 'auto') q.set('theme', themeChosen);
-  return `/airports/${code}/globe?${q}`;
+  return airportHref(code, `/globe?${q}`, airportInfo); // none for an airport with no pages of its own (European maps)
 }
 
 // What the airport's own map shows for this year and these kinds of route, counted as that map counts: its
 // destinations (with coordinates, at its 24-flight minimum) and their passengers. Null until its rows have arrived.
 function networkLine(code) {
+  if (europe && airportInfo.get(code)?.page !== 'europe') return ''; // only a reporting airport has its own routes here
   if (!networks.has(code)) {
     const p = fetchRows(queryUrl('routes_by_year', { origin: code, dir: '', min_deps: '' }));
     networks.set(code, p);
@@ -205,7 +209,7 @@ function networkLine(code) {
   const rows = forYear(placeRoutes(res.rows, code, airports).routes, state.year).filter((r) => kinds.includes(r.service));
   const pax = rows.reduce((s, r) => s + Number(r.passengers || 0), 0);
   const kind = kinds.length === 1 ? `${kinds[0]} ` : '';
-  const places = airports.get(code)?.isUs === false ? 'US destinations' : 'destinations';
+  const places = !europe && airports.get(code)?.isUs === false ? 'US destinations' : 'destinations';
   return `All its ${kind}routes: ${fmt(rows.length)} ${places}\n${countLabel(pax)} passengers`;
 }
 
@@ -215,8 +219,9 @@ function showDotTip() {
   if (hoverDot < 0 || !tipAt) return;
   const a = dots[hoverDot];
   const all = networkLine(a.code);
-  const open = shownByTap ? 'tap again for its map' : 'click for its map';
-  tip.textContent = `${a.code} · ${place(a.code)}\n${fmt(a.value)} passengers on these routes\n${all ? `${all} · ${open}` : `Counting all its routes…\n${open[0].toUpperCase()}${open.slice(1)}`}`;
+  const open = !airportMapHref(a.code) ? '' : shownByTap ? 'tap again for its map' : 'click for its map';
+  const more = all === '' ? (open ? `${open[0].toUpperCase()}${open.slice(1)}` : '') : all ? (open ? `${all} · ${open}` : all) : `Counting all its routes…${open ? `\n${open[0].toUpperCase()}${open.slice(1)}` : ''}`;
+  tip.textContent = `${a.code} · ${place(a.code)}\n${fmt(a.value)} passengers on these routes${more ? `\n${more}` : ''}`;
   placePopover(tip, tipAt[0], tipAt[1], { dx: 14, dy: 14 });
 }
 
@@ -232,7 +237,7 @@ function showPanel(r) {
   for (const f of routeFigures(r)) {
     dl.append(Object.assign(document.createElement('dt'), { textContent: f.label }), Object.assign(document.createElement('dd'), { title: f.title, textContent: f.shown }));
   }
-  const a = Object.assign(document.createElement('a'), { href: `/airports/${r.origin}/${r.dest}/${state.year}`, textContent: 'This route over time →' });
+  const a = Object.assign(document.createElement('a'), { href: routeHref(r.origin, r.dest, state.year), textContent: 'This route over time →' });
   p.append(close, h, sub, dl, a);
   p.hidden = false;
 }
@@ -306,7 +311,7 @@ function bindCanvas() {
       const d = renderer.hitTestDots(x, y, dots);
       if (d >= 0) {
         // a mouse has hovered it, so a click opens it; a first touch shows it, as hovering would, and a second opens it
-        if (tapAction(hoverDot, d) === 'open') { location.href = airportMapHref(dots[d].code); return; }
+        if (tapAction(hoverDot, d) === 'open' && airportMapHref(dots[d].code)) { location.href = airportMapHref(dots[d].code); return; }
         hover = -1; selected = -1; hoverDot = d; tipAt = [x, y]; shownByTap = true;
         $('panel').hidden = true;
         showDotTip();
@@ -375,6 +380,7 @@ async function main() {
   setStatus('Loading…');
   const [land, airportRes] = await Promise.all([loadLand(), fetchRows(queryUrl('airports'))]);
   airports = indexAirports(airportRes.rows);
+  airportInfo = new Map(airportRes.rows.map((r) => [r.code, r]));
   renderer = new NetworkRenderer(canvas, land);
   renderer.onLand = () => { dirty = true; };
   renderer.panFlat = true;

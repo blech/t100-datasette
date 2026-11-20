@@ -26,3 +26,7 @@ export function airportHref(code, suffix = '', info = null, europe = isEurope())
   if (page === 't100') return `/airports/${c}${suffix}`;
   return null;
 }
+
+// where a route's page is: T-100's, or on a European page its European one (which leads to the reporting end's report itself)
+export const routeHref = (a, b, year = '', europe = isEurope()) =>
+  `${europe ? EUROPE_BASE : '/airports'}/${encodeURIComponent(a)}/${encodeURIComponent(b)}${year ? `/${year}` : ''}`;

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { airportHref, database, countBy, isEurope } from '../source.js';
+import { airportHref, routeHref, database, countBy, isEurope } from '../source.js';
 
 test('without a page saying otherwise, the data is T-100s and destinations count by flights', () => {
   assert.equal(database(), 't100');
@@ -20,4 +20,10 @@ test('on a European page an airport links to its European pages, its T-100 ones,
   assert.equal(airportHref('JFK', '', info, true), '/airports/JFK');
   assert.equal(airportHref('DXB', '', info, true), null);
   assert.equal(airportHref('ZZZ', '', info, true), null);
+});
+
+test('a route links to its T-100 page, or on a European page to its European one, with the year when given', () => {
+  assert.equal(routeHref('LHR', 'JFK', '', false), '/airports/LHR/JFK');
+  assert.equal(routeHref('AMS', 'DXB', 2019, true), '/airports/europe/AMS/DXB/2019');
+  assert.equal(routeHref('AMS', 'DXB', null, true), '/airports/europe/AMS/DXB');
 });

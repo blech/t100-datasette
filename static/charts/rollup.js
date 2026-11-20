@@ -15,6 +15,7 @@ import { attachPopover } from '/static/common/popover.js';
 import { formatCount, millionsAxis } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { parseDir, setDir } from '/static/common/direction.js';
+import { isEurope, airportsBase, routeHref } from '/static/common/source.js';
 
 const KINDS = {
   airlines: { query: 'carrier_group_by_year', key: 'group_name', noun: 'airline' },
@@ -26,6 +27,7 @@ const KINDS = {
   fleet: { query: 'carrier_aircraft_by_year', key: 'family', noun: 'family' }, // one airline's aircraft, drawn as the aircraft matrix is
 };
 const kind = document.body.dataset.kind;
+const europe = isEurope(); // the European pages: no city markets or regions, and their own route and airport pages
 const dir = parseDir(location.search); // only the airports matrix offers a direction
 const abroad = kind === 'airports' && document.body.dataset.region === 'abroad'; // airports outside the US: every flight is to or from the US
 // the flight count's name: the airports matrix's direction, or an airline's pairs (flights both ways) or each direction (departures)
@@ -54,7 +56,7 @@ const state = {
   year: !byYear ? null : params.get('rank') === 'latest' ? latestFullYear : Number(params.get('year')) || null,
   scale: pick('scale', ['absolute', 'year', 'busiest', 'row'], 'year'),
   // the airports matrix can show cities, and abroad countries; the routes matrix pairs of cities, each a link to its own page
-  group: kind === 'airports' ? pick('group', abroad ? ['airport', 'city', 'country'] : ['airport', 'city'], 'airport') : kind === 'toproutes' ? pick('group', ['airport', 'city'], 'airport') : 'airport',
+  group: europe ? 'airport' : kind === 'airports' ? pick('group', abroad ? ['airport', 'city', 'country'] : ['airport', 'city'], 'airport') : kind === 'toproutes' ? pick('group', ['airport', 'city'], 'airport') : 'airport',
   open: (params.get('open') || '').split(',').filter(Boolean), // the cities opened to list their airports
   ...(kind === 'toproutes' ? bandRange(params.get('from') ?? '0', params.get('to') ?? 'any') : {}), // the routes matrix's distances
 };
@@ -123,8 +125,8 @@ const pairOf = (route) => route.split(/ [↔→] /);
 function familyHref(name, year = null) {
   if (kind === 'routes') { const [o, d] = pairOf(name); return `/airports/${o}/${d}?split=carrier&highlight=airline:${body.group}${each ? '&dir=out' : ''}`; }
   if (kind === 'toproutes' && state.group === 'city') return markets.has(name) ? `${marketPath(markets.get(name))}${year === null ? '' : `?year=${year}`}` : undefined;
-  if (byYear) { const [o, d] = pairOf(name); return `/airports/${o}/${d}${year === null ? '' : `?year=${year}`}`; }
-  if (kind === 'airports') return `/airports/${name}/destinations`; // a matrix leads to a matrix
+  if (byYear) { const [o, d] = pairOf(name); return `${routeHref(o, d)}${year === null ? '' : `?year=${year}`}`; }
+  if (kind === 'airports') return `${airportsBase()}/${name}/destinations`; // a matrix leads to a matrix (every row reports, so has pages)
   const id = rows.find((r) => r.group_name === name)?.group_id;
   return id ? `/airlines/${id}` : undefined;
 }
@@ -189,7 +191,7 @@ function drawCities(box) {
       ...r,
       text: r.kind === 'airport' ? r.code : r.label,
       // a city's or country's name opens its own page, and its ▸ lists its airports here
-      href: r.kind === 'airport' ? `/airports/${r.code}/destinations` : r.kind === 'others' ? undefined : groupHref(r) || `#toggle:${r.key}`,
+      href: r.kind === 'airport' ? `${airportsBase()}/${r.code}/destinations` : r.kind === 'others' ? undefined : groupHref(r) || `#toggle:${r.key}`,
       title: r.kind === 'others' ? [r.label, '', ...r.codes.map((c) => `${c}  ${city.get(c) || ''}`)].join('\n') : r.kind === 'airport' ? airportTitle(r.code) : airportInfo.size ? groupTip(r, airportInfo) : [r.label, '', ...r.codes.map((c) => `${c}  ${city.get(c) || ''}`)].join('\n'),
     };
   });
