@@ -108,6 +108,8 @@ Every push to `main` runs `.github/workflows/deploy.yml`: the Python and JavaScr
 
 The database is not part of the image: it lives on the Fly volume (`/mnt/db/t100.db`) and a code deploy does not change it. If a code change needs a new table or column, load it on the volume first, or the smoke check will fail after the deploy. A deploy restarts the machine, which means a few seconds of downtime.
 
+The European airports' database goes beside it, `/mnt/db/t_avia.db` (about 185MB; the 4GB volume had about 1GB free in November 2026). `serve_public.sh` serves it whenever the file is there (`EUROPE_DB` names another path), and the smoke check expects it, so upload it before deploying code that checks for it. To replace it, upload the new file under another name and `mv` it into place, then restart the machine: Datasette holds the old file open. `plugins/t100_guard.py` guards its tables as it does `t100`'s.
+
 ## Usage statistics
 
 When `T100_USAGE_LOG` names a directory (`fly.toml` sets `/mnt/db/usage`), `plugins/t100_usage.py` appends one tab-separated line per page view to `visits-YYYY-MM.log` there: time, an anonymous visitor token, the page (years replaced by `{year}`, no query string), status, referring host, and `human`, `bot` or `other` (crawler traffic on the data pages). The token is the start of a hash of the client address, User-Agent and a random salt kept in a private file and replaced each UTC day, so it can't be reversed and doesn't link days. No address or User-Agent is stored, and a failure to write never affects a page. The design is in `docs/usage-stats.md`.
