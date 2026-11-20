@@ -97,6 +97,12 @@ def test_the_log_line_is_tab_separated_in_utc():
     assert line == "2026-10-24T12:30:05Z\tabc123def456\t/airports/SFO\t200\tx.org\thuman\n"
 
 
+def test_the_log_line_ends_with_the_milliseconds_to_the_first_byte_when_measured():
+    when = datetime(2026, 10, 24, 12, 30, 5, tzinfo=timezone.utc)
+    assert visit_line(when, "abc123def456", "/", 200, "", "human", 1234) == "2026-10-24T12:30:05Z\tabc123def456\t/\t200\t\thuman\t1234\n"
+    assert visit_line(when, "abc123def456", "/", 200, "", "human", 0).endswith("\thuman\t0\n")  # a fast page is 0, not missing
+
+
 @pytest.mark.parametrize("path,status,ctype,ua,kind", [
     ("/", 200, "text/html; charset=utf-8", FIREFOX, "human"),
     ("/airports/SFO/LAX/2019", 200, "text/html; charset=utf-8", FIREFOX, "human"),
@@ -156,10 +162,10 @@ def test_a_page_view_is_logged_without_the_address_or_the_query(site, tmp_path, 
     headers = {"fly-client-ip": "203.0.113.9", "user-agent": FIREFOX, "referer": "https://news.ycombinator.com/item?id=1"}
     assert fetch(make_datasette(site), "/airports/ATL?theme=night&from=2019", headers).status_code == 200
     (line,) = lines(log)
-    time, token, route, status, referrer, kind = line.split("\t")
+    time, token, route, status, referrer, kind, ms = line.split("\t")
     assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", time)
     assert (route, status, referrer, kind) == ("/airports/ATL", "200", "news.ycombinator.com", "human")
-    assert re.fullmatch(r"[0-9a-f]{12}", token)
+    assert re.fullmatch(r"[0-9a-f]{12}", token) and ms.isdigit()  # milliseconds to the first byte
     everything = "".join(p.read_text() for p in log.iterdir())
     for secret in ("203.0.113.9", "theme=night", "from=2019", "Firefox", "Mozilla"):
         assert secret not in everything, secret

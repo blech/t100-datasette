@@ -112,10 +112,10 @@ The European airports' database goes beside it, `/mnt/db/t_avia.db` (about 185MB
 
 ## Usage statistics
 
-When `T100_USAGE_LOG` names a directory (`fly.toml` sets `/mnt/db/usage`), `plugins/t100_usage.py` appends one tab-separated line per page view to `visits-YYYY-MM.log` there: time, an anonymous visitor token, the page (years replaced by `{year}`, no query string), status, referring host, and `human`, `bot` or `other` (crawler traffic on the data pages). The token is the start of a hash of the client address, User-Agent and a random salt kept in a private file and replaced each UTC day, so it can't be reversed and doesn't link days. No address or User-Agent is stored, and a failure to write never affects a page. The design is in `docs/usage-stats.md`.
+When `T100_USAGE_LOG` names a directory (`fly.toml` sets `/mnt/db/usage`), `plugins/t100_usage.py` appends one tab-separated line per page view to `visits-YYYY-MM.log` there: time, an anonymous visitor token, the page (years replaced by `{year}`, no query string), status, referring host, `human`, `bot` or `other` (crawler traffic on the data pages), and the milliseconds from the request arriving to the response starting (lines from before that was recorded have no such column). The token is the start of a hash of the client address, User-Agent and a random salt kept in a private file and replaced each UTC day, so it can't be reversed and doesn't link days. No address or User-Agent is stored, and a failure to write never affects a page. The design is in `docs/usage-stats.md`.
 
 Read it with `scripts/usage_report.py` (standard library only; it is in the image):
 
     flyctl ssh console -a blech-datasette-t100 -C "python3 scripts/usage_report.py /mnt/db/usage --month 2026-10"
 
-`--prune 12` also deletes files older than 12 months. The log is per machine, so it assumes the single machine this app runs on.
+The report ends with a "Slowest pages" table, ranked by the 90th percentile of those times (pages with at least three timed requests): what a page usually costs, and what a cold cache or a heavy query costs the unlucky visitor. It measures the app, not Fly's proxy or a machine waking up. `--prune 12` also deletes files older than 12 months. The log is per machine, so it assumes the single machine this app runs on.
