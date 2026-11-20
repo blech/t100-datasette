@@ -24,7 +24,9 @@ const check = { ratio: Number(data.ratio), miles: Number(data.miles) };
 const dir = parseDir(location.search);
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const state = readState(location.search, years, Number(data.year) || last); // the server's opening year (a European page's is 2024, not the UK-only 2025)
+// the year the page opens on unasked, which its address leaves out: the last, or on a European page 2024 (2025 is the UK's alone)
+const opening = Number(data.openingYear) || last;
+const state = readState(location.search, years, opening);
 
 const LABELS = { passengers: 'passengers', deps: 'flight segments', freight: 'freight' };
 const valueText = (measure, v) => (measure === 'freight' ? formatTons(v) : formatCount(v));
@@ -77,7 +79,7 @@ function remember() {
   const m = $('ds-measure').value;
   const b = $('ds-bars').value;
   const s = new URLSearchParams({
-    ...(m === 'passengers' ? {} : { measure: m }), ...(b === 'wide' ? {} : { bars: b }), ...yearParams(state, last),
+    ...(m === 'passengers' ? {} : { measure: m }), ...(b === 'wide' ? {} : { bars: b }), ...yearParams(state, opening),
   }).toString();
   history.replaceState(null, '', `${location.pathname}${replaceSearch(location.search, ['measure', 'bars', 'year', 'compare', 'scale'], s ? `?${s}` : '')}`);
 }

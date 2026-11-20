@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="/static/charts/style.css">
   <link rel="stylesheet" href="/static/common/yearbar.css">
 {% endblock %}
-{% block body_attrs %}{% if origin %} data-origin="{{ origin }}" data-dir="{{ dir }}"{% endif %} data-year="{{ year }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}" data-axis-max="{{ axis_max }}" data-bin="{{ bin_miles }}" data-ratio="{{ ratio }}" data-miles="{{ miles }}"{% if foreign %} data-foreign="1"{% endif %}{% include "_source_attrs.html" %}{% endblock %}
+{% block body_attrs %}{% if origin %} data-origin="{{ origin }}" data-dir="{{ dir }}"{% endif %} data-year="{{ year }}" data-opening-year="{{ opening_year or last_year }}" data-first-year="{{ first_year }}" data-last-year="{{ last_year }}" data-axis-max="{{ axis_max }}" data-bin="{{ bin_miles }}" data-ratio="{{ ratio }}" data-miles="{{ miles }}"{% if foreign %} data-foreign="1"{% endif %}{% include "_source_attrs.html" %}{% endblock %}
 
 {% block content %}
   {% if origin %}

@@ -177,8 +177,9 @@ def europe_view(template, crumb):
         }
         if template == "airport_distances.html":
             year = request.args.get("year", "")
-            year = int(year) if year.isdigit() and first <= int(year) <= last else (DEFAULT_YEAR if first <= DEFAULT_YEAR <= last else last)
-            context.update({"year": year, "axis_max": await axis_max(datasette), "bin_miles": BIN_MILES, **check_margins(datasette)})
+            opening = DEFAULT_YEAR if first <= DEFAULT_YEAR <= last else last  # the year the page opens on unasked
+            year = int(year) if year.isdigit() and first <= int(year) <= last else opening
+            context.update({"year": year, "opening_year": opening, "axis_max": await axis_max(datasette), "bin_miles": BIN_MILES, **check_margins(datasette)})
         html = await datasette.render_template(template, context, request=request)
         return Response.html(html)
 
@@ -215,7 +216,7 @@ def top_page(view):
             asked = request.args.get("year", "")
             year = int(asked) if asked.isdigit() and first <= int(asked) <= last else opening
             template = "airport_distances.html"
-            context.update({"origin": None, "year": year, "first_year": first, "last_year": last, "axis_max": await axis_max(datasette),
+            context.update({"origin": None, "year": year, "opening_year": opening, "first_year": first, "last_year": last, "axis_max": await axis_max(datasette),
                             "bin_miles": BIN_MILES, **check_margins(datasette)})
         else:
             # the map's years end at the last most countries have: after it only the UK's CAA figures remain

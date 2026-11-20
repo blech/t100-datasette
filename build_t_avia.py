@@ -441,8 +441,9 @@ def great_circle_miles(lat1, lon1, lat2, lon2):
 
 def write_pairs(db):
     """pair_year from route_year, then the routes matrix's top_route_year and route_band_year from it (T-100's own ranking).
-    Of a pair's two reports in a year, Eurostat's (with flights and freight) is kept over a CAA-only one, then the one with
-    more passengers, then the first airport's; never an average, which would match neither airport's route page. Pairs with a
+    Of a pair's two reports in a year, Eurostat's (with flights and freight) is kept over a CAA-only one, then one with
+    freight over one without (Istanbul's reports had none before 2023, so FRA-IST would lose 61,000 tonnes in 2019), then the
+    one with more passengers, then the first airport's; never an average, which would match neither airport's route page. Pairs with a
     placeholder at either end are left out. Returns the rows written."""
     db.execute("DELETE FROM pair_year")
     db.execute("""
@@ -452,7 +453,7 @@ def write_pairs(db):
             CASE WHEN r.pax_flights IS NULL AND r.freight_flights IS NULL THEN NULL
                  ELSE IFNULL(r.pax_flights, 0) + IFNULL(r.freight_flights, 0) END AS deps,
             ROW_NUMBER() OVER (PARTITION BY MIN(x.code, y.code), MAX(x.code, y.code), r.year
-                               ORDER BY r.source = 'caa', r.passengers DESC NULLS LAST, x.code) AS pick
+                               ORDER BY r.source = 'caa', r.freight IS NULL, r.passengers DESC NULLS LAST, x.code) AS pick
           FROM route_year r JOIN airport_info x ON x.icao = r.airport JOIN airport_info y ON y.icao = r.other
           WHERE x.placeholder = 0 AND y.placeholder = 0 AND x.code != y.code)
         WHERE pick = 1""")

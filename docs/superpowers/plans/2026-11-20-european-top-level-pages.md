@@ -25,8 +25,8 @@ decisions 1–19 first: they explain `route_year`, `source`, `on_board`, placeho
    dedicated, route tables; risers and fallers deferred (coverage changes need their own design).
 2. **One report per pair-year.** A pair of two reporting airports is in `route_year` twice (each end's report, both directions
    together in each). `pair_year` keeps one: a report with flights or freight (Eurostat's, `source` `eurostat` or
-   `caa+eurostat`) over a CAA-only one (`caa`), then the one with more passengers, then the alphabetically first reporting
-   airport. Not averaged: averages would match neither airport's route page. Pairs with a placeholder at either end are left
+   `caa+eurostat`) over a CAA-only one (`caa`), then one with freight over one without (amended after review, 2026-11-20: Istanbul's
+   reports had no freight before 2023), then the one with more passengers, then the alphabetically first reporting airport. Not averaged: averages would match neither airport's route page. Pairs with a placeholder at either end are left
    out; PAR is not a placeholder.
 3. **Codes:** `pair_year.a`/`b` are display codes (`airport_info.code`: IATA, or ICAO where none), `a < b`, as T-100's
    `top_route_year` has them, so links work unchanged. `airport` is the display code of the end whose report was kept.

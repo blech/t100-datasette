@@ -1310,6 +1310,8 @@ databases:
             HAVING SUM(CASE :dir WHEN 'out' THEN r.passengers_out WHEN 'in' THEN r.passengers_in ELSE r.passengers END)
               >= CASE WHEN :dir IN ('out', 'in') THEN 50000 ELSE 100000 END
           )
+          -- filtered outside the grouping: inside it, passengers and freight in HAVING would be route_year's columns
+          SELECT * FROM (
           SELECT a.code AS airport, a.city, NULL AS market_id, r.year,
             CASE WHEN r.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
             CASE WHEN COUNT(CASE :dir WHEN 'out' THEN r.pax_flights_out WHEN 'in' THEN r.pax_flights_in ELSE r.pax_flights END)
@@ -1322,8 +1324,9 @@ databases:
           FROM route_year r JOIN airport_info a ON a.icao = r.airport
           WHERE r.airport IN (SELECT airport FROM big)
           GROUP BY r.airport, r.year, r.domestic
-          HAVING passengers > 0 OR deps > 0 OR freight > 0
-          ORDER BY r.year, a.code
+          )
+          WHERE passengers > 0 OR deps > 0 OR freight > 0
+          ORDER BY year, airport
 
       # the European routes matrix (/airports/europe/routes): T-100's top_routes_by_year over t_avia's own tables, built from
       # pair_year (one report per pair), so a pair of two reporting airports counts once

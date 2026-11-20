@@ -123,6 +123,14 @@ def test_eurostats_report_beats_a_caa_only_one_even_with_fewer_passengers():
     assert db.execute("SELECT airport, passengers, deps FROM pair_year").fetchall() == [("CDG", 480_000, 4_000)]
 
 
+def test_a_report_with_freight_beats_one_without_even_with_fewer_passengers():
+    # FRA-IST 2019: Istanbul reports more passengers but no freight; Frankfurt's report has the freight, so it is kept
+    db = pairs_db([("EGLL", "LFPG", 2019, "caa+eurostat", 0, 1_260_000, 9_500, None),
+                   ("LFPG", "EGLL", 2019, "eurostat", 0, 1_255_000, 9_400, 7_557.0)])
+    b.write_pairs(db)
+    assert db.execute("SELECT airport, passengers, freight FROM pair_year").fetchall() == [("CDG", 1_255_000, 7_557.0)]
+
+
 def test_the_routes_matrix_tables_count_each_pair_once():
     db = pairs_db([("EGLL", "LFPG", 2019, "caa+eurostat", 0, 900_000, 9_000, 10.0),
                    ("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
@@ -460,3 +468,23 @@ def test_every_reporting_country_has_a_name():
 
 def test_a_countrys_heading_reads_naturally(both):
     assert "Airports in the United Kingdom" in get(both, "/airports/europe/countries/united-kingdom?year=2019").text
+
+
+def test_airport_by_year_one_way_leaves_out_years_with_nothing_that_way(both):
+    # the CAA's 2020 has no directions: one way, Heathrow has nothing then, so no 2020 row (the HAVING alias trap)
+    rows = rows_of(both, "airport_by_year", "dir=out&region=")
+    assert {r["year"] for r in rows if r["airport"] == "LHR"} == {2019}
+    assert all(r["passengers"] or r["deps"] or r["freight"] for r in rows)
+
+
+def test_a_distances_page_says_which_year_it_opens_on_unasked(both):
+    # the page's address leaves out only this year: asked for 2025, the European page still opens on 2024 unasked
+    db = sqlite3.connect(both.databases["t_avia"].path)
+    db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers) VALUES ('EGLL', 'KJFK', 2025, 'caa', 0, 3000000)")
+    db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers) VALUES ('EGLL', 'KJFK', 2024, 'caa', 0, 3000000)")
+    db.execute("UPDATE airport_info SET last_year = 2025 WHERE icao = 'EGLL'")
+    db.commit()
+    db.close()
+    page = get(both, "/airports/europe/distances?year=2025").text
+    assert 'data-year="2025"' in page and 'data-opening-year="2024"' in page
+    assert 'data-opening-year="2024"' in get(both, "/airports/europe/LHR/distances?year=2025").text
