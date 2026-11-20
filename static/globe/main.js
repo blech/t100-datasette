@@ -16,6 +16,7 @@ import { compareYears, countStatuses, changeText, moveRange, playStep } from './
 import { renderLegend, syncRange, bindTrackPress } from './src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
+import { viewTracker } from './src/viewurl.js';
 import { countWord, setDir } from '/static/common/direction.js';
 
 const $ = (id) => document.getElementById(id);
@@ -49,6 +50,7 @@ let hover = -1;
 let selected = -1;
 let playTimer = null;
 const view = defaultView();
+const tracker = viewTracker(view, location.search); // where the map is looking, as the address carries it
 // what the map is centred on: the airport, once its coordinates are known (until then the default view's middle)
 let home = [-view.rot[0], -view.rot[1]];
 
@@ -81,7 +83,7 @@ function recompute() {
 }
 
 function pushState() {
-  const extra = themeChosen === 'auto' ? {} : { theme: themeChosen };
+  const extra = { ...(themeChosen === 'auto' ? {} : { theme: themeChosen }), view: tracker.param() };
   history.replaceState(null, '', `${location.pathname}${toSearch(state, extra)}`);
 }
 
@@ -224,6 +226,7 @@ function setProj(p) {
   $('proj').value = p;
   renderer.setMode(p);
   Object.assign(view, { rot: openingRot(p, home), zoom: 1, vel: [0, 0], target: null });
+  tracker.opened();
   pushState();
   dirty = true;
 }
@@ -303,7 +306,7 @@ function bindCanvas() {
   const hooks = {
     degPerPx: () => renderer.degPerPx(),
     onUserMove: () => { dirty = true; $('tooltip').hidden = true; },
-    onReset: () => { Object.assign(view, defaultView(), { rot: openingRot(state.proj, home) }); dirty = true; },
+    onReset: () => { Object.assign(view, defaultView(), { rot: openingRot(state.proj, home) }); tracker.opened(); pushState(); dirty = true; },
     onHover: (x, y) => {
       const routes = shown;
       const i = renderer.hitTest(x, y, routes);
@@ -344,6 +347,7 @@ function frame(last, now) {
       styles: styleRoutes(routes, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: key }),
     });
   }
+  tracker.watch(pushState);
   requestAnimationFrame((n) => frame(now, n));
 }
 
@@ -387,6 +391,8 @@ async function main() {
   if (!years.includes(state.compare) || state.compare >= state.year || state.month !== null) state.compare = null;
   if (state.month !== null) await loadMonths();
   if (a) { home = [a.lon, a.lat]; view.rot = openingRot(state.proj, home); }
+  tracker.opened();
+  tracker.adopt();
   bindControls();
   refresh();
 }

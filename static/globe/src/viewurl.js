@@ -18,3 +18,32 @@ export function parseView(text) {
   const wrapped = lon > 180 || lon < -180 ? ((lon + 540) % 360) - 180 : lon; // only when needed, so a tenth stays a tenth
   return { rot: [-wrapped, -clamp(lat, -90, 90)].map((v) => v + 0), zoom: clamp(zoom, ZMIN, ZMAX) };
 }
+
+// Keeps a map's `view` (the camera object) and the address in step. `opened()` is called whenever the page itself puts the view at the
+// map's own opening (a map type chosen, a reset, the first draw), which the address leaves out; `adopt()` then moves the camera to the
+// view the address asked for, once, when the page was opened on a shared link; `param()` is what to write to the address ('' when the
+// map is still at its opening); and `watch(push)` runs every frame, calling `push` once a changed view has stopped changing for a
+// moment, not on every frame of a drag or a scroll.
+export function viewTracker(view, search, settleMs = 400) {
+  const start = parseView(new URLSearchParams(search || '').get('view'));
+  let opening = '';
+  let seen = start ? formatView(start) : '';
+  let queued = '';
+  let timer = 0;
+  return {
+    opened() { opening = seen = formatView(view); queued = ''; },
+    adopt() {
+      if (!start) return;
+      Object.assign(view, { rot: [...start.rot], zoom: start.zoom });
+      seen = formatView(view);
+    },
+    param() { return seen && seen !== opening ? seen : ''; },
+    watch(push) {
+      const v = formatView(view);
+      if (v === seen || v === queued) return;
+      queued = v;
+      clearTimeout(timer);
+      timer = setTimeout(() => { seen = formatView(view); queued = ''; push(); }, settleMs);
+    },
+  };
+}

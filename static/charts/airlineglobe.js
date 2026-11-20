@@ -2,6 +2,7 @@ import { THEMES, DEFAULT_THEME, resolveTheme, themeChoice } from '/static/globe/
 import { setDataLink } from '/static/common/datalink.js';
 import { placePopover } from '/static/common/popover.js';
 import { defaultView, glide } from '/static/globe/src/camera.js';
+import { viewTracker } from '/static/globe/src/viewurl.js';
 import { parseMapType, parseSea, openingRot, fillMapTypeMenu, bindMapKeys, fitRoutes } from '/static/globe/src/maptypes.js';
 import { attachInteraction, applyInertia } from '/static/globe/src/interaction.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
@@ -50,6 +51,7 @@ let playTimer = null;
 let renderer;
 let latest = 0;
 const view = defaultView();
+const tracker = viewTracker(view, location.search); // where the map is looking, as the address carries it
 const cache = new Map();
 const canvas = $('globe');
 
@@ -80,6 +82,7 @@ function pushState() {
   if (state.min !== '24') q.set('min', state.min);
   for (const [k, v] of Object.entries(styleParams(state))) q.set(k, v);
   if (themeChosen !== 'auto') q.set('theme', themeChosen);
+  if (tracker.param()) q.set('view', tracker.param());
   const s = q.toString();
   history.replaceState(null, '', `${location.pathname}${s ? `?${s}` : ''}`);
 }
@@ -244,7 +247,7 @@ function bindCanvas() {
   attachInteraction(canvas, view, {
     degPerPx: () => renderer.degPerPx(),
     onUserMove: () => { dirty = true; $('tooltip').hidden = true; },
-    onReset: () => { Object.assign(view, defaultView(), { rot: openingRot(state.proj, home) }); dirty = true; },
+    onReset: () => { Object.assign(view, defaultView(), { rot: openingRot(state.proj, home) }); tracker.opened(); pushState(); dirty = true; },
     onHover: (x, y) => {
       const i = renderer.hitTest(x, y, shown);
       if (i !== hover) { hover = i; dirty = true; }
@@ -270,6 +273,7 @@ function setProj(p) {
   $('proj').value = p;
   renderer.setMode(p);
   Object.assign(view, { rot: openingRot(p, home), zoom: 1, vel: [0, 0], target: null });
+  tracker.opened();
   pushState();
   dirty = true;
 }
@@ -284,6 +288,7 @@ function frame(last, now) {
     const styles = styleRoutes(shown, { mode: colourMode(state.colour, Boolean(state.compare)), theme: THEMES[themeId], widthKey: state.width });
     renderer.draw(view, shown, { widthKey: state.width, max: maxOf(shown, state.width), highlight: selected >= 0 ? selected : hover, labels: 0, bothEnds: true, plain: state.sea === 'plain', styles });
   }
+  tracker.watch(pushState);
   requestAnimationFrame((n) => frame(now, n));
 }
 
@@ -316,6 +321,9 @@ async function main() {
   await load();
   home = centreOf(routes);
   Object.assign(view, { rot: openingRot(state.proj, home) });
+  tracker.opened();
+  tracker.adopt();
+  pushState();
   dirty = true;
 }
 

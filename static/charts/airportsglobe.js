@@ -16,7 +16,7 @@ import { renderLegend, bindTrackPress } from '/static/globe/src/controls.js';
 import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from '/static/globe/src/panel.js';
 import { tapAction } from '/static/globe/src/tap.js';
-import { formatView, parseView } from '/static/globe/src/viewurl.js';
+import { viewTracker } from '/static/globe/src/viewurl.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -38,14 +38,6 @@ const state = {
   hide: [],
 };
 
-// where the map is looking, as the address carries it: `openingView` is the map type's own opening, which the address leaves out;
-// `seenView` is the view the address last recorded
-const startView = parseView(params.get('view'));
-let openingView = '';
-let seenView = '';
-let viewTimer = 0;
-let viewQueued = '';
-
 let airports = new Map();
 let routes = [];
 let shown = [];
@@ -64,6 +56,7 @@ let playTimer = null;
 let renderer;
 let latest = 0;
 const view = defaultView();
+const tracker = viewTracker(view, location.search); // where the map is looking, as the address carries it
 const cache = new Map();
 const networks = new Map(); // each hovered airport's own map's rows (routes_by_year, every year), fetched once
 let tipAt = null; // where the tooltip was last placed, to fill it in again once an airport's network arrives
@@ -95,7 +88,7 @@ function pushState() {
   if (state.proj !== 'globe') q.set('proj', state.proj);
   if (state.arcs === 'bowed') q.set('arcs', 'bowed');
   if (state.labels === 'all') q.set('labels', 'all');
-  if (seenView && seenView !== openingView) q.set('view', seenView);
+  if (tracker.param()) q.set('view', tracker.param());
   if (state.sea === 'plain') q.set('sea', 'plain');
   if (themeChosen !== 'auto') q.set('theme', themeChosen);
   const s = q.toString();
@@ -107,7 +100,7 @@ function setProj(p) {
   $('proj').value = p;
   renderer.setMode(p);
   Object.assign(view, { rot: openingRot(p, KANSAS), zoom: 1, vel: [0, 0], target: null });
-  openingView = seenView = formatView(view);
+  tracker.opened();
   dirty = true;
 }
 
@@ -367,13 +360,7 @@ function frame(last, now) {
     dirty = false;
     draw();
   }
-  // record a new view in the address once it has been still for a moment, not on every frame of a drag or a scroll
-  const v = formatView(view);
-  if (v !== seenView && v !== viewQueued) {
-    viewQueued = v;
-    clearTimeout(viewTimer);
-    viewTimer = setTimeout(() => { seenView = formatView(view); viewQueued = ''; pushState(); }, 400);
-  }
+  tracker.watch(pushState);
   requestAnimationFrame((n) => frame(now, n));
 }
 
@@ -406,10 +393,7 @@ async function main() {
     dirty = !printing;
   });
   setProj(state.proj);
-  if (startView) {
-    Object.assign(view, { rot: [...startView.rot], zoom: startView.zoom });
-    seenView = formatView(view);
-  }
+  tracker.adopt();
   resize();
   bindCanvas();
   bindControls();
