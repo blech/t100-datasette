@@ -107,6 +107,10 @@ task-by-task plan; this file records what was built, the decisions made without 
     Turkish route-years, and about 2,900 elsewhere). The two are within about 1% where both are given (Istanbul Airport 72.45m
     both, Antalya 35.4m against 35.1m in 2024). An airport's note names the years when most of its passengers are on board, a
     route's the years it has any; the about page says so once. Turkey has no freight before 2023 either way.
+20. **The Airports section's top-level views** (2026-11-20, the user's call): over time, routes, distances, the map and
+    countries, with one report per airport pair (`pair_year`) wherever routes are added up. Plan and decisions:
+    `docs/superpowers/plans/2026-11-20-european-top-level-pages.md`. Cities, most dedicated and route tables aren't ported;
+    risers and fallers is deferred.
 
 ## Known gaps
 

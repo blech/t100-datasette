@@ -89,10 +89,18 @@ check 200 /airports/europe/LHR                                      "europe-note
 check 200 /airports/europe/LHR/destinations                         'data-database="t_avia"'
 check 200 /airports/europe/FRA/globe                                "data-origin"
 check 200 /airports/europe/AMS/DXB/2019                             "route-chart"
+check 200 /airports/europe/over-time                                "europe-coverage-note"
+check 200 /airports/europe/routes                                   'data-kind="toproutes"'
+check 200 /airports/europe/distances                                "distance-chart"
+check 200 /airports/europe/globe                                    "id=\"arcs\""
+check 200 /airports/europe/countries                                "France"
+check 200 /airports/europe/countries/france                         "CDG"
+check 404 /airports/europe/countries/narnia
 check 302 /airports/europe/SXF
 check 404 /airports/europe/ZZZZ
 check 200 "/t_avia/routes_by_year.json?origin=LHR&_shape=objects"   '"JFK"'
 check 200 "/t_avia/europe_airports.json?year=2024&sort=&_shape=objects" '"IST"'
+check 200 "/t_avia/top_routes_by_year.json?year=2019&_shape=objects"  '"LHR"'
 check 403 "/t_avia/route_month.json?_next=5"
 check 403 "/t_avia/-/query.json?sql=select+1"
 check 403 /t_avia.db
