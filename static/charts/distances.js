@@ -24,7 +24,7 @@ const check = { ratio: Number(data.ratio), miles: Number(data.miles) };
 const dir = parseDir(location.search);
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const state = readState(location.search, years, last);
+const state = readState(location.search, years, Number(data.year) || last); // the server's opening year (a European page's is 2024, not the UK-only 2025)
 
 const LABELS = { passengers: 'passengers', deps: 'flight segments', freight: 'freight' };
 const valueText = (measure, v) => (measure === 'freight' ? formatTons(v) : formatCount(v));

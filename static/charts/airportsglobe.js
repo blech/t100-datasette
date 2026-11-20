@@ -27,6 +27,7 @@ const years = Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, i) => MIN_YEAR
 const NS = ['50', '100', '150', '250', '500'];
 // every map type opens on the middle of the US (Kansas), so the azimuthal map shows distances from there
 const KANSAS = [-98, 39];
+const EUROPE_MIDDLE = [10, 50]; // a European map opens on Europe (near Frankfurt), not the middle of the US
 const pick = (v, ok, fallback) => (ok.includes(v) ? v : fallback);
 const state = {
   year: pick(Number(params.get('year')), years, MAX_YEAR),
@@ -102,7 +103,7 @@ function setProj(p) {
   state.proj = p;
   $('proj').value = p;
   renderer.setMode(p);
-  Object.assign(view, { rot: openingRot(p, KANSAS), zoom: 1, vel: [0, 0], target: null });
+  Object.assign(view, { rot: openingRot(p, isEurope() ? EUROPE_MIDDLE : KANSAS), zoom: 1, vel: [0, 0], target: null });
   tracker.opened();
   dirty = true;
 }

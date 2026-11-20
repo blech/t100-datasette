@@ -387,3 +387,38 @@ def test_europe_airports_filters_by_country(both):
     add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
     assert [r["code"] for r in rows_of(both, "europe_airports", "year=2019&sort=&country=FR")] == ["CDG"]
     assert [r["code"] for r in rows_of(both, "europe_airports", "year=2019&sort=&country=")] == ["LHR", "CDG"]
+
+
+# --- the top-level pages
+
+TOP_PAGES = ["over-time", "routes", "distances", "globe"]
+
+
+@pytest.mark.parametrize("view", TOP_PAGES)
+def test_the_top_level_pages_read_t_avia_with_a_coverage_note(both, view):
+    r = get(both, f"/airports/europe/{view}")
+    assert r.status_code == 200
+    assert 'data-database="t_avia"' in r.text and 'id="europe-coverage-note"' in r.text
+
+
+@pytest.mark.parametrize("view", TOP_PAGES + ["countries", "countries/france"])
+def test_without_the_european_database_the_top_level_pages_are_not_found(ds, view):
+    assert get(ds, f"/airports/europe/{view}").status_code == 404
+
+
+def test_the_european_index_and_its_views_share_a_views_line():
+    views = views_for("/airports/europe/routes")
+    assert [v["href"] for v in views] == ["/airports/europe", "/airports/europe/over-time", "/airports/europe/routes",
+                                          "/airports/europe/distances", "/airports/europe/globe", "/airports/europe/countries"]
+    assert [v["current"] for v in views] == [False, False, True, False, False, False]
+    assert views_for("/airports/europe")[0]["current"] and views_for("/airports/europe/countries/france")[5]["current"]
+
+
+def test_the_map_and_distances_open_on_the_last_year_most_countries_have(both):
+    db = sqlite3.connect(both.databases["t_avia"].path)
+    db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers) VALUES ('EGLL', 'KJFK', 2025, 'caa', 0, 3000000)")
+    db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers) VALUES ('EGLL', 'KJFK', 2024, 'caa', 0, 3000000)")
+    db.commit()
+    db.close()
+    assert 'data-max-year="2024"' in get(both, "/airports/europe/globe").text
+    assert 'data-year="2024"' in get(both, "/airports/europe/distances").text

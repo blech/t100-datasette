@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/static/charts/airlineglobe.css">
   <link rel="stylesheet" href="/static/charts/airportsglobe-print.css" media="print">
 {% endblock %}
-{% block body_attrs %} data-max-year="{{ max_year }}"{% endblock %}
+{% block body_attrs %} data-max-year="{{ max_year }}"{% include "_source_attrs.html" %}{% endblock %}
 
 {# the maps fill the window, so no <main>; the footer closes the controls #}
 {% block body %}
@@ -19,7 +19,7 @@
     {% include "_nav.html" %}
     <div id="title">Busiest routes</div>
     <div id="stats"></div>
-    <noscript><p>This map needs JavaScript. Its figures are in <a href="/t100/busiest_routes_year?year={{ max_year }}&amp;n=50&amp;service=&amp;_hide_sql=1">the busiest routes for {{ max_year }}</a>, and each airport's in <a href="/t100">the data tables</a>.</p></noscript>
+    <noscript><p>This map needs JavaScript. Its figures are in <a href="/{{ europe.database if europe else "t100" }}/busiest_routes_year?year={{ max_year }}&amp;n=50&amp;service=&amp;_hide_sql=1">the busiest routes for {{ max_year }}</a>, and each airport's in <a href="/t100">the data tables</a>.</p></noscript>
   </header>
 
   <aside id="panel" hidden></aside>
@@ -33,6 +33,7 @@
         airport pairs by passengers, both directions together, on
         <select id="service" aria-label="Flights"><option value="">all flights</option><option value="domestic">domestic flights</option><option value="international">international flights</option></select>.
         Airports are sized by their passengers on these routes; pick one for its own map.</span>
+      {% if europe %}{% include "_europe_coverage_note.html" %}{% endif %}
     </div>
     <div class="row">
       <button id="play" type="button" aria-label="Play through the years">▶</button>

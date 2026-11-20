@@ -41,6 +41,10 @@ def register_routes():
     return [
         (r"^/europe$", europe_root),  # a short address for the index
         (r"^/airports/europe$", index_page),
+        (r"^/airports/europe/over-time$", top_page("over-time")),
+        (r"^/airports/europe/routes$", top_page("routes")),
+        (r"^/airports/europe/distances$", top_page("distances")),
+        (r"^/airports/europe/globe$", top_page("globe")),
         (rf"^/airports/europe/(?P<origin>{CODE})$", europe_view("airport.html", None)),
         (rf"^/airports/europe/(?P<origin>{CODE})/destinations$", europe_view("routes.html", "destinations")),
         (rf"^/airports/europe/(?P<origin>{CODE})/changes$", europe_view("airport_changes.html", "changes")),
@@ -174,6 +178,40 @@ def combined(code):
     whether this is it; None for any other airport."""
     key = code if code in COMBINED else PART_OF.get(code)
     return key and {**COMBINED[key], "code": key, "whole": key == code}
+
+
+def top_page(view):
+    """One of the European airports' top-level views (over time, routes, distances, the map), from the T-100 Airports
+    section's template of the same view, reading t_avia's queries of the same names: each counts a route between two
+    reporting airports once (pair_year in build_t_avia.py)."""
+
+    async def page(datasette, request):
+        from t100_globe import ROLLUP_PAGES  # imported late: t100_globe is loaded as a plugin of its own
+        db = database(datasette)
+        first, last = (await db.execute("SELECT MIN(year), MAX(year) FROM route_year")).first()
+        opening = DEFAULT_YEAR if first <= DEFAULT_YEAR <= last else last
+        europe = {"database": DATABASE, "base": BASE, "pax_floor": PAX_FLOOR}
+        crumb = {"over-time": "over time", "globe": "map"}.get(view, view)
+        context = {"europe": europe, "crumbs": trail(datasette, (crumb, None))}
+        if view in ("over-time", "routes"):
+            kind = "airports" if view == "over-time" else "toproutes"
+            dir = parse_dir(request.args.get("dir")) if kind == "airports" else ""
+            template = "rollup.html"
+            context.update({"kind": kind, "page": {**ROLLUP_PAGES[kind], "title": "European " + ROLLUP_PAGES[kind]["title"].lower()},
+                            "latest_year": opening, "dir": dir, "dir_choices": DIRECTION_CHOICES_AIRPORT, "region": ""})
+        elif view == "distances":
+            asked = request.args.get("year", "")
+            year = int(asked) if asked.isdigit() and first <= int(asked) <= last else opening
+            template = "airport_distances.html"
+            context.update({"origin": None, "year": year, "first_year": first, "last_year": last, "axis_max": await axis_max(datasette),
+                            "bin_miles": BIN_MILES, **check_margins(datasette)})
+        else:
+            # the map's years end at the last most countries have: after it only the UK's CAA figures remain
+            template = "airports_globe.html"
+            context.update({"max_year": opening})
+        return Response.html(await datasette.render_template(template, context, request=request))
+
+    return page
 
 
 async def index_page(datasette, request):

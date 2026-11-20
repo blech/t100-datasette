@@ -145,6 +145,14 @@ def views_for(path):
                         ("Most dedicated", "/airports/dedicated", None), ("Risers and fallers", "/airports/movers", None),
                         ("Routes", "/airports/routes", None), ("Distances", "/airports/distances", None), ("Map", "/airports/globe", None),
                         current=[[], ["over-time"], ["dedicated"], ["movers"], ["routes"], ["distances"], ["globe"]].index(view))
+        case ["airports", "europe"] | ["airports", "europe", "over-time" | "routes" | "distances" | "globe" | "countries"] | \
+                ["airports", "europe", "countries", _]:
+            # the European airports' top-level views (plugins/t_avia.py); a country's page is one of the countries view's
+            views = [[], ["over-time"], ["routes"], ["distances"], ["globe"], ["countries"]]
+            base = "/airports/europe"
+            return make(("Busiest airports", base, None), ("Over time", f"{base}/over-time", None), ("Routes", f"{base}/routes", None),
+                        ("Distances", f"{base}/distances", None), ("Map", f"{base}/globe", None), ("Countries", f"{base}/countries", None),
+                        current=views.index(parts[2:3]))
         case ["airports", "europe", code, *rest] | ["airports", code, *rest] if (
                 (EUROPE_CODE.match(code) if parts[1] == "europe" else AIRPORT_CODE.match(code))
                 and rest in ([], ["destinations"], ["distances"], ["changes"], ["globe"])):
