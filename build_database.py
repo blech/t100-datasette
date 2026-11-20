@@ -58,6 +58,24 @@ _LOOKUP_INDEXES = [
     ("idx_airport_market_market", "airport_market", "market_id"),
 ]
 
+# the routes matrix's tables, also built in t_avia.db by build_t_avia.py (from its pair_year), so kept apart
+TOP_ROUTE_SCHEMA = """
+-- The airport pairs (a before b, both directions) the routes matrix can list, by year, by rebuild_top_route_year(): any pair in
+-- the top TOP_ROUTES for its service and distance band by some measure, in some year or over all years, with its best rank by
+-- any measure that year (year_rank) and over all years (overall_rank)
+CREATE TABLE IF NOT EXISTS "top_route_year" (
+   [a] TEXT, [b] TEXT, [year] INTEGER, [service] TEXT, [distance] INTEGER, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [year_rank] INTEGER, [overall_rank] INTEGER,
+   PRIMARY KEY ([a], [b], [year])
+) WITHOUT ROWID;
+-- Every airport pair's totals by year, service and distance band, for the routes matrix's shares of a year, by rebuild_top_route_year()
+CREATE TABLE IF NOT EXISTS "route_band_year" (
+   [year] INTEGER, [service] TEXT, [band] INTEGER,
+   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
+   PRIMARY KEY ([year], [service], [band])
+) WITHOUT ROWID;
+"""
+
 _LOOKUP_TABLES = """
 CREATE TABLE IF NOT EXISTS "carriers" (
    [airline_id] TEXT, [carrier] TEXT, [carrier_entity] TEXT, [name] TEXT,
@@ -155,21 +173,7 @@ CREATE TABLE IF NOT EXISTS "pair_distance" (
    [a] TEXT, [b] TEXT, [distance] INTEGER, [gc_distance] INTEGER,
    PRIMARY KEY ([a], [b])
 ) WITHOUT ROWID;
--- The airport pairs (a before b, both directions) the routes matrix can list, by year, by rebuild_top_route_year(): any pair in
--- the top TOP_ROUTES for its service and distance band by some measure, in some year or over all years, with its best rank by
--- any measure that year (year_rank) and over all years (overall_rank)
-CREATE TABLE IF NOT EXISTS "top_route_year" (
-   [a] TEXT, [b] TEXT, [year] INTEGER, [service] TEXT, [distance] INTEGER, [band] INTEGER,
-   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER, [year_rank] INTEGER, [overall_rank] INTEGER,
-   PRIMARY KEY ([a], [b], [year])
-) WITHOUT ROWID;
--- Every airport pair's totals by year, service and distance band, for the routes matrix's shares of a year, by rebuild_top_route_year()
-CREATE TABLE IF NOT EXISTS "route_band_year" (
-   [year] INTEGER, [service] TEXT, [band] INTEGER,
-   [deps] INTEGER, [seats] INTEGER, [passengers] INTEGER, [freight] INTEGER,
-   PRIMARY KEY ([year], [service], [band])
-) WITHOUT ROWID;
--- Each BTS city market's name ("San Francisco, CA" for SFO, OAK and SJC's): its busiest airport's city in its latest year; an
+""" + TOP_ROUTE_SCHEMA + """-- Each BTS city market's name ("San Francisco, CA" for SFO, OAK and SJC's): its busiest airport's city in its latest year; an
 -- airport with no market is a market of its own, "solo:" and its code. By rebuild_top_market_year()
 CREATE TABLE IF NOT EXISTS "market_name" (
    [market_id] TEXT PRIMARY KEY, [name] TEXT
@@ -619,15 +623,23 @@ TOP_ROUTES = 50
 _MEASURES = ("deps", "seats", "passengers", "freight")
 
 
-def rebuild_top_route_year(conn: sqlite3.Connection) -> int:
+def rebuild_top_route_year(conn: sqlite3.Connection, pairs_sql: str | None = None) -> int:
     """Recompute top_route_year and route_band_year from route_year_totals and pair_distance (rebuild those first).
+    pairs_sql, for another database's pairs (t_avia's pair_year), gives one row per pair and year (a before b) as
+    a, b, year, service, deps, seats, passengers, freight; then this database's schema isn't created here.
 
     The routes matrix ranks its rows in the browser, by any measure, for one service and distance band, over all years or in
     one. Ranking every pair there would mean sending all 100,000 or so; instead a pair is kept when it is in the top TOP_ROUTES
     of its service and band by some measure, in some year or over all years, with its best rank in each year (year_rank) and
     over all years (overall_rank), so top_routes_by_year can send only the pairs that could be on the list for the year asked.
     route_band_year has every pair's totals, so a share of the year counts all of them, not just those kept."""
-    create_schema(conn)
+    if pairs_sql is None:
+        create_schema(conn)
+        pairs_sql = """
+                  SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, year,
+                    CASE WHEN SUM(domestic_deps) * 2 > SUM(deps) THEN 'domestic' ELSE 'international' END AS service,
+                    SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
+                  FROM route_year_totals WHERE origin != dest GROUP BY 1, 2, 3"""
     band = _BAND_SQL.replace("distance", "d.distance")
     ranks = lambda partition: ", ".join(
         f"ROW_NUMBER() OVER (PARTITION BY {partition} ORDER BY {m} DESC) AS by_{m}" for m in _MEASURES)
@@ -643,11 +655,7 @@ def rebuild_top_route_year(conn: sqlite3.Connection) -> int:
             CREATE TEMP TABLE pair_year AS
             SELECT a, b, year, service, distance, band, deps, seats, passengers, freight, {best} AS year_rank FROM (
               SELECT *, {ranks("year, service, band")} FROM (
-                SELECT y.*, d.distance, {band} AS band FROM (
-                  SELECT MIN(origin, dest) AS a, MAX(origin, dest) AS b, year,
-                    CASE WHEN SUM(domestic_deps) * 2 > SUM(deps) THEN 'domestic' ELSE 'international' END AS service,
-                    SUM(deps) AS deps, SUM(seats) AS seats, SUM(passengers) AS passengers, SUM(freight) AS freight
-                  FROM route_year_totals WHERE origin != dest GROUP BY 1, 2, 3
+                SELECT y.*, d.distance, {band} AS band FROM ({pairs_sql}
                 ) AS y LEFT JOIN pair_distance AS d ON d.a = y.a AND d.b = y.b))
             """
         )

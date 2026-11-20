@@ -94,6 +94,54 @@ def test_the_pivot_keeps_one_report_adds_a_summed_code_and_falls_back_to_on_boar
                    ("LTFM", "EDDF", 2019): (880000, 1), ("LTFM", "EDDF", 2024): (990000, None)}
 
 
+# --- one report per airport pair (pair_year) and the routes matrix's tables
+
+def pairs_db(rows):  # rows: (airport, other, year, source, domestic, passengers, pax_flights, freight)
+    db = sqlite3.connect(":memory:")
+    db.executescript(b.SCHEMA)
+    db.executemany("INSERT INTO airport_info (icao, code, reporting, placeholder) VALUES (?,?,?,?)",
+                   [("EGLL", "LHR", 1, 0), ("LFPG", "CDG", 1, 0), ("KJFK", "JFK", 0, 0), ("EG90", "EG90", 0, 1)])
+    db.executemany("INSERT INTO pair_distance VALUES (?,?,?)", [("CDG", "LHR", 216), ("JFK", "LHR", 3451)])
+    db.executemany("INSERT INTO route_year (airport, other, year, source, domestic, passengers, pax_flights, freight) VALUES (?,?,?,?,?,?,?,?)", rows)
+    return db
+
+
+def test_a_pair_reported_twice_is_kept_once_with_one_ends_report():
+    db = pairs_db([("EGLL", "LFPG", 2019, "caa+eurostat", 0, 900_000, 9_000, 10.0),
+                   ("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0),
+                   ("EGLL", "KJFK", 2019, "caa+eurostat", 0, 3_000_000, 14_000, 100.0),
+                   ("EGLL", "EG90", 2019, "eurostat", 1, 50_000, 500, 0.0)])
+    b.write_pairs(db)
+    rows = db.execute("SELECT a, b, airport, passengers, deps FROM pair_year ORDER BY a").fetchall()
+    assert rows == [("CDG", "LHR", "CDG", 950_000, 9_100), ("JFK", "LHR", "LHR", 3_000_000, 14_000)]  # the placeholder is out
+
+
+def test_eurostats_report_beats_a_caa_only_one_even_with_fewer_passengers():
+    db = pairs_db([("EGLL", "LFPG", 2021, "caa", 0, 500_000, None, None),
+                   ("LFPG", "EGLL", 2021, "eurostat", 0, 480_000, 4_000, 3.0)])
+    b.write_pairs(db)
+    assert db.execute("SELECT airport, passengers, deps FROM pair_year").fetchall() == [("CDG", 480_000, 4_000)]
+
+
+def test_the_routes_matrix_tables_count_each_pair_once():
+    db = pairs_db([("EGLL", "LFPG", 2019, "caa+eurostat", 0, 900_000, 9_000, 10.0),
+                   ("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
+    b.write_pairs(db)
+    assert db.execute("SELECT SUM(passengers) FROM route_band_year WHERE year = 2019").fetchone() == (950_000,)
+    assert db.execute("SELECT a, b, year_rank FROM top_route_year").fetchall() == [("CDG", "LHR", 1)]
+
+
+def test_a_caa_domestic_name_coded_abroad_is_unnamed():
+    # BEDFORD (THURLEIGH) guessed as KBED (Massachusetts) must not make KBED a UK reporter
+    db = pairs_db([])
+    codes = {"LUTON": "EGGW", "BEDFORD (THURLEIGH)": "KBED", "NEW YORK (JFK)": "KJFK"}
+    added, joined, unnamed = b.add_caa(db, {2003: [("dom", "LUTON", "BEDFORD (THURLEIGH)", 2),
+                                                   ("int", "LUTON", "NEW YORK (JFK)", 5_000)]},
+                                       lambda name, year: codes[name], {})
+    assert db.execute("SELECT airport, other FROM route_year ORDER BY airport").fetchall() == [("EGGW", "KJFK")]
+    assert unnamed["BEDFORD (THURLEIGH)"] == 2
+
+
 # --- the pages
 
 def test_european_paths_are_airports_pages_with_the_same_views():

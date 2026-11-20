@@ -24,6 +24,8 @@ import sys
 import zipfile
 from pathlib import Path
 
+from build_database import TOP_ROUTE_SCHEMA, rebuild_top_route_year
+
 HERE = Path(__file__).resolve().parent
 CAA_FLOOR = 10_000  # passengers a year for a route in a CAA year: Eurostat's own publishing limit (the user's choice)
 
@@ -84,7 +86,14 @@ CREATE TABLE route_month (
 CREATE TABLE caa_names (name TEXT PRIMARY KEY, icao TEXT, how TEXT, votes INTEGER) WITHOUT ROWID;
 CREATE TABLE pair_distance (a TEXT, b TEXT, distance INTEGER, PRIMARY KEY (a, b)) WITHOUT ROWID;
 CREATE TABLE build_notes (key TEXT PRIMARY KEY, value TEXT) WITHOUT ROWID;
-"""
+-- one report per airport pair and year (a before b, display codes), for totals that would count a pair twice: a pair of two
+-- reporting airports is in route_year once from each end. airport is the end whose report is kept (write_pairs)
+CREATE TABLE pair_year (
+  a TEXT, b TEXT, year INTEGER, airport TEXT, source TEXT, domestic INTEGER,
+  deps INTEGER, seats INTEGER, passengers INTEGER, freight REAL,
+  PRIMARY KEY (a, b, year)
+) WITHOUT ROWID;
+""" + TOP_ROUTE_SCHEMA
 INDEXES = """
 CREATE INDEX idx_route_year_other ON route_year (other, year);
 CREATE INDEX idx_route_month_other ON route_month (other, year, month);
@@ -363,6 +372,9 @@ def add_caa(db, caa, coder, countries):
                 continue
             if ia == ib:
                 continue
+            if kind == "dom" and not (ia.startswith("EG") and ib.startswith("EG")):  # a domestic name coded abroad is a wrong guess
+                unnamed[b if ia.startswith("EG") else a] += pax
+                continue
             merged[(ia, ib)] += pax
             countries.setdefault(ia, "UK")
             if kind == "dom":
@@ -425,6 +437,29 @@ def great_circle_miles(lat1, lon1, lat2, lon2):
     p1, p2 = math.radians(lat1), math.radians(lat2)
     a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
     return 3958.8 * 2 * math.asin(math.sqrt(a))
+
+
+def write_pairs(db):
+    """pair_year from route_year, then the routes matrix's top_route_year and route_band_year from it (T-100's own ranking).
+    Of a pair's two reports in a year, Eurostat's (with flights and freight) is kept over a CAA-only one, then the one with
+    more passengers, then the first airport's; never an average, which would match neither airport's route page. Pairs with a
+    placeholder at either end are left out. Returns the rows written."""
+    db.execute("DELETE FROM pair_year")
+    db.execute("""
+        INSERT INTO pair_year
+        SELECT MIN(ca, cb), MAX(ca, cb), year, ca, source, domestic, deps, seats, passengers, freight FROM (
+          SELECT x.code AS ca, y.code AS cb, r.year, r.source, r.domestic, r.seats, r.passengers, r.freight,
+            CASE WHEN r.pax_flights IS NULL AND r.freight_flights IS NULL THEN NULL
+                 ELSE IFNULL(r.pax_flights, 0) + IFNULL(r.freight_flights, 0) END AS deps,
+            ROW_NUMBER() OVER (PARTITION BY MIN(x.code, y.code), MAX(x.code, y.code), r.year
+                               ORDER BY r.source = 'caa', r.passengers DESC NULLS LAST, x.code) AS pick
+          FROM route_year r JOIN airport_info x ON x.icao = r.airport JOIN airport_info y ON y.icao = r.other
+          WHERE x.placeholder = 0 AND y.placeholder = 0 AND x.code != y.code)
+        WHERE pick = 1""")
+    rebuild_top_route_year(db, pairs_sql="""
+        SELECT a, b, year, CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service, deps, seats, passengers, freight
+        FROM pair_year""")
+    return db.execute("SELECT COUNT(*) FROM pair_year").fetchone()[0]
 
 
 def write_airports(db, t100, countries):
@@ -497,6 +532,8 @@ def build(db_path, sources, t100):
             rows.append((n, None, "none", 0))
     db.executemany("INSERT INTO caa_names VALUES (?,?,?,?)", rows)
     no_coordinates = write_airports(db, t100, countries)
+    print("Pairs…", file=sys.stderr)
+    write_pairs(db)
     db.executescript(INDEXES)
     notes = {
         "caa_floor": str(CAA_FLOOR),
