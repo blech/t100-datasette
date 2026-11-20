@@ -117,7 +117,8 @@ task-by-task plan; this file records what was built, the decisions made without 
   leave them out; the matrix shows them.
 - **The 1997 domestic gap** (decision 8).
 - The months (the map's month play, first and last flown) are Eurostat's only, so CAA years have none.
-- Not deployed, and not checked with the JavaScript bundle (`npm run bundle`; the worktree has no `node_modules`).
+- Checked with the JavaScript bundle (2026-11-20: every European page type in public mode, no errors). Deploying: `t_avia.db` on the
+  volume beside `t100.db` (README, Deployment), served by `serve_public.sh` when present.
 - The changelog is the user's to write.
 - **Santorini has nothing in 2001–2002**, and **Slovakia's airports nothing in 2002–2005** (decision 17).
 
