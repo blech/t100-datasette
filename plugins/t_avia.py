@@ -188,7 +188,7 @@ async def index_page(datasette, request):
     sql = datasette.config["databases"][DATABASE]["queries"]["europe_airports"]["sql"]
     from t100_globe import prose_count
     rows = [{**dict(r), **{f"{k}_text": prose_count(r[k]) for k in ("passengers", "flights", "freight")}}
-            for r in (await db.execute(sql, {"year": year, "sort": sort})).rows]
+            for r in (await db.execute(sql, {"year": year, "sort": sort, "country": ""})).rows]
     html = await datasette.render_template(
         "europe_airports.html",
         {"crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", None)), "year": year, "years": years, "rows": rows, "base": BASE, "pax_floor": PAX_FLOOR, "sort": sort, "sorts": INDEX_SORTS,

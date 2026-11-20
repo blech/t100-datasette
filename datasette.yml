@@ -1262,7 +1262,7 @@ databases:
 
       europe_airports:
         title: "Reporting airports in a year"
-        description: "Every airport with its own pages, with its passengers, flights (passenger and freight-only) and freight (short tons) in the year, both ways, and its destinations of 10,000 passengers or more; sort is passengers (empty), flights, destinations or freight, biggest first. Flights and freight are Eurostat's alone, so a UK airport's CAA-only years have none."
+        description: "Every airport with its own pages, with its passengers, flights (passenger and freight-only) and freight (short tons) in the year, both ways, and its destinations of 10,000 passengers or more; sort is passengers (empty), flights, destinations or freight, biggest first; country (Eurostat's two-letter code, empty for all) narrows it to one reporting country. Flights and freight are Eurostat's alone, so a UK airport's CAA-only years have none."
         sql: |
           WITH t AS (
           SELECT a.code, a.name, a.city, a.country, a.country_code, a.first_year, a.last_year,
@@ -1273,12 +1273,102 @@ databases:
             MAX(r.source) AS source
           FROM airport_info a JOIN route_year r ON r.airport = a.icao AND r.year = CAST(:year AS integer)
           WHERE a.reporting = 1 AND a.placeholder = 0  -- Eurostat's "other or unknown" reporters (LF90: Paris, 1993 and 1996-2000) aren't airports
+            AND (:country = '' OR a.country_code = :country)
           GROUP BY a.icao
           )
           -- ranked outside the grouping: inside an expression, freight would be route_year's column, not the sum
           SELECT * FROM t
           ORDER BY CASE :sort WHEN 'flights' THEN flights WHEN 'freight' THEN freight WHEN 'destinations' THEN destinations ELSE passengers END DESC NULLS LAST,
             passengers DESC
+
+      # Eurostat's reporting countries in a year (/airports/europe/countries), as europe_airports ranks airports
+      europe_countries:
+        title: "Reporting countries in a year"
+        description: "Every country (Eurostat's two-letter code, the file its airports' figures come from) with its reporting airports, passengers, flights (passenger and freight-only) and freight (short tons) in the year, summed over its airports' own reports, both ways, so a domestic route counts at both its airports; sort is passengers (empty), flights, airports or freight, biggest first."
+        sql: |
+          WITH t AS (
+          SELECT a.country_code, COUNT(DISTINCT a.icao) AS airports, SUM(r.passengers) AS passengers,
+            CASE WHEN COUNT(r.pax_flights) + COUNT(r.freight_flights) > 0 THEN IFNULL(SUM(r.pax_flights), 0) + IFNULL(SUM(r.freight_flights), 0) END AS flights,
+            CAST(ROUND(SUM(r.freight) * 1.10231) AS integer) AS freight
+          FROM airport_info a JOIN route_year r ON r.airport = a.icao AND r.year = CAST(:year AS integer)
+          WHERE a.reporting = 1 AND a.placeholder = 0
+          GROUP BY a.country_code
+          )
+          SELECT * FROM t
+          ORDER BY CASE :sort WHEN 'flights' THEN flights WHEN 'freight' THEN freight WHEN 'airports' THEN airports ELSE passengers END DESC NULLS LAST,
+            passengers DESC
+
+      # the European over-time matrix (/airports/europe/over-time), with T-100's airport_by_year's columns
+      airport_by_year:
+        title: "Airports by year"
+        description: "One row per reporting airport, year and service (domestic: same country), from the airport's own report, counting passengers, flights (passenger and freight-only) and seats both ways (or set dir to out or in; the CAA's years have no directions, flights, seats or freight), for airports with 100,000 passengers or more both ways (50,000 one way) in some year. Freight is in pounds, as T-100's. city is the airport's town; market_id is empty (Eurostat has no city markets); region is accepted and ignored."
+        sql: |
+          WITH big AS (
+            SELECT r.airport FROM route_year r JOIN airport_info a ON a.icao = r.airport
+            WHERE a.reporting = 1 AND a.placeholder = 0
+            GROUP BY r.airport, r.year
+            HAVING SUM(CASE :dir WHEN 'out' THEN r.passengers_out WHEN 'in' THEN r.passengers_in ELSE r.passengers END)
+              >= CASE WHEN :dir IN ('out', 'in') THEN 50000 ELSE 100000 END
+          )
+          SELECT a.code AS airport, a.city, NULL AS market_id, r.year,
+            CASE WHEN r.domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+            CASE WHEN COUNT(CASE :dir WHEN 'out' THEN r.pax_flights_out WHEN 'in' THEN r.pax_flights_in ELSE r.pax_flights END)
+                    + COUNT(CASE :dir WHEN 'out' THEN r.freight_flights_out WHEN 'in' THEN r.freight_flights_in ELSE r.freight_flights END) > 0
+              THEN IFNULL(SUM(CASE :dir WHEN 'out' THEN r.pax_flights_out WHEN 'in' THEN r.pax_flights_in ELSE r.pax_flights END), 0)
+                 + IFNULL(SUM(CASE :dir WHEN 'out' THEN r.freight_flights_out WHEN 'in' THEN r.freight_flights_in ELSE r.freight_flights END), 0) END AS deps,
+            SUM(CASE :dir WHEN 'out' THEN r.seats_out WHEN 'in' THEN r.seats_in ELSE r.seats END) AS seats,
+            SUM(CASE :dir WHEN 'out' THEN r.passengers_out WHEN 'in' THEN r.passengers_in ELSE r.passengers END) AS passengers,
+            CAST(ROUND(SUM(CASE :dir WHEN 'out' THEN r.freight_out WHEN 'in' THEN r.freight_in ELSE r.freight END) * 2204.62) AS integer) AS freight
+          FROM route_year r JOIN airport_info a ON a.icao = r.airport
+          WHERE r.airport IN (SELECT airport FROM big)
+          GROUP BY r.airport, r.year, r.domestic
+          HAVING passengers > 0 OR deps > 0 OR freight > 0
+          ORDER BY r.year, a.code
+
+      # the European routes matrix (/airports/europe/routes): T-100's top_routes_by_year over t_avia's own tables, built from
+      # pair_year (one report per pair), so a pair of two reporting airports counts once
+      top_routes_by_year:
+        title: "The busiest airport pairs by year"
+        description: "One row per airport pair (both directions together, from one of its airports' reports: pair_year) and year, with its service and great-circle distance in miles, for the pairs in the top 50 of their service and distance band by flights, seats, passengers or freight, over all years or, with year set, in that year, and the busiest pair of each band in each year. Rows with rest = 1 are every pair's totals for a year, service and distance band. Freight is in pounds."
+        sql: |
+          WITH kept AS (
+            SELECT DISTINCT a, b FROM top_route_year
+            WHERE year_rank = 1 OR (CASE WHEN :year = '' THEN overall_rank WHEN year = CAST(:year AS integer) THEN year_rank END) <= 50
+          )
+          SELECT a AS origin, b AS dest, year, service, distance, band, deps, seats, passengers, CAST(ROUND(freight * 2204.62) AS integer) AS freight, 0 AS rest
+          FROM top_route_year JOIN kept USING (a, b)
+          UNION ALL
+          SELECT '', '', year, service, band, band, deps, seats, passengers, CAST(ROUND(freight * 2204.62) AS integer), 1
+          FROM route_band_year
+          ORDER BY year, rest, passengers DESC
+
+      # the European map (/airports/europe/globe), with T-100's busiest_routes_year's columns
+      busiest_routes_year:
+        title: "A year's busiest airport pairs"
+        description: "The top n airport pairs (both directions together, from one of its airports' reports: pair_year) by passengers in one year, optionally only domestic (same country) or international ones, each with its great-circle distance in miles. Freight is in pounds."
+        sql: |
+          SELECT t.origin, t.dest, t.service, t.deps, t.seats, t.passengers, t.freight, d.distance
+          FROM (
+            SELECT a AS origin, b AS dest, CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END AS service,
+              deps, seats, passengers, CAST(ROUND(freight * 2204.62) AS integer) AS freight
+            FROM pair_year
+            WHERE year = CAST(:year AS integer) AND (:service = '' OR :service = CASE WHEN domestic = 1 THEN 'domestic' ELSE 'international' END)
+            ORDER BY passengers DESC NULLS LAST
+            LIMIT CAST(:n AS integer)
+          ) t
+          LEFT JOIN pair_distance d ON d.a = t.origin AND d.b = t.dest
+          ORDER BY t.passengers DESC NULLS LAST
+
+      # the European distances page (/airports/europe/distances), with T-100's pair_distances_by_year's columns
+      pair_distances_by_year:
+        title: "Every airport pair's distance and traffic in a year"
+        description: "One row per airport pair (both directions together, from one of its airports' reports: pair_year) in the year, with its great-circle distance in miles as both distance and gc_distance (there is no other), and its flights, passengers and freight (pounds)."
+        sql: |
+          SELECT p.a, p.b, d.distance, d.distance AS gc_distance, p.deps, p.passengers, CAST(ROUND(p.freight * 2204.62) AS integer) AS freight
+          FROM pair_year p
+          LEFT JOIN pair_distance d ON d.a = p.a AND d.b = p.b
+          WHERE p.year = CAST(:year AS integer) AND (p.deps > 0 OR p.passengers > 0 OR p.freight > 0)
+          ORDER BY p.passengers DESC
 
       routes_by_year:
         title: "Other airports from and to an airport, by year"

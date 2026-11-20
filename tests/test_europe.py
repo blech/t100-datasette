@@ -177,6 +177,7 @@ def tiny_t_avia(path):
         ("EGLL", "KJFK", 2020, "caa", 0, 700_000, None, None, None, None, None, None),         # a CAA year: passengers only
     ])
     db.executemany("INSERT INTO pair_distance VALUES (?,?,?)", [("JFK", "LHR", 3451), ("CDG", "LHR", 216)])
+    b.write_pairs(db)
     db.commit()
     db.close()
 
@@ -328,3 +329,61 @@ def test_passengers_on_board_are_said_on_the_airport_route_and_about(both):
 
 def test_about_leaves_out_europe_without_its_data(ds):
     assert 'id="europe"' not in get(ds, "/about").text
+
+
+# --- the top-level pages' queries
+
+def add_reports(ds, rows):
+    """Route reports (airport, other, year, source, domestic, passengers, pax_flights, freight) added to the tiny t_avia.db,
+    then its pair tables rebuilt, as build_t_avia does."""
+    db = sqlite3.connect(ds.databases["t_avia"].path)
+    db.executemany("INSERT OR REPLACE INTO route_year (airport, other, year, source, domestic, passengers, pax_flights, freight) VALUES (?,?,?,?,?,?,?,?)", rows)
+    b.write_pairs(db)
+    db.commit()
+    db.close()
+
+
+def rows_of(ds, query, args):
+    return get(ds, f"/t_avia/{query}.json?_shape=objects&{args}").json()["rows"]
+
+
+def test_top_routes_by_year_counts_a_pair_once(both):
+    add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
+    pairs = [r for r in rows_of(both, "top_routes_by_year", "year=2019") if not r["rest"] and r["year"] == 2019]
+    paris = [r for r in pairs if {r["origin"], r["dest"]} == {"CDG", "LHR"}]
+    assert len(paris) == 1 and paris[0]["passengers"] == 950_000
+    assert paris[0]["freight"] == round(12.0 * 2204.62)
+
+
+def test_busiest_routes_year_gives_t100s_columns(both):
+    add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
+    rows = rows_of(both, "busiest_routes_year", "year=2019&n=10&service=")
+    assert list(rows[0]) == ["origin", "dest", "service", "deps", "seats", "passengers", "freight", "distance"]
+    assert [(r["origin"], r["dest"]) for r in rows] == [("JFK", "LHR"), ("CDG", "LHR"), ("DXB", "LHR")]
+    assert rows[1]["distance"] == 216
+
+
+def test_pair_distances_by_year_has_gc_distance(both):
+    rows = rows_of(both, "pair_distances_by_year", "year=2019")
+    jfk = next(r for r in rows if r["a"] == "JFK")
+    assert jfk["distance"] == jfk["gc_distance"] == 3451
+
+
+def test_airport_by_year_counts_each_airports_own_report(both):
+    rows = rows_of(both, "airport_by_year", "dir=&region=abroad")
+    lhr = {(r["year"], r["service"]): r["passengers"] for r in rows if r["airport"] == "LHR"}
+    assert lhr[(2019, "international")] == 3_908_000 and lhr[(2019, "domestic")] == 50_000
+    assert lhr[(2020, "international")] == 700_000
+    assert {r["airport"] for r in rows} == {"LHR"}  # CDG reports nothing here; nothing under 100,000 passengers
+
+
+def test_a_caa_year_sorts_last_by_flights(both):
+    add_reports(both, [("LFPG", "EGLL", 2020, "eurostat", 0, 600_000, 5_000, 1.0)])
+    rows = rows_of(both, "europe_countries", "year=2020&sort=flights")
+    assert [r["country_code"] for r in rows] == ["FR", "UK"]  # the UK's 2020 is the CAA's alone: no flights
+
+
+def test_europe_airports_filters_by_country(both):
+    add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
+    assert [r["code"] for r in rows_of(both, "europe_airports", "year=2019&sort=&country=FR")] == ["CDG"]
+    assert [r["code"] for r in rows_of(both, "europe_airports", "year=2019&sort=&country=")] == ["LHR", "CDG"]
