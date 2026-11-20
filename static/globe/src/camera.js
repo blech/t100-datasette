@@ -1,5 +1,5 @@
 export const ZMIN = 0.8;
-export const ZMAX = 4;
+export const ZMAX = 6; // trying 6 (was 4) now that zooming in brings in the 50m coast
 
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
