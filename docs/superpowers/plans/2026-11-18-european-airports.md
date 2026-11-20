@@ -96,6 +96,17 @@ task-by-task plan; this file records what was built, the decisions made without 
     together)", at the city centre, and a placeholder the overrides name is no longer a placeholder. Its pages and CDG's and
     ORY's say where the other years are (`COMBINED` in `plugins/t_avia.py`). Slovakia's LZ99 (2002–2005, routes only to other
     countries' placeholders), Germany's ED00 and Italy's LI99 (small, freight) stay placeholders.
+18. **Istanbul is IST over all its years** (2026-11-20, the user's call: the site goes by IATA code): Atatürk (LTBA, now ISL)
+    is merged into Istanbul Airport (LTFM) as an inheritor, like Schönefeld into BER, with `/airports/europe/ISL...` leading to
+    IST. Unlike Eurostat's own merges the two codes overlap in 2019 (Atatürk until April), so their figures are added, not taken
+    as one report: `combine` = `sum` in `data/avia_airport_overrides.csv` (an ordinary alias keeps the larger figure, since Italy
+    files Rhodes under both its codes in 1994 with the same numbers).
+19. **Passengers on board where none carried are reported** (2026-11-20, the user's call): Turkey reported passengers on board
+    (`PAS_BRD`) from 2012 but carried (`PAS_CRD`) only from 2023, so its airports had flights and seats but no passengers
+    before then. The build uses on board for any route-year with no carried figure, and `on_board` = 1 records it (about 6,300
+    Turkish route-years, and about 2,900 elsewhere). The two are within about 1% where both are given (Istanbul Airport 72.45m
+    both, Antalya 35.4m against 35.1m in 2024). An airport's note names the years when most of its passengers are on board, a
+    route's the years it has any; the about page says so once. Turkey has no freight before 2023 either way.
 
 ## Known gaps
 

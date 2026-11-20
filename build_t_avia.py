@@ -32,6 +32,8 @@ PAR_MEASURES = {
     "PAS_CRD": "passengers", "PAS_CRD_DEP": "passengers_out", "PAS_CRD_ARR": "passengers_in",
     "CAF_PAS": "pax_flights", "CAF_PAS_DEP": "pax_flights_out", "CAF_PAS_ARR": "pax_flights_in",
     "ST_PAS": "seats", "ST_PAS_DEP": "seats_out", "ST_PAS_ARR": "seats_in",
+    # passengers on board: only where a route has no passengers carried (Turkey before 2023), as near as Eurostat has
+    "PAS_BRD": "on_board", "PAS_BRD_DEP": "on_board_out", "PAS_BRD_ARR": "on_board_in",
 }
 GOR_MEASURES = {
     "FRM_LD_NLD": "freight", "FRM_LD": "freight_out", "FRM_NLD": "freight_in",
@@ -45,14 +47,20 @@ PLACEHOLDER = re.compile(r"^([A-Z]{2}[0-9]{2}|ZZZZ)$")  # Eurostat's other or un
 
 
 def read_aliases(path):
-    """old ICAO code -> the code it is now, from data/avia_airport_overrides.csv's alias_of column."""
+    """(old ICAO code -> the code it is now, the old codes whose figures add to the new one's) from
+    data/avia_airport_overrides.csv's alias_of and combine columns. An alias is the same airport under another code, so
+    where a route is filed under both, they're one report and the larger is kept (Italy files Rhodes under both of its
+    codes in 1994); a `combine` of `sum` is a different airport whose figures are added (Atatürk's, before Istanbul
+    Airport took over in April 2019)."""
     if not path.exists():
-        return {}
+        return {}, set()
     with path.open(encoding="utf-8") as f:
-        return {r["icao"].strip().upper(): r["alias_of"].strip().upper() for r in csv.DictReader(f) if (r.get("alias_of") or "").strip()}
+        rows = [r for r in csv.DictReader(f) if (r.get("alias_of") or "").strip()]
+    return ({r["icao"].strip().upper(): r["alias_of"].strip().upper() for r in rows},
+            {r["icao"].strip().upper() for r in rows if (r.get("combine") or "").strip() == "sum"})
 
 
-ALIASES = read_aliases(HERE / "data" / "avia_airport_overrides.csv")
+ALIASES, SUMMED = read_aliases(HERE / "data" / "avia_airport_overrides.csv")
 US_COUNTRIES = ("United States", "Puerto Rico", "Guam", "Virgin Islands", "American Samoa", "Northern Mariana Islands")
 
 _route_columns = ",\n  ".join(f"{c} {'REAL' if c.startswith('freight') and 'flights' not in c else 'INTEGER'}" for c in COLUMNS)
@@ -63,11 +71,13 @@ CREATE TABLE airport_info (
 );
 CREATE TABLE route_year (
   airport TEXT, other TEXT, year INTEGER, source TEXT, domestic INTEGER,
+  on_board INTEGER,  -- 1 where the passengers are Eurostat's on board, the route having none carried
   {_route_columns},
   PRIMARY KEY (airport, other, year)
 ) WITHOUT ROWID;
 CREATE TABLE route_month (
   airport TEXT, other TEXT, year INTEGER, month INTEGER, domestic INTEGER,
+  on_board INTEGER,
   {_route_columns},
   PRIMARY KEY (airport, year, month, other)
 ) WITHOUT ROWID;
@@ -96,8 +106,9 @@ def eurostat_number(cell):
 
 
 def read_eurostat(path, measures):
-    """Yield (reporting ICAO, its country prefix, partner ICAO, partner country, year, month or 0, column, value) from one
-    route file, for its years and months; quarters are left out."""
+    """Yield (reporting ICAO, its country prefix, partner ICAO, partner country, year, month or 0, column, value, part) from
+    one route file, for its years and months; quarters are left out. `part` names the summed codes (SUMMED) the row was
+    filed under, so their figures add to the new code's instead of being taken as the same report."""
     with gzip.open(path, "rt", encoding="utf-8") as f:
         head = [h.strip() for h in f.readline().rstrip("\n").split("\t")]
         keys = head[0].split("\\")[0].split(",")
@@ -117,37 +128,47 @@ def read_eurostat(path, measures):
                 if i < len(cells):
                     value = eurostat_number(cells[i])
                     if value is not None:
-                        yield ALIASES.get(parts[1], parts[1]), parts[0], ALIASES.get(parts[3], parts[3]), parts[2], year, month, column, value
+                        part = " ".join(c for c in (parts[1], parts[3]) if c in SUMMED)
+                        yield ALIASES.get(parts[1], parts[1]), parts[0], ALIASES.get(parts[3], parts[3]), parts[2], year, month, column, value, part
 
 
 def load_eurostat(db, eu_dir):
     """Every Eurostat value into the staging table raw (airport, other, year, month, column, value); each ICAO code's
     country prefix as Eurostat gives it."""
-    db.execute("CREATE TEMP TABLE raw (airport TEXT, other TEXT, year INTEGER, month INTEGER, col TEXT, value REAL)")
+    db.execute("CREATE TEMP TABLE raw (airport TEXT, other TEXT, year INTEGER, month INTEGER, col TEXT, value REAL, part TEXT)")
     countries = {}
     files = sorted(eu_dir.glob("estat_avia_par_*.tsv.gz")) + sorted(eu_dir.glob("estat_avia_gor_*.tsv.gz"))
     for path in files:
         measures = PAR_MEASURES if "_par_" in path.name else GOR_MEASURES
         batch = []
-        for rep, rep_cc, other, other_cc, year, month, column, value in read_eurostat(path, measures):
+        for rep, rep_cc, other, other_cc, year, month, column, value, part in read_eurostat(path, measures):
             countries.setdefault(rep, rep_cc)
             countries.setdefault(other, other_cc)
-            batch.append((rep, other, year, month, column, value))
+            batch.append((rep, other, year, month, column, value, part))
             if len(batch) >= 200_000:
-                db.executemany("INSERT INTO raw VALUES (?,?,?,?,?,?)", batch)
+                db.executemany("INSERT INTO raw VALUES (?,?,?,?,?,?,?)", batch)
                 batch.clear()
-        db.executemany("INSERT INTO raw VALUES (?,?,?,?,?,?)", batch)
+        db.executemany("INSERT INTO raw VALUES (?,?,?,?,?,?,?)", batch)
         print(f"  {path.name}", file=sys.stderr)
     return countries
 
 
 def pivot_eurostat(db):
-    """route_year and route_month from the staging table: one row per airport, other airport and period."""
-    picks = ", ".join(f"MAX(CASE WHEN col = '{c}' THEN value END)" for c in COLUMNS)
-    db.execute(f"""INSERT INTO route_year (airport, other, year, source, {', '.join(COLUMNS)})
-                   SELECT airport, other, year, 'eurostat', {picks} FROM raw WHERE month = 0 GROUP BY airport, other, year""")
-    db.execute(f"""INSERT INTO route_month (airport, other, year, month, {', '.join(COLUMNS)})
-                   SELECT airport, other, year, month, {picks} FROM raw WHERE month > 0 GROUP BY airport, other, year, month""")
+    """route_year and route_month from the staging table: one row per airport, other airport and period. A route filed
+    under one code twice keeps the larger figure; one filed under a summed code too (`part`) adds it. Passengers are those
+    carried, or on board where a route has none carried (on_board says so)."""
+    def pick(c):
+        return f"MAX(CASE WHEN col = '{c}' THEN value END)"
+    picks = ", ".join(f"COALESCE({pick(c)}, {pick(c.replace('passengers', 'on_board'))})" if c.startswith("passengers") else pick(c)
+                      for c in COLUMNS)
+    on_board = f"CASE WHEN {pick('passengers')} IS NULL AND {pick('on_board')} IS NOT NULL THEN 1 END"
+    values = """(SELECT airport, other, year, month, col, SUM(value) AS value FROM
+                   (SELECT airport, other, year, month, col, MAX(value) AS value FROM raw WHERE {where} GROUP BY airport, other, year, month, col, part)
+                 GROUP BY airport, other, year, month, col)"""
+    db.execute(f"""INSERT INTO route_year (airport, other, year, source, on_board, {', '.join(COLUMNS)})
+                   SELECT airport, other, year, 'eurostat', {on_board}, {picks} FROM {values.format(where="month = 0")} GROUP BY airport, other, year""")
+    db.execute(f"""INSERT INTO route_month (airport, other, year, month, on_board, {', '.join(COLUMNS)})
+                   SELECT airport, other, year, month, {on_board}, {picks} FROM {values.format(where="month > 0")} GROUP BY airport, other, year, month""")
 
 
 # --- CAA
@@ -348,7 +369,7 @@ def add_caa(db, caa, coder, countries):
                 merged[(ib, ia)] += pax
                 countries.setdefault(ib, "UK")
         for (ia, ib), pax in merged.items():
-            cur = db.execute("UPDATE route_year SET passengers = ?, source = 'caa+eurostat' WHERE airport = ? AND other = ? AND year = ?", (pax, ia, ib, year))
+            cur = db.execute("UPDATE route_year SET passengers = ?, on_board = NULL, source = 'caa+eurostat' WHERE airport = ? AND other = ? AND year = ?", (pax, ia, ib, year))
             if cur.rowcount:
                 joined += 1
             else:

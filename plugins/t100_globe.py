@@ -1256,7 +1256,8 @@ async def about_page(datasette, request):
     config = datasette.plugin_config("t100_globe") or {}
     html = await datasette.render_template(
         "about.html",
-        {"min_year": config.get("min_year", 1990), "max_year": config.get("max_year", 2025), "crumbs": trail(datasette, ("about", None))},
+        {"min_year": config.get("min_year", 1990), "max_year": config.get("max_year", 2025), "crumbs": trail(datasette, ("about", None)),
+         "europe_loaded": "t_avia" in datasette.databases},  # the European airports' section, only beside their data
         request=request,
     )
     return Response.html(html)

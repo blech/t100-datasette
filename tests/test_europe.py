@@ -74,6 +74,26 @@ def test_the_overrides_merge_rhodes_and_santorini_and_name_paris():
     assert paris[0] == "PAR" and paris[1].startswith("Paris")
 
 
+def test_atatürk_adds_to_istanbul_airport():
+    assert b.ALIASES["LTBA"] == "LTFM" and b.SUMMED == {"LTBA"}
+
+
+def test_the_pivot_keeps_one_report_adds_a_summed_code_and_falls_back_to_on_board():
+    db = sqlite3.connect(":memory:")
+    db.executescript(b.SCHEMA)
+    db.execute("CREATE TEMP TABLE raw (airport TEXT, other TEXT, year INTEGER, month INTEGER, col TEXT, value REAL, part TEXT)")
+    db.executemany("INSERT INTO raw VALUES (?,?,?,?,?,?,?)", [
+        ("LIMC", "LGRP", 1994, 0, "passengers", 46621, ""), ("LIMC", "LGRP", 1994, 0, "passengers", 46621, ""),  # one report, two codes
+        ("EDDF", "LTFM", 2019, 0, "passengers", 700000, ""), ("EDDF", "LTFM", 2019, 0, "passengers", 200000, "LTBA"),  # Atatürk adds
+        ("LTFM", "EDDF", 2019, 0, "on_board", 880000, ""), ("LTFM", "EDDF", 2019, 0, "pax_flights", 5000, ""),  # no passengers carried
+        ("LTFM", "EDDF", 2024, 0, "passengers", 990000, ""), ("LTFM", "EDDF", 2024, 0, "on_board", 999000, ""),  # carried wins
+    ])
+    b.pivot_eurostat(db)
+    got = {(a, o, y): (p, ob) for a, o, y, p, ob in db.execute("SELECT airport, other, year, passengers, on_board FROM route_year")}
+    assert got == {("LIMC", "LGRP", 1994): (46621, None), ("EDDF", "LTFM", 2019): (900000, None),
+                   ("LTFM", "EDDF", 2019): (880000, 1), ("LTFM", "EDDF", 2024): (990000, None)}
+
+
 # --- the pages
 
 def test_european_paths_are_airports_pages_with_the_same_views():
@@ -216,7 +236,7 @@ def test_the_last_sort_asked_for_wins(both):
 
 def test_schonefeld_is_berlin_brandenburgs_past(both):
     from plugins.t_avia import INHERITED, FORMER
-    assert FORMER == {"SXF": "BER"} and INHERITED["BER"]["until"] == "October 2020"
+    assert FORMER == {"SXF": "BER", "ISL": "IST"} and INHERITED["BER"]["until"] == "October 2020"
     r = get(both, "/airports/europe/SXF/destinations?year=2019")
     assert r.status_code == 302 and r.headers["location"] == "/airports/europe/BER/destinations?year=2019"
     assert get(both, "/airports/europe/LHR/SXF").headers["location"] == "/airports/europe/LHR/BER"
@@ -244,3 +264,19 @@ def test_paris_combined_is_an_airport_that_cdg_points_to(both):
     assert 'href="/airports/europe/PAR"' in get(both, "/airports/europe/CDG").text
     assert 'href="/airports/europe/PAR"' in get(both, "/airports/europe?year=1999").text
     assert "PAR is Paris" in get(both, "/airports/europe/PAR/LHR").text
+
+
+def test_passengers_on_board_are_said_on_the_airport_route_and_about(both):
+    db = sqlite3.connect(both.databases["t_avia"].path)
+    db.execute("UPDATE route_year SET on_board = 1 WHERE airport = 'EGLL' AND year = 2019 AND other IN ('KJFK', 'LFPG')")
+    db.commit()
+    db.close()
+    assert "In 2019 its passengers are those on board" in get(both, "/airports/europe/LHR").text
+    assert "In 2019 the passengers are those on board" in get(both, "/airports/europe/LHR/JFK").text
+    assert "In 2019 the passengers" not in get(both, "/airports/europe/LHR/DXB").text
+    about = get(both, "/about").text
+    assert 'id="europe"' in about and "<code>on_board</code>" in about
+
+
+def test_about_leaves_out_europe_without_its_data(ds):
+    assert 'id="europe"' not in get(ds, "/about").text

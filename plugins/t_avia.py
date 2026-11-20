@@ -21,7 +21,12 @@ DEFAULT_YEAR = 2024  # the last year most of Eurostat's countries have
 INDEX_SORTS = {"passengers": "Passengers", "flights": "Flights", "destinations": "Destinations", "freight": "Freight"}  # the index's columns to rank by
 # an airport whose code a newer one took over, with its history: Eurostat files both under the one ICAO code, so the newer
 # airport's pages carry the older one's years, said so in its note, and the older code's pages lead there
-INHERITED = {"BER": {"code": "SXF", "name": "Berlin Schönefeld", "until": "October 2020"}}
+INHERITED = {
+    "BER": {"code": "SXF", "name": "Berlin Schönefeld", "until": "October 2020", "took": "code and site",
+            "why": "Eurostat files both under one code"},
+    "IST": {"code": "ISL", "name": "Istanbul Atatürk", "until": "April 2019", "took": "traffic and IATA code",
+            "why": "Eurostat files them under two codes, added together here"},
+}
 FORMER = {v["code"]: k for k, v in INHERITED.items()}
 # a city's airports that a country reported as one in some years (Eurostat's LF90, given the city's IATA code by
 # data/avia_airport_overrides.csv): the combined code's pages and its airports' pages say where the other years are
@@ -79,6 +84,20 @@ async def caa_years(datasette, icao):
     return runs([r[0] for r in rows])
 
 
+async def on_board_years(datasette, icao):
+    """The years most of an airport's passengers are those on board, not carried, as runs: its country reported no
+    passengers carried (Turkey before 2023). A route or two counted that way in a year isn't worth saying on the airport."""
+    rows = await database(datasette).execute(
+        "SELECT year FROM route_year WHERE airport = ? GROUP BY year HAVING SUM(CASE WHEN on_board = 1 THEN passengers END) * 2 > SUM(passengers) ORDER BY year", [icao])
+    return runs([r[0] for r in rows])
+
+
+async def on_board_route_years(datasette, a, b):
+    """The years a route's passengers are those on board, as runs."""
+    rows = await database(datasette).execute("SELECT year FROM route_year WHERE airport = ? AND other = ? AND on_board = 1 ORDER BY year", [a, b])
+    return runs([r[0] for r in rows])
+
+
 def runs(years):
     """Sorted years as runs: [1990, 1991, 1992, 2020] -> '1990–1992, 2020'."""
     out, start = [], None
@@ -133,6 +152,7 @@ def europe_view(template, crumb):
             "europe": {
                 "database": DATABASE, "base": BASE, "icao": info["icao"], "pax_floor": PAX_FLOOR,
                 "caa_years": await caa_years(datasette, info["icao"]),
+                "on_board_years": await on_board_years(datasette, info["icao"]),
                 "uk": info["icao"].startswith("EG"),
                 "inherits": INHERITED.get(origin),
                 "combined": combined(origin),
@@ -253,6 +273,7 @@ async def route_page(datasette, request):
                     "inherits": [{**INHERITED[c], "successor": c} for c in (origin, dest) if c in INHERITED],
                     "combined": [combined(c) for c in (origin, dest) if c in COMBINED],
                     "caa_years": await caa_route_years(datasette, o["icao"], d["icao"]),
+                    "on_board_years": await on_board_route_years(datasette, o["icao"], d["icao"]),
                     "reverse_href": f"{BASE}/{dest}/{origin}" if d["reporting"] else None}},
         request=request,
     )
