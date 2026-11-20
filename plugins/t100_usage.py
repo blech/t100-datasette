@@ -53,7 +53,7 @@ def log_kind(path, status, content_type, user_agent):
     if path.startswith("/static/"):
         return None
     html = (content_type or "").startswith("text/html")
-    if path.startswith(("/t100/", "/-/")) or path in ("/t100", "/-"):
+    if path.startswith(("/t100/", "/t_avia/", "/-/")) or path in ("/t100", "/t_avia", "/-"):  # either database's data pages
         return "other" if status >= 400 or html else None
     return classify(user_agent) if status == 200 and html else None
 

@@ -11,10 +11,10 @@ from urllib.parse import parse_qs
 from datasette import hookimpl
 from datasette.utils.asgi import Response
 
-TABLE = re.compile(r"^/t100/[^/]+(\.json|\.csv)?$")  # a table or canned query, not a row page
+TABLE = re.compile(r"^/(t100|t_avia)/[^/]+(\.json|\.csv)?$")  # a table or canned query, not a row page, in either database
 EXPENSIVE = ("_next", "_facet")  # a parameter name starts with one of these
 REFUSAL = "Deep paging and facet counts are turned off on the public site. Use the first page, or a route or airport page.\n"
-ROBOTS = "User-agent: *\nDisallow: /t100/\n"
+ROBOTS = "User-agent: *\nDisallow: /t100/\nDisallow: /t_avia/\n"
 
 
 def is_expensive(path, query_string):

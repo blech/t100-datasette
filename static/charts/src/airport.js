@@ -30,10 +30,11 @@ export function sizeSeries(rows, { measure = 'passengers', flights = 'passenger'
 }
 
 // routes_by_year rows (fetched with min_deps=1) -> how many destinations reached `min` departures, per year and service
-export function placeCounts(rows, { min = 12 } = {}) {
+// by is what a destination counts by: its flights (deps), or on a European page its passengers
+export function placeCounts(rows, { min = 12, by = 'deps' } = {}) {
   const counts = new Map();
   for (const r of rows) {
-    if (num(r.deps) < min) continue;
+    if (num(r[by]) < min) continue;
     const key = `${r.year}\u0000${r.service}`;
     counts.set(key, { year: Number(r.year), service: r.service, count: (counts.get(key)?.count || 0) + 1 });
   }

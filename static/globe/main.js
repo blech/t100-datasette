@@ -18,6 +18,7 @@ import { formatCount as fmt, countLabel } from '/static/common/numbers.js';
 import { routeFigures } from './src/panel.js';
 import { viewTracker } from './src/viewurl.js';
 import { countWord, setDir } from '/static/common/direction.js';
+import { isEurope, airportHref, airportsBase, EUROPE_BASE } from '/static/common/source.js';
 
 const $ = (id) => document.getElementById(id);
 const origin = document.body.dataset.origin || '';
@@ -91,13 +92,15 @@ function updateStats() {
   const comparing = Boolean(state.compare);
   const pax = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.passengers || 0)), 0);
   const deps = shown.reduce((s, r) => s + (r.status === 'dropped' ? 0 : Number(r.deps || 0)), 0);
+  // a European airport's CAA years have passengers but no flights (deps is null): leave the flights out, not 0
+  const counted = shown.some((r) => r.deps !== null && r.deps !== undefined);
   const label = state.month !== null ? `${state.year}-${String(state.month).padStart(2, '0')}` : comparing ? `${state.compare} → ${state.year}` : `${state.year}`;
   const c = countStatuses(periodRoutes);
   const places = document.body.dataset.foreign ? 'US destinations' : 'destinations';
   // in one colour, comparing is every destination flown across the years, so a plain total
   $('stats').textContent = comparing && colourMode(state.colour, comparing) === 'single' ? `${label} · ${shown.length} ${places}`
     : comparing ? `${state.year} compared with ${state.compare} · ${c.kept} kept · ${c.dropped} dropped · ${c.added} added${c.between ? ` · ${c.between} added then dropped` : ''}`
-    : `${label} · ${shown.length} ${places} · ${countLabel(deps)} ${countWord(state.dir).toLowerCase()} · ${countLabel(pax)} passengers`;
+    : `${label} · ${shown.length} ${places}${counted ? ` · ${countLabel(deps)} ${countWord(state.dir).toLowerCase()}` : ''} · ${countLabel(pax)} passengers`;
   $('year-label').textContent = label;
   const periodRows = state.month !== null
     ? monthRaw.filter((r) => r.month === state.month)
@@ -120,7 +123,7 @@ function tooltipText(r) {
 
 function showPanel(r) {
   const p = $('panel');
-  const routePath = `/airports/${encodeURIComponent(origin)}/${encodeURIComponent(r.dest)}`;
+  const routePath = `${airportsBase()}/${encodeURIComponent(origin)}/${encodeURIComponent(r.dest)}`;
   const keepDir = state.dir ? `?dir=${state.dir}` : ''; // departing here is the route's out, arriving its in
   p.innerHTML = '';
   const close = document.createElement('button');
@@ -130,7 +133,8 @@ function showPanel(r) {
   close.onclick = () => { selected = -1; p.hidden = true; dirty = true; };
   const h = document.createElement('h2');
   const destLink = document.createElement('a');
-  destLink.href = `/airports/${encodeURIComponent(r.dest)}/globe${toSearch(state)}`;
+  const destMap = airportHref(r.dest, '/globe', airports);
+  if (destMap) destLink.href = `${destMap}${toSearch(state)}`;
   destLink.textContent = r.dest;
   destLink.title = `Show routes from ${r.dest}`;
   h.append(`${origin} ${{ '': '↔', out: '→', in: '←' }[state.dir]} `, destLink);
@@ -216,7 +220,8 @@ function fillPicker() {
   $('picker').value = origin;
   $('picker').addEventListener('change', (e) => {
     const code = e.target.value.trim().toUpperCase();
-    if (/^[A-Z0-9]{3}$/.test(code)) location.href = `/airports/${code}/globe${toSearch(state)}`;
+    if (isEurope()) { if (airports.get(code)?.page === 'europe') location.href = `${EUROPE_BASE}/${code}/globe${toSearch(state)}`; }
+    else if (/^[A-Z0-9]{3}$/.test(code)) location.href = `/airports/${code}/globe${toSearch(state)}`;
   });
 }
 

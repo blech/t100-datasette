@@ -17,7 +17,8 @@
       <li><a href="#groupings">How things are grouped</a></li>
       <li><a href="#breaks">Known gaps and breaks</a></li>
       <li><a href="#coverage">What is and isn't covered</a></li>
-      <li><a href="#source">Source</a></li>
+{% if europe_loaded %}      <li><a href="#europe">European airports</a></li>
+{% endif %}      <li><a href="#source">Source</a></li>
       <li><a href="#privacy">Privacy</a></li>
     </ul></nav>
 
@@ -96,7 +97,15 @@
       <li>Not covered: flights between two foreign airports, passengers' origins and destinations (only legs), fares or prices, delays or cancellations, and which airline a codeshare ticket was sold by. The airline in the data is the one that operated the flight.</li>
     </ul>
 
-    <h2 id="source">Source</h2>
+{% if europe_loaded %}    <h2 id="europe">European airports</h2>
+    <p>
+      The <a href="/airports/europe">European airports' pages</a> come from Eurostat's air transport route tables, with the UK Civil Aviation Authority's for UK airports. Each airport's page says what its own figures are; these points apply throughout.
+    </p>
+    <ul>
+      <li><strong>Passengers carried, or on board.</strong> Passengers are those carried, counted where they boarded and left the flight. Where a country reported no passengers carried, they are those on board instead, which also counts anyone staying on through a stop: Turkey's airports until 2022, and a few routes elsewhere. Where both are given the two are within about 1%. Each route-year records which it is (<code>on_board</code> in the data).</li>
+      <li><strong>Airports under more than one code.</strong> Some airports' figures are filed under two codes, and are put together here: Rhodes (and Maritsa's old code), Santorini in 1999&ndash;2000, Berlin Brandenburg (and Schönefeld before it), and Istanbul Airport (and Atatürk, until April 2019). France reported Charles de Gaulle and Orly as one in 1993 and 1996&ndash;2000, shown as Paris (PAR).</li>
+    </ul>
+{% endif %}    <h2 id="source">Source</h2>
     <p>
       The data is the Bureau of Transportation Statistics' Data Bank 28DS and 28IS: <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/data-bank-28ds-t-100-domestic-segment-data">T-100 Domestic Segment</a> and <a href="https://www.bts.gov/browse-statistical-products-and-data/bts-publications/%E2%80%A2-data-bank-28is-t-100-and-t-100f">T-100 International Segment</a>. Airport names and coordinates come from <a href="https://openflights.org/data.html">OpenFlights</a>, with some corrections of our own, and city names are BTS's.
     </p>

@@ -82,6 +82,20 @@ check 404 /airports/SFO/LH
 check 200 "/t100/airline_list.json?_shape=objects"                  '"Delta (incl. Northwest)"'
 check 200 "/t100/carrier_route_counts.json?group=delta&airline=&min=12&_shape=objects" '"pairs"'
 check 200 "/t100/carrier_aircraft_by_year.json?group=alaska&airline=21171&_shape=objects" '"aircraft_name"'
+# the European airports (t_avia.db on the volume beside t100.db)
+check 200 /airports/europe                                          "index-form"
+check 200 "/airports/europe?sort=freight&year=2019"                 'data-sort="freight" aria-sort="descending"'
+check 200 /airports/europe/LHR                                      "europe-note"
+check 200 /airports/europe/LHR/destinations                         'data-database="t_avia"'
+check 200 /airports/europe/FRA/globe                                "data-origin"
+check 200 /airports/europe/AMS/DXB/2019                             "route-chart"
+check 302 /airports/europe/SXF
+check 404 /airports/europe/ZZZZ
+check 200 "/t_avia/routes_by_year.json?origin=LHR&_shape=objects"   '"JFK"'
+check 200 "/t_avia/europe_airports.json?year=2024&sort=&_shape=objects" '"IST"'
+check 403 "/t_avia/route_month.json?_next=5"
+check 403 "/t_avia/-/query.json?sql=select+1"
+check 403 /t_avia.db
 check 403 "/t100/-/query.json?sql=select+1"
 check 403 /t100.db
 

@@ -1,0 +1,2 @@
+{#- a European airport's page reads the t_avia database and counts destinations by passengers (static/common/source.js) -#}
+{% if europe %} data-database="{{ europe.database }}" data-count-by="passengers" data-pax-floor="{{ europe.pax_floor }}"{% endif %}

@@ -39,8 +39,16 @@ def test_robots_txt_keeps_crawlers_out_of_the_data_pages_only(ds):
     lines = r.text.splitlines()
     assert "User-agent: *" in lines
     assert "Disallow: /t100/" in lines
+    assert "Disallow: /t_avia/" in lines
     assert "Disallow: /" not in lines
 
 
 def test_a_row_page_and_a_canned_query_with_a_year_are_not_mistaken_for_paging(ds):
     assert get(ds, "/t100/family_year/2019,Boeing%20737?_hide_sql=1").status_code != 403
+
+
+@pytest.mark.parametrize("query", ["_next=5", "_facet=year"])
+def test_the_european_tables_are_guarded_too(query):
+    from plugins.t100_guard import is_expensive
+    assert is_expensive("/t_avia/route_month.json", query) and is_expensive("/t_avia/route_year", query)
+    assert not is_expensive("/t_avia/route_month.json", "airport=EGLL")

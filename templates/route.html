@@ -4,24 +4,30 @@
 {% block styles %}
   <link rel="stylesheet" href="/static/charts/style.css">
 {% endblock %}
-{% block body_attrs %} data-origin="{{ origin }}" data-dest="{{ dest }}" data-dir="{{ dir }}" data-year="{{ year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}"{% endblock %}
+{% block body_attrs %} data-origin="{{ origin }}" data-dest="{{ dest }}" data-dir="{{ dir }}" data-year="{{ year }}" data-min-year="{{ min_year }}" data-max-year="{{ max_year }}"{% include "_source_attrs.html" %}{% endblock %}
 
 {% block content %}
     <h1 id="title">{% include "_route_heading.html" %}{% if year %} in {{ year }}{% endif %}</h1>
     <p class="intro" id="subtitle">{{ label }}</p>
     <nav id="years" aria-label="Years"></nav>
-    <p class="note">{% if dir %}Only one direction is shown; the other way is <a href="/airports/{{ dest }}/{{ origin }}{% if year %}/{{ year }}{% endif %}{% if view %}/{{ view }}{% endif %}?dir={{ dir }}" id="reverse-link">{{ other_way }}</a>. {% endif %}More from {{ origin_abbr }}: <a href="/airports/{{ origin }}">over time</a> · <a href="/airports/{{ origin }}/destinations">destinations</a> · <a href="/airports/{{ origin }}/globe" id="map-link">map</a>.</p>
+    {%- set ab = europe.base if europe else '/airports' %}
+    <p class="note">{% if dir %}Only one direction is shown; the other way is <a href="{{ ab }}/{{ dest }}/{{ origin }}{% if year %}/{{ year }}{% endif %}{% if view %}/{{ view }}{% endif %}?dir={{ dir }}" id="reverse-link">{{ other_way }}</a>. {% endif %}More from {{ origin_abbr }}: <a href="{{ ab }}/{{ origin }}">over time</a> · <a href="{{ ab }}/{{ origin }}/destinations">destinations</a> · <a href="{{ ab }}/{{ origin }}/globe" id="map-link">map</a>.</p>
 
     <section id="route-chart" hidden>
       <div class="chart-controls">
         <label>Direction <select id="chart-dir" aria-label="Direction">{% for value, text in dir_choices %}<option value="{{ value }}"{% if value == dir %} selected{% endif %}>{{ text }}</option>{% endfor %}</select></label>
         <label>Show <select id="chart-measure" aria-label="Measure"></select></label>
+        {%- if not europe %}
         <label>Split by <select id="chart-split" aria-label="Split by"></select></label>
+        {%- endif %}
         <label id="chart-span-label">Years <select id="chart-span" aria-label="Years shown"><option value="flown">years flown</option><option value="all">all years</option></select></label>
       </div>
       <p class="note" id="highlight-line" hidden></p>
       <div id="route-chart-plot" aria-live="polite">Loading chart…</div>
       <p class="note" id="chart-note"></p>
+      {%- if europe %}
+      <p class="note" id="europe-note">{{ origin }}'s own report of the route{% if europe.uk %}: passengers from the UK Civil Aviation Authority's tables, flights, seats and freight from Eurostat's{% else %}, to Eurostat{% endif %}. There are no airlines or aircraft in this data.{% for i in europe.inherits %} {{ i.successor }}'s figures until {{ i.until }} are {{ i.name }} ({{ i.code }})'s, the airport whose {{ i.took }} it took over.{% endfor %}{% if europe.on_board_years %} In {{ europe.on_board_years }} the passengers are those on board, as no count of passengers carried was reported.{% endif %}{% for c in europe.combined %} {{ c.code }} is {{ c.name }}'s two airports, {{ c.part_names }}, together, as France reported them in {{ c.years }}.{% endfor %}{% if europe.caa_years %} In {{ europe.caa_years }} there are the CAA's passengers alone, both ways and by year.{% endif %}{% if dir %} One direction is Eurostat's figures only.{% endif %}{% if europe.reverse_href %} {{ dest }} reports the route too, and <a href="{{ europe.reverse_href }}">its figures</a> may differ a little.{% endif %}</p>
+      {%- endif %}
       <p class="note">Freight is in short tons (2,000 lb). {% if dir %}This is one direction only{% else %}{{ count_word }}, passengers, seats and freight count both directions{% endif %}: <a href="/about#direction">what a route means</a>.</p>
     </section>
 

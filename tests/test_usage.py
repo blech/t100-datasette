@@ -109,6 +109,9 @@ def test_the_log_line_is_tab_separated_in_utc():
     ("/t100/t100_international", 403, "text/plain; charset=utf-8", "python-requests/2.31", "other"),
     ("/t100/routes_by_year.json", 400, "application/json", FIREFOX, "other"),
     ("/-/api", 200, "text/html; charset=utf-8", FIREFOX, "other"),
+    ("/t_avia/route_month", 200, "text/html; charset=utf-8", FIREFOX, "other"),
+    ("/t_avia/routes_by_year.json", 200, "application/json", FIREFOX, None),
+    ("/airports/europe/LHR", 200, "text/html; charset=utf-8", FIREFOX, "human"),
     ("/airports/SFO.json", 200, "application/json", FIREFOX, None),
 ])
 def test_which_requests_are_logged_and_as_what(path, status, ctype, ua, kind):

@@ -96,7 +96,7 @@
   margin-top: 8px;
 }
 /* a destination's code at one width, so its place starts at the same point on every row */
-#change-table a.code {
+#change-table a.code, #change-table span.code {
   display: inline-block;
   min-width: 3.4em;
 }

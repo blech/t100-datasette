@@ -206,6 +206,35 @@ th[aria-sort] button::after {
   content: " ▾";
 }
 
+/* an ⓘ that opens a note in the browser's own popover (the popover attribute: no script), for small print that would
+   otherwise take a block of its own; unlike the charts' .popover it can be clicked into, for its links */
+.info-button {
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.info-button:hover {
+  color: var(--fg);
+}
+.info-popover {
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.info-popover::backdrop {
+  background: transparent;
+}
+.info-popover .note {
+  margin: 0;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
