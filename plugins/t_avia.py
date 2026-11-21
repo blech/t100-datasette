@@ -244,6 +244,10 @@ async def listing(datasette, request, query, sorts, params):
     return {"year": year, "years": years, "eurostat_last": eurostat_last, "sort": sort, "sorts": sorts, "rows": rows}
 
 
+# the index's choices of how many airports to list
+COUNTS = ("10", "25", "50", "all")
+
+
 async def index_page(datasette, request):
     """Every reporting airport in a year, busiest first: the way into the European airports' pages; at
     /airports/europe/countries/<slug>, one country's."""
@@ -253,12 +257,17 @@ async def index_page(datasette, request):
     if slug and not country:
         raise NotFound(f"No European country {slug}")
     found = await listing(datasette, request, "europe_airports", INDEX_SORTS, {"country": country["code"] if country else ""})
+    # how many rows: the top 50 of all Europe, as /airports shows, but every airport of a country, its way to the small ones
+    n = request.args.get("n", "")
+    n = n if n in COUNTS else "all" if country else "50"
+    if n != "all":
+        found["rows"] = found["rows"][:int(n)]
     steps = [("countries", f"{BASE}/countries"), (country["name"], None)] if country else []
     html = await datasette.render_template(
         "europe_airports.html",
         {**found, "crumbs": site_trail(datasette, ("airports", "/airports"), ("europe", BASE if country else None), *steps),
          "base": BASE, "action": f"{BASE}/countries/{slug}" if country else BASE, "country": country, "pax_floor": PAX_FLOOR,
-         "country_slug": COUNTRY_SLUG},
+         "country_slug": COUNTRY_SLUG, "n": n, "counts": COUNTS},
         request=request,
     )
     return Response.html(html)

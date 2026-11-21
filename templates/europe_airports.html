@@ -24,6 +24,11 @@
     <form class="bar" id="index-form" method="get" action="{{ action }}">
       <h2 id="heading">Busiest in {{ year }}, by {{ sorts[sort]|lower }}</h2>
       {%- if sort != "passengers" %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+      <label>Show <select name="n" id="n" aria-label="Number of rows" onchange="this.form.submit()">
+          {%- for c in counts %}
+          <option value="{{ c }}"{% if c == n %} selected{% endif %}>{{ "all" if c == "all" else "the top " ~ c }}</option>
+          {%- endfor %}
+        </select></label>
       <label>Year <select name="year" id="year" aria-label="Year" onchange="this.form.submit()">
           {%- for y in years %}
           <option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>

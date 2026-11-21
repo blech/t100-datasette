@@ -1,6 +1,7 @@
 # The European airports (build_t_avia.py, plugins/t_avia.py, the t_avia queries): the loader's parsing and naming rules, and the
 # pages over a tiny t_avia database beside the T-100 one. Design: docs/superpowers/specs/2026-11-18-european-airports-design.md.
 import collections
+import re
 import sqlite3
 
 import pytest
@@ -490,3 +491,47 @@ def test_a_distances_page_says_which_year_it_opens_on_unasked(both):
     page = get(both, "/airports/europe/distances?year=2025").text
     assert 'data-year="2025"' in page and 'data-opening-year="2024"' in page
     assert 'data-opening-year="2024"' in get(both, "/airports/europe/LHR/distances?year=2025").text
+
+
+# --- the index's count, and the over-time page's colours
+
+def add_small_airports(ds, count, country="FR"):
+    """Some made-up reporting airports, smaller than any in the tiny database, each with one 2019 route."""
+    db = sqlite3.connect(ds.databases["t_avia"].path)
+    for i in range(count):
+        icao, code = f"LFX{i:02d}", f"X{i:02d}"
+        db.execute("INSERT INTO airport_info (icao, code, name, city, country, country_code, is_us, reporting, placeholder, first_year, last_year)"
+                   " VALUES (?, ?, ?, ?, 'France', ?, 0, 1, 0, 2019, 2019)", (icao, code, f"Small {i}", f"Town {i}", country))
+        db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers) VALUES (?, 'EGLL', 2019, 'eurostat', 0, ?)",
+                   (icao, 1000 - i))
+    db.commit()
+    db.close()
+
+
+def listed(text):
+    return re.findall(r'<td class="code"><a href="/airports/europe/(\w+)"', text)
+
+
+def test_the_index_shows_the_top_50_unless_asked_for_another_count(both):
+    add_small_airports(both, 60)
+    assert len(listed(get(both, "/airports/europe?year=2019").text)) == 50
+    assert len(listed(get(both, "/airports/europe?year=2019&n=10").text)) == 10
+    assert len(listed(get(both, "/airports/europe?year=2019&n=all").text)) == 61  # LHR and the 60
+    assert len(listed(get(both, "/airports/europe?year=2019&n=7").text)) == 50  # not one of the choices
+    r = get(both, "/airports/europe?year=2019&n=25")
+    assert '<option value="25" selected>' in r.text and 'name="n"' in r.text
+
+
+def test_a_countrys_page_shows_all_its_airports_unless_asked(both):
+    add_small_airports(both, 60)
+    assert len(listed(get(both, "/airports/europe/countries/france?year=2019").text)) == 60
+    r = get(both, "/airports/europe/countries/france?year=2019&n=10")
+    assert len(listed(r.text)) == 10 and '<option value="10" selected>' in r.text
+
+
+@pytest.mark.parametrize("view", ["over-time", "routes"])
+def test_european_matrices_have_no_share_of_each_year(both, view):
+    r = get(both, f"/airports/europe/{view}")
+    assert 'value="year"' not in r.text and "Share of each year" not in r.text
+    assert 'value="busiest" checked' in r.text
+    assert 'value="year" checked' in get(both, f"/airports/{view}").text  # T-100's keep it

@@ -31,7 +31,11 @@ const europe = isEurope(); // the European pages: no city markets or regions, an
 const dir = parseDir(location.search); // only the airports matrix offers a direction
 const abroad = kind === 'airports' && document.body.dataset.region === 'abroad'; // airports outside the US: every flight is to or from the US
 // the flight count's name: the airports matrix's direction, or an airline's pairs (flights both ways) or each direction (departures)
-const byYear = kind === 'toproutes' || kind === 'citypair'; // the matrices ranked by any full year, as the destinations matrix is
+const byYear = kind === 'toproutes' || kind === 'citypair';
+// the colour scales the page offers, the checked one first (the European airports have no share of each year)
+const scaleRadios = [...document.querySelectorAll('input[name="scale"]')];
+const SCALES = scaleRadios.map((r) => r.value);
+const DEFAULT_SCALE = (scaleRadios.find((r) => r.defaultChecked) || scaleRadios[0])?.value ?? 'year'; // the matrices ranked by any full year, as the destinations matrix is
 const MATRIX_MEASURES = kind === 'airports' ? matrixMeasures(dir, abroad) : byYear ? matrixMeasures('') : kind === 'routes' ? matrixMeasures(new URLSearchParams(location.search).get('dir') === 'each' ? 'out' : '') : MEASURES;
 const page = KINDS[kind];
 const body = document.body.dataset;
@@ -54,7 +58,7 @@ const state = {
   rank: pick('rank', ['all', 'latest'], 'all'),
   // the routes matrix ranks by any full year (year=, or the old rank=latest), as the destinations matrix does; checked once loaded
   year: !byYear ? null : params.get('rank') === 'latest' ? latestFullYear : Number(params.get('year')) || null,
-  scale: pick('scale', ['absolute', 'year', 'busiest', 'row'], 'year'),
+  scale: pick('scale', SCALES, DEFAULT_SCALE),
   // the airports matrix can show cities, and abroad countries; the routes matrix pairs of cities, each a link to its own page
   group: europe ? 'airport' : kind === 'airports' ? pick('group', abroad ? ['airport', 'city', 'country'] : ['airport', 'city'], 'airport') : kind === 'toproutes' ? pick('group', ['airport', 'city'], 'airport') : 'airport',
   open: (params.get('open') || '').split(',').filter(Boolean), // the cities opened to list their airports
@@ -81,7 +85,7 @@ function pushState() {
   if (state.service !== 'all') q.set('service', state.service);
   if (state.n !== 50) q.set('n', state.n);
   if (byYear) { if (state.year !== null) q.set('year', state.year); } else if (state.rank !== 'all') q.set('rank', state.rank);
-  if (state.scale !== 'year') q.set('scale', state.scale);
+  if (state.scale !== DEFAULT_SCALE) q.set('scale', state.scale);
   if (state.group !== 'airport') q.set('group', state.group);
   if (abroad) q.set('region', 'abroad');
   if (grouped() && state.open.length) q.set('open', state.open.join(','));
