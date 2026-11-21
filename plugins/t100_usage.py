@@ -8,6 +8,7 @@ import hashlib
 import os
 import re
 import secrets
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -44,8 +45,11 @@ def visit_token(salt, ip, user_agent):
     return hashlib.sha256(f"{salt}\0{ip}\0{user_agent}".encode()).hexdigest()[:12]
 
 
-def visit_line(when, token, route, status, referrer, kind):
-    return f"{when:%Y-%m-%dT%H:%M:%SZ}\t{token}\t{route}\t{status}\t{referrer}\t{kind}\n"
+def visit_line(when, token, route, status, referrer, kind, ms=None):
+    """One log line. `ms` is the milliseconds from the request arriving to the response starting, the last column, left off where
+    it wasn't measured (the lines written before it was added)."""
+    timing = "" if ms is None else f"\t{ms}"
+    return f"{when:%Y-%m-%dT%H:%M:%SZ}\t{token}\t{route}\t{status}\t{referrer}\t{kind}{timing}\n"
 
 
 def log_kind(path, status, content_type, user_agent):
@@ -96,7 +100,7 @@ def _append(directory, when, line):
         f.write(line.encode())
 
 
-def record(directory, salt, scope, status, content_type, now=None):
+def record(directory, salt, scope, status, content_type, now=None, ms=None):
     headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
     user_agent = headers.get("user-agent", "")
     kind = log_kind(scope["path"], status, content_type, user_agent)
@@ -111,6 +115,7 @@ def record(directory, salt, scope, status, content_type, now=None):
         status,
         referrer_host(headers.get("referer"), headers.get("host", "")),
         kind,
+        ms,
     )
     _append(directory, now, line)
 
@@ -129,9 +134,11 @@ def asgi_wrapper(datasette):
                 await app(scope, receive, send)
                 return
             seen = {}
+            started = time.monotonic()
 
             async def capture(message):
                 if message["type"] == "http.response.start":
+                    seen["ms"] = round((time.monotonic() - started) * 1000)  # to the first byte: the page's own work
                     seen["status"] = message["status"]
                     seen["type"] = next((v.decode("latin-1") for k, v in message.get("headers", []) if k.lower() == b"content-type"), "")
                 await send(message)
@@ -139,7 +146,7 @@ def asgi_wrapper(datasette):
             await app(scope, receive, capture)
             try:
                 if "status" in seen:
-                    record(directory, salt, scope, seen["status"], seen["type"])
+                    record(directory, salt, scope, seen["status"], seen["type"], ms=seen.get("ms"))
             except Exception:
                 pass  # logging must never break a page
 

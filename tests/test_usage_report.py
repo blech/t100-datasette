@@ -20,10 +20,34 @@ def records(text=LOG):
 
 def test_parse_line_reads_good_lines_and_skips_damaged_ones():
     r = parse_line("2026-10-24T09:00:00Z\taaa\t/\t200\tx.org\thuman")
-    assert r == {"day": "2026-10-24", "token": "aaa", "route": "/", "status": 200, "referrer": "x.org", "kind": "human"}
+    assert r == {"day": "2026-10-24", "token": "aaa", "route": "/", "status": 200, "referrer": "x.org", "kind": "human", "ms": None}
     assert parse_line("this line is damaged") is None
     assert parse_line("2026-10-25T08:00:00Z\tbbb") is None
     assert parse_line("2026-10-24T09:00:00Z\taaa\t/\tnot-a-number\t\thuman") is None
+
+
+def test_parse_line_reads_the_milliseconds_when_there_are_some_and_skips_a_bad_number():
+    assert parse_line("2026-10-24T09:00:00Z\taaa\t/\t200\tx.org\thuman\t35002")["ms"] == 35002
+    assert parse_line("2026-10-24T09:00:00Z\taaa\t/\t200\tx.org\thuman\tslow") is None
+    assert parse_line("2026-10-24T09:00:00Z\taaa\t/\t200\tx.org\thuman\t12\textra") is None
+
+
+def timed(route, *ms):
+    return [f"2026-10-24T09:00:0{i}Z\ttok{i}\t{route}\t200\t\thuman\t{v}" for i, v in enumerate(ms)]
+
+
+def test_the_slowest_pages_are_ranked_by_their_90th_percentile_and_need_three_timed_requests():
+    lines = (timed("/fast", 40, 50, 60, 70) + timed("/europe", 100, 120, 35000, 400, 150, 9000, 110, 130, 140, 160)
+             + timed("/once", 90000, 20) + ["2026-10-24T09:00:00Z\told\t/old\t200\t\thuman"] * 5)  # old lines have no timing
+    slow = summarise(r for r in map(parse_line, lines) if r)["slow"]
+    assert [row[0] for row in slow] == ["/europe", "/fast"]  # /once has two timed requests, /old none
+    assert slow[0] == ("/europe", 10, 145, 9000, 35000, 2)  # requests, median, p90, slowest, how many were 5 s or more
+    text = render(summarise(r for r in map(parse_line, lines) if r))
+    assert "Slowest pages" in text and "/europe" in text and "/once" not in text.split("Slowest pages")[1]
+
+
+def test_a_log_with_no_timings_has_no_slowest_pages_section():
+    assert "Slowest pages" not in render(summarise(records()))
 
 
 def test_summarise_counts_people_not_requests_per_day():

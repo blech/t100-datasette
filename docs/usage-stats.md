@@ -38,11 +38,12 @@ Only HTML pages from an allowlist: `/`, `/globe`, `/about`, `/airports/<code>`, 
 
 Tab-separated, one per page view, in `visits-YYYY-MM.log`:
 
-`time (UTC)  token  route  status  referrer-host  kind`
+`time (UTC)  token  route  status  referrer-host  kind  ms`
 
 - **route:** the pattern, not the path: `/airports/{code}/{code}/{year}`, with no airport codes. Keeping them would be useful for "which airports are popular". See open questions.
 - **Query string:** never stored.
 - **referrer-host:** the host only, for example `news.ycombinator.com`, empty if absent or our own site.
+- **ms:** the milliseconds from the request reaching the app to the response starting (time to the first byte), measured by the same wrapper, so the page's own queries and rendering count and the transfer of the body, Fly's proxy and a machine starting up do not. Added after the first lines were written, so older lines have six columns and the report reads both. A duration identifies no one. `scripts/usage_report.py` ends with a "Slowest pages" table from it.
 - **kind:** `human`, or `bot` if the User-Agent matches a short list (bot, crawl, spider, curl, wget, python-requests and so on). The User-Agent itself isn't stored.
 
 ### Safety
