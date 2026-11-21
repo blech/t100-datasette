@@ -436,3 +436,19 @@ test('rowPeak is each cell against its own row\'s best year, however big the oth
   assert.equal(peak('SML', 2018), 0.25);
   assert.ok(cells.find((c) => c.dest === 'SML' && c.year === 2018).peak < 0.001); // while "the year's biggest" leaves it pale
 });
+
+test('keyTicks spaces the colour key\'s labels so their text never overlaps on its square-root scale', async () => {
+  const { keyTicks } = await import('../src/matrix.js');
+  const fmt = (v) => v.toLocaleString('en-US');
+  const ticks = keyTicks(252_000, fmt);
+  assert.ok(ticks.length >= 2, `${ticks}`);
+  assert.ok(!(ticks.includes(200_000) && ticks.includes(250_000)), `${ticks}`); // the pair that collided at THF in 2006
+  const at = (v) => Math.sqrt(v / 252_000) * 240;
+  for (let i = 1; i < ticks.length; i++) {
+    const room = at(ticks[i]) - at(ticks[i - 1]);
+    assert.ok(room >= ((fmt(ticks[i]).length + fmt(ticks[i - 1]).length) / 2) * 6.5, `${ticks[i - 1]}–${ticks[i]}`);
+  }
+  assert.ok(ticks.every((t) => t > 0 && t <= 252_000));
+  assert.ok(keyTicks(10, String).length >= 3); // small amounts still get several
+  assert.deepEqual(keyTicks(0, String), []);
+});

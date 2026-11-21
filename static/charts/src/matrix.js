@@ -1,4 +1,5 @@
 import { yearDomain } from './span.js';
+import { millionsAxis } from '../../common/numbers.js';
 import { countWord, abroadCountWord } from '../../common/direction.js';
 import { splitSmall, othersLabel } from '../../common/small.js';
 
@@ -119,6 +120,35 @@ export function pointerReach({ width, marginLeft, years, rowPx }) {
 // the colour key's percent format for shares up to `max`: whole percents, or under 5% two significant figures, so the ticks
 // differ however small (a city pair narrowed to one small airport has shares of 0.003%, which whole percents label "0% 0%")
 export const percentTicks = (max) => (max >= 0.05 ? '.0%' : '.2~p');
+
+// the colour key's ticks for amounts up to `max` on its square-root scale, which squeezes the top end: the finest round step
+// (1, 2 or 5 times a power of ten) whose labels, as `fmt` writes them, have room between them on a key `width` px wide
+// (Plot's 240), at about `charPx` a character, as its 10px digits measure (THF's destinations in 2006 had 200,000 and 250,000 printed over each other)
+export function keyTicks(max, fmt, { width = 240, charPx = 6.5, pad = 6 } = {}) {
+  if (!(max > 0)) return [];
+  const at = (v) => Math.sqrt(v / max) * width;
+  const fits = (ticks) => ticks.every((t, i) => i === 0 || at(t) - at(ticks[i - 1]) >= ((fmt(t).length + fmt(ticks[i - 1]).length) / 2) * charPx + pad);
+  let ticks = [];
+  for (let power = Math.floor(Math.log10(max / 10)); ; power++) {
+    for (const m of [1, 2, 5]) {
+      const step = m * 10 ** power;
+      if (step > max) return ticks.length ? ticks : [max];
+      ticks = Array.from({ length: Math.floor(max / step + 1e-9) }, (_, i) => Number(((i + 1) * step).toPrecision(12)));
+      if (ticks.length <= 12 && fits(ticks)) return ticks;
+    }
+  }
+}
+
+// the matrices' colour scales, square-root YlOrRd with ticks that have room: amounts up to `max`, or shares of something up to `max`
+export function amountKey(max, label) {
+  const axis = millionsAxis(max, label);
+  return { type: 'sqrt', scheme: 'YlOrRd', ...axis, ticks: keyTicks(max, axis.tickFormat) };
+}
+export function shareKey(max, label) {
+  const format = percentTicks(max);
+  const text = (v) => (format === '.0%' ? `${Math.round(v * 100)}%` : `${Number((v * 100).toPrecision(2))}%`); // as long as the format's
+  return { type: 'sqrt', scheme: 'YlOrRd', label, tickFormat: format, ticks: keyTicks(max, text) };
+}
 
 export function placeKey(box, chart) {
   if (box) box.replaceChildren(...(chart ? [chart.legend('color')] : []));

@@ -2,7 +2,7 @@ import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, percentTicks, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, fullYears, MATRIX_MEASURES as MEASURES, matrixMeasures, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, shareKey, amountKey, disclosureArrows, ARROW_SLOT, labelMargin, textWidth, pointerReach, placeKey, fullYears, MATRIX_MEASURES as MEASURES, matrixMeasures, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { FLIGHTS, defaultFlights, settle } from '/static/charts/src/flights.js';
 import { setMenus } from '/static/common/menus.js';
 import { rollupRows, routeRows, topRouteRows, topMarketRows, marketKey, marketLabel, marketPath, marketPairRows, rowsChoice, bandRange, BAND_FROM, BAND_TO, slugify } from '/static/charts/src/rollup.js';
@@ -12,7 +12,7 @@ import { tableHref, countrySlug, TABLE_PATHS } from '/static/landing/src/table.j
 import { shortNames } from '/static/charts/src/names.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
-import { formatCount, millionsAxis } from '/static/common/numbers.js';
+import { formatCount } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { parseDir, setDir } from '/static/common/direction.js';
 import { isEurope, airportsBase, routeHref } from '/static/common/source.js';
@@ -235,8 +235,8 @@ function drawCities(box) {
 }
 
 const colourOptions = (cells) => (relative()
-  ? { type: 'sqrt', scheme: 'YlOrRd', label: { year: `Share of the year's ${unit()}`, busiest: `% of the year's biggest`, row: `% of the row's best year` }[state.scale], tickFormat: percentTicks(Math.max(0, ...cells.map((c) => c[fillField()]))) }
-  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) });
+  ? shareKey(Math.max(0, ...cells.map((c) => c[fillField()])), { year: `Share of the year's ${unit()}`, busiest: `% of the year's biggest`, row: `% of the row's best year` }[state.scale])
+  : amountKey(Math.max(0, ...cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])));
 
 // a city pair page's "for the top 10 routes" / "for all 13 routes", for the `count` pairs the measure and year can show
 function drawRowsChoice(count) {
@@ -288,8 +288,8 @@ function draw() {
     x: { type: 'band', domain: years, label: null, axis: 'top', tickSize: 0, tickFormat: (d) => (Number(d) % labelEvery === 0 ? d : '') },
     y: { type: 'band', domain: res.dests, axis: null },
     color: relative()
-      ? { type: 'sqrt', scheme: 'YlOrRd', label: { year: `Share of the year's ${unit()}`, busiest: `% of the year's biggest`, row: `% of the row's best year` }[state.scale], tickFormat: percentTicks(Math.max(0, ...res.cells.map((c) => c[fillField()]))) }
-      : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...res.cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) },
+      ? shareKey(Math.max(0, ...res.cells.map((c) => c[fillField()])), { year: `Share of the year's ${unit()}`, busiest: `% of the year's biggest`, row: `% of the row's best year` }[state.scale])
+      : amountKey(Math.max(0, ...res.cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])),
     marks: [
       Plot.cell(data, { x: 'year', y: 'dest', fill: fillField(), href: 'href' }),
       Plot.cell(data, Plot.pointer({ x: 'year', y: 'dest', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, maxRadius: pointerReach({ width, marginLeft, years: years.length, rowPx: ROW_PX }) })),

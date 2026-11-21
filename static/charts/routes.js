@@ -1,11 +1,11 @@
 import * as Plot from '/static/charts/vendor/plot.js';
 import { useLabelTips, attachLabelTips } from '/static/charts/labeltips.js';
 import { setDataLink } from '/static/common/datalink.js';
-import { buildMatrix, buildCityMatrix, percentTicks, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey, fullYears, rankYearFrom, yearTick, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
+import { buildMatrix, buildCityMatrix, shareKey, amountKey, disclosureArrows, ARROW_SLOT, matrixMeasures, FLOWN, labelMargin, textWidth, pointerReach, placeKey, fullYears, rankYearFrom, yearTick, axisLabel, measureFormat } from '/static/charts/src/matrix.js';
 import { airportTip, groupTip } from '/static/charts/src/labels.js';
 import { queryUrl, fetchRows } from '/static/globe/src/api.js';
 import { attachPopover } from '/static/common/popover.js';
-import { formatCount, millionsAxis } from '/static/common/numbers.js';
+import { formatCount } from '/static/common/numbers.js';
 import { replaceSearch } from '/static/nav/src/state.js';
 import { parseDir, setDir } from '/static/common/direction.js';
 import { airportsBase } from '/static/common/source.js';
@@ -125,8 +125,8 @@ const fillField = () => ({ absolute: 'value', year: 'share', busiest: 'peak', ro
 const fmtPct = (s) => `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`;
 const SCALE_LEGEND = () => ({ year: `Share of the year's ${unit()}`, busiest: `% of the year's top destination`, row: `% of the row's best year` });
 const colourScale = (cells) => (relative()
-  ? { type: 'sqrt', scheme: 'YlOrRd', label: SCALE_LEGEND()[state.scale], tickFormat: percentTicks(Math.max(0, ...cells.map((c) => c[fillField()]))) }
-  : { type: 'sqrt', scheme: 'YlOrRd', ...millionsAxis(Math.max(0, ...cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])) });
+  ? shareKey(Math.max(0, ...cells.map((c) => c[fillField()])), SCALE_LEGEND()[state.scale])
+  : amountKey(Math.max(0, ...cells.map((c) => c.value)), axisLabel(state.measure, MATRIX_MEASURES[state.measure])));
 // a matrix cell's popover rows: the amount, and the share the colour shows when it shows one
 const cellRows = (c) => [
   { label: MATRIX_MEASURES[state.measure], value: measureFormat(state.measure, formatCount)(c.value) },
