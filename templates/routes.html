@@ -34,6 +34,7 @@
     <p class="note" id="scale-note" hidden></p>
     <div id="matrix" aria-live="polite">Loading chart…</div>
     <p class="note"><span id="rank-note">Destinations are ranked by the measure summed over all years.</span> <span id="flown-note"></span> {% if europe %}Each cell is one destination in one year; click a cell or a row's code to see the route over time, with a cell's year marked (or the ranking year, for a code), and from there Eurostat's years month by month. {% include "_cutoff_note.html" %}{% else %}Each cell is one destination in one year; click a cell or a row's code to see the route over time, with a cell's year marked (or the ranking year, for a code), and from there any year month by month. In city view, click a row to open it into its airports. {% include "_cutoff_note.html" %}{% endif %} {% include "_dir_note.html" %}</p>
+    {% if europe %}{% include "_europe_small_print.html" %}{% endif %}
 {% endblock %}
 
 {% block scripts %}

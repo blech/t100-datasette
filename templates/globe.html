@@ -53,7 +53,7 @@
       {%- if europe %} <button type="button" class="info-button" popovertarget="europe-info" aria-label="About this data" title="About this data">ⓘ</button>{% endif %}</p>
     {%- if europe %}
     {# what the European data is, behind the ⓘ: on the map it would be a block of its own under the controls #}
-    <div id="europe-info" class="info-popover" popover>{% include "_europe_note.html" %}</div>
+    <div id="europe-info" class="info-popover" popover>{% include "_europe_note.html" %}{% include "_europe_small_print.html" %}</div>
     {%- endif %}
     <div class="row">
       {% include "_dir_choice.html" %}

@@ -36,6 +36,7 @@
     </div>
     <p class="note" id="distance-note">A flight segment is one takeoff and landing: a passenger who changes planes counts on each segment, and a one-stop flight is two. {% if europe %}Distances are great-circle ones, from the airports' coordinates; destinations without coordinates are left out, and any segment beyond the scale counts in the last bar. {% include "_cutoff_note.html" %}{% else %}Distances are BTS's, checked against the airports' coordinates. Pairs whose BTS distance disagrees with the airports' coordinates, or that have no distance, are left out. Pairs where an airport has no coordinates are shown as BTS gives them, and any segment beyond the scale counts in the last bar.{% endif %} {% if origin %}Every airport's chart has{% else %}This chart and every airport's have{% endif %} the same scale in every year, up to the longest segment flown at least 12 times in a year. Play steps through the years; move the hollow handle back to show an earlier year's shape in pale grey behind the bars, darkening them up to its height, and ← → step a year.</p>
     {% if europe and not origin %}{% include "_europe_coverage_note.html" %}{% endif %}
+    {% if europe and origin %}{% include "_europe_small_print.html" %}{% endif %}
 {% endblock %}
 
 {% block scripts %}

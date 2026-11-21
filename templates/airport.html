@@ -11,12 +11,13 @@
     <p class="intro" id="subtitle">{{ label }}</p>
     {% if rank_line %}<p class="rank-line" id="rank-line">{{ rank_line }}</p>{% endif %}
     {% include "_foreign_note.html" %}
-    <p class="chart-sentence">{% include "_dir_choice.html" %}</p>
+    {% if not europe %}<p class="chart-sentence">{% include "_dir_choice.html" %}</p>{% endif %}
     <h2>How big</h2>
     <p class="chart-sentence">
       Show <select id="ap-measure" aria-label="Measure"></select>
       for <select id="ap-flights" aria-label="Kind of flight"><option value="passenger">passenger flights</option><option value="freight">freight flights</option><option value="all">all flights</option></select>,
-      split by <select id="ap-split" aria-label="Split by"><option value="service">domestic or international</option><option value="kind">passenger or freight</option>{% if not europe %}<option value="airline">airline</option>{% endif %}</select>.
+      split by <select id="ap-split" aria-label="Split by"><option value="service">domestic or international</option><option value="kind">passenger or freight</option>{% if not europe %}<option value="airline">airline</option>{% endif %}</select>
+      {%- if europe %}, counting those <select id="dir" aria-label="Direction">{% for value, text in [("", "to and from"), ("out", "departing"), ("in", "arriving at")] %}<option value="{{ value }}"{% if value == dir %} selected{% endif %}>{{ text }} {{ origin }}</option>{% endfor %}</select>{% endif %}.
     </p>
     <div id="size-chart" aria-live="polite">Loading chart…</div>
     <h2>How many places</h2>
@@ -25,6 +26,7 @@
     </p>
     <div id="places-chart" aria-live="polite">Loading chart…</div>
     <p class="note">{% include "_dir_note.html" %}{% if europe %} Flights are passenger flights and freight-only flights together; freight is in short tons, as on the T-100 pages, from Eurostat's tonnes, and counts the freight on every kind of flight.{% else %} Airlines are counted as groups, so a merged airline's flying is shown together; more on <a href="/about#groupings">how airlines are grouped</a>.{% endif %}</p>
+    {% if europe %}{% include "_europe_small_print.html" %}{% endif %}
 {% endblock %}
 
 {% block scripts %}

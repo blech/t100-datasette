@@ -547,3 +547,42 @@ def test_only_a_page_with_uk_only_years_says_eurostat_ends(both):
     add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
     assert 'id="eurostat-end"' not in get(both, "/airports/europe/countries/france").text
     assert 'id="eurostat-end"' in get(both, "/airports/europe/countries/united-kingdom").text
+
+
+# --- the airport pages' small print
+
+def note_of(text, id_):
+    m = re.search(rf'<p class="note" id="{id_}">(.*?)</p>', text, re.S)
+    return m and m.group(1)
+
+
+@pytest.mark.parametrize("path", ["", "/destinations", "/changes", "/distances"])
+def test_an_airports_lead_note_says_only_whose_figures_they_are(both, path):
+    r = get(both, f"/airports/europe/LHR{path}").text
+    lead = note_of(r, "europe-note")
+    assert "LHR's figures are Eurostat's and the UK Civil Aviation Authority's, not T-100's: every route from the airport, but no airlines or aircraft." in lead
+    assert "Passengers are those carried" not in lead and "the CAA's alone" not in lead
+    small = note_of(r, "europe-small-print")
+    assert "Passengers are those carried" in small and "the CAA's alone" in small and "10,000 passengers" in small
+    at = r.index('id="europe-small-print"')
+    assert at > max(r.rfind("<h2"), r.rfind("Loading chart"), r.rfind('id="year-label"'))  # at the foot, after the charts
+    assert '<p class="note"' not in r[at:r.index("</main>") if "</main>" in r else len(r)].split("</p>", 1)[1]  # the last note
+
+
+def test_the_top_level_distances_have_no_airport_small_print(both):
+    assert 'id="europe-small-print"' not in get(both, "/airports/europe/distances").text
+
+
+def test_the_maps_info_popover_keeps_the_whole_note(both):
+    info = re.search(r'<div id="europe-info"[^>]*>(.*?)</div>', get(both, "/airports/europe/LHR/globe").text, re.S).group(1)
+    assert "not T-100's" in info and "Passengers are those carried" in info
+
+
+def test_a_european_airports_direction_follows_its_split(both):
+    r = get(both, "/airports/europe/LHR").text
+    assert "<label>Direction" not in r
+    sentence = r[r.index('id="ap-split"'):]
+    sentence = sentence[:sentence.index("</p>")]
+    assert 'id="dir"' in sentence and "counting those" in sentence
+    assert ">to and from LHR<" in sentence and ">departing LHR<" in sentence and ">arriving at LHR<" in sentence
+    assert "<label>Direction" in get(both, "/airports/LHR").text  # T-100's keeps its own line

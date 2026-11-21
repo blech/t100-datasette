@@ -24,6 +24,7 @@
       </table>
     </div>
     <p class="note">{% include "_dir_note.html" %} {% if europe %}A destination is dropped when its passengers fell below the minimum.{% else %}A destination is dropped when flights to it stopped or fell below the minimum, not when a particular flight number ended.{% endif %} "Dropped at any point" adds those added and dropped again between the two years, with the years they were flown and their busiest year.{% if not europe %} Airlines are counted as groups, so a merged airline's flying is counted together; more on <a href="/about#groupings">how airlines are grouped</a>.{% endif %}</p>
+    {% if europe %}{% include "_europe_small_print.html" %}{% endif %}
 {% endblock %}
 
 {% block scripts %}
