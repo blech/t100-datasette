@@ -417,9 +417,11 @@ def test_without_the_european_database_the_top_level_pages_are_not_found(ds, vie
 def test_the_european_index_and_its_views_share_a_views_line():
     views = views_for("/airports/europe/routes")
     assert [v["href"] for v in views] == ["/airports/europe", "/airports/europe/over-time", "/airports/europe/routes",
-                                          "/airports/europe/distances", "/airports/europe/globe", "/airports/europe/countries"]
+                                          "/airports/europe/distances", "/airports/europe/countries", "/airports/europe/globe"]
+    assert [v["label"] for v in views][4:] == ["By country", "Map"]
     assert [v["current"] for v in views] == [False, False, True, False, False, False]
-    assert views_for("/airports/europe")[0]["current"] and views_for("/airports/europe/countries/france")[5]["current"]
+    assert views_for("/airports/europe")[0]["current"] and views_for("/airports/europe/countries/france")[4]["current"]
+    assert views_for("/airports/europe/globe")[5]["current"]
 
 
 def test_the_map_and_distances_open_on_the_last_year_most_countries_have(both):
