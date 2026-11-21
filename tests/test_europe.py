@@ -586,3 +586,9 @@ def test_a_european_airports_direction_follows_its_split(both):
     assert 'id="dir"' in sentence and "counting those" in sentence
     assert ">to and from LHR<" in sentence and ">departing LHR<" in sentence and ">arriving at LHR<" in sentence
     assert "<label>Direction" in get(both, "/airports/LHR").text  # T-100's keeps its own line
+
+
+def test_the_image_carries_the_countries_file_the_plugin_reads():
+    """plugins/t_avia.py reads data/eurostat_countries.csv as it loads: without it in the image the app won't start."""
+    assert "COPY data/eurostat_countries.csv data/eurostat_countries.csv" in (ROOT / "Dockerfile").read_text()
+    assert "!data/eurostat_countries.csv" in (ROOT / ".dockerignore").read_text().splitlines()

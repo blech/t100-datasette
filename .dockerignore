@@ -8,3 +8,4 @@ node_modules
 docs
 .git
 .superpowers
+!data/eurostat_countries.csv

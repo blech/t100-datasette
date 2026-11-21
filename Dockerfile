@@ -23,6 +23,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked
 COPY datasette.yml serve_public.sh schema.sql ./
 COPY plugins plugins
+COPY data/eurostat_countries.csv data/eurostat_countries.csv
 COPY templates templates
 COPY static static
 COPY --from=bundle /build/static/dist static/dist
