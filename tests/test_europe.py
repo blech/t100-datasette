@@ -516,17 +516,23 @@ def test_the_index_shows_the_top_50_unless_asked_for_another_count(both):
     add_small_airports(both, 60)
     assert len(listed(get(both, "/airports/europe?year=2019").text)) == 50
     assert len(listed(get(both, "/airports/europe?year=2019&n=10").text)) == 10
-    assert len(listed(get(both, "/airports/europe?year=2019&n=all").text)) == 61  # LHR and the 60
-    assert len(listed(get(both, "/airports/europe?year=2019&n=7").text)) == 50  # not one of the choices
+    assert len(listed(get(both, "/airports/europe?year=2019&n=all").text)) == 50  # a country's page lists them all
     r = get(both, "/airports/europe?year=2019&n=25")
-    assert '<option value="25" selected>' in r.text and 'name="n"' in r.text
+    assert '<option value="25" selected>' in r.text and 'value="all"' not in r.text
 
 
-def test_a_countrys_page_shows_all_its_airports_unless_asked(both):
+def test_a_countrys_page_lists_all_its_airports_with_no_count(both):
     add_small_airports(both, 60)
-    assert len(listed(get(both, "/airports/europe/countries/france?year=2019").text)) == 60
     r = get(both, "/airports/europe/countries/france?year=2019&n=10")
-    assert len(listed(r.text)) == 10 and '<option value="10" selected>' in r.text
+    assert len(listed(r.text)) == 60 and 'name="n"' not in r.text
+
+
+def test_a_countrys_years_are_the_ones_it_reports(both):
+    add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
+    years = lambda text: re.findall(r'<option value="(\d{4})"', text)
+    assert years(get(both, "/airports/europe/countries/france").text) == ["2019"]  # opens on its last year, not 2024
+    assert years(get(both, "/airports/europe/countries/united-kingdom").text) == ["2020", "2019"]
+    assert years(get(both, "/airports/europe").text) == ["2020", "2019"]
 
 
 @pytest.mark.parametrize("view", ["over-time", "routes"])
@@ -535,3 +541,9 @@ def test_european_matrices_have_no_share_of_each_year(both, view):
     assert 'value="year"' not in r.text and "Share of each year" not in r.text
     assert 'value="busiest" checked' in r.text
     assert 'value="year" checked' in get(both, f"/airports/{view}").text  # T-100's keep it
+
+
+def test_only_a_page_with_uk_only_years_says_eurostat_ends(both):
+    add_reports(both, [("LFPG", "EGLL", 2019, "eurostat", 0, 950_000, 9_100, 12.0)])
+    assert 'id="eurostat-end"' not in get(both, "/airports/europe/countries/france").text
+    assert 'id="eurostat-end"' in get(both, "/airports/europe/countries/united-kingdom").text

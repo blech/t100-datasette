@@ -231,9 +231,15 @@ async def listing(datasette, request, query, sorts, params):
     """A ranked table's year (asked, else DEFAULT_YEAR), every year, Eurostat's last, sort and rows (with prose figures), for
     the index, a country's page and the countries list."""
     db = database(datasette)
-    years = [r[0] for r in await db.execute("SELECT DISTINCT year FROM route_year ORDER BY year DESC")]
+    # the years with rows to list: a country's own, so France has no UK-only 1990 or 2025
+    country = params.get("country", "")
+    years = [r[0] for r in await db.execute(
+        "SELECT DISTINCT r.year FROM route_year r JOIN airport_info a ON a.icao = r.airport"
+        " WHERE a.reporting = 1 AND a.placeholder = 0 AND (:country = '' OR a.country_code = :country) ORDER BY r.year DESC",
+        {"country": country})]
     year = request.args.get("year", "")
-    year = int(year) if year.isdigit() and int(year) in years else DEFAULT_YEAR
+    fallback = DEFAULT_YEAR if DEFAULT_YEAR in years or not years else years[0]
+    year = int(year) if year.isdigit() and int(year) in years else fallback
     eurostat_last = (await db.execute("SELECT MAX(year) FROM route_year WHERE source <> 'caa'")).first()[0]  # later years are the CAA's alone
     sort = (request.args.getlist("sort") or [""])[-1]  # the form keeps the current sort; a heading's button adds the new one
     sort = sort if sort in sorts else "passengers"
@@ -245,7 +251,7 @@ async def listing(datasette, request, query, sorts, params):
 
 
 # the index's choices of how many airports to list
-COUNTS = ("10", "25", "50", "all")
+COUNTS = ("10", "25", "50")
 
 
 async def index_page(datasette, request):
@@ -257,10 +263,10 @@ async def index_page(datasette, request):
     if slug and not country:
         raise NotFound(f"No European country {slug}")
     found = await listing(datasette, request, "europe_airports", INDEX_SORTS, {"country": country["code"] if country else ""})
-    # how many rows: the top 50 of all Europe, as /airports shows, but every airport of a country, its way to the small ones
+    # how many rows: the top 50 of all Europe unless asked, as /airports shows; a country's page lists every one, the way to the small ones
     n = request.args.get("n", "")
-    n = n if n in COUNTS else "all" if country else "50"
-    if n != "all":
+    n = None if country else n if n in COUNTS else "50"
+    if n:
         found["rows"] = found["rows"][:int(n)]
     steps = [("countries", f"{BASE}/countries"), (country["name"], None)] if country else []
     html = await datasette.render_template(
