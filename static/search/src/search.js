@@ -1,6 +1,4 @@
-import { queryUrl } from '../../globe/src/api.js';
-
-const TITLES = { airport: 'Airports', city: 'Cities', airline: 'Airlines', aircraft: 'Aircraft' };
+const TITLES = { airport: 'Airports', europe_airport: 'European airports', city: 'Cities', europe_country: 'European countries', airline: 'Airlines', aircraft: 'Aircraft' };
 
 // What was typed -> the three words the search query takes: lowercase, the first three, padded with ''
 export const tokens = (text) => {
@@ -8,10 +6,10 @@ export const tokens = (text) => {
   return [words[0] || '', words[1] || '', words[2] || ''];
 };
 
-// The query to run for what was typed, or null when nothing was
+// The site search's address for what was typed, or null when nothing was
 export function searchUrl(text) {
   const [t1, t2, t3] = tokens(text);
-  return t1 ? queryUrl('search', { t1, t2, t3 }) : null;
+  return t1 ? `/-/search.json?${new URLSearchParams({ t1, t2, t3 })}` : null; // plugins/t100_search.py: T-100's and the European pages
 }
 
 // Rows from the search query -> [{ kind, title, items }], the kinds in the order their first row comes (the query puts the best match first),

@@ -187,6 +187,7 @@ def tiny_t_avia(path):
     ])
     db.executemany("INSERT INTO pair_distance VALUES (?,?,?)", [("JFK", "LHR", 3451), ("CDG", "LHR", 216)])
     b.write_pairs(db)
+    b.write_search(db)
     db.commit()
     db.close()
 
@@ -592,3 +593,82 @@ def test_the_image_carries_the_countries_file_the_plugin_reads():
     """plugins/t_avia.py reads data/eurostat_countries.csv as it loads: without it in the image the app won't start."""
     assert "COPY data/eurostat_countries.csv data/eurostat_countries.csv" in (ROOT / "Dockerfile").read_text()
     assert "!data/eurostat_countries.csv" in (ROOT / ".dockerignore").read_text().splitlines()
+
+
+# --- the search index (t_avia's search_index, which /-/search.json adds to T-100's)
+
+def search_rows(path):
+    db = sqlite3.connect(path)
+    b.write_search(db)
+    rows = {r[1]: r for r in db.execute("SELECT kind, href, label, hint, terms, code, rank FROM search_index")}
+    db.close()
+    return rows
+
+
+def test_the_search_index_has_each_reporting_airport(tmp_path):
+    path = tmp_path / "t_avia.db"
+    tiny_t_avia(path)
+    db = sqlite3.connect(path)
+    db.execute("INSERT INTO route_year (airport, other, year, source, domestic, passengers) VALUES ('LFPG', 'EGLL', 2019, 'eurostat', 0, 950000)")
+    db.commit()
+    db.close()
+    rows = search_rows(path)
+    lhr = rows["/airports/europe/LHR"]
+    assert lhr[0] == "europe_airport" and lhr[2] == "LHR" and lhr[5] == "LHR"
+    assert lhr[3] == "London, United Kingdom – London Heathrow Airport · 2019–2020"
+    assert set("lhr egll london heathrow united kingdom".split()) <= set(lhr[4].split())
+    assert lhr[6] == 3_000_000 + 900_000 + 8_000 + 50_000 + 700_000  # every passenger it reported
+    assert rows["/airports/europe/CDG"][3].endswith("· 2019")  # one year, not 2019–2019
+    assert not any(h.endswith(("/JFK", "/DXB", "/EG90")) for h in rows)  # not reporting, or no place
+
+
+def test_the_search_index_has_each_reporting_country(tmp_path):
+    path = tmp_path / "t_avia.db"
+    tiny_t_avia(path)
+    uk = search_rows(path)["/airports/europe/countries/united-kingdom"]
+    assert uk[0] == "europe_country" and uk[2] == "United Kingdom" and uk[3] == "1 airport · 2019–2020"
+    assert set("united kingdom uk".split()) <= set(uk[4].split()) and uk[5] == ""
+
+
+def site_search(ds, *words):
+    params = "&".join(f"t{i}={w}" for i, w in enumerate(words, 1))
+    r = get(ds, f"/-/search.json?{params}")
+    assert r.status_code == 200
+    return r.json()["rows"]
+
+
+def add_t100_search(ds, rows):
+    db = sqlite3.connect(ds.databases["t100"].path)
+    db.executemany("INSERT INTO search_index (kind, href, label, hint, terms, code, rank) VALUES (?,?,?,?,?,?,?)", rows)
+    db.commit()
+    db.close()
+
+
+def test_the_site_search_adds_the_european_pages(both):
+    add_t100_search(both, [("airport", "/airports/LHR", "LHR", "London – Heathrow", "lhr egll london heathrow", "LHR", 100)])
+    rows = site_search(both, "lhr")
+    assert [(r["kind"], r["href"]) for r in rows] == [("airport", "/airports/LHR"), ("europe_airport", "/airports/europe/LHR")]
+    assert set(rows[0]) == {"kind", "href", "label", "hint"}
+
+
+def test_the_best_match_leads_whichever_database_it_is_in(both):
+    add_t100_search(both, [("airport", "/airports/LHR", "LHR", "London, United Kingdom – Heathrow", "lhr london heathrow united kingdom", "LHR", 100)])
+    rows = site_search(both, "united", "kingdom")
+    assert rows[0]["href"] == "/airports/europe/countries/united-kingdom"  # its name starts with the word; the T-100 airport's doesn't
+
+
+def test_the_site_search_works_without_the_european_database(ds):
+    add_t100_search(ds, [("airport", "/airports/LHR", "LHR", "London", "lhr london", "LHR", 100)])
+    assert [r["href"] for r in site_search(ds, "lhr")] == ["/airports/LHR"]
+
+
+def test_the_site_search_works_with_a_european_database_from_before_its_index(both):
+    db = sqlite3.connect(both.databases["t_avia"].path)
+    db.execute("DROP TABLE search_index")
+    db.commit()
+    db.close()
+    assert site_search(both, "lhr") == []
+
+
+def test_the_site_search_finds_nothing_for_nothing(both):
+    assert site_search(both) == [] and site_search(both, "") == []

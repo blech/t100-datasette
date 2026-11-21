@@ -24,7 +24,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-from build_database import TOP_ROUTE_SCHEMA, rebuild_top_route_year
+from build_database import SEARCH_INDEX_SCHEMA, TOP_ROUTE_SCHEMA, _words, rebuild_top_route_year
 
 HERE = Path(__file__).resolve().parent
 CAA_FLOOR = 10_000  # passengers a year for a route in a CAA year: Eurostat's own publishing limit (the user's choice)
@@ -93,7 +93,7 @@ CREATE TABLE pair_year (
   deps INTEGER, seats INTEGER, passengers INTEGER, freight REAL,
   PRIMARY KEY (a, b, year)
 ) WITHOUT ROWID;
-""" + TOP_ROUTE_SCHEMA
+""" + TOP_ROUTE_SCHEMA + SEARCH_INDEX_SCHEMA
 INDEXES = """
 CREATE INDEX idx_route_year_other ON route_year (other, year);
 CREATE INDEX idx_route_month_other ON route_month (other, year, month);
@@ -463,6 +463,40 @@ def write_pairs(db):
     return db.execute("SELECT COUNT(*) FROM pair_year").fetchone()[0]
 
 
+def years_text(first, last):
+    return str(first) if first == last else f"{first}\u2013{last}"
+
+
+def write_search(db):
+    """search_index, as t100.db's (build_database.rebuild_search_index), for the header search: each reporting airport, opening its
+    European pages, and each reporting country, opening its page; ranked by every passenger reported. Returns the rows written."""
+    rows = []
+    for code, icao, name, city, country, first, last, size in db.execute("""
+        SELECT a.code, a.icao, a.name, a.city, a.country, a.first_year, a.last_year, SUM(r.passengers)
+        FROM airport_info a JOIN route_year r ON r.airport = a.icao
+        WHERE a.reporting = 1 AND a.placeholder = 0
+        GROUP BY a.icao""").fetchall():
+        place = ", ".join(x for x in (city, country) if x)
+        about = " \u2013 ".join(x for x in (place, name) if x)
+        hint = " \u00b7 ".join(x for x in (about, years_text(first, last)) if x)
+        rows.append(("europe_airport", f"/airports/europe/{code}", code, hint, _words(code, icao, city, name, country), code, size or 0))
+    with (HERE / "data" / "eurostat_countries.csv").open(encoding="utf-8") as f:
+        countries = {r["code"]: r for r in csv.DictReader(f)}
+    for cc, airports, first, last, size in db.execute("""
+        SELECT a.country_code, COUNT(DISTINCT a.icao), MIN(a.first_year), MAX(a.last_year), SUM(r.passengers)
+        FROM airport_info a JOIN route_year r ON r.airport = a.icao
+        WHERE a.reporting = 1 AND a.placeholder = 0
+        GROUP BY a.country_code""").fetchall():
+        if cc not in countries:
+            continue
+        c = countries[cc]
+        hint = f"{airports} airport{'s' if airports != 1 else ''} \u00b7 {years_text(first, last)}"
+        rows.append(("europe_country", f"/airports/europe/countries/{c['slug']}", c["name"], hint, _words(c["name"], cc), "", size or 0))
+    db.execute("DELETE FROM search_index")
+    db.executemany("INSERT INTO search_index (kind, href, label, hint, terms, code, rank) VALUES (?,?,?,?,?,?,?)", rows)
+    return len(rows)
+
+
 def write_airports(db, t100, countries):
     known = openflights(t100)
     extra = read_airport_overrides(HERE / "data" / "avia_airport_overrides.csv")
@@ -535,6 +569,7 @@ def build(db_path, sources, t100):
     no_coordinates = write_airports(db, t100, countries)
     print("Pairs…", file=sys.stderr)
     write_pairs(db)
+    write_search(db)
     db.executescript(INDEXES)
     notes = {
         "caa_floor": str(CAA_FLOOR),

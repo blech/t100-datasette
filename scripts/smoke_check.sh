@@ -101,6 +101,10 @@ check 404 /airports/europe/ZZZZ
 check 200 "/t_avia/routes_by_year.json?origin=LHR&_shape=objects"   '"JFK"'
 check 200 "/t_avia/europe_airports.json?year=2024&sort=&_shape=objects" '"IST"'
 check 200 "/t_avia/top_routes_by_year.json?year=2019&_shape=objects"  '"LHR"'
+# the header search (plugins/t100_search.py): T-100's index, and t_avia.db's beside it
+check 200 "/-/search.json?t1=lhr&t2=&t3="                            '"/airports/LHR"'
+check 200 "/-/search.json?t1=lhr&t2=&t3="                            '"/airports/europe/LHR"'
+check 200 "/-/search.json?t1=france&t2=&t3="                         '"/airports/europe/countries/france"'
 check 403 "/t_avia/route_month.json?_next=5"
 check 403 "/t_avia/-/query.json?sql=select+1"
 check 403 /t_avia.db

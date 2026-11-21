@@ -59,6 +59,14 @@ _LOOKUP_INDEXES = [
 ]
 
 # the routes matrix's tables, also built in t_avia.db by build_t_avia.py (from its pair_year), so kept apart
+# the header search's table, here and in t_avia.db (build_t_avia.write_search), which /-/search.json reads both of
+SEARCH_INDEX_SCHEMA = """-- One row per airport, airline, aircraft family and aircraft the header search can open: its page (href), what to show (label, hint), the lowercase words it is found by (terms), its exact code if it has one and its size (rank), by rebuild_search_index()
+CREATE TABLE IF NOT EXISTS "search_index" (
+   [kind] TEXT, [href] TEXT, [label] TEXT, [hint] TEXT, [terms] TEXT, [code] TEXT, [rank] INTEGER,
+   PRIMARY KEY ([kind], [href])
+) WITHOUT ROWID;
+"""
+
 TOP_ROUTE_SCHEMA = """
 -- The airport pairs (a before b, both directions) the routes matrix can list, by year, by rebuild_top_route_year(): any pair in
 -- the top TOP_ROUTES for its service and distance band by some measure, in some year or over all years, with its best rank by
@@ -199,12 +207,7 @@ CREATE TABLE IF NOT EXISTS "airport_names" (
 CREATE TABLE IF NOT EXISTS "airport_market" (
    [code] TEXT PRIMARY KEY, [market_id] TEXT
 ) WITHOUT ROWID;
--- One row per airport, airline, aircraft family and aircraft the header search can open: its page (href), what to show (label, hint), the lowercase words it is found by (terms), its exact code if it has one and its size (rank), by rebuild_search_index()
-CREATE TABLE IF NOT EXISTS "search_index" (
-   [kind] TEXT, [href] TEXT, [label] TEXT, [hint] TEXT, [terms] TEXT, [code] TEXT, [rank] INTEGER,
-   PRIMARY KEY ([kind], [href])
-) WITHOUT ROWID;
-"""
+""" + SEARCH_INDEX_SCHEMA
 
 
 def _segment_ddl(table):

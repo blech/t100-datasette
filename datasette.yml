@@ -896,7 +896,8 @@ databases:
       # the header search: up to three typed words (t1, t2, t3, any left empty), each of which must start a word of the thing's terms;
       # at most 6 airports, 6 cities (markets with two or more airports), 6 airlines and 6 aircraft, an exact code first, then a label that
       # starts with the first word, then the busiest; the kind with the best match leads, so the first row is the best match overall
-      # (airports, cities, airlines, aircraft when kinds tie)
+      # (airports, cities, airlines, aircraft when kinds tie). /-/search.json runs it on t_avia.db's search_index too, for the European
+      # airports and countries
       search:
         title: "Search for an airport, city, airline or aircraft"
         description: "Up to six airports, six cities (BTS city markets with two or more airports), six airlines and six aircraft (families included) each, for up to three words (t1, t2, t3) that each start a word of its code, name, city or country. An exact code comes first, then a name starting with the first word, then the busiest."
@@ -922,8 +923,10 @@ databases:
             SELECT *, ROW_NUMBER() OVER (PARTITION BY kind ORDER BY score, rank DESC, label) AS n,
               MIN(score) OVER (PARTITION BY kind) AS best FROM hits
           )
-          SELECT kind, href, label, hint FROM ranked WHERE n <= 6
-          ORDER BY best, CASE kind WHEN 'airport' THEN 0 WHEN 'city' THEN 1 WHEN 'airline' THEN 2 ELSE 3 END, score, rank DESC, label
+          -- score, best and rank let /-/search.json (plugins/t100_search.py) put t_avia.db's rows, from the same SQL, among these
+          SELECT kind, href, label, hint, score, best, rank FROM ranked WHERE n <= 6
+          ORDER BY best, CASE kind WHEN 'airport' THEN 0 WHEN 'europe_airport' THEN 1 WHEN 'city' THEN 2 WHEN 'europe_country' THEN 3
+            WHEN 'airline' THEN 4 ELSE 5 END, score, rank DESC, label
 
       # what the airport find box offers besides the airports: the city markets with two or more airports (the search index's city rows)
       city_list:

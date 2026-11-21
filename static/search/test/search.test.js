@@ -8,14 +8,18 @@ test('tokens lowercases and splits on spaces, giving three, padded with empty st
   assert.deepEqual(tokens('a b c d e'), ['a', 'b', 'c']);
 });
 
-test('searchUrl is null for a blank search and otherwise names the search query with each token', () => {
+test('searchUrl is null for a blank search and otherwise asks the site search with each token, whatever the page\'s database', () => {
   assert.equal(searchUrl('   '), null);
   const url = searchUrl('KEF');
-  assert.ok(url.startsWith('/t100/search.json?'));
+  assert.ok(url.startsWith('/-/search.json?'), url); // not /t_avia/search.json on a European page
   const q = new URL(url, 'http://x').searchParams;
   assert.equal(q.get('t1'), 'kef');
   assert.equal(q.get('t2'), '');
-  assert.equal(q.get('_shape'), 'objects');
+});
+
+test('groupResults names the European kinds', () => {
+  const groups = groupResults([{ kind: 'europe_airport', label: 'LHR' }, { kind: 'europe_country', label: 'France' }]);
+  assert.deepEqual(groups.map((g) => g.title), ['European airports', 'European countries']);
 });
 
 test('searchUrl encodes characters that mean something in a URL', () => {
