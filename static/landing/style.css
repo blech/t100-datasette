@@ -43,3 +43,9 @@ td.rank {
   color: var(--muted, #777);
   width: 2.5em;
 }
+
+/* European tables: a long airport name wraps, so keep each row's cells on its first line */
+#europe-airports td,
+#europe-countries td {
+  vertical-align: top;
+}
